@@ -1,0 +1,65 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A notification (WF15; Inventar G160, G161): for the records of one type, on the events
+# named, if the condition holds, a mail to the recipients. Subject and text are translatable
+# (German in the column, other languages as translations, PL21); each person gets the mail in
+# the language of the person. Placeholders: {{record.<field>}}, {{type}}, {{title}}, {{link}},
+# {{actor}}, {{message}}, {{entry}} (the text of a new entry of the timeline, PL42).
+name: notification
+label: {de: Benachrichtigung, en: Notification}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    max_length: 100
+  - name: target_type
+    type: text
+    label: {de: Für Typ, en: For type}
+    description: {de: "Typ mit Paket, etwa sd.incident", en: "Type with its package, e.g. sd.incident"}
+    required: true
+    max_length: 130
+  - name: events
+    type: text
+    label: {de: Ereignisse, en: Events}
+    description: {de: "create, update, transition, trash, restore, breach, escalation, comment (neuer Eintrag der Zeitleiste); durch Komma getrennt", en: "create, update, transition, trash, restore, breach, escalation, comment (new entry of the timeline); separated by commas"}
+    required: true
+    max_length: 200
+  - name: condition
+    type: text
+    label: {de: Bedingung, en: Condition}
+    description: {de: "CEL über record, leer für immer", en: "CEL over record, empty for always"}
+    max_length: 2000
+  - name: recipients
+    type: text
+    label: {de: Empfänger, en: Recipients}
+    description: {de: "actors.<rolle>, core.group:<id>, core.person:<id>; durch Komma getrennt", en: "actors.<role>, core.group:<id>, core.person:<id>; separated by commas"}
+    required: true
+    max_length: 2000
+  - name: notify_actor
+    type: boolean
+    label: {de: Auch an den Auslöser, en: Also to who caused it}
+    required: true
+    default: false
+  - name: subject
+    type: text
+    label: {de: Betreff, en: Subject}
+    required: true
+    translatable: true
+    max_length: 300
+  - name: body
+    type: text
+    label: {de: Text, en: Text}
+    required: true
+    translatable: true
+    max_length: 20000
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true

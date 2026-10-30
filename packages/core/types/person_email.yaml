@@ -1,0 +1,28 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Further mail addresses of a person (PL7; Hauptplan E80): one record per address. The main
+# address stays in person.email.
+name: person_email
+label: {de: Mailadresse, en: Email address}
+title_field: address
+fields:
+  - name: person
+    type: reference
+    label: {de: Person, en: Person}
+    to: core.person
+    required: true
+  - name: address
+    type: text
+    label: {de: Adresse, en: Address}
+    required: true
+    searchable: true
+    max_length: 254
+  - name: kind
+    type: choice
+    label: {de: Art, en: Kind}
+    options:
+      - {value: work, label: {de: Dienstlich, en: Work}}
+      - {value: private, label: {de: Privat, en: Private}}
+      - {value: other, label: {de: Sonstige, en: Other}}
+    default: work

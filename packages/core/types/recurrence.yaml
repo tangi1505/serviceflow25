@@ -1,0 +1,60 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A recurring record (WF14; Inventar G61, G62): on every date of its schedule the core creates
+# one record of the target type from the template, exactly once per date. A date missed while
+# no instance ran is made up once. The template is a JSON object as in a create; in text
+# values {{date}}, {{week}}, {{month}} and {{year}} stand for the date, and a date field may say
+# "+3d" (or h, w) relative to it.
+name: recurrence
+label: {de: Wiederkehrender Vorgang, en: Recurring record}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    max_length: 100
+  - name: target_type
+    type: text
+    label: {de: Legt an, en: Creates}
+    description: {de: "Typ mit Paket, etwa sd.request", en: "Type with its package, e.g. sd.request"}
+    required: true
+    max_length: 130
+  - name: schedule
+    type: text
+    label: {de: Zeitplan, en: Schedule}
+    description: {de: "cron, etwa 0 7 * * 1 für montags um 7 Uhr", en: "cron, e.g. 0 7 * * 1 for Mondays at 7"}
+    required: true
+    max_length: 100
+  - name: timezone
+    type: text
+    label: {de: Zeitzone, en: Time zone}
+    required: true
+    default: Europe/Berlin
+    max_length: 64
+  - name: template
+    type: text
+    label: {de: Vorlage, en: Template}
+    description: {de: "JSON wie beim Anlegen, etwa {\"title\": \"Prüfung KW {{week}}\"}", en: "JSON as in a create, e.g. {\"title\": \"Check week {{week}}\"}"}
+    required: true
+    max_length: 20000
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true
+  - name: next_run
+    type: datetime
+    label: {de: Nächster Termin, en: Next date}
+    description: {de: "Leer: der nächste Termin nach jetzt", en: "Empty: the next date after now"}
+  - name: last_run
+    type: datetime
+    label: {de: Letzter Termin, en: Last date}
+  - name: last_error
+    type: text
+    label: {de: Letzter Fehler, en: Last error}
+    max_length: 2000

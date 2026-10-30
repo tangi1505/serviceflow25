@@ -1,0 +1,11 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The core package (Plattform-Kern PL7; Hauptplan E79): persons and groups as entity types, so
+# that list, form, audit, bulk import and the LDAP sync (PL9) use the same path as every other
+# record. Accounts (PL5), the organisation tree (PL6) and roles (PL8) stay core tables.
+name: core
+version: 0.1.0
+label:
+  de: Kern
+  en: Core

@@ -1,0 +1,82 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A service level (WF9; Inventar G167): a deadline for the records of one type, such as the time
+# to the first answer or to the solution. Three CEL conditions over `record` say when it holds
+# (applies; empty for always), when its clock pauses (pause) and when it stops (stop). The clock
+# counts working time of the calendar named here, else of the setting calendar.default of the
+# record's unit, else round the clock. One SLA per priority, e.g. applies record.priority == 1.
+name: sla
+label: {de: Service-Level, en: Service level}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    max_length: 100
+  - name: target_type
+    type: text
+    label: {de: Für Typ, en: For type}
+    description: {de: "Typ mit Paket, etwa sd.incident", en: "Type with its package, e.g. sd.incident"}
+    required: true
+    max_length: 130
+  - name: target_minutes
+    type: number
+    label: {de: Ziel in Minuten, en: Target in minutes}
+    description: {de: Arbeitszeit bis zur Frist, en: Working time to the deadline}
+    required: true
+    min: 1
+  - name: calendar
+    type: reference
+    label: {de: Kalender, en: Calendar}
+    to: core.calendar
+  # What a clock counts (WF12): working time of a calendar (the one named, else the one of the
+  # record's unit), or every minute round the clock, such as "close 7 days after the solution".
+  - name: counts
+    type: choice
+    label: {de: Zählt nach, en: Counts by}
+    required: true
+    default: calendar
+    options:
+      - {value: calendar, label: {de: Kalender, en: Calendar}}
+      - {value: round_the_clock, label: {de: Rund um die Uhr, en: Round the clock}}
+  # From when a clock counts (WF11): from the creation of the record (deadlines such as the
+  # solution; an SLA that holds later counts from then too), or from the moment the SLA comes
+  # to hold (a wait for a reason, which starts anew each time).
+  - name: start_from
+    type: choice
+    label: {de: Zählt ab, en: Counts from}
+    required: true
+    default: created
+    options:
+      - {value: created, label: {de: Anlage des Datensatzes, en: Creation of the record}}
+      - {value: applies, label: {de: Beginn der Geltung, en: When it comes to hold}}
+  - name: applies
+    type: text
+    label: {de: Gilt wenn, en: Applies when}
+    description: {de: "CEL, leer für immer, etwa record.priority == 1", en: "CEL, empty for always, e.g. record.priority == 1"}
+    max_length: 2000
+  - name: pause
+    type: text
+    label: {de: Pause wenn, en: Paused when}
+    description: {de: "CEL, etwa record.state == \"waiting\"", en: "CEL, e.g. record.state == \"waiting\""}
+    max_length: 2000
+  - name: stop
+    type: text
+    label: {de: Erfüllt wenn, en: Met when}
+    description: {de: "CEL, etwa record.state in [\"resolved\", \"closed\"]", en: "CEL, e.g. record.state in [\"resolved\", \"closed\"]"}
+    required: true
+    max_length: 2000
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    max_length: 1000

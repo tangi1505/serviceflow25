@@ -1,0 +1,18 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A trait of the probe package (PL17, architektur.md B2): a bundle of fields a type pulls in
+# with "traits: [tagged]". Traits with behaviour (history, documents, …) live in the core.
+name: tagged
+label: {de: Gekennzeichnet, en: Tagged}
+description:
+  de: Inventarnummer und Datum der Kennzeichnung.
+  en: Inventory number and the date of tagging.
+fields:
+  - name: tag_no
+    type: text
+    label: {de: Inventarnummer, en: Inventory number}
+    max_length: 50
+  - name: tagged_on
+    type: date
+    label: {de: Gekennzeichnet am, en: Tagged on}

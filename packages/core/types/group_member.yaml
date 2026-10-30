@@ -1,0 +1,19 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Membership of a person in a group (PL7): one record per pair. Roles on records (requester,
+# watcher, assignee) come with WF3 and point at persons or groups.
+name: group_member
+label: {de: Gruppenmitglied, en: Group member}
+traits: [history]
+fields:
+  - name: group
+    type: reference
+    label: {de: Gruppe, en: Group}
+    to: core.group
+    required: true
+  - name: person
+    type: reference
+    label: {de: Person, en: Person}
+    to: core.person
+    required: true

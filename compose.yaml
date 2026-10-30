@@ -1,0 +1,176 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Development and small installations (Hauptplan E9). Files live in the file system (E22),
+# Valkey is mandatory (E20). The passwords below are for local development only.
+#
+#   docker compose up -d --build                    PostgreSQL, Valkey, migration, itsm
+#   docker compose --profile auth up -d             the same plus Keycloak (PL11, E61):
+#                                                   http://localhost:8091, admin / admin-dev,
+#                                                   realm itsm with the test user test / Test-Pw1!
+#                                                   and lldap (PL12): http://localhost:17170,
+#                                                   admin / admin-dev, LDAP on localhost:3890 with
+#                                                   the persons ltest and luser (compose/lldap)
+#   docker compose --profile mail up -d             the same plus Mailpit (WF15): the mails of
+#                                                   the notifications at http://localhost:8026
+#                                                   (8025 is the Mailpit of the GLPI setup)
+#   docker compose run --rm tools scripts/ci.sh     build, lint and test in the tool container
+
+name: itsm
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: itsm
+      POSTGRES_PASSWORD: itsm-dev
+      POSTGRES_DB: itsm
+    volumes:
+      # From PostgreSQL 18 on the image keeps its data below /var/lib/postgresql/<major>.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itsm -d itsm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:9.1.2
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: itsm:dev
+    build: .
+    command: ["migrate"]
+    environment: &itsm-env
+      ITSM_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm?sslmode=disable
+      ITSM_VALKEY_ADDR: valkey:6379
+      ITSM_PUBLIC_URL: http://localhost:8092
+      # Sign-in through Keycloak (profile auth); without the profile the button appears and
+      # fails until Keycloak runs. The browser reaches Keycloak at localhost:8091, the
+      # container at keycloak:8080 (ITSM_OIDC_INTERNAL_URL).
+      ITSM_OIDC_ISSUER: http://localhost:8091/realms/itsm
+      ITSM_OIDC_CLIENT_ID: itsm
+      ITSM_OIDC_CLIENT_SECRET: itsm-dev
+      ITSM_OIDC_NAME: Keycloak
+      ITSM_OIDC_INTERNAL_URL: http://keycloak:8080
+      # Bind password of the directory "lldap" (profile auth), see itsm ldap sync.
+      ITSM_LDAP_PASSWORD_LLDAP: admin-dev
+      # Mail of the notifications (WF15) to Mailpit (profile mail); without the profile the
+      # mails fail and land with the failures (/api/v1/events/failures).
+      ITSM_SMTP_HOST: mailpit
+      ITSM_SMTP_PORT: "1025"
+      ITSM_SMTP_FROM: ITSM Entwicklung <itsm@localhost>
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  itsm:
+    image: itsm:dev
+    build: .
+    command: ["serve", "--role=all"]
+    environment: *itsm-env
+    ports:
+      - "127.0.0.1:8092:8080"
+    volumes:
+      # Files (PL18, E22): the file system in Compose.
+      - files:/data/files
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  keycloak:
+    profiles: ["auth"]
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin-dev
+      # One fixed public address, so that the issuer is the same for browser and container.
+      KC_HOSTNAME: http://localhost:8091
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8091:8080"
+    volumes:
+      - ./compose/keycloak:/opt/keycloak/data/import:ro
+
+  lldap:
+    profiles: ["auth"]
+    image: lldap/lldap:v0.6.3
+    environment:
+      LLDAP_JWT_SECRET: dev-jwt-secret-change-me
+      LLDAP_KEY_SEED: dev-key-seed-change-me
+      LLDAP_LDAP_USER_PASS: admin-dev
+      LLDAP_LDAP_BASE_DN: dc=example,dc=org
+    ports:
+      - "127.0.0.1:3890:3890"
+      - "127.0.0.1:17170:17170"
+    volumes:
+      - lldap-data:/data
+
+  # One-shot: loads the persons and groups of compose/lldap through lldap's bootstrap script.
+  lldap-bootstrap:
+    profiles: ["auth"]
+    image: lldap/lldap:v0.6.3
+    entrypoint: ["/bin/sh", "-c", "sleep 5 && /app/bootstrap.sh"]
+    environment:
+      LLDAP_URL: http://lldap:17170
+      LLDAP_ADMIN_USERNAME: admin
+      LLDAP_ADMIN_PASSWORD: admin-dev
+      USER_CONFIGS_DIR: /bootstrap/users
+      GROUP_CONFIGS_DIR: /bootstrap/groups
+      DO_CLEANUP: "false"
+    volumes:
+      - ./compose/lldap:/bootstrap:ro
+    depends_on:
+      - lldap
+
+  mailpit:
+    profiles: ["mail"]
+    image: axllent/mailpit:v1.31.0
+    ports:
+      - "127.0.0.1:8026:8025"
+
+  tools:
+    profiles: ["tools"]
+    image: itsm-tools:dev
+    build: tools
+    working_dir: /src
+    environment:
+      ITSM_TEST_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm?sslmode=disable
+      ITSM_TEST_VALKEY_ADDR: valkey:6379
+      # the same services for the binary's commands run from the tool container
+      # (go run ./cmd/itsm package install …, user create …)
+      ITSM_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm?sslmode=disable
+      ITSM_VALKEY_ADDR: valkey:6379
+      GOFLAGS: -buildvcs=false
+      # keep the pnpm store in its volume, not inside the repository (different file system)
+      pnpm_config_store_dir: /root/.local/share/pnpm/store
+      pnpm_config_package_import_method: copy
+    volumes:
+      - .:/src
+      - gomod:/go/pkg/mod
+      - gocache:/root/.cache
+      - pnpm-store:/root/.local/share/pnpm
+      - load-baseline:/var/lib/itsm-load
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+volumes:
+  files:
+  pgdata:
+  lldap-data:
+  gomod:
+  gocache:
+  pnpm-store:
+  load-baseline:

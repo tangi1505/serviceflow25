@@ -1,0 +1,43 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A saved search (UI4; Inventar G112; Hauptplan E124): the view of a list, its condition as a
+# JSON query (E40), its columns and its sort. Private means only its creator reads it (scope
+# own); it is shared through the role "shared" with persons and groups (scope involved, WF3).
+# Whoever opens it sees only the records they may read themselves.
+name: saved_search
+label: {de: Gespeicherte Suche, en: Saved search}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    searchable: true
+    max_length: 100
+  - name: target_type
+    type: text
+    label: {de: Für Typ, en: For type}
+    description: {de: "Typ mit Paket, etwa sd.incident", en: "Type with its package, e.g. sd.incident"}
+    required: true
+    max_length: 130
+  - name: query
+    type: text
+    label: {de: Bedingung, en: Condition}
+    description: {de: "where der JSON-Abfrage, leer für alle", en: "where of the JSON query, empty for all"}
+    max_length: 20000
+  - name: columns
+    type: text
+    label: {de: Spalten, en: Columns}
+    description: {de: "Feldnamen in ihrer Reihenfolge, durch Komma getrennt; leer für die Vorgabe", en: "Field names in their order, separated by commas; empty for the default"}
+    max_length: 2000
+  - name: sort
+    type: text
+    label: {de: Sortierung, en: Sort}
+    description: {de: "ein Feld, mit - absteigend, etwa -updated_at", en: "one field, - for descending, e.g. -updated_at"}
+    max_length: 130
+actors:
+  - name: shared
+    label: {de: Geteilt mit, en: Shared with}
+    to: [core.person, core.group]

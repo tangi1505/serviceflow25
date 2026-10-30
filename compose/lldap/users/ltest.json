@@ -1,0 +1,12 @@
+{
+  "id": "ltest",
+  "email": "ltest@example.org",
+  "password": "Ltest-Pw1!",
+  "displayName": "Lena Testerin",
+  "firstName": "Lena",
+  "lastName": "Testerin",
+  "groups": [
+    "itsm-admins",
+    "itsm-users"
+  ]
+}

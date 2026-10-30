@@ -1,0 +1,17 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A flat select list (PL16, architektur.md B3): a type with the trait list. Its fields come
+# from the trait (name, key, description, active, position); the entries below are created
+# on install when their key is missing.
+name: color
+label: {de: Farbe, en: Colour}
+description:
+  de: Eine Auswahlliste ohne fachliche Bedeutung, für den Durchstich.
+  en: A select list without business meaning, for the thin thread.
+traits: [list]
+list:
+  entries:
+    - {key: red, name: Rot, position: 1}
+    - {key: green, name: Grün, position: 2}
+    - {key: blue, name: Blau, position: 3}

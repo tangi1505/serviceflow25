@@ -1,0 +1,37 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Fixed linter configuration (Hauptplan §5). Boundaries between building blocks (depguard)
+# follow with the Plattform-Kern, when the blocks exist. The rule of E34 (only records and
+# query touch type tables) is scripts/check-type-tables.sh: golangci-lint has no linter that
+# matches string literals.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - unconvert
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          # Test helpers hand responses around; an unclosed body in a test leaks nothing.
+          - bodyclose
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - group24.de/itsm

@@ -1,0 +1,23 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A day off in a calendar (WF8): no working time on that date. Entered by hand, or generated
+# for a year and a German state (POST /api/v1/calendars/{id}:holidays, itsm calendar holidays).
+name: calendar_holiday
+label: {de: Feiertag, en: Holiday}
+title_field: name
+fields:
+  - name: calendar
+    type: reference
+    label: {de: Kalender, en: Calendar}
+    to: core.calendar
+    required: true
+  - name: date
+    type: date
+    label: {de: Datum, en: Date}
+    required: true
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    max_length: 100

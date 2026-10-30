@@ -1,0 +1,397 @@
+{
+  "app": {
+    "title": "itsm",
+    "version": {
+      "loading": "Checking the connection to the server …",
+      "value": "Server version {{version}}",
+      "error": "The server cannot be reached."
+    }
+  },
+  "language": {
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "theme": {
+    "neutral": "Neutral",
+    "probe": "Probe (green)"
+  },
+  "login": {
+    "title": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "required": "Please fill in.",
+    "failed": "Username or password is wrong.",
+    "error": "Sign-in not possible: {{detail}}",
+    "with": "Sign in with {{name}}",
+    "sso": {
+      "sso": "The sign-in through the provider failed.",
+      "refused": "The provider refused the sign-in.",
+      "state": "The sign-in expired, please try again.",
+      "disabled": "The account is disabled.",
+      "provider": "The provider cannot be reached."
+    }
+  },
+  "nav": {
+    "types": "Types",
+    "typesError": "The types could not be loaded.",
+    "user": "Signed in as {{name}}",
+    "logout": "Sign out",
+    "language": "Language",
+    "theme": "Theme",
+    "tenant": "Tenant"
+  },
+  "home": {
+    "welcome": "Welcome, {{name}}",
+    "intro": "Pick a type on the left: list, create and edit come from the type definition."
+  },
+  "type": {
+    "unknown": "There is no such type."
+  },
+  "column": {
+    "id": "ID",
+    "version": "Version",
+    "state": "State",
+    "created_at": "Created",
+    "updated_at": "Updated"
+  },
+  "list": {
+    "new": "New",
+    "columns": "Columns",
+    "loading": "Loading …",
+    "loaded": "{{count}}{{more}} records",
+    "error": "The list could not be loaded.",
+    "select": "Choose: {{title}}",
+    "selectAll": "Choose all loaded"
+  },
+  "form": {
+    "newTitle": "New record",
+    "notFound": "There is no such record.",
+    "version": "Version {{version}}",
+    "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "none": "– none –",
+    "error": "Saving not possible: {{detail}}",
+    "rule": {
+      "required": "Please fill in.",
+      "number": "Please enter a number.",
+      "min": "The value is too small.",
+      "max": "The value is too large.",
+      "max_length": "The text is too long.",
+      "choice": "Please pick a value from the list.",
+      "uuid": "Please enter a valid ID.",
+      "read_only": "This field is read-only in the current state."
+    },
+    "conflict": {
+      "title": "Someone saved this record in the meantime.",
+      "text": "The server now holds version {{version}}. The fields that differ are listed below.",
+      "field": "Field",
+      "theirs": "On the server",
+      "mine": "My input",
+      "reload": "Take the server's values",
+      "overwrite": "Save my input anyway"
+    },
+    "locked": "This record is read-only in the state “{{state}}”.",
+    "saved": "Saved.",
+    "roles": "Roles at the record",
+    "send": "Send"
+  },
+  "password": {
+    "title": "Change password",
+    "expired": "Your password has expired. Please set a new one before you continue.",
+    "rules": "At least 8 characters with an upper-case letter, a lower-case letter, a digit and a special character.",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Repeat new password",
+    "submit": "Change password",
+    "required": "Please fill in.",
+    "weak": "The password does not satisfy the rules.",
+    "mismatch": "The repetition does not match.",
+    "wrong": "The current password is wrong.",
+    "error": "Change not possible: {{detail}}"
+  },
+  "state": {
+    "title": "State",
+    "refused": "Transition refused: {{detail}}",
+    "error": "Transition failed: {{detail}}",
+    "reason": {
+      "state": "Not possible from the current state.",
+      "condition": "The condition is not met."
+    }
+  },
+  "timeline": {
+    "title": "Timeline",
+    "history": "History",
+    "filter": "Timeline display",
+    "all": "Everything",
+    "entries": "Entries only",
+    "new": "New entry",
+    "private": "Private (only for those allowed)",
+    "privateBadge": "Private",
+    "add": "Add",
+    "empty": "Nothing yet.",
+    "loadError": "The timeline could not be loaded.",
+    "system": "System",
+    "rule": "rule {{rule}}",
+    "forbidden": "You may not add entries to this record.",
+    "forbiddenPrivate": "You may not write private entries on this record.",
+    "error": "Could not add the entry: {{detail}}",
+    "action": {
+      "create": "Created",
+      "update": "Changed",
+      "trash": "Moved to the trash",
+      "restore": "Restored from the trash",
+      "purge": "Deleted for good",
+      "transition": "State changed",
+      "relate": "Relation added",
+      "unrelate": "Relation removed",
+      "attach": "File attached",
+      "detach": "File removed",
+      "cost_add": "Cost booked",
+      "cost_change": "Cost changed",
+      "cost_remove": "Cost removed",
+      "notify": "Notified",
+      "breach": "SLA breached",
+      "escalation": "Escalated"
+    }
+  },
+  "sidebar": {
+    "roles": "Roles",
+    "clocks": "SLA",
+    "none": "None.",
+    "more": "There are more.",
+    "remaining": "{{time}} left",
+    "overdue": "Overdue by {{time}}",
+    "due": "due {{at}}",
+    "light": {
+      "breached": "Breached",
+      "close": "Close",
+      "inTime": "In time",
+      "met": "Met",
+      "paused": "Paused",
+      "cancelled": "No longer applies"
+    }
+  },
+  "picker": {
+    "chosen": "Chosen",
+    "remove": "Remove",
+    "placeholder": "Search …",
+    "options": "Suggestions",
+    "type": "Type to search.",
+    "none": "Nothing found."
+  },
+  "filter": {
+    "title": "Filter",
+    "none": "No filter: every record you may read.",
+    "add": "Add condition",
+    "remove": "Remove",
+    "field": "Field",
+    "op": "Comparison",
+    "value": "Value",
+    "condition": "Condition {{n}}",
+    "me": "me",
+    "myGroups": "my groups",
+    "yes": "yes",
+    "no": "no",
+    "ops": {
+      "eq": "is",
+      "neq": "is not",
+      "contains": "contains",
+      "starts": "starts with",
+      "gte": "from",
+      "lte": "until",
+      "null": "is empty"
+    }
+  },
+  "search": {
+    "saved": "Saved searches",
+    "all": "– all records –",
+    "own": "Mine",
+    "shared": "Shared with me",
+    "saveAs": "Save as new search",
+    "update": "Save changes",
+    "save": "Save",
+    "name": "Name of the search",
+    "share": "Share and manage",
+    "details": "About this search",
+    "forbidden": "You may not save searches.",
+    "error": "Could not save: {{detail}}",
+    "notFound": "This saved search does not exist or is not shared with you.",
+    "raw": "This search has a condition the filters cannot show: {{where}}"
+  },
+  "export": {
+    "format": "Format of the export",
+    "run": "Export",
+    "queued": "More than 100,000 rows: the export runs as a job, the file appears here when it is done.",
+    "ready": "Export done: {{rows}} rows.",
+    "download": "Download the file",
+    "failed": "The export failed.",
+    "error": "Could not export: {{detail}}"
+  },
+  "batch": {
+    "title": "{{count}} chosen",
+    "action": "Action",
+    "field": "Field",
+    "value": "New value",
+    "empty": "– clear –",
+    "transition": "Transition",
+    "role": "Role",
+    "run": "Apply to {{count}}",
+    "confirmTrash": "Really move {{count}} to the trash",
+    "error": "Could not run: {{detail}}",
+    "actions": {
+      "field": "Set field",
+      "transition": "Run transition",
+      "role": "Set role",
+      "trash": "Move to the trash"
+    },
+    "status": {
+      "ok": "{{count}} changed",
+      "conflict": "{{count}} changed meanwhile (conflict)",
+      "refused": "{{count}} refused (transition does not apply)",
+      "forbidden": "{{count}} without the right",
+      "not_found": "{{count}} not found",
+      "invalid": "{{count}} invalid",
+      "error": "{{count}} with an error"
+    }
+  },
+  "editor": {
+    "toolbar": "Formatting: {{label}}",
+    "bold": "Bold",
+    "italic": "Italic",
+    "bullets": "List",
+    "numbers": "Numbered",
+    "quote": "Quote",
+    "link": "Link",
+    "image": "Insert image",
+    "linkPrompt": "Address of the link (empty removes it)",
+    "uploadError": "Image not uploaded: {{detail}}"
+  },
+  "live": {
+    "allow": "Allow notifications",
+    "viewing": "{{name}} is viewing",
+    "editing": "{{name}} is editing",
+    "someone": "someone else",
+    "changedBy": "Changed by {{name}} while you were changing it here.",
+    "reload": "Reload",
+    "fresh_one": "{{count}} new record – show",
+    "fresh_other": "{{count}} new records – show",
+    "kind": {
+      "create": "Created",
+      "update": "Changed",
+      "transition": "State changed",
+      "comment": "New entry",
+      "trash": "Moved to the trash",
+      "breach": "SLA breached",
+      "escalation": "Escalated"
+    }
+  },
+  "settings": {
+    "title": "My settings",
+    "language": "Language",
+    "time_zone": "Time zone",
+    "theme": "Theme",
+    "inherit": "– as set for my unit –",
+    "inForce": "In force: {{value}} ({{source}})",
+    "source": {
+      "own": "my own setting",
+      "default": "default",
+      "node": "set for {{node}}"
+    },
+    "presets": "Presets when creating",
+    "presetsHint": "The form sets these values when you create a new record of the type; presets of the state come first.",
+    "type": "Type",
+    "preset": "Preset {{n}}",
+    "addPreset": "Add field",
+    "savePresets": "Save presets",
+    "global": "Global settings",
+    "globalTitle": "Global settings",
+    "globalHint": "Defaults for everyone below a node; personal settings come first. Changing needs the right manage_settings for the node.",
+    "node": "Node",
+    "from": "In force here from {{node}}",
+    "notSet": "Not set: the default applies.",
+    "remove": "Remove the value of this node",
+    "removed": "Removed.",
+    "forbidden": "You lack the right manage_settings for this node.",
+    "error": "Could not save: {{detail}}",
+    "loadError": "The settings could not be loaded."
+  },
+  "portal": {
+    "title": "itsm portal",
+    "toWorkplace": "To the workplace",
+    "mine": "My records",
+    "new": "New",
+    "none": "Nothing created yet.",
+    "nothing": "Nothing to create here yet.",
+    "newTitle": "Create {{type}}",
+    "toPortal": "To the portal",
+    "forms": "Forms",
+    "formUnknown": "This form does not exist or is not for you.",
+    "sent": "Thank you, “{{title}}” has been created."
+  },
+  "builder": {
+    "section": "Section {{n}}",
+    "sectionTitle": "Title of the section",
+    "addSection": "Add section",
+    "newQuestion": "New question",
+    "choose": "– choose –",
+    "fieldGroup": "Field of the target type",
+    "freeGroup": "Free question",
+    "addQuestion": "Add question",
+    "empty": "No questions yet.",
+    "unnamed": "(no label)",
+    "boundTo": "Field: {{field}}",
+    "label": "Question",
+    "labelOptional": "Question (empty: name of the field)",
+    "required": "Required",
+    "options": "Answers, one per line",
+    "drag": "Move “{{name}}”",
+    "up": "Move “{{name}}” up",
+    "down": "Move “{{name}}” down",
+    "remove": "Remove “{{name}}”",
+    "broken": "The saved structure cannot be read; the builder starts anew.",
+    "noTarget": "First say what the form creates (type with package); then its fields can be chosen.",
+    "type": {
+      "text": "Text",
+      "number": "Number",
+      "boolean": "Yes/No",
+      "date": "Date",
+      "datetime": "Moment",
+      "choice": "Choice"
+    },
+    "dnd": {
+      "help": "Space picks the item up, the arrow keys move it, space drops it, Escape cancels.",
+      "start": "Picked up “{{name}}”.",
+      "over": "“{{name}}” at “{{other}}”.",
+      "end": "Dropped “{{name}}” at “{{other}}”.",
+      "cancel": "Moving “{{name}}” cancelled.",
+      "stay": "“{{name}}” stays where it was."
+    },
+    "language": "Language of the texts",
+    "lang": {
+      "de": "German",
+      "en": "English"
+    },
+    "titleEn": "Name of the form in English",
+    "introEn": "Description of the form in English",
+    "inEnglish": "{{label}} (English)",
+    "optionEn": "Answer “{{option}}” in English",
+    "yes": "yes",
+    "no": "no",
+    "cond": {
+      "legend": "Show only when",
+      "question": "Refers to question",
+      "op": "Condition",
+      "value": "Value",
+      "add": "Add condition",
+      "remove": "Remove condition {{n}}",
+      "ops": {
+        "eq": "equals",
+        "ne": "differs from",
+        "answered": "is answered",
+        "empty": "is empty"
+      }
+    }
+  }
+}

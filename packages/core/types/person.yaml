@@ -1,0 +1,57 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A person (PL7; Inventar G116): who works with or is served by the system. Sign-in is the
+# account (PL5), which links to a person with PL9; LDAP and OIDC fill persons with source and
+# external_key (system fields). Further addresses live in core.person_email.
+name: person
+label: {de: Person, en: Person}
+description:
+  de: Eine Person, die mit dem System arbeitet oder von ihm betreut wird.
+  en: A person who works with the system or is served by it.
+title_field: last_name
+traits: [history]
+fields:
+  - name: last_name
+    type: text
+    label: {de: Nachname, en: Last name}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: first_name
+    type: text
+    label: {de: Vorname, en: First name}
+    searchable: true
+    max_length: 200
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    max_length: 100
+  - name: email
+    type: text
+    label: {de: Mailadresse, en: Email}
+    searchable: true
+    max_length: 254
+  - name: phone
+    type: text
+    label: {de: Telefon, en: Phone}
+    max_length: 60
+  - name: mobile
+    type: text
+    label: {de: Mobil, en: Mobile}
+    max_length: 60
+  - name: supervisor
+    type: reference
+    label: {de: Vorgesetzte Person, en: Supervisor}
+    to: core.person
+  - name: language
+    type: choice
+    label: {de: Sprache, en: Language}
+    options:
+      - {value: de, label: {de: Deutsch, en: German}}
+      - {value: en, label: {de: Englisch, en: English}}
+    default: de
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    default: true

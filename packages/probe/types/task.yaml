@@ -1,0 +1,43 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A task of a probe record (WF13; Inventar G41): its own record with a state, an assignee
+# (person or group), planned time and the minutes it took; probe.probe sums them up.
+name: task
+label: {de: Aufgabe, en: Task}
+title_field: title
+traits: [history, actors]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: parent
+    type: reference
+    label: {de: Vorgang, en: Record}
+    to: probe.probe
+    required: true
+  - name: minutes
+    type: number
+    label: {de: Zeit (Minuten), en: Time (minutes)}
+    min: 0
+    max: 100000
+    default: 0
+  - name: planned_start
+    type: datetime
+    label: {de: Geplant ab, en: Planned from}
+  - name: planned_end
+    type: datetime
+    label: {de: Geplant bis, en: Planned until}
+states:
+  - {name: open, label: {de: Offen, en: Open}, initial: true}
+  - {name: done, label: {de: Erledigt, en: Done}}
+transitions:
+  - {name: finish, label: {de: Erledigen, en: Finish}, from: [open], to: done}
+  - {name: reopen, label: {de: Wieder öffnen, en: Reopen}, from: [done], to: open}
+actors:
+  - name: assigned
+    label: {de: Bearbeiter, en: Assigned to}
+    to: [core.person, core.group]

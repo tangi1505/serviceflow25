@@ -1,0 +1,30 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A calendar of working times (WF8; Inventar G169): the hours of each weekday in
+# calendar_hours, the days off in calendar_holiday. Deadlines and SLA clocks (WF9) count only
+# working time. The setting calendar.default of the organisation tree says which calendar a
+# unit works by.
+name: calendar
+label: {de: Kalender, en: Calendar}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    max_length: 100
+  - name: timezone
+    type: text
+    label: {de: Zeitzone, en: Time zone}
+    description: {de: "IANA-Name, etwa Europe/Berlin", en: "IANA name, e.g. Europe/Berlin"}
+    required: true
+    default: Europe/Berlin
+    max_length: 64
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    max_length: 1000

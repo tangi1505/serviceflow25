@@ -1,0 +1,37 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Working hours of a calendar on one weekday (WF8): from starts to ends, local time as HH:MM.
+# A day may have several, such as 08:00–12:00 and 13:00–16:00 around a lunch break.
+name: calendar_hours
+label: {de: Arbeitszeit, en: Working hours}
+fields:
+  - name: calendar
+    type: reference
+    label: {de: Kalender, en: Calendar}
+    to: core.calendar
+    required: true
+  - name: weekday
+    type: choice
+    label: {de: Wochentag, en: Weekday}
+    required: true
+    options:
+      - {value: mon, label: {de: Montag, en: Monday}}
+      - {value: tue, label: {de: Dienstag, en: Tuesday}}
+      - {value: wed, label: {de: Mittwoch, en: Wednesday}}
+      - {value: thu, label: {de: Donnerstag, en: Thursday}}
+      - {value: fri, label: {de: Freitag, en: Friday}}
+      - {value: sat, label: {de: Samstag, en: Saturday}}
+      - {value: sun, label: {de: Sonntag, en: Sunday}}
+  - name: starts
+    type: text
+    label: {de: Von, en: From}
+    description: {de: "HH:MM, Ortszeit des Kalenders", en: "HH:MM, local time of the calendar"}
+    required: true
+    max_length: 5
+  - name: ends
+    type: text
+    label: {de: Bis, en: To}
+    description: {de: "HH:MM, Ortszeit des Kalenders; 24:00 für Mitternacht", en: "HH:MM, local time of the calendar; 24:00 for midnight"}
+    required: true
+    max_length: 5

@@ -1,0 +1,28 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A reason to wait (WF11; Inventar G54), such as "Rückmeldung Nutzer": a type that can wait
+# has a reference field wait_reason to it. What happens while a record waits for a reason
+# (reminders, a solution after some days) is an SLA that holds while it waits and counts from
+# then (start_from applies), with escalation levels as rules (trigger clock, WF10).
+name: wait_reason
+label: {de: Wartegrund, en: Reason to wait}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    max_length: 100
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    max_length: 1000
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true

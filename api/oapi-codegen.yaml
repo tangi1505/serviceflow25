@@ -1,0 +1,12 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+package: gen
+output: internal/httpapi/gen/api.gen.go
+generate:
+  chi-server: true
+  models: true
+  embedded-spec: true
+output-options:
+  skip-prune: true

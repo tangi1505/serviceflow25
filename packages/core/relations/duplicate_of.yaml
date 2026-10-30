@@ -1,0 +1,9 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The source is a duplicate of the target (G48).
+name: duplicate_of
+label: {de: Duplikat von, en: duplicate of}
+inverse: {de: hat Duplikat, en: has duplicate}
+from: ["*"]
+to: ["*"]

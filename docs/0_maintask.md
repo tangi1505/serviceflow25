@@ -1,0 +1,752 @@
+# Hauptplan: itsm (Arbeitstitel), ein eigenes ITSM-Werkzeug als Ablösung von GLPI
+
+**Stand:** 2026-10-20, sechste Fassung: H2, H5, H6 und H8 abgenommen; H11 fertig (Lastwerkzeug,
+Datensatz, Gate in der CI); E63 bis E65 neu. Erste bis fünfte Fassung am selben Tag. Entstanden im Gespräch am 2026-10-20: Pascal hat die
+Weichen des Techstacks entschieden (§1), Claude hat die Optionen vorgelegt. Nichts ist gebaut,
+nichts gemessen. Alle Aufwände sind geschätzt, vor dem Entwurf, und werden je Nebenplan neu
+geschätzt. Das Vorhaben hat ein eigenes Arbeitsverzeichnis `C:\Users\PascalFrechen\Polizei\itsm`
+mit eigener Fassung des [Planungsstandards](planungsstandard.md) (E1).
+
+**Woher es kommt:** Aus dem GLPI-Vorhaben (`..\glpi\docs\0_maintask.md`) stammen das Zielbild
+(komplettes ITSM nach ITIL 4), das Mengengerüst und die Regeln zum Betrieb (VS-NfD, eigenes
+Rechenzentrum, kein Agent auf den Endgeräten). Dort steht seit dem 2026-10-20 auch die
+Marktanalyse neben GLPI. Dieses Vorhaben ist die dritte Antwort auf dieselbe Frage: nicht GLPI
+anpassen, nicht kaufen, sondern selbst bauen.
+
+> **Das Ziel in einem Satz:** ein Werkzeug, das alles kann, was GLPI kann, und darüber hinaus
+> jede Practice aus ITIL 4 abbildet, wobei der Kunde Entitäten, Felder, Formulare, Prozesse und
+> Logik selbst definiert, ohne den Kern anzufassen und ohne Neustart.
+>
+> **Die Entscheidung, die alles trägt (E7):** Das Werkzeug ist eine **datengetriebene Plattform**,
+> keine Sammlung fest programmierter Module. Incident, Change, Asset und jede weitere Practice
+> sind **Pakete** aus Definitionen (Entitätstypen, Felder, Formulare, Statusmodelle, Regeln,
+> Rollen, Berichte) plus optionaler Logik in einer Sandbox. Die mitgelieferten Practices sind auf
+> dieselbe Weise gebaut wie die, die ein Kunde später selbst anlegt. Was der Kern nicht als
+> Paket ausdrücken kann, ist eine Lücke im Kern, nicht ein Grund für Sondercode.
+
+---
+
+## Nebenpläne
+
+**Stand eines Plans:** ✅ abgeschlossen · 🔨 läuft · ⬜ nicht begonnen · 🔒 wartet · 💤 ruht
+
+Alle Nebenpläne sind am 2026-10-20 nur benannt, keiner ist ausgearbeitet (H8). Die Aufwände sind
+grobe Schätzungen der reinen Umsetzung in Arbeitswochen, ohne Abnahme und ohne Wartezeiten.
+
+| Nr | Kürzel | Nebenplan | Ergebnis | Etappe | Aufwand | Stand |
+| --- | --- | --- | --- | --- | --- | --- |
+| 01 | **PL** | [Plattform-Kern](01_plattform-kern.md) | das Meta-Modell (Entitätstypen, Felder, Beziehungen, Organisationsbaum, Rechte, Audit), die Persistenz in PostgreSQL, die REST-API mit OpenAPI samt Bulk-Verarbeitung und asynchronen Jobs (E24), der Ereignisstrom, Anmeldung und Jobs. Ohne Fachinhalt, aber mit allem, was ein Paket braucht | 2 | 64 d, rund 13 w (vor H8 geschätzt: 6 bis 8 w) | ⬜ ausgearbeitet und abgenommen am 2026-10-20 (H8), 39 Aufgaben; Block A ist der Durchstich |
+| 02 | **UI** | [Oberfläche](02_oberflaeche.md) | React-Anwendung: Rahmen, Navigation, Listen mit Filtern und gespeicherten Suchen, Formulare aus Definitionen, Formular-Builder, Typ-, Workflow- und Rollen-Editor, Dashboards, Live-Aktualisierung, Mehrsprachigkeit, Barrierefreiheit | 2 | 43 d, rund 9 w (vorher 6 bis 8 w) | ⬜ ausgearbeitet und abgenommen am 2026-10-20 (H8), 27 Aufgaben |
+| 03 | **WF** | [Workflow-Engine](03_workflow-engine.md) | Statusmodell je Entitätstyp, Übergangsregeln, Pflichtfelder je Status, Genehmigungen, Zuweisung, SLA-Uhren und Eskalation, Regeln „wenn, dann", Benachrichtigungen, der Workflow-Provider mit dem Aktivitätstyp „externer Prozess" (E8) | 2 | 26,5 d, rund 5,5 w (vorher 4 bis 6 w) | ⬜ ausgearbeitet und abgenommen am 2026-10-20 (H8), 18 Aufgaben |
+| 04 | **EX** | Erweiterungen | die WASM-Sandbox (E17), das Paketformat (Export, Import, Versionierung, Abhängigkeiten), die Schnittstellen, die ein Paket nutzen darf, die Entwicklerwerkzeuge für Pakete | 3 | 3 bis 4 w | ⬜ |
+| 05 | **SD** | Service Desk | die Pakete Incident, Service Request, Servicekatalog, Nutzerportal, Wissen; Mail-Eingang und -Ausgang; damit **Meilenstein 1** | 2 | 4 bis 6 w | ⬜ |
+| 06 | **CM** | CMDB und Discovery | die Pakete Asset und Configuration Item mit Beziehungsgraph, Software und Lizenzen, Verträge und Lieferanten; eigene Discovery-Quellen im Werkzeug (Proxmox, VMware, Kubernetes, SNMP, LDAP für Computer) als Jobs, ohne GLPI Agent (E24); Identifikations- und Abgleichsregeln für alles, was über die Bulk-API von einer Middleware kommt; Netbox als Quelle für IP-Adressen; CSV/XLSX-Import mit Regeln | 3 | 6 bis 8 w | ⬜ |
+| 07 | **PR** | Übrige Practices | Problem, Change, Release und Deployment, Demand und Portfolio, Projekt, Kapazität, Verfügbarkeit, Risiko, Lieferanten, Finanzen und die übrigen aus §2.1, jede als Paket; Berichte und Messung | 4 | 8 bis 12 w | ⬜ |
+| 08 | **BT** | Betrieb und Auslieferung | Docker Compose für Entwicklung und klein, Helm-Chart für Kubernetes, Backup und Wiederherstellung, Monitoring, Härtung, Upgrade-Weg, Lasttest in Prod-Größe gegen die Leistungsziele (§2.5), Unterlagen für VS-NfD. Gemessen wird ab H11 bei jeder Änderung (E32) | 2 bis 5, begleitend | 3 bis 4 w | ⬜ |
+| 09 | **IN** | Integration | Flowzilla als zweiter Workflow-Provider, Webhooks und Ereignisabonnements, MCP-Server (nur lokal), Anbindung an Monitoring (Ereignisse hinein), Verzeichnisdienste, Mailserver | 4 | 3 bis 4 w | ⬜ |
+
+**Etappen:**
+
+1. **Weichen und Fundament** — Techstack (H1, entschieden), Verzeichnis und Standard (H2), die
+   Karte der Practices (H3), das Funktionsinventar von GLPI als Messlatte (H4), Repository und
+   Werkzeugkette (H5), der Architekturentwurf mit Konventionen (H6), die Nebenpläne PL, UI und WF
+   ausarbeiten (H8). **Das ist der nächste Schritt.**
+2. **Meilenstein 1, Service Desk läuft** — PL, UI, WF und SD, dazu BT so weit, dass Compose läuft
+   und ein erstes Helm-Chart steht. Am Ende: Ein Nutzer meldet sich per OIDC an, eröffnet über
+   das Portal eine Störung, der Service Desk bearbeitet sie mit SLA, Genehmigung und
+   Wissensartikel, und alles davon ist Konfiguration.
+3. **Meilenstein 2, erweiterbar und inventarisiert** — EX und CM. Problem und Change entstehen
+   hier als die ersten Pakete, die ausschließlich mit den Mitteln aus EX gebaut werden; das ist
+   der Beweis für E7.
+4. **Meilenstein 3, ITIL 4 vollständig** — PR und IN. Jede Practice aus §2.1 ist ein Paket,
+   Flowzilla läuft als zweiter Provider, MCP lokal.
+5. **Meilenstein 4, produktionsreif** — BT abgeschlossen: Lasttest in Prod-Größe auf der
+   Hardware des Kunden, alle Leistungsziele aus §2.5 gehalten, Hochverfügbarkeit, Backup geprobt, Härtung geprüft, Unterlagen für die
+   Freigabe.
+
+**Reihenfolge über alle Pläne:**
+
+- **Jetzt:** der **Durchstich** (E59). Stand 2026-10-20: PL1 bis PL5 gebaut und getestet
+  (PL5 von dir per `curl` bestätigt, ✅); UI1, UI2 und WF1 gebaut: **der Durchstich ist
+  am 2026-10-28 abgenommen (H13 ✅).** Block B des Plattform-Kerns ist seit 2026-10-28
+  fertig und abgenommen: PL6 bis PL30 ✅, dazu PL31 und PL32 aus Block C vorgezogen (✅). Nach E108 geht es weiter
+  mit Block B der Workflow-Engine: WF2 bis WF4 und WF8 bis WF15 sind gebaut und 🟢, PL41 (Verteiler in Stapeln) eingeschoben und 🟢; Block B der Workflow-Engine ist damit gebaut und wartet auf deine Abnahme. PL42 (Zeitleiste, E121) ist vor UI3 eingeschoben und 🟢. Block B der Oberfläche läuft: UI3 (Detailseite, E122) ist 🟢; UI28 (Auswahlfeld mit Suche, E123, vor UI4 eingeschoben) ist 🟢; UI4 (Filter und gespeicherte Suchen, E124) ist 🟢; UI5 (Export, E125) ist 🟢; UI6 (Massenaktionen, E126) und UI7 (formatierter Text, E127) sind 🟢; UI8 (Live, E130) ist 🟢; UI9 (Einstellungen, E131) ist 🟢; UI10 (Portal und Arbeitsplatz, E132) ist 🟢; UI11 (Formulare, E133) ist 🟢; UI12 (Bedingungen und Übersetzung, E134) ist 🟢; PL43 (Kundenschicht, E135) ist 🟢; PL44 (Mandantengrenze, E138) ist 🟢; PL45 (Nebendaten je Mandant, E139) ist 🟢; als Nächstes die Mandanten PL46 bis PL48 (E136, E137), dann die Editoren UI25 bis UI27 (deine Entscheidung 2026-10-29), dann SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1;
+  Block C und D des Kerns nach Meilenstein 1. Aufgabe für Aufgabe, jede selbst getestet, mit
+  Prüfanleitung für dich. H11 stand vor dem ersten Code von PL, weil ab dann jede Änderung
+  gemessen wird (E32).
+- **PL zuerst,** weil UI, WF und SD auf dem Meta-Modell und der API aufsetzen. UI beginnt, sobald
+  die API für Entitätstypen und Datensätze steht; WF, sobald Datensätze und Ereignisse stehen.
+- **SD erst, wenn PL, UI und WF je ein Mindestmaß haben.** SD ist die Probe aufs Exempel: Was
+  das Incident-Paket braucht und der Kern nicht kann, geht als Aufgabe an PL, UI oder WF zurück.
+- **EX vor CM,** weil Problem und Change (PR) und die Discovery-Quellen (CM) als Pakete bzw. als
+  Module auf EX aufsetzen.
+- **BT läuft mit:** Compose ab H5, Messung als Gate ab H11, Helm ab Etappe 2, Lasttest auf der
+  Hardware des Kunden in Etappe 5.
+- **IN zuletzt,** weil Flowzilla als Provider die fertige Engine (WF) und MCP die fertige API
+  voraussetzt.
+
+---
+
+## Aufgaben
+
+**Status:** ✅ abgenommen · 🟢 fertig, wartet auf die Abnahme · 🔨 in Arbeit · ⬜ offen ·
+🔒 blockiert
+
+| # | Aufgabe | Status | Aufwand | So prüfst du es |
+| --- | --- | --- | --- | --- |
+| **H1** | Techstack festlegen: Sprache, Frontend, Datenbank, Erweiterungsmodell, Engine, Deployment, Anmeldung, API, Jobs, Cache, Suche, Dateien (§1, §4) | ✅ | 0,5 d, du und ich | §1 nennt zu jeder Weiche eine Entscheidung mit Datum, §4 den Stack in einer Tabelle; keine Zeile in §4 ohne Entscheidung in §1 |
+| **H2** | Arbeitsverzeichnis anlegen: `Polizei\itsm` mit `docs\0_maintask.md` und eigener Fassung des Planungsstandards (§10 für dieses Verzeichnis) | ✅ | 0,25 d | `ls C:\Users\PascalFrechen\Polizei\itsm\docs` zeigt `0_maintask.md` und `planungsstandard.md`; §10 des Standards nennt `itsm`, nicht `glpi`; §1 bis §9 sind wortgleich mit der Fassung in `glpi` |
+| **H3** | Karte der ITIL-4-Practices: alle 34 den Paketen, Nebenplänen und Meilensteinen zuordnen, je Practice die Kernfunktionen des schlanken Pakets (E25) und die Kernfähigkeiten, die es braucht (§2.1, §2.1.1) | ✅ | 1 d | §2.1 hat 34 nummerierte Zeilen (IP1 bis IP34), jede mit Paket, Kernfunktionen, Kernfähigkeiten, Nebenplan und Meilenstein; jede Kernfähigkeit in §2.1.1 nennt mindestens eine Practice, die sie braucht |
+| **H4** | Funktionsinventar GLPI als Messlatte: jede Funktion aus Menü, Konfiguration und API des GLPI-Kerns 11.0.11 ohne Plugins (E23) in der Bewertung [`funktionsinventar-glpi.md`](funktionsinventar-glpi.md), je Funktion das Paket oder der Kernbaustein, der sie übernimmt (§2.3) | ✅ | 2 d | `grep -c '^| \*\*G' docs/funktionsinventar-glpi.md` liefert mindestens 150; jede dieser Zeilen hat eine Fundstelle `src/…:Zeile` und ein Ziel oder „entfällt"; jede „entfällt"-Zeile nennt den Grund |
+| **H5** | Repository und Werkzeugkette: Go-Modul, `web/` mit pnpm und Vite, Docker Compose mit PostgreSQL und Valkey (Dateien im Dateisystem, E22), Linter und Tests in einem CI-Skript, das bis zum Remote (E48) lokal im Werkzeug-Container läuft, Lizenzköpfe AGPL, `README`, `CLAUDE.md` mit dem Standard (§5), Verzeichnisse nach [Architektur](architektur.md) §12; Versionen nach E53 und E58; Werkzeug-Container nach E52; Modulpfad, Lizenzkopf, Valkey-Client und TS-Linter nach E54 bis E57 | ✅ | 1,5 d | In WSL in `~/police/itsm`: `docker compose up -d --build`, dann `curl -s localhost:8092/readyz` → `{"database":"ok","valkey":"ok"}`; im Browser http://localhost:8092 → „Server-Version dev". `docker compose run --rm tools scripts/ci.sh` endet mit `ci: all steps passed` |
+| **H6** | Architekturentwurf in [`architektur.md`](architektur.md): Bausteine, Schnitt der Go-Pakete und React-Module, Daten, Rechte, API, Bulk, Ereignisse, Leistung, Verzeichnisse; die Architekturentscheidungen als ADR-Dateien unter `docs/adr/` (E44); Konventionen in §5 | ✅ | 2 d | `architektur.md` §2 hat je Baustein eine Zeile mit Go-Paket, Aufgabe und Plan; jede Kernfähigkeit KF1 bis KF19 kommt in `architektur.md` vor; jedes LZ aus §2.5 hat in `architektur.md` §11 eine Maßnahme; `ls docs/adr` zeigt je Entscheidung, die E44 als Architektur nennt, eine Datei |
+| **H7** | Namen und Marke: Produktname, Modulpfad, Repository-Name, Domain (V1) | 🔒 V1 | 0,25 d, du | der Name steht im Kopf dieses Plans, in `go.mod` und im `README` |
+| **H8** | Die Nebenpläne PL, UI und WF ausarbeiten: je Plan Aufgabenliste mit Prüfwegen, Entscheidungen, Begründung (Standard §3.2); jede Kernfähigkeit aus §2.1.1 und jede Inventarzeile mit Ziel PL, UI oder WF landet in genau einer Aufgabe | ✅ | 1,5 d | `ls docs` zeigt `01_plattform-kern.md`, `02_oberflaeche.md`, `03_workflow-engine.md`; jeder beginnt mit der Aufgabenliste, keine Aufgabe über zwei Tage |
+| **H9** | Zeit- und Aufwandsplan: aus den Nebenplänen einen Terminplan für die Meilensteine 1 bis 4 ableiten, mit deiner Abnahmezeit (V3) | 🔒 V3 | 0,5 d | §2.4 nennt je Meilenstein einen Monat und die Annahmen dahinter |
+| **H10** | Die Nebenpläne EX, SD, CM, PR, BT und IN ausarbeiten, jeweils wenn ihre Etappe ansteht (IN übernimmt die Regel E129: fremde Antworten gestreamt lesen) | ⬜ | 0,5 d je Plan | wie H8 |
+| **H11** | Leistungsmessung als Gate (E32, E63 bis E65): Lastwerkzeug und Datensatzgenerator unter `test/load/`, Ausstattung des Messrechners, schnelle Stufe gegen die Basislinie in jedem CI-Lauf, volle Stufe mit den Zielen LZ1 bis LZ12 als eigener Befehl; Ziele, deren Endpunkt es noch nicht gibt, stehen als „wartet auf …" im Bericht | ✅ | 2 d | In WSL in `~/police/itsm`: `docker compose run --rm tools scripts/ci.sh` endet mit `Leistungsgate bestanden` und `ci: all steps passed`. Mit `docker compose run --rm -e ITSM_LOAD_INJECT_DELAY=3ms tools scripts/ci.sh` endet sie mit `FAIL LP1 …` und Rückgabe 1. `docker compose run --rm tools go run ./test/load generate --size=prod --out=/tmp/prod` erzeugt 70.000 Personen, 50.000 Computer, 100 Hypervisoren, 500 Switches und 18.250.000 Tickets. In `test/load/baseline.json` trägst du bei Freigabe `approved_by` ein |
+| **H12** | Auf TypeScript 7 und ESLint 10 wechseln, sobald `typescript-eslint` und `eslint-plugin-jsx-a11y` sie unterstützen (E58) | 🔒 Upstream | 0,25 d | `pnpm peers check` meldet nichts, `scripts/ci.sh` ist grün, `pnpm list typescript eslint` zeigt 7.x und 10.x |
+| **H13** | Durchstich abnehmen (E59): Ein Typ `probe` aus einem Paket bekommt seine Tabelle, ist über die API les- und schreibbar, erscheint als Liste und Formular und hat einen Status mit Übergang; die Messung aus H11 läuft dagegen | ✅ | 0,5 d, du und ich | In WSL `docker compose up -d --build`, anmelden unter http://localhost:8092, Typ `probe` in der Liste, Datensatz im Formular anlegen und ändern, Status wechseln; `docker compose run --rm tools go run ./test/load run --scenario durchstich` zeigt LZ1, LZ2 und LZ4 eingehalten |
+| **H14** | Leistungsmessung in Prod-Größe für Meilenstein 1 (E128): neue Basislinie mit Anmeldung (Freigabe durch dich), volle Stufe gegen LZ1 bis LZ13 mit `generate --size=prod`, Lastszenarien für `:export`, `:batch`, gespeicherte Suche mit Rollenfilter und lange Zeitleiste, Hinweis bei LZ6 bis LZ8 berichtigen; Profil eines Bulk-Laufs (Einlesen, JSON, Datenbank) als Grundlage für E129 | ⬜ nach Abnahme von Block B UI und WF | 1,5 d | `docker compose run --rm tools scripts/ci.sh` grün mit freigegebener Basislinie; Bericht der vollen Stufe mit jedem LZ gegen sein Ziel; jedes verfehlte Ziel als eigene Aufgabe im passenden Nebenplan |
+
+**Reihenfolge:** Der Durchstich (PL1 bis PL5, UI1, UI2, WF1) ist mit H13 am 2026-10-28 abgenommen. H12 wartet auf neue Fassungen von `typescript-eslint` und
+`eslint-plugin-jsx-a11y`. H7 und H9, sobald du V1
+und V3 beantwortest. H10 je Etappe.
+
+---
+
+## 1. Entscheidungen
+
+Alle am 2026-10-20 von Pascal, im Gespräch mit Claude. Wo eine Alternative verworfen wurde,
+steht sie dabei, damit die Frage nicht wieder aufgeht.
+
+| # | Entscheidung | Verworfen | Seit |
+| --- | --- | --- | --- |
+| **E1** | Eigenes Arbeitsverzeichnis `Polizei\itsm` mit eigener Fassung des Planungsstandards; später eigenes Git-Repository | Nebenplan unter `glpi\docs` (hätte die Grenze „eine Ziffer je Ebene" gebrochen) | 2026-10-20 |
+| **E2** | Ein **Produkt der group24 AG**; erster Kunde ist die Polizei, weitere Kunden sind vorgesehen | Individualsoftware für einen Kunden; persönliches Projekt | 2026-10-20 |
+| **E3** | Team: Pascal steuert und nimmt ab, Claude setzt um. Der Stack bleibt deshalb schlank: wenige Sprachen, wenige bewegliche Teile | — | 2026-10-20 |
+| **E4** | Backend in **Go** | Rust (Stärken zahlen sich bei einer Web-Business-Anwendung nicht aus, Entwicklung deutlich langsamer); TypeScript/Node; PHP/Symfony; Java/Kotlin | 2026-10-20 |
+| **E5** | Frontend **React + TypeScript** als eigenständige Anwendung gegen die API, mit festen Konventionen (§5) | Angular (erzwungene Einheitlichkeit lohnt erst bei großen Teams, Ökosystem für Workflow-Editor und Formular-Builder dünner); Vue; Svelte; serverseitig aus Go | 2026-10-20 |
+| **E6** | **PostgreSQL** als einzige Datenbank; ihre Stärken (JSONB, Volltext, Partitionierung, Row-Level Security) werden genutzt | MariaDB; Abstraktion über mehrere Datenbanken | 2026-10-20 |
+| **E7** | **Datengetrieben plus Sandbox:** Entitätstypen, Felder, Beziehungen, Formulare, Listen, Rollen, Statusmodelle und Regeln sind Daten, in der Oberfläche definiert; eigene Logik läuft in einer Sandbox. Jede Practice ist ein Paket | Code-Plugins als eigene Prozesse (gRPC) als erster Weg; bleibt als späterer zweiter Weg denkbar (V11) | 2026-10-20 |
+| **E8** | **Schlanke eigene Engine** für alles am Datensatz (Status, Übergänge, Genehmigung, Zuweisung, SLA, Eskalation, Regeln, Benachrichtigung) hinter einer Schnittstelle **Workflow-Provider**. Fremde Engines (Flowzilla, Camunda, n8n) hängen über Ereignisstrom, REST-API und den Aktivitätstyp „externer Prozess" an; die eingebaute Engine ist Provider 1, Flowzilla Provider 2 | Flowzilla als Kern (zweite Laufzeit PHP, Lizenz je Kunde, Abhängigkeit im VS-NfD-Rechenzentrum); Temporal darunter; vollständige grafische Flow-Engine im Kern; Engine kleiner als beschrieben | 2026-10-20 |
+| **E9** | **Kubernetes per Helm** für Produktion, **Docker Compose** für Entwicklung, Demo und kleine Kunden; dieselben Container in beiden | nur Compose; nur Kubernetes | 2026-10-20 |
+| **E10** | Anmeldung über **OIDC/SAML** (Keycloak, ADFS, Entra), **Nutzer- und Gruppensync aus LDAP/AD**, dazu **lokale Konten** für Admin und Notfall; Rollen und Rechte bleiben im Werkzeug | nur LDAP; nur OIDC | 2026-10-20 |
+| **E11** | **Eine REST-API mit OpenAPI**, die auch das eigene Frontend nutzt; dazu Webhooks und ein Ereignisstrom. Kein zweiter Weg am Frontend vorbei | GraphQL; REST und GraphQL | 2026-10-20 |
+| **E12** | Das Werkzeug **startet leer**; keine Übernahme aus der GLPI-Instanz der Polizei. Discovery, Verzeichnissync und Import (CSV/XLSX) füllen es. Ein allgemeiner Import bleibt Funktion (CM) | vollständige Übernahme; nur Stammdaten | 2026-10-20 |
+| **E13** | **Meilenstein 1 = Kern + Service Desk** (Incident, Service Request), weil das der härteste Test für E7 ist | CMDB zuerst; Kern allein zuerst | 2026-10-20 |
+| **E14** | Arbeitstitel **itsm**; der Produktname kommt später (V1, H7). Umbenennen ist am Anfang billig | — | 2026-10-20 |
+| **E15** | **Open Core:** Kern unter **AGPL**, Support und Zusatzmodule kommerziell. Folge: nur permissive Abhängigkeiten (MIT, Apache 2.0, BSD, MPL) oder AGPL-verträgliche; Rechte an jedem Beitrag bei der group24 AG, sonst ist keine kommerzielle Zweitlizenz möglich (V4) | proprietär; noch offen | 2026-10-20 |
+| **E16** | **Eine Installation je Kunde** mit eigener Datenbank (seit 2026-10-29 nur noch der Ausweg für eine physische Trennung, E136); **innerhalb** ein Baum aus Organisationseinheiten mit Sichtbarkeit und Rechtevererbung (wie GLPIs Entitäten, sauberer) | eine Instanz für viele Kunden; Mandantenspalte „auf Vorrat" | 2026-10-20 |
+| **E17** | Sandbox für Kundenlogik: **WASM**, im Go-Host per `wazero` (reines Go, keine C-Abhängigkeit), mit Speicher- und Zeitlimit; Module in jeder Sprache, die nach WASM kompiliert | eingebettetes JavaScript (goja); beides; nur deklarative Regeln | 2026-10-20 |
+| **E18** | Go schlank: **`net/http` + `chi`**, **`pgx` + `sqlc`**, **`goose`** für Migrationen; kein ORM | Ent; GORM | 2026-10-20 |
+| **E19** | Hintergrundjobs mit **River in PostgreSQL**, transaktional mit den Fachdaten | Valkey/Asynq mit Outbox; NATS JetStream | 2026-10-20 |
+| **E20** | **Valkey von Anfang an Pflicht** für Cache, Sitzungen, Ratenbegrenzung und Pub/Sub zwischen den API-Instanzen; auch in der Entwicklung. Valkey statt Redis wegen der Lizenz (BSD) | Valkey erst im Cluster; kein Valkey | 2026-10-20 |
+| **E21** | Suche mit **PostgreSQL-Volltext** (tsvector, deutsches Wörterbuch, Trigram), hinter einer Schnittstelle, damit Meilisearch oder OpenSearch nachrüstbar bleiben | Meilisearch; OpenSearch | 2026-10-20 |
+| **E22** | Dateien über die **S3-API** im Cluster, **Dateisystem** in Compose und Entwicklung, beides hinter einer Schnittstelle; Metadaten in PostgreSQL. Welcher S3-Speicher, ist offen (V23). **Geändert am 2026-10-20;** vorher: „S3-kompatibel (MinIO)". Grund: MinIO ist archiviert und bekommt keine Sicherheitsupdates mehr (§6.1) | nur Dateisystem; in der Datenbank | 2026-10-20 |
+| **E23** | Die Messlatte „alles, was GLPI kann" ist der **GLPI-Kern 11.0.11 ohne Plugins** (H4). Was die Polizei heute über Plugins nutzt, kommt als Anforderung über die Nebenpläne | eigene, aktive und gebrauchte Plugins mitzählen; alle Plugins der Prod mitzählen | 2026-10-20 |
+| **E24** | **Kein GLPI Agent**, auch nicht als Collector oder als Datenformat. Daten kommen auf zwei Wegen: über **eigene Discovery-Quellen im Werkzeug** oder über eine **Middleware wie Flowzilla**. Für den zweiten Weg hat die REST-API **Bulk-Verarbeitung** (viele Datensätze je Aufruf, anlegen, ändern, abgleichen), **asynchrone Jobs** mit abfragbarem Stand sowie **Import und Update** als eigene Vorgänge. Das ist Teil des Kerns (PL), kein späterer Zusatz | Inventurformat des GLPI Agent als Quelle annehmen; später entscheiden | 2026-10-20 |
+| **E25** | **Je Practice zuerst ein schlankes Paket** (Register, Status, Maßnahmen, Verknüpfungen, Bericht), nur aus Kernmitteln gebaut. Das Paketformat muss so gebaut sein, dass **ein Paket ein anderes erweitern** kann (Felder, Status, Übergänge, Formulare, Regeln, Ansichten, Berichte) und das Basispaket **ohne Verlust aktualisierbar** bleibt. Volle Tiefe kommt so schnell und einfach als Erweiterungspaket, für alle 34 Practices | volle Tiefe für alle 34 sofort; nur Practices mit Gegenstück in GLPI | 2026-10-20 |
+| **E26** | **Bleiben**, obwohl sie Kandidaten zum Streichen waren: CalDAV-Server, RSS-Feeds (interne Quellen; externe gehen ohne Internet nicht), Reservierungen, anonyme Formulare mit Captcha | als „entfällt" führen | 2026-10-20 |
+| **E27** | **Keine Anmeldung gegen einen Mailserver** (IMAP, POP) | wie GLPI behalten | 2026-10-20 |
+| **E28** | **Technische Logs nur an das Monitoring**, strukturiert als JSON (Loki, Graylog o. ä.). In der Oberfläche bleiben Audit und Verlauf der Daten sowie der Stand der Jobs | zusätzlich eine Log-Seite in der Oberfläche | 2026-10-20 |
+| **E29** | **Keine Sperren beim Bearbeiten:** Jeder kann öffnen; beim Speichern erkennt der Kern, wenn jemand dazwischen gespeichert hat, und zeigt die Änderungen. Live sichtbar, wer gerade bearbeitet | Sperren wie GLPI; je Typ wählbar | 2026-10-20 |
+| **E30** | **Keine Anmeldung über Webserver-Variablen** (Kopfzeilen-SSO, CAS, Client-Zertifikat). OIDC/SAML trägt das; ein Smartcard-Login läuft über den Identitätsanbieter, etwa Keycloak | eine oder mehrere davon zusätzlich | 2026-10-20 |
+| **E31** | **Leistungsziele LZ1 bis LZ12** (§2.5) in der strengen Stufe sind Muss-Anforderungen | erster, lockerer Vorschlag; sehr streng; erst messen, dann festlegen | 2026-10-20 |
+| **E32** | **Leistung wird ab dem ersten Code gemessen, als Gate:** Verfehlt eine Änderung einen Zielwert oder wird etwas um mehr als 10 % langsamer, ist die Aufgabe nicht fertig (H11) | je Meilenstein messen; erst in Meilenstein 4 | 2026-10-20 |
+| **E33** | **Eine echte Tabelle je Entitätstyp,** vom Kern angelegt und online geändert; echte Spalten, Indexe, Partitionen, `COPY` | eine Tabelle mit JSONB für alles; Mischform | 2026-10-20 |
+| **E34** | **Rechte als SQL-Bedingung,** in Go aus Rollen, Reichweite, Organisationsbaum und Feldrechten erzeugt und gecacht | Row-Level Security in PostgreSQL; beides | 2026-10-20 |
+| **E35** | **Modularer Monolith:** ein Go-Binary mit den Rollen `api` und `worker`, getrennt skalierbar (V10) | wenige Dienste mit gRPC | 2026-10-20 |
+| **E36** | **IDs sind UUIDv7** | `bigint` intern und UUID nach außen; `bigint` überall | 2026-10-20 |
+| **E37** | **Drei Schichten:** Basispaket, Erweiterungspakete, Kundenschicht; der Kern führt sie zur wirksamen Definition zusammen; ein Update des Basispakets überschreibt nie die Kundenschicht, Konflikte werden angezeigt | kopieren und ändern | 2026-10-20 |
+| **E38** | **Bulk-API:** synchron bis 1.000 Datensätze mit Ergebnis je Zeile, darüber ein NDJSON-Strom in einen asynchronen Job; Abgleich über Quelle und externen Schlüssel, idempotent; Vollstand einer Quelle markiert Fehlendes als verschwunden | nur asynchron; nur synchron | 2026-10-20 |
+| **E39** | **Ereignisse** transaktional in einer Outbox; hinaus als signierter Webhook mit Wiederholung, als abrufbarer Strom ab Position und per SSE im Browser | nur Webhooks; zusätzlich ein Message-Broker | 2026-10-20 |
+| **E40** | **Filtern** über einfache Parameter, Komplexes als JSON-Abfrage per POST; dieselbe Sprache für gespeicherte Suchen, Dashboards und Rechtebedingungen | Filter-Ausdruck wie OData; nur Parameter | 2026-10-20 |
+| **E41** | **Frontend-Bibliotheken:** Vite; TanStack Router, Query, Table und Virtual; `react-hook-form` + `zod`; shadcn/ui auf Radix und Tailwind; React Flow; `dnd-kit`; ECharts; `i18next`; Vitest und Playwright (V2) | andere UI-Bibliothek (Mantine, MUI) | 2026-10-20 |
+| **E42** | **Deutsch und Englisch** von Anfang an (V6); **barrierefrei nach BITV 2.0 / WCAG 2.1 AA** mit automatischer Prüfung (`axe`) in den Tests (V7) | nur Deutsch; beides später | 2026-10-20 |
+| **E43** | **Eigener kleiner SQL-Builder auf `pgx`** für die Typtabellen; `sqlc` bleibt für die Kerntabellen | `goqu`; `squirrel` | 2026-10-20 |
+| **E44** | Der Architekturentwurf steht in [`architektur.md`](architektur.md). **ADR-Dateien nur für Architekturentscheidungen:** E4 bis E11, E15 bis E22, E24, E25, E28, E29, E31 bis E43, E45 bis E47 | Entwurf im Hauptplan; ADR für jede Entscheidung; keine ADRs | 2026-10-20 |
+| **E45** | **Ausdruckssprache CEL** (`cel-go`) für Bedingungen, Regeln, Formeln, Identifikationsregeln und Rechtebedingungen; berechnete Felder werden beim Schreiben ausgewertet und gespeichert; schwere Logik in WASM | `expr`; eigene Sprache; nur WASM | 2026-10-20 |
+| **E46** | **Ereignisse sind 7 Tage nachlesbar,** einstellbar; das Audit ist davon getrennt | 30 Tage; 24 Stunden | 2026-10-20 |
+| **E47** | **Partitionen je Typ einstellbar, nach Erstellungsmonat** über den Zeitanteil der UUIDv7; Audit und Outbox immer | nur Audit und Ereignisse; später entscheiden | 2026-10-20 |
+| **E48** | **Repository erst lokal** in `Polizei\itsm`; ein Remote kommt, bevor Meilenstein 1 fertig ist (V5) | GitHub unter group24 sofort; eigener Git-Server | 2026-10-20 |
+| **E49** | **Versionen:** jeweils die aktuelle stabile beim Start von H5, mit Quelle im Plan festgehalten und von dir bestätigt (V13) | Versionen nach dem Betrieb des Kunden | 2026-10-20 |
+| **E50** | **Die Leistungsziele gelten vorerst auf deinem Rechner in WSL** (V19). H11 hält die Ausstattung fest; die Messung auf der Hardware des Kunden folgt in Etappe 5 | Referenz-Hardware; eigene Vorgabe | 2026-10-20 |
+| **E51** | **Last aus einem eigenen Werkzeug in Go** unter `test/load/`, mit Datensatzgenerator, Bulk- und Vollstand-Szenarien (V20) | k6 | 2026-10-20 |
+| **E52** | **Entwicklung in Containern:** Claude schreibt in `C:\Users\PascalFrechen\Polizei\itsm`, du überträgst nach `~/police/itsm` in WSL. Go, Node, pnpm, `sqlc`, `goose` und die Linter laufen in einem Werkzeug-Container im Compose von itsm; auf dem Rechner wird nichts installiert, CI nutzt dasselbe Image (V15) | Go und Node in WSL installieren; beides | 2026-10-20 |
+| **E53** | **Versionen** (E49), nachgeschlagen am 2026-10-20 und von dir bestätigt: Go 1.27.3, Node 24.22.0 (LTS „Krypton"; Wechsel auf 26, sobald es LTS ist), pnpm 12.14.0, PostgreSQL 18.6 (Wechsel auf 19 mit 19.1), Valkey 9.1.2, `sqlc` 1.31.1, `goose` 3.29.0, `golangci-lint` 2.15.0, River 0.49.0; Kubernetes 1.37.1 ist aktuell, Mindestversion ist die älteste noch unterstützte Linie. Bibliotheken legen `go.mod` und die pnpm-Sperrdatei fest. Quellen: go.dev/dl, nodejs.org/dist, postgresql.org/support/versioning, registry.npmjs.org, die Releases auf GitHub, dl.k8s.io | Neueste auch als Vorabversion (PostgreSQL 19 RC1, Node 26) | 2026-10-20 |
+| **E54** | **Go-Modulpfad `group24.de/itsm`**; mit H7 wird umbenannt, falls der Produktname es verlangt | `github.com/group24/itsm`; `itsm` | 2026-10-20 |
+| **E55** | **Lizenz AGPL-3.0-only** (V4): Kopf mit SPDX-Kennung und „Copyright (C) 2026 group24 AG" in jeder Quelldatei; nur Version 3; Beiträge Dritter nur mit Rechteübertragung (CLA); kommerzielle Module in einem eigenen Repository | AGPL-3.0-or-later; erst mit der Rechtsabteilung klären | 2026-10-20 |
+| **E56** | **Valkey-Client `valkey-go`** (Apache 2.0, vom Valkey-Projekt) | `go-redis` | 2026-10-20 |
+| **E57** | **ESLint und Prettier** für TypeScript, mit den Regeln für React-Hooks und `jsx-a11y` | Biome; nur `tsc` | 2026-10-20 |
+| **E58** | **TypeScript 6.0 und ESLint 9** statt der neuesten Linien 7 und 10: `typescript-eslint` 8.71 unterstützt TypeScript nur bis vor 6.1, `eslint-plugin-jsx-a11y` 6.10 ESLint nur bis 9 (gemessen mit `pnpm peers check` am 2026-10-20). Wechsel mit H12 | neueste Linien mit Warnungen; neueste ohne die zwei Plugins | 2026-10-20 |
+| **E59** | **Erst ein Durchstich, dann verbreitern:** ein dünner Faden durch Kern, API, Oberfläche und Engine (PL1 bis PL5, UI1, UI2, WF1), gemessen mit H11 und abgenommen mit H13; danach wird jede Schicht verbreitert | Schicht für Schicht | 2026-10-20 |
+| **E60** | **Feste OpenAPI-Beschreibung als Spec zuerst:** YAML im Repository, `oapi-codegen` (Apache 2.0) erzeugt die Go-Schnittstellen für `chi`; der Teil je Typ entsteht weiter zur Laufzeit aus dem Meta-Modell | Code zuerst (etwa huma); von Hand ohne Erzeugung | 2026-10-20 |
+| **E61** | **Anmeldung in Meilenstein 1:** OIDC, LDAP-Sync und lokale Konten; SAML in Meilenstein 3. Zum Testen Keycloak und ein LDAP-Server als Compose-Profil `auth` | alle vier sofort; erst nur lokal | 2026-10-20 |
+| **E62** | **Neutrales Aussehen,** je Kunde über Design-Tokens (Farben, Schrift, Logo) als Theme-Paket anpassbar; kein festes group24-Branding | group24-CD als Vorgabe; später entscheiden | 2026-10-20 |
+| **E63** | **Leistung in zwei Stufen:** Jeder CI-Lauf misst schnell auf dem kleinen Stand und vergleicht mit der Basislinie (mehr als 10 % langsamer im p95 ist rot; seit E76 zählt der beste von vier Läufen). Die volle Stufe in Prod-Größe prüft die Ziele LZ1 bis LZ12 absolut; sie ist Pflicht vor dem Fertigmelden jeder Aufgabe, die Daten, Abfragen, Rechte oder Bulk ändert, und vor jedem Meilenstein. Für Meilenstein 1 gilt seit E128 (2026-10-29): einmal am Ende, nach der Abnahme von Block B von UI und WF (H14) | immer voll; nur voll je Meilenstein | 2026-10-20 |
+| **E64** | **Die Basislinie** liegt als `test/load/baseline.json` im Repository, mit Messwerten, Ausstattung und seit E69 der Prüfsumme des Basis-Binarys. Ändert sie sich, schreibt die Umsetzung sie mit Begründung neu (`approved_by` bleibt leer), und sie gilt erst nach deiner Freigabe (du trägst `approved_by` ein) | automatisch nachführen | 2026-10-20 |
+| **E65** | **Der Datensatz** entsteht deterministisch aus einem Startwert als NDJSON, ohne echte Daten, und wird über die Bulk-API geladen, sobald PL31 bis PL33 stehen; so wird der Ladeweg mitgemessen | direkt in die Datenbank schreiben | 2026-10-20 |
+| **E66** | **Ein Paket ist ein Ordner** mit `package.yaml` (Name, Version, Label, Abhängigkeiten, `extends`) und `types/<typ>.yaml` je Entitätstyp; später `forms/`, `workflows/`, `rules/`, `roles/`, `i18n/` | eine YAML-Datei je Paket; JSON | 2026-10-20 |
+| **E67** | **Technische Namen in snake_case,** eindeutig je Paket, Anzeigenamen je Sprache als Label im YAML; Tabellen heißen `rec_<paket>_<typ>` | Anzeigename mit abgeleiteter Technik wie in GLPI | 2026-10-20 |
+| **E68** | **Eine Definition ist ein JSONB-Dokument** je Art, Name und Schicht in der Kerntabelle `definition`; Felder, Status und Formulare sind Teil des Dokuments, keine eigenen Tabellen; die wirksame Definition entsteht aus den Schichten (E37) | normalisierte Tabellen je Definitionsart | 2026-10-20 |
+| **E69** | **A/B im Wechsel mit Lastwächter:** Die schnelle Stufe misst den neuen Stand und das freigegebene Basis-Binary abwechselnd auf demselben Rechner (A B A B A B) und vergleicht nur das Verhältnis; fremde Last trifft beide gleich. Das Basis-Binary liegt in einem Docker-Volume, `load baseline` legt es dort ab. Ist die Last beim Start über der Hälfte der Kerne, bricht die Messung als „ungültig, Rechner ausgelastet" ab (Rückgabe 3, CI rot ohne Leistungsurteil). Grund: Am 2026-10-20 wurde das Gate rot, weil ein `ng serve` den Laptop auslastete (Last 26 auf 16 Kernen), nicht wegen einer Änderung | nur Lastwächter; bei Last überspringen; eigener Messrechner | 2026-10-20 |
+| **E70** | **Flache JSON-Form:** Ein Datensatz in der API trägt die Felder des Typs neben den Systemfeldern (`id`, `version`, `state`, `org_path`, `source`, `external_key`, Zeitstempel, `deleted_at`); Feldnamen können nie mit Systemfeldern kollidieren, weil PL1 sie sperrt | geschachteltes `fields`-Objekt | 2026-10-20 |
+| **E71** | **Fehler nach RFC 9457** (`application/problem+json` mit `type`, `title`, `status`, `detail`, `instance`), bei Validierung zusätzlich `errors: [{field, code, message}]`; Texte nach `Accept-Language` | eigenes Fehlerformat | 2026-10-20 |
+| **E72** | **Sitzungen** im Browser gelten 12 Stunden gleitend (jede Anfrage verlängert) und höchstens 24 Stunden seit der Anmeldung; später je Kunde einstellbar (PL28) | 8 h fest; 30 Tage gleitend | 2026-10-20 |
+| **E73** | **Kennwörter lokaler Konten:** mindestens 8 Zeichen mit Groß- und Kleinbuchstaben, Ziffer und Sonderzeichen; Hash mit Argon2id. Hinweis der Umsetzung: BSI und NIST empfehlen Länge statt Zeichenklassen; die vollen Regeln kommen mit PL28 | mindestens 12 Zeichen ohne Klassenzwang (Empfehlung); mindestens 16 Zeichen | 2026-10-20 |
+| **E74** | **CSRF-Schutz:** Sitzungscookie `HttpOnly`, `Secure` bei TLS, `SameSite=Lax`; jede schreibende Anfrage aus dem Browser (POST, PATCH, DELETE) muss den Header `X-Requested-With: itsm` tragen, sonst 403 | Double-Submit-Token; nur `SameSite=Strict` | 2026-10-20 |
+| **E75** | **Lokale Konten melden sich mit einem Benutzernamen an** (snake_case), unabhängig von Mailadressen; Personen aus LDAP und OIDC bekommen ihren Namen von dort | Mailadresse; beides | 2026-10-20 |
+| **E76** | **Das Gate vergleicht den besten der vier Läufe je Seite** (kleinstes p95), nicht mehr den Median; Schwelle bleibt 10 % plus 0,1 ms. Grund: Nach PL4 wurde die CI rot bei LP2 (+24 %), obwohl PL4 `/readyz` nicht berührt; die Einzelläufe (neu 1,24/1,22/0,88/0,89 ms, Basislinie 1,55/0,99/0,88/0,84 ms) zeigen das Abkühlen nach der Testphase. Störungen machen nur langsamer, der beste Lauf liegt dem wahren Wert am nächsten | Median mit Boden 0,5 ms; Median mit 8 Läufen | 2026-10-20 |
+| **E77** | **Abgelaufenes Kennwort:** Die Anmeldung legt die Sitzung an, aber jeder Aufruf außer „wer bin ich", „Kennwort ändern" und „Abmelden" liefert 403 `password_expired`; die Oberfläche zeigt dann das Formular zum Ändern. So braucht niemand den Admin | Anmeldung ablehnen, Admin setzt neu | 2026-10-20 |
+| **E79** | **Personen und Gruppen sind Typen des Kernpakets `core`** (`core.person`, `core.person_email`, `core.group`, `core.group_member`), nicht Kerntabellen: Liste, Formular, Audit, Bulk und der LDAP-Abgleich laufen über denselben Weg wie jeder Datensatz. Kerntabellen bleiben Konten, Organisationsbaum, Rollen, Definitionen, Pakete, Audit, Outbox, Dateien, Jobs (Architektur §3.1 angepasst) | feste Kerntabellen mit eigener API | 2026-10-22 |
+| **E80** | **Weitere Mailadressen** einer Person sind Datensätze des Typs `core.person_email` (Person, Adresse, Art); die Hauptadresse steht in `person.email` | neuer Feldtyp „Liste von Text" | 2026-10-22 |
+| **E81** | **Reichweiten einer Berechtigung** (Architektur §5), jeweils innerhalb des Unterbaums des Zuweisungsknotens: `own` = selbst angelegt, `group` = angelegt von jemandem aus einer gemeinsamen Gruppe, `unit` = nur der Knoten selbst, `subtree` = Knoten und alles darunter; `all` = jeder Datensatz der Installation, unabhängig vom Knoten. Unsichtbar heißt 404, sichtbar ohne Recht 403 | `all` nur im Unterbaum (wäre gleich `subtree`); 403 für alles | 2026-10-22 |
+| **E82** | **Konten gehören zu Personen:** `account.person_id`; Rollen werden Personen oder Gruppen zugewiesen, nie Konten. `itsm user grant <konto> <rolle>` legt für ein Konto ohne Person eine `core.person` an und verknüpft sie. Die eingebaute Rolle `admin` (`* * all`) ist nicht löschbar | Zuweisung direkt an Konten; Admin per Konfigurationsschalter | 2026-10-22 |
+| **E83** | **Rechte-Cache:** Der Zugriff eines Kontos wird je Instanz 5 s im Prozess und in Valkey gehalten; jede Änderung an Rollen, Berechtigungen, Zuweisungen oder Gruppenmitgliedschaften erhöht einen Zähler `authz:gen` in Valkey und meldet ihn per Pub/Sub, worauf jede Instanz ihren Cache verwirft. Bedingungen in CEL werden beim Speichern der Berechtigung nach SQL übersetzt (Vergleiche, `in`, `&&`, `||`, `!`, `null`), was sich nicht übersetzen lässt, wird abgelehnt | Cache nur im Prozess mit kurzer Lebensdauer; Bedingungen nur in Go (keine Filterung in der Liste) | 2026-10-22 |
+| **E84** | **Sitzung einengen (PL10):** `POST /api/v1/auth/context` wählt eine der eigenen Rollen und einen Knoten, an dem oder unter dem die Person eine Rolle hält; danach gelten nur die Berechtigungen dieser Rolle, und sichtbar ist nur der Unterbaum des Knotens. Leere Werte heben das wieder auf; `auth/me` nennt Wahl, Rollen und Knoten | Wechsel wie in GLPI nur je Profil; Wahl nur über die Oberfläche | 2026-10-22 |
+| **E85** | **Jobs (PL23):** drei Warteschlangen `interactive`, `default`, `bulk` mit eigenen Workern je Instanz (Vorgabe 8/8/2, `ITSM_WORKERS_*`), damit ein Massenlauf nie einen Job der Oberfläche aufhält (LZ10). Zeitpläne sind Cron-Ausdrücke mit fünf Feldern in der lokalen Zeit des Workers; die Vorgabe steht im Code, die Tabelle `job_schedule` überschreibt Zeitplan und Ein/Aus per API, wirksam auf jeder Instanz ohne Neustart | Intervall in Sekunden wie GLPI; Zeitpläne nur im Code; nur zwei Warteschlangen | 2026-10-26 |
+| **E86** | **Protokoll der Jobs:** Rivers Tabelle `river_job` ist das Protokoll, erreichbar unter `/api/v1/jobs` (Filter Warteschlange, Art, Zustand); erledigte und abgebrochene Jobs bleiben 7 Tage, verworfene 30 Tage. Lesen braucht `read`, Eingreifen (Abbrechen, Wiederholen, Zeitplan ändern, sofort ausführen) `manage_jobs` am Typ `core.job`, beides in `admin`; kein Lesen für alle, weil Job-Argumente personenbezogen sein können | eigene Protokolltabelle; Rivers Vorgabe 24 h / 7 d; Lesen für jeden Angemeldeten | 2026-10-26 |
+| **E87** | **Ereignisstrom (PL24):** Die Position eines Ereignisses kommt aus einer Sequenz; Leser sehen ein Ereignis erst, wenn seine Transaktion älter ist als jede noch offene (Sichtbarkeitshorizont über `xmin`), damit hinter einer gelesenen Position nie mehr etwas auftaucht. Positionen können Lücken haben (abgebrochene Transaktion), was ein Leser mit `after` nie bemerkt; eine lange offene Transaktion hält den Strom so lange auf. *Revidiert am 2026-10-26 nach der Messung: die erste Fassung (Zählerzeile mit Sperre bis zum Commit) kostete bei LZ4 p95 31 ms statt 4,9 ms und deckelte den Schreibdurchsatz auf 550/s.* Eine Sitzung sieht im Strom und per SSE nur Ereignisse von Datensätzen, die sie lesen darf (je Ereignis geprüft, nach einem endgültigen Löschen über Einheit und Ersteller aus der Nutzlast); `read` am Typ `core.event` (in `admin`) sieht alles, für Integrationen. Ereignisse tragen Art, Version, geänderte Felder, Einheit, Ersteller und Auslöser, nie den ganzen Datensatz | Zählerzeile mit Sperre (lückenlos, aber serialisiert jeden Commit); Strom nur mit eigenem Recht | 2026-10-26 |
+| **E88** | **Anmeldung über einen Identitätsanbieter (PL11):** ein OIDC-Anbieter je Installation über die Umgebung (`ITSM_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_NAME`; `ITSM_OIDC_INTERNAL_URL`, wenn der Container den Anbieter anders erreicht als der Browser; `ITSM_PUBLIC_URL` für den Rückweg), Authorization Code mit PKCE und Nonce. Die erste Anmeldung eines Subjekts legt Konto (ohne lokales Kennwort, Name aus `preferred_username` in snake_case, bei Kollision mit Suffix) und `core.person` (Name, Mailadresse) an und speichert die Identität (Aussteller, Subjekt). Rollen kommen aus Login-Regeln (G121): Bedingung in CEL über die Claims, Rolle, Knoten, Reihenfolge; bei jeder Anmeldung ausgewertet, regelverwaltete Zuweisungen verschwinden, wenn die Regel nicht mehr greift, handvergebene bleiben. Keycloak 26.8 als Compose-Profil `auth` mit Realm-Import | mehrere Anbieter in einer Tabelle (später, mit Oberfläche); nur bekannte Konten; feste Zuordnung Gruppe → Rolle | 2026-10-26 |
+| **E89** | **LDAP-Sync (PL12):** mehrere Verzeichnisse in der Tabelle `ldap_directory` mit API `/api/v1/directories` (URL, Bind-DN, Basis-DN, Filter und Attributzuordnung für Personen und Gruppen, Knoten, StartTLS, Seitengröße, aktiv); das Bind-Kennwort kommt je Verzeichnis aus `ITSM_LDAP_PASSWORD_<NAME>` und steht nie in der Datenbank. Jede Person und Gruppe trägt Verzeichnis und stabile ID (`entryUUID`, `objectGUID`) in `directory_entry`; Umbenennen bleibt derselbe Datensatz, aus dem Verzeichnis Verschwundenes wird `active=false` (verknüpfte Konten gesperrt), Zurückkehrendes wieder aktiv. Mitgliedschaften verzeichnisgeführter Gruppen setzt der Abgleich vollständig. Der Sync legt keine Konten an; die OIDC-Anmeldung verknüpft eine vorhandene Person mit gleicher Mailadresse statt eine neue anzulegen. Lauf als Job `ldap.sync` (Warteschlange `bulk`, stündlich) plus `itsm ldap sync [name]` und `POST /api/v1/directories/{name}:sync`; lldap 0.6.3 als Compose-Profil `auth` mit Bootstrap-Daten | Kennwort verschlüsselt in der Tabelle; Sync legt Konten an; nur Befehl ohne Zeitplan | 2026-10-26 |
+| **E90** | **API-Zugänge (PL13):** Maschinen holen ein Token mit Client-ID und Geheimnis (`POST /api/v1/auth/token`, OAuth 2 Client Credentials, RFC 6749 §4.4, Fehler nach §5.2) und rufen mit `Authorization: Bearer` auf. Das Token ist ein undurchsichtiger Zufallswert in Valkey mit Ablauf (Vorgabe 1 h), jederzeit widerrufbar. Ein Zugang (`api_client`) hängt an einem Konto ohne Kennwort mit Person; Rollen wie bei jeder Person, das Audit nennt das Konto. Je Zugang IP-Bereiche (CIDR; außerhalb 403, beim Token und bei jedem Aufruf), Rate je Minute (darüber 429 mit `Retry-After`, Zähler in Valkey) und Token-Dauer; die Vorgaben stehen als Einstellungen `api.rate_limit` (600) und `api.token_ttl` (3600) am Wurzelknoten (G179). Das Geheimnis erscheint nur beim Anlegen und Drehen, gespeichert als Argon2-Hash. Hinter einem Reverse-Proxy nimmt `ITSM_TRUST_PROXY=true` die Adresse aus `X-Forwarded-For` | signiertes JWT (nicht widerrufbar, Schlüsselverwaltung); Rollen direkt am Zugang; Vorgaben als Umgebungsvariablen | 2026-10-26 |
+| **E91** | **JSON-Abfrage (PL14):** `POST /api/v1/records/{typ}:query` mit `where` als Baum aus `and`, `or`, `not` und Bedingungen `{field, op}` (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `contains`, `starts`, `ends`, `null`); ein Feld darf ein Pfad über Referenzen sein (`parent.title`, bis drei Stufen, als Unterabfrage ohne Alias-Konflikte), auch in `fields` und in Aggregaten; `sort` ein Feld mit Schlüsselsatz-Cursor (Nullwerte zuletzt); `group` und `aggregate` (`count`, `sum`, `min`, `max`, `avg`) liefern Zeilen statt Datensätze. Der Abfragebau hängt immer die Rechtebedingung und den Ausschluss des Papierkorbs an. `rel` (Beziehungen) kommt mit PL15; die Bedingungen der Rechte bleiben CEL (E83), die JSON-Sprache dient Suchen, Dashboards und Berichten | OData-Ausdruck; nur Parameter | 2026-10-26 |
+| **E92** | **Beziehungen (PL15):** Beziehungsarten stehen je Paket unter `relations/*.yaml` (Name, Beschriftung in beide Richtungen, erlaubte Quell- und Zieltypen oder `*`, Kennzeichen `impact`) und liegen als Definition `kind=relation`; die Kernarten `core.depends_on` (impact), `core.related`, `core.duplicate_of`. Die Beziehungen liegen in der Kerntabelle `relation` (Art, Quelle, Ziel, eindeutig je Kombination, Indexe in beide Richtungen). Anlegen und Löschen brauchen `update` an beiden Datensätzen und hinterlassen an beiden Enden Audit (`relate`, `unrelate`) und Ereignis. Graph-Abfragen laufen als rekursive CTE mit Tiefengrenze (Vorgabe 5, höchstens 10) und Pfad gegen Kreise (die schließende Kante wird gezeigt, aber nicht weiterverfolgt); die Auswirkungsanalyse folgt den Arten mit `impact` entgegen ihrer Richtung. Nicht lesbare Datensätze fehlen samt ihren Kanten. In der JSON-Abfrage steht `{"rel": art, "to": typ, "direction": out|in, "where": …}` als EXISTS mit den Rechten am Zieltyp | Beziehungen als Felder; nur eine Richtung; alle Arten in der Analyse | 2026-10-26 |
+| **E139** | **Nebendaten je Mandant (PL45, deine Entscheidungen 2026-10-30, V28):** Auswahllisten und andere Vorgaben der Pakete bekommt jeder Mandant als eigene Kopie, beim Anlegen des Mandanten und bei jeder Paket-Installation; bei `--adopt` gehören die vorhandenen Einträge dem ersten Mandanten, an der Wurzel bleibt nichts Gemeinsames. Regeln, Webhooks, API-Clients, LDAP-Verzeichnisse und Anmelderegeln gehören einem Mandanten und wirken nur dort; Regeln der Installation (ohne Mandant) wirken in jedem Mandanten und legt nur an, wer das Recht an der Wurzel hat. Ein Konto aus OIDC gehört zum Mandanten der ersten passenden Anmelderegel. Das Ereignisprotokoll trägt den Mandanten jedes Eintrags; Einträge ohne Mandant (Anmeldungen von Installationskonten, unbekannte Namen, Kommandozeile, Rollen, Wurzel) sehen nur Admins mit dem Recht an der Wurzel, in jedem Mandanten zusätzlich. Sicherheits- und Betriebseinstellungen bleiben an der Wurzel; fachliche Einstellungen setzt jeder Mandant an seinen Knoten | gemeinsame Listen an der Wurzel; nur Regeln je Mandant; Protokoll der Installation getrennt; Einstellungen je Mandant | 2026-10-30 |
+| **E138** | **Mandantengrenze (PL44, deine Entscheidungen 2026-10-30, V25, V27):** Ohne Mandantenknoten ist die Wurzel der einzige Mandant und alles bleibt wie bisher. `itsm tenant create <name> --adopt [--admin <konto>]` legt den ersten Mandanten an und verschiebt Baum, Datensätze, Zuweisungen, Anmelderegeln und Verzeichnisse hinein; jedes Konto außer den genannten Admins gehört danach zu ihm, und jeder Knoten direkt unter der Wurzel ist ein Mandant. Ein Konto gehört über die Spalte `account.tenant` zu einem Mandanten; ohne sie gehört es zur Installation und arbeitet in jedem Mandanten, in dem es eine Rolle hält, immer in einem zur Zeit (Wechsel im Kopf der Oberfläche und über `POST /api/v1/auth/context`, im Sicherheitsprotokoll; der zuletzt gewählte gilt bei der nächsten Anmeldung). Benutzernamen bleiben in der Installation eindeutig, keine Mandantenwahl beim Anmelden. Rollen, Typen samt Kundenschicht und die Einstellungen der Wurzel ändert nur, wer das Recht aus einer Rolle an der Wurzel hat. PL44 umfasst Datensätze und Verwaltung; Ereignisse, Jobs, Protokolle, Webhooks, Dateien, API-Clients, Verzeichnisse und Anmelderegeln folgen mit PL45 | Mandantenwahl beim Anmelden; Mandant aus dem Knoten der Person; Daten an der Wurzel für alle; PL44 und PL45 in einem | 2026-10-30 |
+| **E137** | **Mandanten: Speicherort und Auswertungen (deine Entscheidungen 2026-10-29, V24):** Die Logik der Mandanten (E136, Konzept B) gilt immer; wo die Daten liegen, ist je Installation einstellbar: alle Mandanten in einer Datenbank (Grenze im Rechtefilter) oder je Mandant eine eigene Datenbank, dann mit einer Steuer-Datenbank der Installation (Mandantenverzeichnis, Admin-Konten, Anmeldung, Pakete und Typen samt Kundenschicht). Admins mit einem eigenen Recht rufen Kennzahlen und Listen über mehrere Mandanten ab; die Abfrage läuft je Mandant mit ihren Rechten dort, der Kern führt zusammen, mit dem Mandanten als Spalte, ohne Kopie der Daten; jede solche Auswertung steht im Ereignisprotokoll. Aufgaben PL47 und PL48 | nur eine Datenbank; immer Datenbank je Mandant; nur Kennzahlen; zentrale Auswertungsdatenbank | 2026-10-29 |
+| **E136** | **Mandanten in einer Installation (deine Vorgabe 2026-10-29):** Mehrere Mandanten mit vollständig getrennten Daten und Nutzern in einer Installation; nur Administratoren greifen auf mehrere Mandanten zu. Ein Mandant ist ein Knoten direkt unter der Wurzel; die Sitzung trägt genau einen Mandanten, und der Rechtefilter setzt die Grenze vor jede Reichweite, so endet auch „alle“ dort. Konten, Personen, Gruppen und alle Nebendaten gehören zu einem Mandanten; Pakete, Typen mit Kundenschicht und Rollen zur Installation. Eindeutigkeit gilt je Mandant; Anlegen landet nie stillschweigend an der Wurzel. Einzelheiten in architektur.md §5.1, offene Punkte V24 bis V28 mit Beta-Antwort, Aufgaben PL44 bis PL46 nach PL43 und vor UI25. E16 bleibt als Ausweg für eine physische Trennung | nur Instanz je Kunde (E16); Mandantenspalte in jeder Tabelle; Row-Level Security | 2026-10-29 |
+| **E135** | **Kundenschicht vor den Editoren (deine Entscheidung 2026-10-29):** UI25 (Typ- und Feld-Editor) und UI26 (Workflow-Editor) schreiben nach E37 in die Kundenschicht; die wirksame Definition aus den Schichten war bisher EX (Meilenstein 2) zugeordnet. Die Kern-Aufgabe PL43 zieht davon vor, was die Editoren brauchen: Kundenschicht, wirksame Definition aus Basis und Kunde, Konflikte beim Paket-Update, Export der Kundenschicht. Die Erweiterungsschicht, das Paketformat mit Versionen und Abhängigkeiten bleiben bei EX. Reihenfolge: PL43, UI25, UI26, UI27, dann SD | UI25 und UI26 nach EX; vorerst in die Basis schreiben; UI27 zuerst | 2026-10-29 |
+| **E134** | **Bedingungen und Übersetzung von Formularen (UI12, deine Entscheidungen 2026-10-29):** Fragen und Abschnitte tragen Regeln „zeigen, wenn Frage X gleich / ungleich Wert, beantwortet oder leer“; alle Regeln einer Frage müssen gelten (UND). Eine Regel nennt nur eine Frage, die im Formular davor steht, so entstehen keine Kreise. Das Portal blendet aus; der Server wertet dieselben Regeln beim Absenden aus, verwirft ausgeblendete Antworten, und „Pflicht“ gilt nur für Sichtbares. Übersetzt wird im Baukasten über einen Umschalter Deutsch/Englisch, der alle Texte des Aufbaus auf die gewählte Sprache stellt; fehlt Englisch, zeigt das Portal Deutsch. Name und Beschreibung des Formulars bekommen ihre englische Fassung im Aufbau (`title`, `intro`), weil die Oberfläche Feldwerte nur deutsch schreibt (E98). Der erste Eintrag mit den freien Antworten ist immer deutsch | UND/ODER-Gruppen; CEL-Ausdruck; nur Oberfläche; Deutsch und Englisch nebeneinander; eigene Übersetzungsseite; Eintrag in der Sprache des Absenders | 2026-10-29 |
+| **E133** | **Formulare (UI11, deine Entscheidungen 2026-10-29):** Ein Formular ist ein Datensatz des Kerntyps `core.form` (Name, Beschreibung, Zieltyp, im Portal angeboten, Aufbau als JSON); geschrieben wird es über die Datensätze und die Rechte an `core.form`, `internal/forms` prüft den Aufbau beim Speichern. Eine Frage ist an ein Feld des Zieltyps gebunden oder frei mit einem Feldtyp des Kerns (Text, Zahl, Ja/Nein, Datum, Zeitpunkt, Auswahl). Die gebundenen Antworten werden der neue Datensatz, die freien sein erster Eintrag in der Zeitleiste, beides in einer Transaktion; wer absendet, wird Anforderer, wenn der Zieltyp die Rolle hat. Ein Formular sieht und sendet, wer den Zieltyp anlegen darf. Der Baukasten ordnet Abschnitte und Fragen mit `dnd-kit` (MIT) per Maus und Tastatur, dazu Knöpfe „hoch“ und „runter“ | eigene Kerntabelle; nur Felder des Zieltyps; nur freie Fragen; Ordnen nur mit Knöpfen; eigenes Recht je Formular | 2026-10-29 |
+| **E132** | **Portal und Arbeitsplatz (UI10, deine Entscheidungen 2026-10-29):** Bearbeiter ist, wer das Sonderrecht `workplace` am Pseudotyp `core.ui` hat (die Verwaltung über `*`); `/api/v1/auth/me` meldet es. Wer es nicht hat, bekommt das Portal unter `/portal` mit eigenem schlichten Rahmen und erreicht den Arbeitsplatz auch per Adresse nicht; was jemand lesen und ändern darf, entscheidet weiter allein die API mit den Rechten am Datensatz, die Sperre ist Bedienung, keine zweite Rechteschicht. Wer `workplace` hat, landet im Arbeitsplatz und kann zum Portal wechseln. Bis es den Service Desk gibt, zeigt das Portal die Typen, die ihr Paket für das Portal markiert (`portal` mit den Feldern zum Anlegen): „Meine“ (Anforderer oder selbst angelegt), Anlegen mit diesen Feldern, eine schlanke Detailseite mit Kopf, Feldern zum Lesen und der öffentlichen Zeitleiste mit Eingabe ohne „Privat“. Katalog und Wissen kommen mit SD | aus den Rechten abgeleitet; nur Startseite und „Meine“; zusätzliche Sperre in der API; eine Adresse mit Ansicht je Rolle | 2026-10-29 |
+| **E131** | **Einstellungen persönlich und global (UI9, deine Entscheidungen 2026-10-29):** Die Sprache steht an der Person (`core.person.language`, schon von den Mails genutzt); weitere persönliche Einstellungen liegen in einer Kerntabelle je Konto (Schlüssel und Wert, geprüft). Globale Vorgaben sind Einstellungen am Organisationsbaum (vererbt, je Einheit anders möglich; ändern mit `manage_settings`, Kern-Plan E59). Persönlich geht vor global; die Seite zeigt, woher ein Wert kommt. Umfang: Sprache und Zeitzone (Oberfläche, Mails, Exporte; Datum und Zahl folgen der Sprache), Theme auf dem Server statt nur im Browser, persönliche Vorbelegung von Feldern beim Anlegen je Typ. Die Seitengröße der Liste bleibt fest. Eingestellt wird unter „Meine Einstellungen“ (über den Namen oben) und auf „Globale Einstellungen“ für wer `manage_settings` hat; Sprachwahl und Theme oben schreiben in die persönlichen Einstellungen | alles an der Person oder alles im Baum; Seitengröße; global kann sperren; nur persönlich | 2026-10-29 |
+| **E130** | **Live in der Oberfläche (UI8, deine Entscheidungen 2026-10-29):** Die Oberfläche hält eine Verbindung zum Ereignisstrom (SSE, PL24). Eine offene Detailseite aktualisiert Zeitleiste, Uhren und Seitenleiste sofort, wenn jemand anders den Datensatz ändert; das Formular nur, wenn nichts ungespeichert ist, sonst steht „Geändert von … – neu laden“ da, und keine Eingabe geht verloren. Wer den Datensatz offen hat, sieht die anderen: „schaut gerade“, sobald die Seite offen ist, „bearbeitet gerade“, sobald im Formular etwas ungespeichert ist; Lebenszeichen alle 20 s über Valkey, nach 60 s ohne Zeichen verschwindet der Eintrag. Eine offene Liste aktualisiert geänderte Zeilen, gebündelt alle 2 s; neue Datensätze erscheinen als Hinweis „3 neue – anzeigen“, damit die Liste beim Lesen nicht springt. Benachrichtigungen im Browser gibt es nach Zustimmung für Datensätze, bei denen die Person oder ihre Gruppe eine Rolle hat, nicht für eigene Änderungen, nur solange ein Tab offen ist, ohne Push-Dienst von außen (VS-NfD) | immer sofort neu laden; nur „bearbeitet gerade“; alles, was man sieht, oder keine Benachrichtigungen; Liste lädt bei jeder Änderung ganz neu | 2026-10-29 |
+| **E129** | **Große Daten gestreamt lesen (Hinweis eines Kollegen, deine Entscheidung 2026-10-29):** Go-Clients können eine Antwort verarbeiten, bevor sie vollständig da ist. Regel für Schnittstellen (IN) und assetimport: Antworten fremder Systeme (Proxmox, Kubernetes, Netbox, Middleware, Phase 1 und 2) werden gestreamt gelesen, Token für Token mit `json.Decoder` oder zeilenweise als NDJSON, und in Stapeln an den Bulk weitergegeben, nie ganz in den Speicher geladen; das kommt in den IN-Plan, sobald er mit H10 entsteht. Im Kern streamen heute schon der asynchrone Bulk (Strom in den Dateispeicher, Job liest mit gepuffertem Reader), der Export (Seiten zu 500, CSV und ODS Zeile für Zeile), der Ereignisstrom und das Hochladen; normale Antworten (Datensatz, Liste, Suche) bleiben ganze JSON-Seiten, weil sie klein sind und die Zeit in der Datenbank liegt. Ob der Bulk Annahme und Verarbeitung überlappen soll oder einen schnelleren JSON-Leser (etwa simdjson-go) braucht, entscheidet erst ein Profil des Bulk-Laufs in H14 | gleich umbauen; schneller Parser ohne Messung | 2026-10-29 |
+| **E128** | **Leistungsmessung in Prod-Größe am Ende von Meilenstein 1 (deine Entscheidung 2026-10-29, nach der Übersicht zur Leistung):** Die volle Stufe läuft für Meilenstein 1 nicht vor jeder Aufgabe (E63), sondern einmal, wenn Block B der Oberfläche (02) und der Workflow-Engine (03) abgenommen sind (H14). Dazu gehören eine neue Basislinie aus einem Stand mit Anmeldung, die du freigibst, damit die schnelle Stufe auch LZ1 bis LZ13 mit der 10-%-Regel prüft; die volle Stufe in Prod-Größe gegen LZ1 bis LZ13; Lastszenarien für die Endpunkte, die seit dem 2026-10-28 dazugekommen sind (`:export`, `:batch`, Liste über eine gespeicherte Suche mit Rollenfilter, lange Zeitleiste); der veraltete Hinweis bei LZ6 bis LZ8 im Lastwerkzeug. Bis dahin prüft jede CI die schnelle Stufe gegen die absoluten Ziele. Stand der schnellen Stufe am 2026-10-29: alle gemessenen Ziele mit Faktor 1,6 (LZ13) bis 31 (LZ3) erfüllt, LZ1 bis LZ4 seit PL32 um 40 bis 170 % langsamer geworden | vor UI8 einschieben; nach jeder Aufgabe wie E63 | 2026-10-29 |
+| **E127** | **Formatierter Text mit Bildern (UI7, deine Entscheidungen 2026-10-29):** Formatierter Text ist HTML, das der Server mit einer festen Liste erlaubter Elemente bereinigt (bluemonday, BSD-3-Clause), nicht der Browser; Bilder nur aus dem eigenen Dateispeicher, Links nur http, https und mailto. Den Editor (TipTap, UI-Plan E1) gibt es für Einträge der Zeitleiste und für Textfelder, die der Typ mit `format: rich` markiert. Ein eingefügtes Bild ist eine Datei am Datensatz, vermerkt mit seinem Eintrag: das Bild eines privaten Eintrags sieht nur, wer `read_private` hat, und der Verlauf nennt es nicht. Einträge haben ein Feld `format` (`text` oder `html`); die bisherigen bleiben Text. Mails und Exporte bekommen den Klartext | Markdown oder TipTap-JSON; nur Einträge; Bilder immer offen am Datensatz; alles einmal in HTML umwandeln | 2026-10-29 |
+| **E126** | **Massenaktionen (UI6, deine Entscheidungen 2026-10-29):** Die Bulk-API (E24, PL31) gleicht mit Quellen über `external_key` ab; Datensätze aus der Oberfläche haben keinen solchen Schlüssel. Massenaktionen laufen deshalb über einen neuen Endpunkt `POST /api/v1/records/{typ}:batch` mit bis zu 1.000 Zeilen aus Kennung, Version und einer Änderung: Felder setzen (Rollen unter `actors`), einen Übergang (mit Feldern) oder in den Papierkorb. Jede Zeile geht wie ein einzelner Aufruf durch Rechte, Feldzustände, Regeln, Verlauf und Ereignis, jede für sich; die Antwort hat ein Ergebnis je Zeile. Eine Zeile, deren Datensatz inzwischen eine andere Version hat, bleibt unverändert und steht als Konflikt im Ergebnis (E29). In der Liste wählt man Zeilen einzeln oder alle geladenen; Aktionen sind Feld setzen, Übergang, Rolle setzen und Papierkorb | Bulk-API um `id` erweitern (schnell, aber ohne Regeln vorher und Feldzustände je Zeile); ein PATCH je Datensatz aus dem Browser; überschreiben ohne Version; zusätzlich „alle Treffer“ ohne Laden | 2026-10-29 |
+| **E125** | **Export der Liste (UI5, deine Entscheidungen 2026-10-29):** Die Datei entsteht auf dem Server (`POST /api/v1/records/{typ}:export`) mit Bedingung, Spalten und Sortierung der Liste, gelesen seitenweise mit den Rechten der Person, also genau die Zeilen und Spalten, die die Liste zeigt. Bis 100.000 Zeilen kommt sie sofort; darüber läuft ein Job (PL23), und die Datei liegt danach als vorläufige Datei der Person bereit (PL18). In der Datei stehen Anzeigewerte: Auswahl und Status als Bezeichnung in der Sprache der Person, Verweise mit dem Titel, Zahlen, Wahrheitswerte und Daten als echte Zellen in XLSX und ODS; CSV mit Semikolon und UTF-8 mit BOM für ein deutsches Excel. XLSX schreibt excelize (BSD-3-Clause), ODS ein eigenes kleines Schreibstück. Jeder Export steht im Ereignisprotokoll (PL27) unter der neuen Kategorie `data` mit Typ, Bedingung, Spalten, Format und Zeilenzahl | im Browser aus den geladenen Zeilen; immer sofort oder Obergrenze 100.000; Rohwerte oder wählbar; ohne Protokoll oder mit eigenem Recht `export` | 2026-10-29 |
+| **E124** | **Filter und gespeicherte Suchen (UI4, deine Entscheidungen 2026-10-29):** Eine gespeicherte Suche ist ein Datensatz des Kerntyps `core.saved_search` mit Name, Typ, Bedingung als JSON-Abfrage (E40), Spalten und Sortierung. Privat heißt: nur der Ersteller (Reichweite `own`); geteilt wird über die Rolle „geteilt mit“ am Datensatz (Personen, Gruppen), gelesen über die Reichweite `involved` aus WF3, also ohne eigenen Rechte-Code. Wer sie öffnet, sieht nur Datensätze, die er selbst lesen darf. Filter setzt man in der Liste als Bedingungen „Feld – Vergleich – Wert“, alle mit UND verknüpft; Verweise und Rollen mit dem Auswahlfeld (UI28). Gespeicherte Suchen stehen über der Liste des Typs, eigene und geteilte getrennt, und in der Adresse, so dass ein Link sie öffnet. Damit eine Rolle eigene und geteilte Suchen lesen kann, hält eine Rolle je Typ und Aktion mehrere Reichweiten, die mit ODER gelten (deine Entscheidung nach dem Befund beim Bauen; Kern-Plan E58) | eigene Kerntabelle und API; Ersteller zählt als beteiligt; Eigentümer-Rolle an der Suche; zwei Rollen je Person; verschachtelte Gruppen mit UND/ODER/NICHT oder nur Filter je Spalte; nur den Filter speichern; zusätzlich in der Navigation | 2026-10-29 |
+| **E123** | **Auswahlfeld mit Suche (UI28, vor UI4 eingeschoben, deine Entscheidung 2026-10-29):** Verweisfelder und Rollen am Datensatz bekommen ein Auswahlfeld mit Suche statt einer UUID-Eingabe. Gesucht wird über die Volltextsuche (PL26) bei Typen mit durchsuchbaren Feldern, auch mit Tippfehlern; bei Typen ohne solche Felder (kleine Auswahltypen) zeigt das Feld die ersten 100 und filtert im Browser; der Server bleibt unverändert. Die Rollen ändert man im Formular als eigenen Abschnitt, gespeichert mit den Feldern als eine Version, auch schon beim Anlegen; die Seitenleiste zeigt sie weiter an. Das Feld ist ein eigener Baustein nach dem WAI-ARIA-Muster „Combobox“ ohne neue Abhängigkeit | Textfilter „enthält“ am Listen-Endpunkt; Rollen in der Seitenleiste sofort speichern; cmdk mit Radix Popover | 2026-10-29 |
+| **E122** | **Detailseite eines Datensatzes (UI3, deine Entscheidungen 2026-10-29):** Kopf mit Titel, Version, Status und Übergängen; links die Felder, darunter die Zeitleiste; rechts eine Seitenleiste mit den Rollen am Datensatz, den SLA-Uhren mit Ampel und Restzeit und den Datensätzen, die auf ihn verweisen, mit ihren Summen (Aufgaben). Die Zeitleiste zeigt das Neueste oben, das Eingabefeld darüber; die Änderungen einer Version durch eine Person stehen als ein Block mit „Feld: alt → neu“, ein Umschalter zeigt alles oder nur Einträge. Die Rollen werden in UI3 nur angezeigt; ändern kommt mit einem Auswahlfeld mit Suche als eigener Baustein. Nach dem Speichern bleibt die Seite stehen und meldet „Gespeichert.“ | älteste oben; jede Änderung einzeln oder eingeklappt; Rollen schon mit Auswahlfeld; nach dem Speichern zurück zur Liste | 2026-10-29 |
+| **E121** | **Zeitleiste am Datensatz (PL42, vor UI3 eingeschoben, deine Entscheidung 2026-10-29, Inventar G40):** UI3 soll Folgemeldungen und Feldänderungen in zeitlicher Reihenfolge zeigen, Folgemeldungen gab es aber nicht. Ein neues Kernmerkmal `timeline` gibt einem Typ Einträge in der Kerntabelle `entry` (wie die Kosten aus PL20): Text, Autor, Zeit, öffentlich oder privat. Einträge sind unveränderlich, eine Korrektur ist ein neuer Eintrag. Schreiben braucht das Recht `comment` am Datensatz (so antwortet ein Anforderer im Portal, ohne `update` zu haben), ein privater Eintrag zusätzlich `read_private`; lesen kann jeder, der den Datensatz liest, private Einträge nur mit `read_private`. Ein Eintrag ändert weder Version noch „geändert am“ des Datensatzes, damit ein offenes Formular keinen Konflikt bekommt; er schreibt das Ereignis `comment`, das Benachrichtigungen (WF15) wählen können (Platzhalter `{{entry}}`), und einen privaten bekommt nur, wer `read_private` am Datensatz hat. `GET /api/v1/records/{typ}/{id}/timeline` liefert Einträge und Verlauf (Feldänderungen, Übergänge, Verstoß, Eskalation, Benachrichtigung) zusammen in zeitlicher Reihenfolge | Einträge änderbar (vom Autor oder mit `update`); schreiben mit `update` oder schon mit `read`; Mails nur für öffentliche Einträge oder noch gar nicht; ein Eintrag als neue Version des Datensatzes | 2026-10-29 |
+| **E120** | **Benachrichtigungen als Mail (WF15, Inventar G160, G161, KF14):** Eine Benachrichtigung ist ein Datensatz des Kerntyps `core.notification`: Typ, Ereignisse (create, update, transition, trash, restore, breach, escalation), Bedingung (CEL), Empfänger (Rollen am Datensatz, Gruppen, Personen), Betreff und Text übersetzbar (PL21), mit einfachen Platzhaltern `{{record.<feld>}}`, `{{type}}`, `{{title}}`, `{{link}}`, `{{actor}}`, `{{message}}`, nur Text-Mails. Ein neuer Abnehmer `notify` des Verteilers (PL41) macht je Ereignis und Benachrichtigung einen Job, der die Personen findet (Gruppen über ihre Mitglieder), und je Person einen Job, der in ihrer Sprache rendert und per SMTP schickt; je Person eine Mail, keine an den Auslöser (abschaltbar), Fehlschläge nach dem letzten Versuch bei den Fehlschlägen. Die notify-Aktion der Regeln (WF4, WF10, WF11) geht denselben Weg mit ihrem Text. SMTP über `ITSM_SMTP_*`, ohne Host keine Mail; Mailpit als Compose-Profil `mail` auf Port 8026 (8025 belegt der Mailpit der GLPI-Umgebung) | Benachrichtigungen nur über Regeln; Go-Templates; Mail direkt beim Schreiben; jede Empfängerangabe eine Mail | 2026-10-29 |
+| **E119** | **Wiederkehrende Vorgänge (WF14, Inventar G61, G62):** Ein wiederkehrender Vorgang ist ein Datensatz des Kerntyps `core.recurrence`: Zieltyp, Zeitplan als cron in einer Zeitzone (Vorgabe Europe/Berlin), Vorlage als JSON wie beim Anlegen, aktiv, nächster und letzter Termin, letzter Fehler. Ein Job jede Minute nimmt nur die fälligen (nächster Termin erreicht oder noch leer) und legt je Termin genau einen Datensatz an; der eindeutige Schlüssel des Bulk (Quelle `recurrence:<id>`, Termin) hält das auch bei zwei Instanzen. Ein verpasster Termin wird einmal nachgeholt, mehrere verpasste ergeben einen Datensatz; danach gilt der nächste Termin nach jetzt. Platzhalter in Textwerten: `{{date}}`, `{{week}}`, `{{month}}`, `{{year}}`; Datumsfelder dürfen `+3d`, `+4h`, `+1w` relativ zum Termin sagen. Eine Vorlage, die der Zieltyp ablehnt, wird schon beim Speichern abgewiesen | Regel mit neuem Auslöser „schedule“; jeden verpassten Termin nachholen; nicht nachholen; feste Werte ohne Platzhalter | 2026-10-29 |
+| **E118** | **Aufgaben und Summenfelder (WF13, Inventar G41):** Aufgaben sind vollwertige Datensätze eines eigenen Typs je Paket mit Referenz auf den Vorgang (im Probe-Paket `probe.task`, später etwa `sd.incident_task`): eigene Liste, Rechte, Verlauf, Statusmodell, Rolle Bearbeiter (Person oder Gruppe), Regeln und SLA-Uhren wie jeder Typ, Termin als `planned_start`/`planned_end`, den die Kalenderansicht (UI15) per Abfrage liest. Die Summe der Zeiten kommt über die neue Feldart `rollup` an den Vorgang: Summe oder Anzahl eines Feldes der Datensätze, die per Referenz auf ihn zeigen, optional mit CEL-Bedingung (die nach SQL übersetzt wird); in der Transaktion jeder Aufgabe nachgerechnet und am Vorgang gespeichert, ohne neue Version, aber mit Verlaufszeile und Ereignis `update`, so dass Regeln und Uhren des Vorgangs es sehen. Listen können danach sortieren und filtern | Merkmal `tasks` mit Kerntabelle wie die Kosten; Summe beim Lesen berechnen | 2026-10-29 |
+| **E117** | **Zeitregeln im Statusmodell (WF12, Inventar G63, G64):** Automatisch schließen und die Warnung bei zu langer Laufzeit sind kein eigener Mechanismus, sondern SLAs mit Stufen (E114 bis E116), belegt durch einen Prüfweg und eine Anleitung im WF-Plan. Neues Feld „Zählt nach“ an `core.sla`: Kalender (eigener, sonst der der Einheit) oder rund um die Uhr, damit „7 Tage nach der Lösung“ Kalendertage meint, auch in einer Einheit mit Bürozeiten. Die Warnung ist eine Benachrichtigung an die Bearbeiter (Verlauf, Ereignis, Mail mit WF15) | Kurzform am Status im YAML des Typs, die beim Installieren SLA und Stufe anlegt; immer Arbeitszeit; zusätzlich ein Kennzeichen am Datensatz | 2026-10-29 |
+| **E116** | **Wartegründe mit Erinnerung und Lösung nach Zeit (WF11, Inventar G54):** Wartegründe sind Datensätze des Kerntyps `core.wait_reason`; ein Typ, der warten kann, hat ein Referenzfeld `wait_reason`. Was beim Warten passiert, ist kein zweiter Zeitmechanismus, sondern eine SLA (E114) mit Stufen (E115): Die SLA gilt, solange der Datensatz aus diesem Grund wartet, und zählt ab diesem Moment (neues Feld `start_from` von `core.sla`: Anlage oder Beginn der Geltung); jede neue Wartezeit beginnt von vorn. Stufen dürfen statt Prozent Arbeitsminuten nennen („nach 2 Tagen“). Regeln haben die neue Aktion „Übergang“ (mit Feldern), so löst die letzte Stufe den Datensatz mit Text. Die Erinnerung ist eine Benachrichtigung an den Anforderer (Verlauf und Ereignis, Mail mit WF15) | eigener Typ mit Anzahl, Abstand und Lösung nach Tagen und eigenem Zeitgeber; Auswahlfeld je Typ; WF11 erst nach WF15 | 2026-10-29 |
+| **E115** | **Eskalationsstufen (WF10, Inventar G66, G168, KF5, KF7):** Eine Stufe ist eine Regel aus WF4 mit dem Auslöser `clock`: sie nennt eine SLA ihres Typs und einen Anteil am Ziel von 1 bis 1000 % (über 100 % nach der Frist) und hat die bekannten Aktionen (setzen, zuweisen, anlegen, benachrichtigen) mit Systemrechten. Jede Stufe feuert je Uhr genau einmal; der Job der Uhr wartet auf die nächste offene Schwelle statt nur auf die Frist. Das Erreichen steht im Verlauf (`escalation` mit Regel und Anteil), als Ereignis `escalation` für Webhooks und Live-Anzeige und an der Uhr (`levels` in `…/clocks`); die Aktionen laufen danach als Job der Regel, ihre Bedingung gilt gegen den Datensatz zu dem Zeitpunkt | eigener Typ `core.sla_level` mit eigenen Aktionen; nur bis 100 %; Stufe bei jedem Erreichen; Nachweis nur an der Uhr | 2026-10-29 |
+| **E114** | **Fristen und SLA-Uhren (WF9, Inventar G167, KF5):** Ein Service-Level ist ein Datensatz des Kerntyps `core.sla`: Zieltyp, Ziel in Arbeitsminuten, Kalender (sonst `calendar.default` der Einheit, sonst rund um die Uhr) und drei CEL-Bedingungen über `record`: gilt (`applies`, leer für immer), Pause (`pause`), erfüllt (`stop`). Je Priorität eine eigene SLA. Die Uhren liegen in der Kerntabelle `clock` ohne eigene Versionen und Rechte (wer den Datensatz liest, liest seine Uhren; `GET /api/v1/records/{type}/{id}/clocks` mit verbrauchter und verbleibender Zeit). Sie laufen, pausieren und stoppen in der Transaktion des Schreibens, das sie bewegt; wieder geöffnet läuft eine Uhr weiter. Gilt eine SLA erst später (Umstufung), zählt ihre Uhr ab Anlage des Datensatzes und die alte wird abgebrochen; im Papierkorb halten die Uhren an. Ein River-Job wartet auf die Frist jeder laufenden Uhr, es gibt keinen Lauf über alle Uhren; bei 100 % wird die Uhr verletzt, der Verlauf zeigt es und das Ereignis `breach` geht an Regeln, Webhooks und die Live-Anzeige. Eskalationsstufen kommen mit WF10 | Uhr als Datensatz eines Typs; Definition im YAML des Typs oder in eigener Tabelle; Uhr als Abnehmer des Verteilers; Pause nur nach Statuslisten; neue Uhr ab der Umstufung; Uhren im Papierkorb abbrechen | 2026-10-29 |
+| **E113** | **Kalender mit Arbeitszeiten und Feiertagen (WF8, Inventar G169):** Kalender, Arbeitszeiten und Feiertage sind Typen des Kernpakets (`core.calendar` mit Zeitzone, `core.calendar_hours` mit Wochentag und Von/Bis als HH:MM, mehrere je Tag, `core.calendar_holiday` mit Datum); Liste, Formular, Rechte, Verlauf und Bulk gelten wie für jeden Typ. Welcher Kalender für eine Organisationseinheit gilt, sagt die Einstellung `calendar.default` am Baum (vererbt); die SLA-Uhr (WF9) darf einen eigenen nennen. Gerechnet wird nur Arbeitszeit, in der Zeitzone des Kalenders (auch über die Zeitumstellung): `POST /api/v1/calendars/{id}:add` (Frist aus Beginn und Minuten) und `:between` (Arbeitszeit zwischen zwei Zeitpunkten). Feiertage kommen von Hand oder aus dem Generator der gesetzlichen Feiertage eines Bundeslands für ein Jahr (`:holidays`, `itsm calendar holidays`); vorhandene Tage bleiben | eigene Kerntabellen mit eigener API; Feiertage nur von Hand; Kalender fest am Typ | 2026-10-28 |
+| **E112** | **Verteiler in Stapeln (PL41, Konzept vom 2026-10-28, deine Entscheidung nach dem Befund von WF4):** (1) Die Outbox in PostgreSQL bleibt die einzige Quelle der Ereignisse; Valkey trägt sie nur schnell an Live-Anzeigen weiter, nie als einzige Kopie, weil ein Absturz zwischen Speichern und Senden sonst ein Ereignis ohne Spur verliert. (2) Der Verteiler arbeitet in Stapeln zu 1.000: Abos und Regeln im Speicher statt einer Abfrage je Ereignis, die Jobs eines Stapels in einem Schritt (`COPY`), eine Nachricht je Stapel an Valkey; Ziel LZ13 ≥ 5.000 Ereignisse/s. (3) Jeder Abnehmer (`live`, `webhooks`, `rules`, später Benachrichtigungen) hat eine eigene Position; ein Durchgang sperrt seine Zeile (`FOR UPDATE SKIP LOCKED`, damit mehrere Instanzen sicher sind) und schreibt Jobs und neue Position in einer Transaktion, jedes Ereignis führt also genau einmal zu seinen Jobs. Scheitert ein Durchgang, bleibt der Abnehmer stehen, behält den Fehler (`event_consumer`) und versucht es mit wachsender Pause (1 bis 30 s) wieder, die anderen laufen weiter; nach 5 Minuten meldet das Log ihn als hängend. Die Aufbewahrung der Ereignisse wartet auf den langsamsten dauerhaften Abnehmer. (4) Was nach allen Versuchen seines Jobs scheitert oder aufgegeben wird (Webhook-Zustellung, Regel), steht mit Ereignis, Datensatz, Ziel und Grund in `delivery_failure`; `/api/v1/events/consumers` und `/api/v1/events/failures` zeigen beides (lesen mit `read` auf `core.job`) | Ereignisse nur über Valkey oder im Speicher (schneller, aber verlierbar); ein Verteiler je Ereignis wie bisher; Fehler nur ins Log | 2026-10-28 |
+| **E111** | **Regeln „wenn, dann“ (WF4, KF7, Inventar G57, architektur.md B4, §6.2):** Regeln sind Daten in der Kerntabelle `rule`, gepflegt über `/api/v1/rules` (lesen mit `read` auf `core.rule`, ändern mit `manage_rules`). Eine Regel gehört zu einem Typ, reagiert auf Anlegen, Ändern (auch Übergänge) oder einen Zeitplan (cron) und hat eine Bedingung in CEL über `record` und `changed`. Modus `before` ändert den Datensatz im selben Schreibvorgang (setzen, zuweisen); Modus `after` läuft danach als Job (setzen, zuweisen, anlegen, benachrichtigen), jeder Treffer ein eigener Schreibvorgang. Regeln wirken mit Systemrechten; der Verlauf nennt die Regel jeder Änderung (`audit.rule`), Ereignisse tragen Regel und Tiefe, eine Kette endet bei Tiefe 5, eine Regel löst sich nicht selbst aus. Eine Regel nach Zeitplan findet ihre Datensätze über ihre Bedingung in SQL (wie die Rechte), höchstens 1.000 je Lauf. „Benachrichtigen“ schreibt ein Ereignis `notify` mit Empfängern und Text; WF15 stellt es als Mail zu. Export, Import und Regeltest folgen mit WF5 | Regeln nur in Paketen (YAML); benachrichtigen erst mit WF15; Zeit erst mit den Uhren (WF9, WF12) oder als Frist je Datensatz; Regeln mit den Rechten der auslösenden Person | 2026-10-28 |
+| **E110** | **Feldzustände je Status und Formularvariante (WF2, architektur.md B5, Inventar G53):** Ein Typ nennt unter `field_states` Regeln; jede gilt in den genannten Status (ohne Angabe in allen) und mit `when` (CEL über `record`) nur für Datensätze, auf die die Bedingung zutrifft – das ist die Formularvariante, etwa je Art. Eine Regel macht Felder `required`, `hidden`, `read_only` (`*` sperrt den ganzen Datensatz samt Rollen) oder belegt sie mit `defaults` vor; zutreffende Regeln addieren sich. Versteckt betrifft nur das Formular, die API liefert und nimmt solche Felder weiter. Der Server prüft bei jedem Schreiben: ein neuer Datensatz bekommt die Vorbelegung seines Anfangsstatus und darf schreibgeschützte Felder nicht anders setzen; eine Änderung darf nichts ändern, was im jetzigen Status schreibgeschützt ist; der Status danach braucht seine Pflichtfelder (422 mit Feldname). Ein Übergang kann Felder im selben Aufruf setzen (`fields`, dann mit `If-Match`), Felder und Status sind eine Version; seine Bedingung sieht den Datensatz mit diesen Feldern. `POST /api/v1/records/{typ}:field-states` sagt dem Formular, was für einen Datensatz oder einen Entwurf gilt | Status-Blöcke mit benannten Varianten über ein Auswahlfeld; versteckt auch in der API; Pflichtfeld erst per PATCH, dann der Übergang; nur API, Formular erst mit Block B der Oberfläche | 2026-10-28 |
+| **E109** | **Rollen am Datensatz (WF3, Inventar G37, G79; architektur.md B1):** Kerntabelle `actor` und Kern-Merkmal `actors`. Ein Typ nennt seine Rollen unter `actors`: Name, Beschriftung, die Typen, die sie halten dürfen (`to`, heute `core.person` und `core.group`; ein Lieferanten-Typ eines späteren Pakets wird dort eingetragen), und `single` für genau einen Halter. Der Datensatz zeigt sie als `actors: {rolle: [{type, id}]}`, jede Rolle des Typs, die Halter sortiert. Gesetzt werden sie beim Anlegen und per PATCH mit `If-Match`; eine genannte Rolle wird ersetzt, `null` oder `[]` leert sie. Eine Änderung ist eine neue Version mit Verlaufszeile `actors.<rolle>` und Ereignis, Versionen und Wiederherstellen schließen die Rollen ein. Das Team eines Vorgangs ist die Menge seiner Halter. Neue Reichweite `involved`: die Datensätze, an denen die Person oder eine ihrer Gruppen eine Rolle hält, innerhalb des Unterbaums des Zuweisungsknotens wie E81. Filter `filter[actors.<rolle>]=` (Ids, `@me`, `@my_groups`, mit Komma getrennt; `filter[actors]` für jede Rolle) und in der JSON-Abfrage `{"field": "actors.<rolle>", "eq"/"in"/"null": …}`. Feldrechte nennen die Rollen gesammelt als `actors` | Referenzfelder je Rolle; Lieferant jetzt als Kerntyp; `own` und `group` um Rollen erweitern; Rollen ohne Wirkung auf die Sichtbarkeit; eigene Unterressource ohne Versionssprung | 2026-10-28 |
+| **E108** | **Reihenfolge bis Meilenstein 1 (2026-10-28):** Nach Block B des Plattform-Kerns (PL6 bis PL30) folgt Block B der Workflow-Engine (WF2 bis WF4, WF8, WF9, dann der Rest bis WF15 nach `03_workflow-engine.md`), danach Block B der Oberfläche (UI3 und folgende nach `02_oberflaeche.md`), danach der Service Desk (SD). Die Engine kommt vor der Oberfläche, weil die Oberfläche zeigt, was die Engine liefert (Feldzustände je Status, Rollen am Datensatz, Genehmigungen, SLA-Uhren); sonst würden Formulare und Detailseite zweimal gebaut. Block C und D des Kerns bleiben bis nach Meilenstein 1 liegen, wie der Kern-Plan sagt; PL31 und PL32 aus Block C sind schon gebaut, weil die Umsetzung den Blockschnitt übersehen hatte (die „Jetzt“-Zeile sagte „der Rest der Tabelle“) | erst den Kern ganz fertig, dann UI, dann WF; erst UI, dann WF; WF und UI im Wechsel nach Bedarf von SD | 2026-10-28 |
+| **E107** | **Bulk asynchron (PL32, ergänzt E38, E106):** Derselbe Pfad `POST /api/v1/records/{typ}:bulk?source=…` mit `Content-Type: application/x-ndjson`, eine Zeile je Datensatz mit `external_key`; Antwort `202` mit dem Job und `Location: /api/v1/jobs/{id}`. Der Strom liegt im Dateispeicher (PL18) bis zum Ende seines Jobs, höchstens `bulk.max_size` (Einstellung am Wurzelknoten, Vorgabe 1 GiB, darüber `413`). Der Job schreibt mengenbasiert in Stapeln zu 5.000 Zeilen, mit denselben Prüfungen, Rechten, Formeln, Suchspalte, Verlauf (wie beim Einzelaufruf) und Ereignissen wie der Zeilenweg; Baumlisten, übersetzte Werte als Objekt und ein Wechsel des Organisationsknotens gehen über den Zeilenweg. Der Jobstand (`output`) zeigt den Fortschritt und am Ende die Summen und die ersten 1.000 Fehler mit Zeile, Schlüssel und Feld; ein Schlüssel, der im selben Strom zweimal kommt, ist ab dem zweiten Mal ein Fehler. Nur ein Fehler der Datenbank lässt den Job scheitern (River versucht es bis zu fünfmal). Wer einen Lauf gestartet hat, darf genau diesen Job lesen, auch ohne Recht auf `core.job`. `Idempotency-Key` wie bei PL31. **LZ5** misst das Lastwerkzeug als Durchsatz eines ganzen Laufs: zwei Ströme parallel (drei Viertel `probe.probe`, ein Viertel `core.person`, feste Schlüssel, neue Werte je Lauf), schnelle Stufe 20.000 Zeilen in jeder CI, volle Stufe 100.000; das Gate scheitert unter 5.000 Zeilen/s und, sobald die Basislinie es kann, bei mehr als 10 % weniger als die Basislinie | Zeilenweg im Job (rund 300/s); bei neuen Datensätzen nur ein Verlaufseintrag; eigener Pfad `:bulk-async`; alle Fehler als Datei; Jobstand nur mit Recht oder eigener Pfad je Lauf; LZ5 nur in der vollen Stufe oder mit neuen Schlüsseln je Lauf | 2026-10-28 |
+| **E106** | **Bulk synchron (PL31, ergänzt E38):** `POST /api/v1/records/{typ}:bulk` mit `{"source": …, "rows": [...]}`, höchstens 1.000 Zeilen und 8 MiB; jede Zeile trägt `external_key`, eine Zeile ohne ist ein Fehler dieser Zeile, bis PL34 die Identifikationsregeln bringt. Jede Zeile steht für sich: Die Antwort ist `200` mit einem Ergebnis je Zeile (`created`, `updated`, `unchanged`, `error` mit `validation`, `forbidden`, `not_found` oder `conflict`) und den Summen. `row_hash` ist die Prüfsumme der gelieferten Felder; ist sie gleich, wird nichts geschrieben (keine Version, kein Verlauf, kein Ereignis). Sonst ändern sich nur die gelieferten Felder, nicht gelieferte bleiben. Rechte wie beim Einzelaufruf (`create` für neue, `update` für bekannte Datensätze, auch für unveränderte). Ein Datensatz im Papierkorb ist ein Konflikt seiner Zeile. `Idempotency-Key` gilt 24 Stunden je Konto und Typ in Valkey: dieselbe Anfrage bekommt dieselbe Antwort (`Idempotent-Replayed: true`), ein anderer Inhalt `422` | Quelle je Zeile; alles oder nichts; wählbar per `atomic`; Zeile ersetzt den Datensatz; Idempotenz in einer PostgreSQL-Tabelle | 2026-10-28 |
+| **E105** | **API-Abdeckung der Pakete (PL30, Inventar G208, G209, G213, G214, G216, G219, G223):** Ein allgemeiner Test, `TestAPICoverage`, legt für jeden Typ jedes Pakets in `packages/` aus der Typdefinition einen Datensatz an, ruft Typdefinition, Liste und Einzelabruf (auch mit `translations=all`) ab und prüft jede Antwort mit kin-openapi gegen die wirksame Beschreibung `/api/v1/openapi.json`, samt Schema je Typ. Felder, die die Beschreibung nicht nennt, lassen ihn scheitern. Dazu Organisationsbaum und Einstellungen des Wurzelknotens. Die Pakete des Service Desks (Vorgänge, Wissen, Benachrichtigungen) gibt es noch nicht; der Test prüft sie mit, sobald sie in `packages/` liegen. Deshalb gilt für jede Paket-Aufgabe von SD (und für PL37) als Abnahmekriterium: `TestAPICoverage` ist mit den neuen Typen grün | PL30 erst nach SD; PL30 gelb bis SD; nur Pfade und Status prüfen; Vollständigkeit jedes Felds verlangen; vorhandene Daten statt eigener Datensätze | 2026-10-28 |
+| **E104** | **Lizenzen der Abhängigkeiten (PL29, ergänzt E15):** Was itsm ausliefert, also die ins Binary gelinkten Go-Module und die Web-Pakete aus `dependencies` (landen in `web/dist`), darf nur diese Lizenzen haben: MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Zlib, Unlicense, CC0-1.0, BlueOak-1.0.0 und MPL-2.0. Kein GPL, LGPL oder AGPL in Abhängigkeiten, weil sonst die kommerzielle Zweitlizenz (V4) nicht geht. Entwicklungswerkzeuge werden nicht geprüft, sie werden nicht ausgeliefert. Was nicht passt oder nicht erkennbar ist, braucht eine Ausnahme mit Lizenz, Datum und Grund, die du abnimmst; sie gilt für alle Versionen, fällt aber auf, sobald sich die Lizenz ändert oder das Paket wegfällt. Geprüft in jedem CI-Lauf | wörtlich E15 (nur MIT, Apache, BSD, MPL); auch Copyleft als „AGPL-verträglich“; auch Entwicklungswerkzeuge; Ausnahmen an die Version gebunden oder gar keine | 2026-10-28 |
+| **E103** | **Sicherheitseinstellungen (PL28, Inventar G177; ergänzt E72, E73):** Am Wurzelknoten einstellbar: Kennwort-Mindestlänge (`security.password.min_length`, Vorgabe 8), Zeichenklassen (`require_classes`, Vorgabe an), Höchstalter in Tagen (`max_age_days`, Vorgabe 0 = nie), eigene Sperrliste (`blocklist`); immer gilt: kein häufiges Kennwort (mitgelieferte Liste, auch mit Ziffern und Zeichen davor oder dahinter) und nicht der Benutzername; bestehende Kennwörter werden erst beim nächsten Wechsel geprüft. Sitzung gleitend und höchstens (`security.session.idle_hours`, `max_hours`, Vorgabe 12 und 24 wie E72), gilt für neue Sitzungen sofort und für bestehende beim nächsten Zugriff. Sperre: 5 Fehlversuche je Benutzername oder 20 je Adresse in 15 Minuten sperren 15 Minuten (`security.lockout.*`), auch für unbekannte Namen; die Sperre steht im Ereignisprotokoll. Lokale Anmeldung: `security.local_login` = `all` (Vorgabe), `admins` (nur Konten mit `manage_rights`, als Notzugang) oder `none`. **Zwei-Faktor gehört Keycloak, nicht itsm:** der Entwicklungs-Realm verlangt OTP (TOTP, 6 Stellen, 30 s) und lässt die Testpersonen es bei der ersten Anmeldung einrichten; wer Zwei-Faktor durchsetzen will, stellt die lokale Anmeldung auf `admins` oder `none` | TOTP in itsm (freiwillig mit Pflicht per Einstellung; nur für Rechteverwaltung); Vorgabe 12 Zeichen ohne Klassen; nur Sitzungsdauer ohne Sperre; lokale Konten unverändert | 2026-10-27 |
+| **E102** | **Ereignisprotokoll (PL27, Inventar G128):** Eine Kerntabelle `security_event` hält Anmeldungen auf allen Wegen (Kennwort, OIDC, API-Token) mit Erfolg und Fehlschlag, Abmeldung und Wechsel des Rechtekontexts (Kategorie `auth`) sowie Änderungen an Konten (anlegen, sperren, Kennwort, Person verknüpfen), Rollen, Berechtigungen, Zuweisungen, Login-Regeln, API-Zugängen, Verzeichnissen, Knoten und Einstellungen des Organisationsbaums (Kategorie `change`), über HTTP und die Kommandozeile. Je Eintrag: Zeit, Konto (bei Fehlschlag der eingegebene Benutzername), IP-Adresse (Proxy-Regel aus PL13), User-Agent, Ergebnis, Grund (`unknown_account`, `wrong_password`, `account_disabled` …; die Anmeldeantwort bleibt neutral) und bei Änderungen alter und neuer Stand ohne Geheimnisse. Abfrage über `/api/v1/audit/auth` und `/api/v1/audit/changes` mit Filtern (Art, Ergebnis, Konto, Benutzername, IP, Zeitraum) und Blättern per Schlüssel; Lesen braucht `read` an `core.security_event` (admin). Aufbewahrung: Einstellung `audit.security_retention` in Tagen am Wurzelknoten, Vorgabe 365, ein nächtlicher Job löscht Älteres | nur Anmeldungen und Rechte; ohne User-Agent und Grund; 90 Tage; unbegrenzt bis PL39; ein Endpunkt | 2026-10-27 |
+| **E101** | **Volltextsuche (PL26, E21):** Jede Typtabelle hat die Spalte `search` (tsvector); `records` schreibt sie beim Anlegen und bei jeder Änderung eines gesuchten Felds oder einer Übersetzung in derselben Transaktion: das Titelfeld mit Gewicht A, die übrigen durchsuchbaren Felder mit B, deutsches Wörterbuch, englische Übersetzungen mit dem englischen. Indizes: GIN auf `search`, GIN-Trigram auf dem Titelfeld. `GET /api/v1/search?q=&types=&limit=` sucht über alle Typen, die die Person lesen darf, mit deren Rechtebedingung je Typ; Treffer sind Typ, ID, Titel, Rang und ein Ausschnitt mit `<mark>`. Syntax wie Websuche (Phrase in Anführungszeichen, `-wort`, `or`), das letzte Wort zusätzlich als Präfix für die Suche beim Tippen; zusätzlich trifft das Titelfeld per Trigram ab Ähnlichkeit 0,3, so finden Tippfehler. Ändert ein Paket die gesuchten Felder oder gibt es Datensätze ohne Suchspalte, reiht `itsm package install` den Job `records.recompute` mit Suche ein. Hinter der Go-Schnittstelle `search.Engine`, damit Meilisearch oder OpenSearch nachrüstbar bleiben | generierte Spalte; Suche nur je Typ; Trigram nur ohne Volltexttreffer; nur Websyntax | 2026-10-27 |
+| **E100** | **Webhooks (PL25, KF13, E39):** Ein Abonnement gehört einem Konto (Person oder API-Zugang) und bekommt nur die Ereignisse, die dieses Konto lesen darf, mit derselben Nutzlast wie `/api/v1/events`; den Datensatz holt der Empfänger über die API, damit gelten auch die Feldrechte. Filter nach Ereignisart und Typ (leer heißt alle). Der Verteiler der Outbox reiht je passendem Abonnement einen River-Job in der Bulk-Warteschlange ein und merkt sich die Position im selben Schritt, so dass ein doppelt verteiltes Ereignis nur einmal zugestellt wird; ein langsamer Empfänger hält keinen anderen auf, die Reihenfolge ist nicht garantiert. Signatur nach Standard Webhooks (`webhook-id`, `webhook-timestamp`, `webhook-signature` mit HMAC-SHA256); das Geheimnis erzeugt der Server und zeigt es nur beim Anlegen und Rotieren. Wiederholung: 8 Versuche nach 1, 5, 15, 30 Minuten, 1, 2 und 4 Stunden (letzter Versuch nach knapp 8 h); nur 2xx gilt, eine Umleitung nicht; danach bleibt die Zustellung sichtbar und lässt sich über den Jobs-Endpunkt neu anstoßen. Ziele nur per https, http nur für Hosts der Einstellung `webhooks.allowed_http_hosts` am Wurzelknoten. Verwalten braucht `manage_webhooks` an `core.webhook`, Lesen `read` | strikt der Reihe nach je Abonnement; eigener Signatur-Header; voller Datensatz in der Nutzlast; River-Standard mit beliebigen Zielen | 2026-10-27 |
+| **E99** | **Berechnete Felder (PL22, KF6, E45):** Ein Feld mit `formula` ist berechnet: CEL über die anderen Felder desselben Typs, jedes als Variable seines Namens mit seinem CEL-Typ (Zahl → double, Text, Auswahl und Referenz → string, Ja/Nein → bool, Datum und Zeitpunkt → timestamp), etwa `impact * urgency`. Beim Installieren wird jede Formel typgeprüft: unbekannte Felder, unpassende Operatoren, ein Ergebnis, das nicht zum Feld passt, und Zyklen zwischen Formeln lehnen das Paket ab. Beim Anlegen und Ändern rechnet der Kern nach Prüfung und Rechten, in der Reihenfolge der Abhängigkeiten, und speichert das Ergebnis wie einen Wert (Verlauf, Ereignis, Filter, Sortierung). Ist ein benutztes Feld leer, bleibt das Ergebnis leer; ein Fehler beim Rechnen oder ein Ergebnis außerhalb der Regeln des Felds (etwa keine Option der Auswahl) lehnt das Schreiben mit 422 ab. Berechnete Felder sind nicht schreibbar, nicht Pflicht, ohne Vorgabe, nicht übersetzbar und keine Referenz; die Summen der Kosten (E97) können sie nicht benutzen. Bringt ein Paket eine neue oder geänderte Formel für einen bestehenden Typ, reiht `itsm package install` den Job `records.recompute` in der Bulk-Warteschlange ein; er rechnet alle Datensätze des Typs neu, ohne neue Version und ohne Verlaufszeilen. Formeln über Beziehungen kommen mit PL40 | `record.feld` wie bei Übergängen; leere Felder als Vorgabewert; erst beim nächsten Schreiben neu rechnen; Beziehungen gleich in PL22 | 2026-10-27 |
+| **E98** | **Mehrsprachige Inhalte (PL21, KF19):** Ein Textfeld wird mit `translatable: true` übersetzbar; bei Auswahllisten sind Name und Beschreibung es immer. Die Spalte hält den deutschen Wert, den Rückfall jeder Sprache; andere Sprachen liegen in der Kerntabelle `translation` (wie ItemTranslation in GLPI). Filter, Sortierung, Eindeutigkeit, Suche und Regeln arbeiten auf Deutsch. Lesen liefert den Wert in der Sprache aus `Accept-Language`, ohne Übersetzung Deutsch, und nennt sie in `Content-Language`; `?translations=all` liefert je Feld ein Objekt `{de, en}`. Schreiben: ein einfacher Wert geht in die Sprache aus `Content-Language` (Vorgabe Deutsch), ein Objekt `{de, en}` setzt mehrere Sprachen, `null` entfernt eine Übersetzung. Eine Übersetzung ist eine normale Änderung (neue Version, Verlauf mit Feld `title.en`, Ereignis) und braucht das Schreibrecht am Feld. Sprachen sind Deutsch und Englisch fest (E42); die Ablage trägt weitere. Die Beschriftungen der Definitionen haben seit H5 beide Sprachen | jsonb-Spalte je Feld; Übersetzungen nur als Unterressource; Sprachen als Einstellung | 2026-10-27 |
+| **E97** | **Kosten und Zeiten (PL20, KF18, B1):** Ein Kern-Merkmal `costs` öffnet `…/{id}/costs` an jedem Typ, der es anzieht. Die Einträge liegen in einer Kerntabelle `cost` für alle Typen. Ein Eintrag hat eine Art wie in GLPI (`time`, `fixed`, `material`), Tag der Arbeit (Vorgabe heute), Person (`core.person`), Text und Betrag; ein Zeiteintrag hat Minuten und Stundensatz, sein Betrag ist Minuten × Satz / 60. Ohne Satz gilt die Einstellung `costs.hourly_rate` am Knoten des Datensatzes (vererbt, Vorgabe 0). Eine Währung je Installation: `costs.currency` am Wurzelknoten, Vorgabe EUR. Die Summen sind die schreibgeschützten Felder `time_spent` (Minuten) und `cost_total` am Datensatz, gepflegt in derselben Transaktion wie der Eintrag, filter- und sortierbar wie jedes Feld. Buchen erhöht die Version des Datensatzes nicht, damit eine fremde Zeitbuchung keine offene Bearbeitung stört; Buchen, Ändern und Entfernen stehen im Verlauf (`cost_add`, `cost_change`, `cost_remove`) und als Ereignis. Lesen mit Leserecht am Datensatz, buchen, ändern und entfernen mit Änderungsrecht; ändern mit `If-Match` auf die Version des Eintrags; die Art bleibt. Beträge sind nicht negativ | Kosten als Paket-Typ mit Beziehung; nur Dauer und Betrag; Währung je Eintrag; Summen beim Lesen berechnet; Summen mit Versionssprung; nur eigene Buchungen ändern | 2026-10-27 |
+| **E96** | **Versionen (PL19, KF17):** Ein Stand ist der Datensatz nach dem Schreiben mit dieser Versionsnummer. Er wird nicht gespeichert, sondern aus dem Verlauf rekonstruiert: vom heutigen Datensatz aus werden alle Feldänderungen nach Version N rückwärts zurückgenommen (Felder, `state`, `org_path`); Zeilen von Beziehungen und Dokumenten zählen nicht. Damit haben genau die Typen mit `history` Versionen: `GET …/{id}/versions` (Liste mit Aktionen und geänderten Feldern), `GET …/{id}/versions/{n}`, `GET …/{id}/compare?from=&to=` (je abweichendem Feld alter und neuer Wert) und `POST …/{id}/versions/{n}:restore` mit `If-Match`, das die Feldwerte von Stand N als neue Version schreibt (Status, Knoten und Felder ohne Schreibrecht bleiben; Verlauf und Ereignis wie bei PATCH). Feldrechte gelten wie beim Lesen. Löscht die Aufbewahrung (PL39) alte Verlaufszeilen, sind die Stände davor nicht mehr abrufbar (404) | vollständiger Stand je Version in eigener Tabelle; nur ansehen ohne Zurücksetzen; eigenes Merkmal `versions` | 2026-10-27 |
+| **E95** | **Dateien (PL18):** Eine Datei wird zuerst hochgeladen (`POST /api/v1/files`, roher Strom, Name aus `?name=` oder `Content-Disposition`) und ist vorläufig, bis `POST /api/v1/records/{typ}/{id}/documents {"file": id}` sie an einen Datensatz eines Typs mit dem Merkmal `documents` hängt (`update` am Datensatz, Verlaufszeile `attach`; Lösen per `DELETE …/documents/{fileId}`, Zeile `detach`, die Datei bleibt). Je Datei ein Objekt im Speicher (Schlüssel aus der Datei-ID), SHA-256, Größe und erkannter Inhaltstyp in der Kerntabelle `file`, Verknüpfungen in `attachment`. Der Inhaltstyp kommt aus den ersten Bytes, nicht vom Aufrufer; heruntergeladen wird immer als Anhang mit `nosniff` und Sandbox-CSP. Grenzen als Einstellungen am Wurzelknoten: `files.max_size` (100 MiB, sonst 413), `files.blocked_extensions` (bat, cmd, com, exe, js, msi, ps1, scr, vbs, sonst 422), `files.temporary_ttl` (24 h). Ein Virenscanner hängt hinter der Schnittstelle `Scanner` (vorerst ohne Prüfung; welcher, klärt BT). Lesen darf, wer einen verknüpften Datensatz lesen darf; eine vorläufige Datei nur, wer sie hochgeladen hat. Der Job `files.cleanup` (stündlich, bulk) entfernt Uploads, die nach einer Stunde nicht fertig sind, und vorläufige Dateien nach der Frist | ein Schritt per multipart; inhaltsadressiert nach SHA-256; ClamAV sofort; eigenes Recht an `core.file` | 2026-10-27 |
+| **E94** | **Merkmale (PL17, B2):** Ein Typ zieht Merkmale per Name an (`traits: [...]`). Merkmale mit Verhalten stehen als Register im Kern: `list` (PL16), `history`, `documents`, `notes`, `reservable`; ein Paket bringt eigene Merkmale als Feldbündel unter `traits/<name>.yaml` mit (Name, Beschriftung, Felder), die jeder Typ desselben Pakets anzieht; sie liegen als Definition `kind=trait`. Die Felder eines Merkmals hängt der Lader an den Typ und markiert sie mit `trait`, Namenskollisionen sind Ladefehler. Ohne `history` schreibt ein Typ keine Verlaufszeilen und hat keinen `/history`-Endpunkt (404); Ereignisse gibt es immer; Auswahllisten haben `history` immer. Die Unterressourcen `/documents`, `/notes` und `/reservations` erscheinen in der OpenAPI nur bei Typen mit dem Merkmal und antworten 501, bis PL18, PL35 und das Reservierungspaket sie füllen; ohne Merkmal 404. `GET /api/v1/traits` listet Kern- und Paketmerkmale | Verlauf immer; Merkmale nur im Kern; Anhänge schon in PL17 | 2026-10-27 |
+| **E93** | **Auswahllisten (PL16, B3):** Eine Auswahlliste ist ein Typ mit `traits: [list]` in `types/<name>.yaml`; ihre Felder kommen vom Merkmal (`name`, `key` eindeutig je Liste, `description`, `active`, `position`; bei `list.tree: true` dazu `parent`, bei `list.coordinates: true` `lat`, `lon`, `alt`), eigene Felder gibt es nicht. Alle Einträge liegen in der Kerntabelle `list_entry` mit der Spalte `list` (package.type); jede Anweisung des Record-Dienstes trägt diese Bedingung, so dass ein Eintrag nur über seine Liste erreichbar ist. Ein Feld zeigt als gewöhnliche Referenz (`type: reference, to: paket.liste`) auf eine Liste; die Prüfung lehnt Werte außerhalb der Liste ab. Ein Baum pflegt beim Schreiben `path` (ltree aus IDs) und `full_name` („Land > Stadt") für den Eintrag und alles darunter, lehnt Kreise ab und kennt `filter[under]=<id>` und `{"field": "parent", "under": id}`. Jedes Paket bringt seine Listen samt Einträgen mit (`list.entries` mit `key`); beim Installieren werden fehlende Schlüssel angelegt, vorhandene Einträge bleiben unverändert (die Daten gehören dem Kunden). Lesen darf jede angemeldete Person (Zugriff `read_all`, unabhängig von Rollen und Einengung), Anlegen, Ändern und Löschen laufen über Rollen und Reichweiten wie bei jedem Typ | Tabelle je Liste; Textschlüssel statt Referenz; nur `parent` ohne Pfad; Lesen je Rolle | 2026-10-27 |
+| **E78** | **Ohne Anmeldung erreichbar** sind nur `/healthz`, `/readyz`, `/api/v1/version` und `POST /api/v1/auth/login`, seit PL11 dazu `GET /api/v1/auth/providers`, `…/oidc/start` und `…/oidc/callback`, seit PL13 `POST /api/v1/auth/token` (ohne CSRF-Kopf, Formular wie bei OAuth üblich); alles andere unter `/api/v1`, auch Typen und OpenAPI, liefert 401 | Typen und OpenAPI offen (für Werkzeuge) | 2026-10-20 |
+
+**Übernommen aus dem GLPI-Vorhaben** (dort Hauptplan E6, E7, E9, E10, E12; gelten hier weiter):
+
+- Dauerhaft eigenes Rechenzentrum, VS-NfD, kein Internet im Betrieb nötig, keine Cloud-KI auf
+  den Daten; KI nur mit lokalem Modell.
+- Kein Agent auf den Endgeräten auf absehbare Zeit; Discovery agentlos aus den Quellen. Seit
+  E24 gilt hier mehr: kein GLPI Agent, auch nicht als Collector.
+- Keine Kopplung an Jira oder Confluence.
+- Netbox bleibt für IP-Adressen, alles andere führt das ITSM.
+
+---
+
+## 2. Zielbild
+
+### 2.1 Die 34 Practices aus ITIL 4 und wo sie landen
+
+ITIL 4 kennt 34 Practices: 14 allgemeine, 17 für das Service Management, 3 technische. ITIL 5
+(seit Februar 2026) führt sie unter denselben Namen; das Werkzeug richtet sich nach den Namen,
+nicht nach der Ausgabe. Jede Practice wird ein **Paket** (E7), zuerst in schlanker Form (E25).
+
+**So ist die Tabelle zu lesen:**
+
+- **Kernfunktionen** sind der Umfang des schlanken Pakets, nicht die volle Tiefe der Practice.
+  Sie sind aus der Kenntnis der ITIL-4-Practice-Guides abgeleitet und nicht am Original geprüft
+  (H3, „Nicht geprüft").
+- **Kernfähigkeiten** verweisen auf §2.1.1: was der Kern können muss, damit das Paket ohne
+  Sondercode auskommt.
+- **Nebenplan und Meilenstein** sagen, wo und wann das schlanke Paket entsteht. Die Etappen
+  stehen oben bei den Nebenplänen.
+
+| # | Practice | Paket | Kernfunktionen im schlanken Paket | Kernfähigkeiten | Plan | MS |
+| --- | --- | --- | --- | --- | --- | --- |
+| | **Allgemeine Management-Practices (14)** | | | | | |
+| **IP1** | Architecture management | Architektur | Architekturelemente (Anwendung, Schnittstelle, Plattform) als CI-Typen; Soll- und Ist-Stand je Element; Architekturentscheidungen mit Status; Sicht als Graph | KF1, KF2, KF3, KF10 | PR | 3 |
+| **IP2** | Continual improvement | Verbesserung | Register der Verbesserungen mit Bewertung und Priorität; Maßnahmen mit Verantwortlichem und Termin; Verknüpfung zu Problem, Incident, Review; Kennzahl vorher und nachher | KF1, KF3, KF6, KF11 | PR | 3 |
+| **IP3** | Information security management | Sicherheit | Sicherheitsvorfälle als eigener Typ mit eingeschränkter Sichtbarkeit; Maßnahmen mit Prüfstand; Schwachstellen an CIs; Verknüpfung zu Risiko | KF1, KF3, KF9 | PR | 3 |
+| **IP4** | Knowledge management | Wissen | Artikel mit Versionen und Freigabe; Kategorien und Sichtbarkeit nach Organisationseinheit, Gruppe und Rolle; Volltextsuche und Vorschläge am Ticket; Bewertung, Ablaufdatum, FAQ im Portal; Übersetzungen | KF4, KF9, KF17, KF19 | SD | 1 |
+| **IP5** | Measurement and reporting | Berichte | Kennzahlen aus gespeicherten Abfragen; Dashboards mit Widgets; Berichte zeitgesteuert per Mail und als Export; lesender Zugang für Grafana (V17) | KF11 | UI, PR | 1, 3 |
+| **IP6** | Organizational change management | Organisationsänderung | Vorhaben mit betroffenen Organisationseinheiten und Gruppen; Kommunikationsplan mit Maßnahmen und Terminen; Schulungen; Akzeptanz per Umfrage | KF1, KF3, KF10, KF15 | PR | 3 |
+| **IP7** | Portfolio management | Portfolio | Service-Portfolio in den Stufen Pipeline, Katalog, ausgemustert; Bewertung (Nutzen, Kosten, Risiko) per Formel; Freigabe durch ein Gremium; Verbindung zu Demand und Projekt | KF4, KF6, KF11 | PR | 3 |
+| **IP8** | Project management | Projekt | Projekte mit Phasen, Aufgaben, Meilensteinen; Team und Aufwände; Gantt- und Kanban-Ansicht; Verknüpfung zu Change, Demand, Tickets | KF3, KF10, KF18 | PR | 3 |
+| **IP9** | Relationship management | Beziehungen | Bedarfsträger (Organisationseinheiten) und Ansprechpartner; Termine und Gespräche; Service-Reviews; Zufriedenheit | KF1, KF10, KF15 | PR | 3 |
+| **IP10** | Risk management | Risiko | Register mit Eintritt und Auswirkung, Risikowert berechnet; Maßnahmen und Restrisiko; Verknüpfung zu CI, Service, Change; Risikomatrix | KF2, KF6, KF10 | PR | 3 |
+| **IP11** | Service financial management | Finanzen | Budgets und Kostenstellen; Kosten an Ticket, Change, Projekt; Anschaffung und Abschreibung an Assets; Verrechnung je Organisationseinheit | KF6, KF18 | PR | 3 |
+| **IP12** | Strategy management | Strategie | Ziele mit Kennzahl und Zielwert; Initiativen, verknüpft mit Portfolio und Projekt; Bericht zum Stand | KF1, KF6, KF11 | PR | 3 |
+| **IP13** | Supplier management | Lieferanten | Lieferanten mit Kontakten; Verträge mit Laufzeit, Kündigungsfrist und Erinnerung; Leistungen an Services; Bewertung der Lieferanten | KF1, KF5, KF15 | CM | 2 |
+| **IP14** | Workforce and talent management | Personal | Rollen und Fähigkeiten je Person; Schichten und Bereitschaft im Kalender; Zuweisung nach Fähigkeit; Schulungen | KF1, KF7, KF10 | PR | 3 |
+| | **Service-Management-Practices (17)** | | | | | |
+| **IP15** | Availability management | Verfügbarkeit | Verfügbarkeitsziele je Service; Ausfälle aus Incidents und Ereignissen; Verfügbarkeit berechnet, Wartungsfenster ausgenommen; Bericht | KF2, KF6, KF11, KF13 | PR | 3 |
+| **IP16** | Business analysis | Anforderungen | Anforderung (Demand) per Formular; Bewertung und Priorisierung; Phasen bis zur Freigabe; Übergabe an Projekt oder Change | KF3, KF4, KF6, KF8 | PR | 3 |
+| **IP17** | Capacity and performance management | Kapazität | Kennzahlen je CI aus Monitoring oder Import; Schwellwerte; Trend; Maßnahmen | KF6, KF11, KF12 | PR | 3 |
+| **IP18** | Change enablement | Change | Typen Standard, normal, Notfall mit eigenem Statusmodell; Risiko- und Auswirkungsbewertung; Genehmigung in Stufen und CAB; Change-Kalender mit Konflikten; Verknüpfung zu CI, Incident, Problem, Release | KF2, KF3, KF4, KF5, KF6, KF10 | PR | 2 |
+| **IP19** | Incident management | Incident | Erfassung über Portal, Mail, Telefon, Ereignis; Priorität aus Auswirkung und Dringlichkeit; Zuweisung per Regel und Warteschlangen; SLA-Uhr und Eskalation; Major Incident; Lösung, Bestätigung, Umfrage | KF3, KF5, KF6, KF7, KF14, KF15 | SD | 1 |
+| **IP20** | IT asset management | Asset | Lebenszyklus von Bestellung bis Entsorgung; Finanzdaten; Software, Installationen, Lizenzen und Abgleich; Zuordnung zu Person und Ort; Import und Discovery | KF1, KF2, KF6, KF12 | CM | 2 |
+| **IP21** | Monitoring and event management | Ereignisse | Eingang über API und Webhook; Filtern, Entdoppeln, Korrelieren; Regel „Ereignis wird Incident"; Rückmeldung an die Quelle | KF7, KF12, KF13 | IN | 3 |
+| **IP22** | Problem management | Problem | Problem aus Incidents; Ursachenanalyse; Known Error mit Workaround im Wissen; Verknüpfung zu Change | KF2, KF3, KF5 | PR | 2 |
+| **IP23** | Release management | Release | Release mit Inhalt aus Changes; Freigabe und Plan; Kommunikation; Verknüpfung zu Deployment | KF3, KF4, KF10 | PR | 3 |
+| **IP24** | Service catalogue management | Servicekatalog | Services und Angebote mit Formular; Sichtbarkeit nach Zielgruppe; Kosten und Lieferzeit; Bestellung erzeugt Service Request; anonyme Formulare (E26) | KF8, KF9, KF19 | SD | 1 |
+| **IP25** | Service configuration management | CMDB | CI-Typen frei definierbar; Beziehungen mit Typen („hängt ab von", „läuft auf"); Auswirkungsanalyse; Baseline und Vergleich; Identifikation und Abgleich aus Discovery und Bulk-API | KF1, KF2, KF12, KF17 | CM | 2 |
+| **IP26** | Service continuity management | Notfall | Notfallpläne je Service; Wiederanlaufziele (RTO, RPO); Tests mit Ergebnis; Verknüpfung zu Risiko | KF1, KF2, KF10 | PR | 3 |
+| **IP27** | Service design | Service-Entwurf | Entwurf mit Anforderungen, Bausteinen (CIs) und SLAs; Vorlage zur Übergabe in den Katalog; Freigabe | KF2, KF4, KF16 | PR | 3 |
+| **IP28** | Service desk | Service Desk | Arbeitsplatz für Bearbeiter mit Warteschlangen, Ansichten, Massenbearbeitung; Portal für Nutzer; Kanäle Mail, Telefonnotiz, Formular; Vorlagen und Textbausteine; Live-Aktualisierung | KF7, KF8, KF11, KF14 | SD | 1 |
+| **IP29** | Service level management | SLA/OLA | SLA und OLA mit Kalendern und Feiertagen; Fristen je Priorität; Eskalationsstufen; Pause mit Wartegrund; Bericht zur Einhaltung, für jeden Typ, nicht nur Tickets | KF5, KF11 | WF | 1 |
+| **IP30** | Service request management | Service Request | Anfrage aus dem Katalog; Genehmigung in Stufen; Erfüllungsaufgaben; wiederkehrende Anfragen | KF4, KF5, KF8 | SD | 1 |
+| **IP31** | Service validation and testing | Test | Testpläne, Testfälle, Ergebnisse; Abnahme als Bedingung für Change und Release | KF3, KF4 | PR | 3 |
+| | **Technische Management-Practices (3)** | | | | | |
+| **IP32** | Deployment management | Deployment | Umgebungen; Deployments mit Status, verknüpft mit Release, Change und CI; Nachweis, was wo läuft | KF2, KF3 | PR | 3 |
+| **IP33** | Infrastructure and platform management | Infrastruktur | Discovery (Proxmox, VMware, Kubernetes, SNMP, LDAP) und Abgleich über die Bulk-API; Rechenzentrum, Racks, Kabel, Netzwerk; Wartungsfenster | KF2, KF10, KF12 | CM | 2 |
+| **IP34** | Software development and management | Software | Anwendungen und Versionen; Komponenten; Verknüpfung zu Release, Deployment, Problem | KF1, KF2 | CM, PR | 2, 3 |
+
+**Verteilung:** Nur in Meilenstein 1 liegen 6 Practices, nur in Meilenstein 2 ebenfalls 6, nur
+in Meilenstein 3 die übrigen 20. IP5 beginnt in Meilenstein 1, IP34 in Meilenstein 2; beide
+werden in Meilenstein 3 fertig.
+
+### 2.1.1 Was die Pakete vom Kern verlangen
+
+Die Kernfähigkeiten sind die Brücke von der Karte zum Entwurf (H6) und zu den Nebenplänen (H8).
+Jede wird dort genau einer Aufgabe zugeordnet. Drei davon kann GLPI nur im Kern und nicht über
+Plugins: eigene Status, SLA für Changes und Problems, Freigaben in fester Reihenfolge
+(GLPI-Hauptplan §3). Hier sind es KF3, KF5 und KF4, und sie gehören von Anfang an zum Kern.
+
+| # | Kernfähigkeit | Gebraucht von | Plan |
+| --- | --- | --- | --- |
+| **KF1** | Frei definierbare Entitätstypen mit typisierten, validierten Feldern | fast alle; besonders IP1, IP3, IP20, IP25 | PL |
+| **KF2** | Beziehungen mit Typen, als Graph abfragbar, mit Auswirkungsanalyse | IP1, IP10, IP15, IP18, IP25, IP26, IP33 | PL, UI |
+| **KF3** | Statusmodell je Typ: Status, Übergänge, Bedingungen, Pflichtfelder je Status | alle Vorgänge; IP18, IP19, IP22 | WF |
+| **KF4** | Genehmigungen in Stufen, in fester Reihenfolge oder parallel, mit Vertretung und Erinnerung | IP4, IP7, IP18, IP23, IP30 | WF |
+| **KF5** | Fristen und SLA-Uhren mit Kalendern, Feiertagen, Pause und Eskalation, für jeden Typ | IP13, IP18, IP19, IP22, IP29, IP30 | WF |
+| **KF6** | Berechnete Felder und Formeln, auch über Beziehungen (Summe, Maximum, Matrix) | IP2, IP7, IP10, IP11, IP15, IP16, IP19 | PL, EX |
+| **KF7** | Regeln „wenn, dann" auf Ereignisse: zuweisen, einordnen, anlegen, benachrichtigen | IP14, IP19, IP21, IP28 | WF |
+| **KF8** | Formulare mit Abschnitten, Bedingungen und Zielen (was angelegt wird), auch anonym | IP16, IP24, IP28, IP30 | UI, SD |
+| **KF9** | Sichtbarkeit je Datensatz und Rechte je Feld, über den Organisationsbaum vererbt | IP3, IP4, IP24 | PL |
+| **KF10** | Ansichten über Listen hinaus: Kalender, Gantt, Kanban, Graph, Matrix | IP1, IP6, IP8, IP10, IP14, IP18, IP23, IP26, IP33 | UI |
+| **KF11** | Kennzahlen, Dashboards, Berichte mit Zeitplan und Export | IP2, IP5, IP7, IP12, IP15, IP17, IP28, IP29 | UI, PL |
+| **KF12** | Massendaten: Bulk-API, asynchrone Jobs mit Stand, Abgleich (anlegen oder ändern) über Identifikationsregeln, nur Änderungen schreiben (E24) | IP17, IP20, IP21, IP25, IP33 | PL |
+| **KF13** | Ereignisse hinein und hinaus: Webhooks, Ereignisstrom, Abonnements | IP15, IP21; alle Integrationen | PL, IN |
+| **KF14** | Mail hinein und hinaus, Benachrichtigungen mit Vorlagen | IP19, IP28; alle Vorgänge | WF, SD |
+| **KF15** | Umfragen mit Auswertung | IP6, IP9, IP13, IP19 | SD |
+| **KF16** | Pakete erweitern Pakete: Felder, Status, Übergänge, Formulare, Regeln, Ansichten eines anderen Pakets ergänzen, ohne es zu ändern; Basispaket bleibt aktualisierbar (E25) | IP27 und jede volle Tiefe | EX |
+| **KF17** | Versionen von Datensätzen und Vergleich zweier Stände | IP4, IP25 | PL |
+| **KF18** | Kosten und Zeiten an Datensätzen erfassen und summieren | IP8, IP11 | PL |
+| **KF19** | Mehrsprachige Inhalte: Artikel, Katalog, Formulare, Auswahllisten | IP4, IP24 | PL, UI |
+
+### 2.2 Mengengerüst
+
+Aus dem Termin am 2026-09-30 (GLPI-Hauptplan §6), hier die Zielwerte für Entwurf und Lasttest:
+
+| Größe | Wert |
+| --- | --- |
+| Endnutzer | 70.000 |
+| Phase 1, Backend | rund 100 Hypervisoren, rund 4.000 VMs, Switches, Proxmox, Kubernetes |
+| Phase 2, Endgeräte | rund 50.000 Computer, ohne Agent |
+| Tickets | Annahme für den Lasttest: 5.000 je Tag, 10 Jahre Aufbewahrung (V14) |
+
+Folgen für den Entwurf: Discovery schreibt nur Änderungen; Listen sind serverseitig paginiert
+und gefiltert; Tickets und Audit werden partitioniert; Rechteprüfung ist eine SQL-Bedingung, kein
+Nachfiltern in Go.
+
+### 2.3 Mindestumfang: was GLPI kann
+
+„Alles, was GLPI kann" heißt für Meilenstein 3 mindestens die Bereiche unten, gemessen am Kern
+ohne Plugins (E23). Das Funktionsinventar [`funktionsinventar-glpi.md`](funktionsinventar-glpi.md)
+(H4) zerlegt sie je Menüpunkt und ordnet jede Funktion einem Paket oder Kernbaustein zu; was
+entfällt, steht dort mit Grund.
+
+- **Assets:** Computer, Monitore, Netzwerkgeräte, Drucker, Telefone, Peripherie, Software und
+  Versionen, Lizenzen, Racks und Rechenzentren, Kabel, Domains, Appliances, Datenbanken, Cluster,
+  Zertifikate, Leitungen, Verbrauchsmaterial; Beziehungen zwischen allem.
+- **Assistance:** Tickets (Incident, Anfrage), Probleme, Changes, Aufgaben, Planung, Validierung,
+  wiederkehrende Tickets, Vorlagen, Formulare, Statistik, Zufriedenheit.
+- **Management:** Budgets, Lieferanten, Verträge, Dokumente, Projekte, Reservierungen.
+- **Wissen:** Wissensdatenbank mit Kategorien, Sichtbarkeit, FAQ.
+- **Verwaltung:** Nutzer, Gruppen, Entitäten, Profile und Rechte, Regeln (Zuweisung, Import,
+  Wörterbücher), Benachrichtigungen und Vorlagen, Mail-Eingang, Cron, Protokolle, Inventur.
+- **Konfiguration:** Dropdowns, Komponenten, SLA und OLA mit Kalendern, Anmeldung (LDAP, Mail,
+  SSO), API, Webhooks, Plugins.
+- **Oberfläche:** Listen mit gespeicherten Suchen, Massenbearbeitung, Export, Dashboards,
+  Erinnerungen, RSS, Mehrsprachigkeit.
+
+### 2.4 Zeitplan
+
+Offen bis H9. Die Summe der Schätzungen in der Übersicht liegt bei 54 bis 65 Arbeitswochen
+reiner Umsetzung; Abnahme, Kundengespräche und Korrekturschleifen kommen hinzu (V3). Vor H8 lag
+sie bei 43 bis 60. Gestiegen ist sie, weil PL, UI und WF jetzt aus Aufgaben geschätzt sind
+(zusammen 133,5 d statt 16 bis 22 w); die übrigen Pläne sind noch vor ihrem Entwurf geschätzt
+und werden mit H10 vermutlich ebenso wachsen.
+
+### 2.5 Leistungsziele
+
+Muss-Anforderungen nach E31, gemessen ab H11 bei jeder Änderung (E32). **Prod-Größe** heißt:
+70.000 Personen, 50.000 Computer mit je 150 Softwareeinträgen (7,5 Mio. Installationen), die
+Phase 1 aus §2.2 und Tickets für 10 Jahre zu 5.000 je Tag, also gut 18 Mio. (V14). Gemessen wird
+vorerst auf deinem Rechner in WSL (E50); H11 hält dessen Ausstattung fest. „p95" heißt:
+95 % aller Anfragen sind mindestens so schnell.
+
+| # | Was | Ziel | Gemessen |
+| --- | --- | --- | --- |
+| **LZ1** | Einen Datensatz über die API lesen | p95 ≤ 50 ms | Lastwerkzeug, zufällige Datensätze aller großen Typen |
+| **LZ2** | Liste mit 50 Zeilen, mit Filter und Rechten | p95 ≤ 150 ms | Lastwerkzeug, typische gespeicherte Suchen, Nutzer mit eingeschränkter Reichweite |
+| **LZ3** | Volltextsuche | p95 ≤ 300 ms | Lastwerkzeug, Suchbegriffe aus dem Datensatz |
+| **LZ4** | Einen Datensatz schreiben | p95 ≤ 100 ms | Lastwerkzeug, Anlegen und Ändern von Tickets mit Regeln |
+| **LZ5** | Bulk-Abgleich | ≥ 5.000 Datensätze/s je Instanz | Lastwerkzeug, Bulk-API mit gemischten Typen |
+| **LZ6** | Phase 2 voll: 50.000 Computer mit je 150 Softwareeinträgen | ≤ 5 min | Erstbefüllung und Wiederholung über die Bulk-API |
+| **LZ7** | Phase 2 Delta: 1 % geändert | ≤ 30 s | Wiederholung mit 1 % geänderten Computern |
+| **LZ8** | Phase 1 voll: 4.600 Geräte | ≤ 30 s | Erstbefüllung über die Bulk-API |
+| **LZ9** | Seitenwechsel in der Oberfläche | p95 ≤ 500 ms | Playwright, vom Klick bis zur fertigen Seite |
+| **LZ10** | LZ1 bis LZ4 und LZ9 gelten auch während eines Massenlaufs | wie dort | dieselben Messungen, während LZ6 läuft |
+| **LZ11** | Gesamtlast | ≥ 2.000 Anfragen/s | Lastwerkzeug, Mischung aus LZ1 bis LZ4 |
+| **LZ12** | Horizontal skalierbar: `api` ist zustandslos, der Durchsatz wächst mit der Zahl der Instanzen | wächst | LZ11 mit 1, 2 und 4 Instanzen |
+| **LZ13** | Ereignisse eines Bulk-Laufs erreichen Webhooks und Regeln | ≥ 5.000 Ereignisse/s | Lastwerkzeug: Bulk-Lauf wie LZ5, gemessen bis alle dauerhaften Abnehmer des Verteilers durch sind (PL41, E112; neu am 2026-10-28) |
+
+**Herkunft:** Deine Wahl der strengen Stufe am 2026-10-20. Zum Vergleich: Im GLPI-Vorhaben lag das
+Ziel für Phase 2 bei 56 bis 83 Minuten (`..\glpi\docs\01_schnittstellen.md`, K3).
+
+---
+
+## 3. Architektur in Bausteinen
+
+Der Entwurf steht in [`architektur.md`](architektur.md) (H6, E44), die Begründungen je Entscheidung
+in [`adr/`](adr/). In Kürze:
+
+- **Ein Go-Binary mit den Rollen `api` und `worker`** (E35) vor PostgreSQL, Valkey und einem
+  Dateispeicher.
+- **Je Entitätstyp eine echte Tabelle** (E33). Die Definition des Typs entsteht aus drei
+  Schichten (E37).
+- **Rechte als SQL-Bedingung** (E34), Regeln und Formeln in CEL (E45), schwere Logik in WASM
+  (E17).
+- **Massendaten über die Bulk-API** als `COPY` und Abgleich im Worker (E38). Die Oberfläche hält
+  ihre Ziele auch während eines Massenlaufs (LZ10).
+- **Ereignisse über eine Outbox,** hinaus als Webhook, als abrufbarer Strom und per SSE (E39).
+
+---
+
+## 4. Techstack
+
+| Schicht | Wahl | Entscheidung |
+| --- | --- | --- |
+| Backend | Go (aktuelle stabile Version, V13) | E4 |
+| HTTP | `net/http` + `chi` | E18 |
+| Datenbankzugriff | `pgx` + `sqlc`, Migrationen `goose` | E18 |
+| Datenbank | PostgreSQL (Version V13) | E6 |
+| Jobs | River (in PostgreSQL) | E19 |
+| Cache, Sitzungen, Pub/Sub | Valkey | E20 |
+| Suche | PostgreSQL-Volltext hinter Schnittstelle | E21 |
+| Dateien | S3-API (Produkt offen, V23) / Dateisystem hinter Schnittstelle | E22 |
+| Sandbox | WASM per `wazero` | E17 |
+| Workflow | eigene Engine + Workflow-Provider; Flowzilla als Provider 2 | E8 |
+| API | REST + OpenAPI, Webhooks, Ereignisstrom, SSE | E11 |
+| Anmeldung | OIDC/SAML, LDAP/AD-Sync, lokale Konten | E10 |
+| Frontend | React + TypeScript, Vite; Bibliotheken nach E41 | E5, E41 |
+| Ausdrücke | CEL (`cel-go`) | E45 |
+| IDs | UUIDv7 | E36 |
+| SQL für Typtabellen | eigener Builder auf `pgx` | E43 |
+| Schnitt | modularer Monolith, ein Binary, Rollen `api` und `worker` | E35 |
+| Auslieferung | Container; Helm für Kubernetes, Docker Compose für klein | E9 |
+| Lizenz | AGPL, Open Core | E15 |
+| Mandanten | Mandantengrenze im Baum in einer Installation, Nebendaten je Mandant, Instanz je Kunde als Ausweg | E136, E138, E139, E16 |
+
+---
+
+## 5. Konventionen
+
+Entschieden mit H6 (E41 bis E43), damit „React ohne Wildwuchs" (E5) und „Go schlank" (E18) etwas
+bedeuten. Je Zeile ein Beispiel.
+
+| Bereich | Konvention |
+| --- | --- |
+| Go-Struktur | `cmd/itsm` (ein Binary), `internal/<baustein>` je Baustein aus [Architektur](architektur.md) §2, `pkg/` nur für das, was Pakete und Fremdcode nutzen dürfen. Beispiel: `internal/bulk` darf `internal/records` über dessen Schnittstelle nutzen, aber nie dessen Tabellen; `depguard` prüft das |
+| Go-Stil | Standardbibliothek vor Fremdcode; `log/slog` als JSON (E28); Fehler mit `%w`; Tests mit `testing` ohne Zusatzbibliothek; `golangci-lint` mit fester Konfiguration. Beispiel: `return fmt.Errorf("bulk: batch %d: %w", n, err)` |
+| Datenbank | Kerntabellen: jede Änderung als `goose`-Migration in SQL, keine Migration wird nachträglich geändert, Abfragen über `sqlc`. Typtabellen: nur über `internal/schema` und den Builder (E43). Beispiel: `db/migrations/0007_relation.sql` und `db/queries/relation.sql` |
+| API | OpenAPI ist die Quelle; der TypeScript-Client wird daraus erzeugt; keine Hand-Typen für API-Daten im Frontend. Seiten per Schlüssel, nie per Versatz. Beispiel: `GET /api/v1/records/incident?state=new&limit=50&after=…` |
+| Frontend-Bausteine (E41) | Vite; TanStack Router, Query, Table und Virtual; `react-hook-form` + `zod`; shadcn/ui auf Radix und Tailwind; React Flow für den Workflow-Editor; `dnd-kit` für den Formular-Builder; ECharts für Dashboards; `i18next`; Vitest und Playwright. Beispiel: eine Liste ist immer `render/List` mit TanStack Table und Virtual, nie eine eigene Tabelle |
+| Sprache | Oberfläche und Dokumentation Deutsch und Englisch von Anfang an (E42); Code, Bezeichner und Commits Englisch. Beispiel: kein sichtbarer Text im Code, nur Schlüssel wie `t("incident.state.new")` |
+| Barrierefreiheit | BITV 2.0 / WCAG 2.1 AA als Anforderung an jede Komponente (E42); `axe` in Vitest und Playwright, ein Fehler bricht den Build. Beispiel: jedes Formularfeld hat ein Label, jede Aktion ist per Tastatur erreichbar |
+| Lizenzkopf | AGPL-Kopf von Hand in jeder Quelldatei, Rechteinhaber group24 AG. Beispiel: die ersten Zeilen jeder `.go`- und `.ts`-Datei |
+| Leistung | Jede Aufgabe, die Code ändert, läuft durch die Messung aus H11 (E32). Beispiel: Ein neuer Filter braucht einen Index, sonst fällt LZ2 und die Aufgabe ist nicht fertig |
+| Pläne | der Planungsstandard; Aufwand je Aufgabe höchstens zwei Tage. Beispiel: H11 statt „Performance" als eine Aufgabe über Wochen |
+
+---
+
+## 6. Offene Fragen
+
+Alle an dich. Jede mit Empfehlung, damit du nur „ja" oder „anders" sagen musst.
+
+| # | Frage | Empfehlung | Hängt daran |
+| --- | --- | --- | --- |
+| **V1** 🟡 | Produktname? | Arbeitstitel bis Meilenstein 1 behalten; Name braucht Domain und Markenprüfung | H7 |
+| **V3** 🟠 | Wie viel Zeit hast du für Abnahme je Woche, und gibt es einen Zieltermin für Meilenstein 1? | ohne Termin planen, Abnahme 0,5 Tag je Woche annehmen | H9 |
+| **V8** 🟡 | Welche Browser: aktuelle Chrome, Firefox, Edge; kein Internet Explorer, kein Safari-Sonderfall? | ja | UI |
+| **V9** 🟡 | Mail-Eingang (IMAP, Ticket aus Mail) schon in Meilenstein 1? | ja, gehört zum Service Desk | SD |
+| **V11** 🟡 | gRPC-Plugins als zweiter Erweiterungsweg vorsehen, oder bleibt es bei WASM und API? | erst einmal WASM und API; Schnittstelle so schneiden, dass gRPC später passt | EX |
+| **V12** 🟡 | Mobile Oberfläche: responsive Web reicht, keine App? | ja | UI |
+| **V14** 🟡 | Annahmen für den Lasttest: 5.000 Tickets je Tag, 10 Jahre Aufbewahrung? | so annehmen, mit dem Kunden prüfen | BT |
+| **V16** 🟡 | Reihenfolge der Discovery-Quellen in CM: Proxmox, Kubernetes, SNMP, VMware, LDAP? | so, nach Phase 1 des Kunden | CM |
+| **V17** 🟡 | Berichte: eigene Dashboards im Werkzeug, dazu ein lesender Zugang für Grafana oder Metabase? | eigene Dashboards für Nutzer, lesender SQL-Zugang (Sicht, eigene Rolle) für Grafana | UI, PR |
+| **V18** 🟡 | MCP-Server im Umfang, nur lokal, erst Meilenstein 3? | ja | IN |
+| **V21** 🟡 | Grenzen der Sandbox je Aufruf eines WASM-Moduls? | 64 MB Speicher, 50 ms Zeit; ein Paket darf mehr verlangen, der Admin muss es freigeben | EX |
+| **V22** 🟡 | Braucht es einen Verbindungs-Pooler (PgBouncer) vor PostgreSQL? | erst einmal nicht, nur der Pool von `pgx` je Instanz; PgBouncer, sobald die Summe der Pools das Limit von PostgreSQL erreicht, spätestens ab acht Instanzen | PL, BT |
+| **V26** 🟠 | Typen und Kundenschicht für alle Mandanten gleich, oder je Mandant eigene Felder und Statusmodelle? | gleich; Unterschiede je Mandant über Feldzustände und Feldrechte | PL43, UI25 |
+| **V23** 🟡 | Welcher S3-Speicher ersetzt MinIO? Mit den Kollegen zu klären, Fragen in §6.1 | S3 des Kunden nutzen, wo vorhanden; sonst SeaweedFS mitliefern. Vorläufig, bis die Kollegen geantwortet haben | E22, BT, H5 nicht |
+
+**Beantwortet am 2026-10-30:** V25 und V27 (E138), V28 (E139).
+
+**Beantwortet am 2026-10-29:** V24 (E137).
+
+**Beantwortet am 2026-10-20:** V2 (E41), V6 und V7 (E42), V10 (E35), V5 (E48), V13 (E49), V19
+(E50), V20 (E51), V15 (E52), V4 (E55).
+
+**Fragen an die Kollegen:** V23, ausgearbeitet in §6.1.
+
+Fragen an die Fachseite (den Kunden) gibt es noch keine; sie entstehen mit H3 und H4.
+
+
+### 6.1 Fragen an die Kollegen: S3-Speicher statt MinIO
+
+**Befund am 2026-10-20:** Das Repository `minio/minio` ist archiviert (`archived: true` laut
+[GitHub-API](https://api.github.com/repos/minio/minio), Lizenz AGPL-3.0). Nach Berichten Dritter
+gibt es seit Oktober 2025 keine Images mehr, und seit Februar 2026 ist das Projekt nicht mehr
+gepflegt ([linuxiac](https://linuxiac.com/minio-ends-active-development/),
+[glukhov.org](https://glukhov.org/data-infrastructure/object-storage/minio-dead/)). Das Archiv ist
+am Original geprüft, die Zeitpunkte nur bei Dritten gelesen. Die Entwicklung braucht keinen
+S3-Speicher, weil Compose das Dateisystem nutzt (E22). Die Frage betrifft erst den Betrieb im
+Cluster.
+
+**Die Fragen:**
+
+1. **Bestand:** Gibt es im Rechenzentrum des Kunden oder im Hosting der group24 schon einen
+   S3-kompatiblen Objektspeicher, etwa Ceph RGW, NetApp StorageGRID oder Dell ECS? Wer betreibt
+   ihn, und darf eine Fachanwendung mit VS-NfD-Daten ihn nutzen?
+2. **Wenn nicht:** Soll das Werkzeug einen S3-Speicher mitbringen, oder reicht im Kubernetes ein
+   gemeinsames Volume (`ReadWriteMany`, etwa NFS oder CephFS) für das Dateisystem?
+3. **Herkunft:** Gilt die Regel „kein Hersteller unter US-Recht" (GLPI-Hauptplan E12) auch für
+   Open-Source-Bausteine im Betrieb? Wenn ja, muss die Herkunft jedes Kandidaten geprüft werden.
+   Das ist bisher nicht geschehen.
+4. **Lizenz:** Sind AGPL-Bausteine im Betrieb erlaubt, etwa Garage, oder nur Apache und MIT?
+5. **Sicherung:** Wer sichert den Objektspeicher, mit welchem Datenverlust im schlimmsten Fall und
+   welcher Wiederanlaufzeit? Muss die Sicherung zur Datenbank passen, also auf denselben Zeitpunkt?
+6. **Unveränderbarkeit:** Braucht es Versionierung oder eine Sperre gegen Löschen (Object Lock)
+   für Aufbewahrungsfristen?
+7. **Verschlüsselung:** Gibt es Vorgaben für Verschlüsselung im Ruhezustand und für die
+   Schlüsselverwaltung (KMS, HSM)?
+8. **Verfügbarkeit:** Muss der Speicher über zwei Brandabschnitte oder Rechenzentren gespiegelt
+   sein?
+9. **Erfahrung:** Hat jemand im Team Betriebserfahrung mit Ceph, SeaweedFS, RustFS oder Garage?
+10. **Menge:** Wie viel Anhang erwarten wir, etwa Bildschirmfotos und Logdateien an Tickets über
+    10 Jahre? Davon hängt ab, ob ein gemeinsames Volume reicht.
+
+**Kandidaten,** soweit am 2026-10-20 geprüft:
+
+| Kandidat | Lizenz | Stand | Geprüft |
+| --- | --- | --- | --- |
+| S3 des Kunden | — | — | Frage 1 |
+| SeaweedFS | Apache 2.0 | aktiv, letzte Änderung am 2026-10-20, Go | [GitHub-API](https://api.github.com/repos/seaweedfs/seaweedfs) |
+| RustFS | Apache 2.0 | aktiv, letzte Änderung am 2026-10-20, Rust, deutlich jünger | [GitHub-API](https://api.github.com/repos/rustfs/rustfs) |
+| Garage | nicht geprüft | nicht geprüft | Projektseite war nicht abrufbar |
+| Ceph RGW | nicht geprüft | nicht geprüft | — |
+
+Herkunft und Hersteller der Kandidaten sind nicht geprüft (Frage 3).
+---
+
+## 7. Umsetzungsstand
+
+### H1 — Techstack festlegen, 2026-10-20
+
+- **Grundlage:** sieben Fragerunden im Gespräch; je Weiche Optionen mit Für und Wider, Pascal
+  hat entschieden. Rust gegen Go, React gegen Angular und Jobs gegen Valkey wurden auf Nachfrage
+  vertieft.
+- **Belegt:** E1 bis E22 in §1, der Stack in §4.
+- **Nicht geprüft:** keine Bibliothek ist installiert oder ausprobiert; Lizenzverträglichkeit
+  jeder Abhängigkeit mit AGPL wird in H5 geprüft; Versionen sind offen (V13).
+
+### H2 — Arbeitsverzeichnis anlegen, 2026-10-20
+
+- **Grundlage:** E1; Standard §1 (je Verzeichnis eine Fassung) und §10.
+- **Belegt:** `docs/0_maintask.md` (dieser Plan), `docs/planungsstandard.md` mit §1 bis §9 aus
+  `glpi` und eigenem §10.
+- **Nicht geprüft:** kein Git-Repository angelegt (H5, V5); Regel zur Spiegelung nach WSL in
+  §10 hängt an V15.
+
+### H3 — Karte der Practices, 2026-10-20
+
+- **Grundlage:** E7, E25 (deine Antwort am 2026-10-20: schlankes Paket je Practice, aber so
+  gebaut, dass volle Tiefe schnell nachkommt); die 34 Namen aus ITIL 4, gleich in ITIL 5.
+- **Belegt:** §2.1 mit IP1 bis IP34, §2.1.1 mit KF1 bis KF19. Die drei Lücken, die GLPI nur im
+  Kern schließen könnte, sind KF3, KF4 und KF5 (GLPI-Hauptplan §3).
+- **Nicht geprüft:** Die Kernfunktionen sind nicht gegen die ITIL-Practice-Guides abgeglichen,
+  sondern aus deren Kenntnis abgeleitet. Die Meilensteine sind eine Zuordnung, keine Planung; H9
+  macht daraus Termine. Ob 19 Kernfähigkeiten genügen, zeigt erst H6.
+
+### H4 — Funktionsinventar GLPI, 2026-10-20
+
+- **Grundlage:** E23 (nur der Kern), E24 (kein GLPI Agent), E26 bis E30 (deine Antworten auf die
+  Kandidaten zum Streichen und auf vier Zuordnungen, die ich nicht selbst entscheiden wollte).
+  Gelesen mit `git show 11.0.11:<pfad>` im Repository `..\glpi`; das Inventar ist per Skript
+  erzeugt, damit jede Zeilennummer aus der Datei kommt und nicht abgetippt ist.
+- **Belegt:** [`funktionsinventar-glpi.md`](funktionsinventar-glpi.md) mit 248 Funktionen
+  (G1 bis G248), 237 mit Ziel, 11 entfallen. Gemessen in GLPI 11.0.11: 129 Auswahllisten in 21
+  Gruppen (`src/Dropdown.php:1233`), 34 Regelsammlungen, 48 automatische Aktionen in der
+  Erstinstallation (`install/empty_data.php:438`), 67 Sprachen, 28 Fähigkeiten eigener Asset-Typen.
+  Stichproben der Fundstellen gegen den Code: `src/Html.php:1259`, `src/Config.php:1041`,
+  `install/empty_data.php:610`, `src/Dropdown.php:1256` zeigen die genannte Zeile.
+- **Nicht geprüft:** Felder und Reiter innerhalb einer Objektart, die Sonderrechte je Objektart
+  und die Oberfläche selbst (§10 der Bewertung). Plugins sind bewusst nicht erfasst (E23).
+
+### H6 — Architekturentwurf, 2026-10-20
+
+- **Grundlage:** E1 bis E30, H3 (KF1 bis KF19), H4 (Befunde B1 bis B6). Dazu deine Antworten in
+  vier Runden am 2026-10-20: Leistungsziele und Messung (E31, E32), Speicherung und Rechte (E33,
+  E34), Schnitt, IDs, Schichten, Bulk (E35 bis E38), Ereignisse, Filter, Ablage, ADRs (E39, E40,
+  E44), Frontend, Sprache, SQL-Builder (E41 bis E43), Ausdrücke, Aufbewahrung, Partitionen (E45
+  bis E47).
+- **Belegt:** [`architektur.md`](architektur.md) mit 25 Bausteinen in §2, Datenmodell (§3),
+  Schichten (§4), Rechten (§5), API mit Bulk (§6), Ereignissen (§7), Workflow (§8), Sandbox (§9),
+  Oberfläche (§10), Maßnahmen je Leistungsziel (§11) und Verzeichnissen (§12). Leistungsziele in §2.5, Konventionen
+  mit Beispielen in §5, neue Aufgabe H11.
+- **Nachgetragen:** 36 ADR-Dateien unter [`adr/`](adr/), je Entscheidung aus E44 eine, dazu ein Verzeichnis `adr/README.md`. Text von Entscheidung und Verworfenem kommt per Skript aus §1, Kontext und Folgen sind neu geschrieben.
+- **Nicht geprüft:** Nichts ist gebaut oder gemessen. Ob die Leistungsziele mit dem Entwurf
+  erreichbar sind, ist eine Schätzung aus Erfahrung mit PostgreSQL und Go; das zeigt erst H11.
+  Lizenzen der Bibliotheken aus E41, E43 und E45 sind nur nach ihrer bekannten Lizenz
+  eingeordnet (MIT, Apache 2.0), nicht in den Repositories nachgesehen; das macht H5.
+
+### H5 — Repository und Werkzeugkette, 2026-10-20
+
+- **Grundlage:** E48 bis E58; [Architektur](architektur.md) §1, §2 und §12.
+- **Gebaut:** ein Go-Binary `cmd/itsm` mit `serve --role=api|worker|all`, `migrate`,
+  `healthcheck` und `version`. Dazu die Bausteine `platform` (Konfiguration aus
+  Umgebungsvariablen, JSON-Logs), `db` (Pool, Migrationen mit Sperre gegen paralleles Migrieren,
+  `sqlc`-Code), `cache` (Valkey), `httpapi` (`/healthz`, `/readyz`, `/api/v1/version`,
+  Auslieferung der Oberfläche) und `worker` (noch ohne Jobs). Die erste Migration legt `ltree`
+  und `pg_trgm` an. `web/` ist React mit Übersetzung Deutsch und Englisch, ESLint und Prettier,
+  Vitest. Dazu Image (`Dockerfile`, Laufzeit auf `scratch`, Nutzer ohne Rechte),
+  Werkzeug-Container (`tools/Dockerfile`), `compose.yaml`, `scripts/ci.sh`,
+  `scripts/check-license.sh`, `LICENSE` (AGPL-3.0, von gnu.org), `README.md`, `CLAUDE.md`.
+  `git init` ist gemacht, committet ist nichts.
+- **Belegt, gemessen am 2026-10-20 in WSL aus der Windows-Kopie:**
+  - `scripts/ci.sh` läuft durch: Lizenzköpfe, `gofmt`, `sqlc diff`, `go vet`, `golangci-lint`
+    ohne Befund, `go test -race` mit allen Paketen grün. Die Tests gegen PostgreSQL und Valkey
+    liefen wirklich, mit `-v` geprüft: `PASS`, nicht `SKIP`. Danach ESLint, Prettier, Vitest mit
+    6 Tests und der Build.
+  - Mit `docker compose up -d --build` antworten `/healthz` und `/readyz` mit 200 (Datenbank und
+    Valkey „ok"), `/api/v1/version` mit `dev`, eine unbekannte API-Adresse mit 404 als JSON, eine
+    Adresse der Oberfläche mit der Startseite. Der Container meldet sich gesund. Im Browser zeigt
+    die Seite „Server-Version dev", ohne Fehler in der Konsole.
+- **Unterwegs entschieden:** E58 (TypeScript 6.0, ESLint 9), weil die Prüfregeln die neuesten
+  Linien noch nicht tragen; dazu H12.
+- **Nachgetragen:** pnpm 12 legte seinen Paketspeicher als `.pnpm-store/` ins Repository, weil
+  der Cache auf einem anderen Dateisystem liegt. `compose.yaml` lenkt ihn mit
+  `pnpm_config_store_dir` in das Volume um (pnpm 12 liest `pnpm_config_*`, nicht
+  `npm_config_*`), `.gitignore` schließt den Ordner zusätzlich aus. Danach lief die CI aus einem
+  leeren `node_modules` noch einmal grün, und `.pnpm-store/` entstand nicht wieder.
+- **Nicht geprüft:** nur auf diesem Rechner gemessen, nicht in deiner Kopie in WSL. Ein `go vet`
+  oder Build mit deinen eigenen Werkzeugen außerhalb des Containers ist nicht vorgesehen. Die
+  Lizenzen aller Abhängigkeiten sind nicht einzeln geprüft; das braucht ein Werkzeug, das die
+  Lizenzen aus `go.mod` und der pnpm-Sperrdatei liest (Vorschlag für PL). Der Ordner `.idea/` aus
+  deiner IDE liegt im Verzeichnis und ist nicht in `.gitignore`.
+
+### H8 — Nebenpläne PL, UI und WF, 2026-10-20
+
+- **Grundlage:** H3 (KF1 bis KF19), H4 (Inventar), H6 (Architektur, ADRs), Leistungsziele §2.5.
+  Dazu deine Antworten am 2026-10-20: Durchstich zuerst (E59), OpenAPI als Spec mit
+  `oapi-codegen` (E60), Anmeldung in Meilenstein 1 (E61), neutrales Aussehen (E62).
+- **Belegt:** [`01_plattform-kern.md`](01_plattform-kern.md) mit 39 Aufgaben (64 d),
+  [`02_oberflaeche.md`](02_oberflaeche.md) mit 27 (43 d),
+  [`03_workflow-engine.md`](03_workflow-engine.md) mit 18 (26,5 d), je mit Blöcken A bis D.
+  Per Skript geprüft: Alle 141 Inventarzeilen mit Ziel PL, UI oder WF stecken in genau einer
+  Aufgabe, jede Kernfähigkeit dieser drei Pläne hat genau eine tragende Aufgabe (17 von 19; KF15
+  gehört zu SD, KF16 zu EX), keine Aufgabe ist länger als zwei Tage. Jeder Prüfweg nennt einen
+  Befehl oder Klickweg mit dem erwarteten Ergebnis.
+- **Nicht geprüft:** Die Aufwände sind geschätzt, nicht gemessen; der Durchstich (H13) zeigt, wie
+  gut sie sind. Die Prüfwege setzen Teile voraus, die es noch nicht gibt, etwa
+  `itsm package install` und `test/load`; sie entstehen in den genannten Aufgaben. Die vier
+  Fragen, die beim Schreiben entstanden, hast du am selben Tag beantwortet: `lldap` (PL E1),
+  TipTap (UI E1), PMTiles mit MapLibre (UI E2), Mailpit (WF E1).
+
+### H11 — Leistungsmessung als Gate, 2026-10-20
+
+- **Grundlage:** E32, E50, E51 und deine Antworten am 2026-10-20: zwei Stufen (E63), Basislinie
+  im Repository mit deiner Freigabe (E64), Datensatz als NDJSON über die Bulk-API (E65).
+- **Gebaut:** `test/load` mit den Befehlen `machine`, `generate`, `run`, `gate`, `baseline`.
+  - Der Messkern ist ein geschlossenes Modell mit festen Arbeitern, Aufwärmzeit und Messzeit,
+    p50, p95, p99, Durchsatz und Fehlern. Jede Messung wird wiederholt (seit E69 viermal im
+    Wechsel mit der Basislinie); gezählt hat der Median, seit E76 zählt der beste Lauf.
+  - Gemessen wird in zwei Stufen. Die schnelle Stufe nutzt 8 Arbeiter und je 5 s, die volle 32
+    Arbeiter und je 60 s.
+  - Szenarien: LZ1 bis LZ12 mit ihren Zielen und den Aufgaben, auf die sie warten. Dazu zwei
+    Lastproben, die schon heute messbar sind: LP1 `/healthz` und LP2 `/readyz` (eine Abfrage an
+    PostgreSQL, ein PING an Valkey).
+  - Das Gate schlägt in der schnellen Stufe an, wenn das p95 (bester Lauf, E76) um mehr als 10 %
+    und um mehr als 0,1 ms über der Basislinie liegt. Ebenso bei Fehlern, bei einem verschwundenen Szenario
+    und auf anderer Ausstattung. In der vollen Stufe gelten die absoluten Ziele.
+  - Der Generator ist deterministisch und schreibt NDJSON mit `source` und `external_key`.
+  - Ein Bremsproxy (`ITSM_LOAD_INJECT_DELAY`) dient als Selbsttest des Gates.
+  - `scripts/ci.sh` baut, migriert, startet das Werkzeug und misst die schnelle Stufe.
+  - Die erste Basislinie steht in `test/load/baseline.json`, `approved_by` ist leer.
+- **Belegt, gemessen am 2026-10-20 auf dem Messrechner** (Intel Core Ultra 7 255H, 16 Kerne,
+  31,1 GB, WSL2-Kernel 6.6.87.2; von `test/load machine` festgehalten):
+  - **Rauschen:** fünf schnelle Läufe hintereinander. Das Median-p95 von LP1 lag zwischen 0,50
+    und 0,54 ms, das von LP2 zwischen 0,78 und 0,82 ms, also höchstens 0,04 ms
+    Schwankung. Daraus die Rauschgrenze 0,1 ms. Vorher stand im Code 0,5 ms; das hätte bei LP1
+    eine Verdopplung durchgelassen.
+  - **CI grün:** `scripts/ci.sh` mit allen Schritten; das Gate meldet LP1 0,48 ms und LP2 0,72 ms
+    gegen 0,52 und 0,82 ms der Basislinie.
+  - **CI rot mit 3 ms Bremse:** LP1 5,24 ms, LP2 5,61 ms, beide `FAIL`, Rückgabe 1.
+  - **Volle Stufe:** LP1 p95 1,11 ms bei 79.712 Anfragen/s, LP2 p95 1,71 ms bei 33.009
+    Anfragen/s, mit 32 Arbeitern; LZ1 bis LZ12 als „wartet auf …".
+  - **Datensatz Prod:** 70.000 Personen (10 MB), 50.000 Computer mit 7,5 Mio.
+    Softwareeinträgen (514 MB, 6,9 s), 100 Hypervisoren mit 4.000 VMs, 500 Switches mit
+    24.000 Ports, 18.250.000 Tickets (3,7 GB, 45 s), zusammen 4,0 GB. Zweimal mit Startwert 1
+    erzeugt: gleiche SHA-256.
+  - Unit-Tests für Perzentile, Gate, Generator und die ganze Kette mit Bremse, alle grün.
+- **Nachgetragen am 2026-10-20, nach der Abnahme:** Beim ersten CI-Lauf nach PL1 wurde das
+  Gate rot: LP1 0,80 ms statt 0,52 ms. Ursache war nicht PL1, sondern ein `ng serve` mit vier
+  Arbeitsprozessen in WSL, Last 26 auf 16 Kernen; fünf Nachmessungen drifteten von 0,57 bis
+  3,45 ms. Deine Entscheidung E69: A/B im Wechsel gegen das Basis-Binary plus Lastwächter.
+  Umgebaut: `load run --baseline-target`, `load baseline --binary` legt das Binary im Volume
+  `load-baseline` ab, `scripts/ci.sh` startet beide Builds (Ports 18080 und 18081), das Gate
+  vergleicht nur noch innerhalb desselben Laufs; ohne Basis-Binary berichtet es nur. Belege
+  stehen im Umsetzungsstand von PL2. Die neue Basislinie wartet auf deine Freigabe
+  (`approved_by` in `test/load/baseline.json`).
+- **Nicht geprüft:**
+  - Kein LZ ist gemessen, weil es die Endpunkte noch nicht gibt; das Werkzeug zeigt jeweils, auf
+    welche Aufgabe ein LZ wartet. Die volle Stufe gegen LZ1 bis LZ12 läuft erstmals mit dem
+    Durchstich (H13).
+  - Die Messung läuft auf demselben Rechner wie das Werkzeug. Der Lastgenerator nimmt dem Server
+    also CPU weg; für die absoluten Ziele ist das ein Nachteil, kein Vorteil.
+  - Messrechner ist dein Laptop mit Docker in WSL (E50); andere laufende Container stören. Die
+    fünf Läufe lagen eng beieinander, ein späterer Lauf unter Last kann trotzdem rot werden.
+  - Das Laden des Datensatzes über die Bulk-API kommt mit PL31 bis PL33.
+  - LZ9 misst die Oberfläche mit Playwright; das kommt mit UI2.

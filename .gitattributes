@@ -1,0 +1,4 @@
+# LF everywhere (Planungsstandard §10), also when the working copy lives on Windows.
+* text=auto eol=lf
+*.png binary
+*.ico binary

@@ -1,0 +1,3720 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The fixed part of the API (Hauptplan E11, E60): this file is the contract, oapi-codegen
+# generates the server interface from it. The part per entity type (schemas and concrete paths
+# such as /api/v1/records/probe.probe) is added at runtime from the meta-model and served at
+# /api/v1/openapi.json. Record endpoints here are generic over {typeName}.
+openapi: 3.0.3
+info:
+  title: itsm API
+  version: "1"
+  description: |
+    Datensätze sind flach: die Felder des Typs stehen neben den Systemfeldern (id, version,
+    state, org_path, source, external_key, created_at, created_by, updated_at, updated_by,
+    deleted_at). Fehler kommen als RFC 9457 Problem Details. Ändern braucht If-Match mit der
+    Version aus dem ETag. Listen blättern per Schlüssel (after), nie per Versatz.
+
+    Sprachen (PL21): Übersetzbare Textfelder kommen in der Sprache aus Accept-Language (de oder
+    en), ohne Übersetzung auf Deutsch; die Antwort trägt Content-Language. Mit
+    ?translations=all kommt je übersetzbarem Feld ein Objekt {de, en}. Beim Schreiben geht ein
+    einfacher Wert in die Sprache aus Content-Language (Vorgabe de); ein Objekt {de, en} setzt
+    mehrere Sprachen, null entfernt eine Übersetzung.
+
+    Anmeldung (PL5): POST /api/v1/auth/login setzt das Cookie `itsm_session`; alles unter
+    /api/v1 außer version und login braucht es (401 ohne). Jede schreibende Anfrage (POST,
+    PATCH, DELETE) muss den Header `X-Requested-With: itsm` tragen, sonst 403 (CSRF, E74). Ist
+    das Kennwort abgelaufen, antworten alle Aufrufe außer auth/me, auth/password und
+    auth/logout mit 403 password_expired (E77).
+servers:
+  - url: /
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Process is alive
+      tags: [system]
+      responses:
+        "200":
+          description: alive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+  /readyz:
+    get:
+      operationId: getReadyz
+      summary: Dependencies answer
+      tags: [system]
+      responses:
+        "200":
+          description: ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Checks" }
+        "503":
+          description: not ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Checks" }
+  /api/v1/version:
+    get:
+      operationId: getVersion
+      summary: Version of the server
+      tags: [system]
+      responses:
+        "200":
+          description: version
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version: { type: string }
+  /api/v1/openapi.json:
+    get:
+      operationId: getOpenAPI
+      summary: The effective OpenAPI description, including every installed type
+      tags: [system]
+      responses:
+        "200":
+          description: OpenAPI document
+          content:
+            application/json:
+              schema: { type: object }
+  /api/v1/types:
+    get:
+      operationId: listTypes
+      summary: Installed entity types
+      tags: [types]
+      responses:
+        "200":
+          description: types
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TypeDefinition" }
+  /api/v1/types/{typeName}:
+    get:
+      operationId: getType
+      summary: One entity type
+      tags: [types]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      responses:
+        "200":
+          description: type
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TypeDefinition" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}:
+    get:
+      operationId: listRecords
+      summary: Records of a type, outside the trash, paged by key
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/translations"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+        - name: after
+          in: query
+          description: the "next" value of the previous page
+          schema: { type: string }
+        - name: sort
+          in: query
+          description: id, created_at, updated_at or version; a leading "-" sorts descending
+          schema: { type: string }
+        - name: fields
+          in: query
+          description: comma-separated field names to return; id and version always come
+          schema: { type: string }
+        - name: count
+          in: query
+          description: also count the records the filters match, over all pages (total)
+          schema: { type: boolean, default: false }
+        - name: filter
+          in: query
+          description: "equality filters, e.g. filter[state]=new&filter[priority]=3; roles at the record (WF3): filter[actors.assigned]=@my_groups, ids, @me or @my_groups separated by commas, filter[actors] for any role"
+          style: deepObject
+          explode: true
+          schema:
+            type: object
+            additionalProperties: { type: string }
+      responses:
+        "200":
+          description: page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Page" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createRecord
+      summary: Create a record
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Record" }
+      responses:
+        "201":
+          description: created; ETag carries the version
+          headers:
+            ETag: { schema: { type: string } }
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}:field-states:
+    post:
+      operationId: recordFieldStates
+      summary: "What the field states (WF2, B5) say for a record or a draft: required, hidden, read-only, locked, presets"
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FieldStatesRequest" }
+      responses:
+        "200":
+          description: the field states
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FieldStates" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}:query:
+    post:
+      operationId: queryRecords
+      summary: The JSON query (E40, architektur.md §6.3; PL14). where is a tree of and / or / not and conditions on a field (eq, neq, gt, gte, lt, lte, in, nin, contains, starts, ends, null); a field may be a path through references ("parent.title"). The rights of the session apply, the trash is left out. With group or aggregate the answer is rows
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/translations"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Query" }
+      responses:
+        "200":
+          description: a page of records, or rows of an aggregate
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Page"
+                  - $ref: "#/components/schemas/Rows"
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}:bulk:
+    post:
+      operationId: bulkRecords
+      summary: "Synchronous bulk of one source (E38, architektur.md §6.4; PL31): up to 1,000 rows, each with external_key, the key of the record at the source. A row creates the record, changes the fields it delivers, or leaves it alone when its checksum is the one of the last delivery (no version, no history, no event). Every row stands alone: the answer has a result per row. The rights of the caller apply per row, create for new and update for known records"
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: "the same key with the same body within 24 hours gives the same answer without writing again; with another body 422"
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: source
+          in: query
+          required: false
+          description: "the delivering source of an NDJSON stream (the JSON body carries it itself)"
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkRequest" }
+          application/x-ndjson:
+            schema:
+              type: string
+              description: "asynchronous (PL32): one JSON object per line, each with external_key, up to the setting bulk.max_size (1 GiB); the answer is 202 with the job, whose output shows progress and result. Whoever started it may read the job"
+      responses:
+        "200":
+          description: a result per row
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BulkOutcome" }
+        "202":
+          description: the stream is kept and its job queued; follow it at Location
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+        "503": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}:
+    get:
+      operationId: getRecord
+      summary: One record outside the trash
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/translations"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: record; ETag carries the version
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateRecord
+      summary: Change fields of a record; needs If-Match with the version seen
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - name: If-Match
+          in: header
+          description: the ETag of the record as the caller saw it, e.g. "3"
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Record" }
+      responses:
+        "200":
+          description: changed; ETag carries the new version
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+        "428": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: trashRecord
+      summary: Move a record to the trash
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: in the trash }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}:restore:
+    post:
+      operationId: restoreRecord
+      summary: Take a record out of the trash
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: restored }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}:transition:
+    post:
+      operationId: transitionRecord
+      summary: Move a record along a transition of its state model (WF1), with fields in the same version (WF2)
+      description: "409 when the transition does not start from the record's state or its condition is not met (checked against the record with the fields), the detail says which, or when If-Match is stale. 422 for an unknown transition, for fields the state makes read-only and for fields the target state requires (field states, WF2). With fields, If-Match is required (428 without)."
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - name: If-Match
+          in: header
+          description: the ETag of the record as the caller saw it, e.g. "3"; required with fields
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransitionRequest" }
+      responses:
+        "200":
+          description: the record in its new state
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}/transitions:
+    get:
+      operationId: recordTransitions
+      summary: The transitions of the type, with whether each applies to the record now
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: transitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TransitionInfo" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/org/nodes:
+    get:
+      operationId: listOrgNodes
+      summary: The organisation tree in path order (PL6)
+      tags: [org]
+      responses:
+        "200":
+          description: nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OrgNode" }
+    post:
+      operationId: createOrgNode
+      summary: Add a node below a parent; the path becomes parent.name (needs manage_org on core.org for the node)
+      tags: [org]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrgNodeCreate" }
+      responses:
+        "403": { $ref: "#/components/responses/Problem" }
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrgNode" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/org/nodes/{path}:
+    get:
+      operationId: getOrgNode
+      summary: One node
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+      responses:
+        "200":
+          description: node
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrgNode" }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteOrgNode
+      summary: Remove a node without children (not the root) (needs manage_org on core.org for the node)
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+      responses:
+        "403": { $ref: "#/components/responses/Problem" }
+        "204": { description: deleted }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/v1/org/nodes/{path}/settings:
+    get:
+      operationId: orgSettings
+      summary: The effective settings of a node, each with the node it comes from (inheritance)
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+      responses:
+        "200":
+          description: settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OrgSetting" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/org/nodes/{path}/settings/{key}:
+    put:
+      operationId: setOrgSetting
+      summary: Set a value at this node; nodes below inherit it unless they set their own (needs manage_settings on core.org for the node)
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+        - $ref: "#/components/parameters/settingKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: any JSON value
+      responses:
+        "403": { $ref: "#/components/responses/Problem" }
+        "204": { description: set }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+    delete:
+      operationId: unsetOrgSetting
+      summary: Remove this node's own value; it inherits again (needs manage_settings on core.org for the node)
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+        - $ref: "#/components/parameters/settingKey"
+      responses:
+        "403": { $ref: "#/components/responses/Problem" }
+        "204": { description: removed }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/roles:
+    get:
+      operationId: listRoles
+      summary: Every role with its permissions (PL8)
+      tags: [rights]
+      responses:
+        "200":
+          description: roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Role" }
+    post:
+      operationId: createRole
+      summary: Add a role without permissions
+      tags: [rights]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/roles/{name}:
+    get:
+      operationId: getRole
+      summary: One role
+      tags: [rights]
+      parameters:
+        - $ref: "#/components/parameters/roleName"
+      responses:
+        "200":
+          description: role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteRole
+      summary: Remove a role with its permissions and assignments (not admin)
+      tags: [rights]
+      parameters:
+        - $ref: "#/components/parameters/roleName"
+      responses:
+        "204": { description: deleted }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/roles/{name}/permissions:
+    put:
+      operationId: setPermission
+      summary: Add or replace one permission of the role (type, action, scope)
+      description: >-
+        A role may hold several scopes for one type and action (read own and read involved,
+        UI4); they count with OR. Setting a line with the same scope again replaces its
+        condition and field rights.
+      tags: [rights]
+      parameters:
+        - $ref: "#/components/parameters/roleName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Permission" }
+      responses:
+        "204": { description: set }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/roles/{name}/permissions/{typeName}/{action}:
+    delete:
+      operationId: unsetPermission
+      summary: Remove the permissions of the role for a type and action, or only the one with the scope given
+      tags: [rights]
+      parameters:
+        - $ref: "#/components/parameters/roleName"
+        - name: typeName
+          in: path
+          required: true
+          schema: { type: string }
+        - name: action
+          in: path
+          required: true
+          schema: { type: string }
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, enum: [own, group, involved, unit, subtree, all] }
+      responses:
+        "204": { description: removed }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/assignments:
+    get:
+      operationId: listAssignments
+      summary: Every assignment of a role to a person or a group at a node
+      tags: [rights]
+      responses:
+        "200":
+          description: assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Assignment" }
+    post:
+      operationId: createAssignment
+      summary: Give a role to a person or a group (one of them) at a node; the node defaults to root
+      tags: [rights]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssignmentCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Assignment" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/assignments/{id}:
+    delete:
+      operationId: deleteAssignment
+      summary: Remove an assignment
+      tags: [rights]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: removed }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/groups/{id}/members:
+    get:
+      operationId: groupMembers
+      summary: The persons of a group (core.group), with recursive also of its subgroups (PL7)
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: recursive
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: members, by group then name
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GroupMember" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/events:
+    get:
+      operationId: listEvents
+      summary: The events after a position that the session may see (E39, E87; PL24). The header ITSM-Last-Position is where to continue, also when every event of the page was hidden
+      tags: [events]
+      parameters:
+        - name: after
+          in: query
+          description: position of the last event seen; 0 for the start
+          schema: { type: integer, format: int64, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+      responses:
+        "200":
+          description: events in order of position
+          headers:
+            ITSM-Last-Position:
+              description: position of the last event read, seen or hidden
+              schema: { type: integer, format: int64 }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Event" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "410": { $ref: "#/components/responses/Problem" }
+  /api/v1/events/position:
+    get:
+      operationId: getEventPosition
+      summary: The position of the newest event, to start a subscription from now
+      tags: [events]
+      responses:
+        "200":
+          description: position
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [position]
+                properties:
+                  position: { type: integer, format: int64 }
+  /api/v1/events/consumers:
+    get:
+      operationId: listEventConsumers
+      summary: "Where every consumer of the dispatcher stands (PL41): position, lag behind the newest event, the error it fails with (needs read on core.job)"
+      tags: [events]
+      responses:
+        "200":
+          description: consumers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EventConsumer" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/events/failures:
+    get:
+      operationId: listDeliveryFailures
+      summary: "Webhook deliveries and rules that failed for good, after all attempts of their job or given up (PL41), newest first (needs read on core.job)"
+      tags: [events]
+      parameters:
+        - { name: before, in: query, required: false, description: the id of the last failure of the previous page, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200":
+          description: failures
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DeliveryFailure" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/events/stream:
+    get:
+      operationId: streamEvents
+      summary: Server-Sent Events (PL24, UI8). With after (or the Last-Event-ID header on reconnect) the missed events come first, then live; without, the stream starts now. Each message has the position as id, the kind as event and the event as JSON data; a position too old ends the stream with the event gone
+      tags: [events]
+      parameters:
+        - name: after
+          in: query
+          schema: { type: integer, format: int64, minimum: 0 }
+      responses:
+        "200":
+          description: event stream
+          content:
+            text/event-stream:
+              schema: { type: string }
+  /api/v1/jobs:
+    get:
+      operationId: listJobs
+      summary: The log of background jobs, newest first (PL23; needs read on core.job)
+      tags: [jobs]
+      parameters:
+        - name: queue
+          in: query
+          description: a queue name; the standard queues are interactive, default and bulk
+          schema: { type: string }
+        - name: kind
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string, enum: [available, cancelled, completed, discarded, pending, retryable, running, scheduled] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        "200":
+          description: jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/jobs/schedules:
+    get:
+      operationId: listJobSchedules
+      summary: The periodic jobs with their effective schedule, next and last run (G183)
+      tags: [jobs]
+      responses:
+        "200":
+          description: schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/JobSchedule" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/jobs/schedules/{scheduleName}:
+    get:
+      operationId: getJobSchedule
+      summary: One periodic job
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/scheduleName"
+      responses:
+        "200":
+          description: schedule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobSchedule" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateJobSchedule
+      summary: Change schedule or switch a periodic job off or on; takes effect on every instance without restart (needs manage_jobs on core.job)
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/scheduleName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobSchedulePatch" }
+      responses:
+        "200":
+          description: the schedule as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobSchedule" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/jobs/schedules/{scheduleName}:run:
+    post:
+      operationId: runJobSchedule
+      summary: Enqueue a periodic job right away (needs manage_jobs on core.job)
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/scheduleName"
+      responses:
+        "202":
+          description: the enqueued job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/jobs/{jobId}:
+    get:
+      operationId: getJob
+      summary: "One job of the log (read on core.job; an asynchronous bulk run also for whoever started it, PL32)"
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/jobId"
+      responses:
+        "200":
+          description: job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/jobs/{jobId}:cancel:
+    post:
+      operationId: cancelJob
+      summary: Cancel a waiting or running job (needs manage_jobs on core.job)
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/jobId"
+      responses:
+        "200":
+          description: the job as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/jobs/{jobId}:retry:
+    post:
+      operationId: retryJob
+      summary: Make a job available again right away, also a discarded one (needs manage_jobs on core.job)
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/jobId"
+      responses:
+        "200":
+          description: the job as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/audit/auth:
+    get:
+      operationId: auditAuth
+      summary: Sign-ins, sign-outs, tokens and context changes with success and failure, newest first (needs read on core.security_event)
+      tags: [audit]
+      parameters: &securityFilters
+        - { name: kind, in: query, required: false, schema: { type: string } }
+        - { name: outcome, in: query, required: false, description: success or failure, schema: { type: string } }
+        - { name: username, in: query, required: false, schema: { type: string } }
+        - { name: account, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: ip, in: query, required: false, schema: { type: string } }
+        - { name: since, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: until, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: before, in: query, required: false, description: next of the previous page, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+      responses:
+        "200":
+          description: entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityPage" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/audit/changes:
+    get:
+      operationId: auditChanges
+      summary: Changes of accounts, rights, login rules, API clients, directories and settings, newest first (needs read on core.security_event)
+      tags: [audit]
+      parameters: *securityFilters
+      responses:
+        "200":
+          description: entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityPage" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/audit/data:
+    get:
+      operationId: auditData
+      summary: Exports of data (UI5), newest first, with type, condition, columns, format and rows (needs read on core.security_event)
+      tags: [audit]
+      parameters: *securityFilters
+      responses:
+        "200":
+          description: entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityPage" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/search:
+    get:
+      operationId: search
+      summary: Full-text search over every type the caller may read, best first
+      description: >-
+        Web search syntax ("a phrase", -excluded, or); the last word also matches as a prefix.
+        The title field is matched by trigram similarity too, so typos find it. German
+        dictionary, English translations with the English one. The snippet marks hits with
+        <mark>.
+      tags: [search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, maxLength: 200 }
+        - name: types
+          in: query
+          required: false
+          description: comma-separated qualified type names; empty searches every readable type
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: hits
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SearchHit" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/calendars/{calendarId}:add:
+    post:
+      operationId: calendarAdd
+      summary: "The moment that lies a working duration after a start, by a calendar of the core package (WF8): hours per weekday, holidays, time zone"
+      tags: [calendars]
+      parameters:
+        - $ref: "#/components/parameters/calendarId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start, minutes]
+              properties:
+                start: { type: string, format: date-time }
+                minutes: { type: integer, minimum: 0, description: working minutes to add }
+      responses:
+        "200":
+          description: the end
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [end]
+                properties:
+                  end: { type: string, format: date-time, description: in the time zone of the calendar }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/calendars/{calendarId}:between:
+    post:
+      operationId: calendarBetween
+      summary: The working time between two moments, by a calendar (WF8)
+      tags: [calendars]
+      parameters:
+        - $ref: "#/components/parameters/calendarId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from, to]
+              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+      responses:
+        "200":
+          description: the working time
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [minutes]
+                properties:
+                  minutes: { type: number }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/calendars/{calendarId}:holidays:
+    post:
+      operationId: calendarHolidays
+      summary: "Add the public holidays of a German state in a year to a calendar (WF8); days it has stay as they are (needs create on core.calendar_holiday)"
+      tags: [calendars]
+      parameters:
+        - $ref: "#/components/parameters/calendarId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year, state]
+              properties:
+                year: { type: integer, minimum: 1995, maximum: 2200 }
+                state: { type: string, enum: [BW, BY, BE, BB, HB, HH, HE, MV, NI, NW, RP, SL, SN, ST, SH, TH] }
+      responses:
+        "200":
+          description: how many days were added
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [added]
+                properties:
+                  added: { type: integer }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/rules:
+    get:
+      operationId: listRules
+      summary: Every rule "if, then" (WF4), by type and position (needs read on core.rule)
+      tags: [rules]
+      responses:
+        "200":
+          description: rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Rule" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/rules/{ruleName}:
+    get:
+      operationId: getRule
+      summary: One rule
+      tags: [rules]
+      parameters:
+        - $ref: "#/components/parameters/ruleName"
+      responses:
+        "200":
+          description: the rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rule" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: putRule
+      summary: Create the rule of that name or replace it (needs manage_rules on core.rule)
+      description: >-
+        A rule fires on create, update (transitions included) or a schedule (trigger time, with
+        a cron expression). Its condition is CEL over record and changed (the names of the
+        fields the write changes, "actors.<role>" for roles). Mode before changes the record in
+        the same write and may only set and assign; mode after runs as a job once the write is
+        done and may also create and notify. Rules act with the rights of the system; the
+        history names the rule. Lower position runs first; stop ends the run after a match.
+        An escalation level (trigger clock, WF10) names an SLA of its type and a percent of the
+        target or working minutes (WF11); it fires once per clock when the clock reaches that
+        point, after the write, with its condition checked against the record then.
+      tags: [rules]
+      parameters:
+        - $ref: "#/components/parameters/ruleName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RuleInput" }
+      responses:
+        "200":
+          description: replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rule" }
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rule" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+    delete:
+      operationId: deleteRule
+      summary: Remove a rule
+      tags: [rules]
+      parameters:
+        - $ref: "#/components/parameters/ruleName"
+      responses:
+        "204":
+          description: removed
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/webhooks:
+    get:
+      operationId: listWebhooks
+      summary: Every webhook subscription, without secrets (needs read on core.webhook)
+      tags: [webhooks]
+      responses:
+        "200":
+          description: subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Webhook" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createWebhook
+      summary: Subscribe a URL to the events the caller may read; the answer carries the secret once (needs manage_webhooks on core.webhook)
+      description: >-
+        Deliveries are signed after Standard Webhooks (headers webhook-id, webhook-timestamp,
+        webhook-signature) and repeated up to 8 times in about 8 hours. The URL must use https;
+        http only for the hosts of the setting webhooks.allowed_http_hosts of the root node.
+        Empty kinds or types mean all.
+      tags: [webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookInput" }
+      responses:
+        "201":
+          description: created, with the secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Webhook" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/webhooks/{webhookId}:
+    get:
+      operationId: getWebhook
+      summary: One subscription without its secret
+      tags: [webhooks]
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      responses:
+        "200":
+          description: the subscription
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Webhook" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateWebhook
+      summary: Change name, URL, filters or enabled
+      tags: [webhooks]
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookInput" }
+      responses:
+        "200":
+          description: the subscription
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Webhook" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteWebhook
+      summary: Remove a subscription; queued deliveries end without sending
+      tags: [webhooks]
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      responses:
+        "204":
+          description: removed
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/webhooks/{webhookId}:rotate:
+    post:
+      operationId: rotateWebhookSecret
+      summary: Give the subscription a new secret; the answer carries it once
+      tags: [webhooks]
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      responses:
+        "200":
+          description: the subscription with the new secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Webhook" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/webhooks/{webhookId}/deliveries:
+    get:
+      operationId: webhookDeliveries
+      summary: The newest delivery jobs of a subscription; a failed one is retried through POST /api/v1/jobs/{jobId}:retry
+      tags: [webhooks]
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        "200":
+          description: deliveries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WebhookDelivery" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}:purge:
+    post:
+      operationId: purgeRecord
+      summary: Delete a record in the trash for good
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: deleted }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/relations:
+    get:
+      operationId: recordRelations
+      summary: The relations of a record whose other end the session may read (PL15)
+      tags: [relations]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - name: kind
+          in: query
+          schema: { type: string }
+        - name: direction
+          in: query
+          schema: { type: string, enum: [out, in, both], default: both }
+      responses:
+        "200":
+          description: relations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Relation" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/graph:
+    get:
+      operationId: recordGraph
+      summary: The records reachable through relations up to a depth (recursive walk, cycles end; the start is depth 0); unreadable records and their edges are left out
+      tags: [relations]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - name: kinds
+          in: query
+          description: comma separated kinds; all when absent
+          schema: { type: string }
+        - name: direction
+          in: query
+          schema: { type: string, enum: [out, in, both], default: both }
+        - name: depth
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
+      responses:
+        "200":
+          description: graph
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Graph" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/impact:
+    get:
+      operationId: recordImpact
+      summary: Impact analysis (KF2) - what depends on the record, through the kinds marked impact against their direction, by depth
+      tags: [relations]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - name: depth
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
+      responses:
+        "200":
+          description: graph
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Graph" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/relations/kinds:
+    get:
+      operationId: listRelationKinds
+      summary: The installed relation kinds (relations/*.yaml of the packages)
+      tags: [relations]
+      responses:
+        "200":
+          description: kinds
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RelationKind" }
+  /api/v1/relations:
+    post:
+      operationId: createRelation
+      summary: Link two records; needs update on both (audit and event at both ends)
+      tags: [relations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RelationCreate" }
+      responses:
+        "201":
+          description: created (or already there)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Relation" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/relations/{id}:
+    get:
+      operationId: getRelation
+      summary: One relation
+      tags: [relations]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: relation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Relation" }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteRelation
+      summary: Remove a relation; needs update on both ends
+      tags: [relations]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/versions:
+    get:
+      operationId: recordVersions
+      summary: The versions of a record (trait history), oldest first, with the fields each changed
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VersionInfo" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/clocks:
+    get:
+      operationId: recordClocks
+      summary: The SLA clocks of a record (WF9) with the working time counted up to now
+      description: >-
+        A clock is the deadline of one SLA (a record of core.sla) at the record. It runs, pauses
+        and stops in the write that changes the record, and is cancelled when its SLA no longer
+        holds. Whoever reads the record reads its clocks. The remaining time is negative past
+        the deadline.
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: clocks, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Clock" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/versions/{n}:
+    get:
+      operationId: recordVersion
+      summary: The record as it was after version n (fields, state and org_path)
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/versionNo"
+      responses:
+        "200":
+          description: the record at version n
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/versions/{n}:restore:
+    post:
+      operationId: restoreVersion
+      summary: Write the field values of version n as a new version; state, org_path and fields without write right stay
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/versionNo"
+        - name: If-Match
+          in: header
+          description: the ETag of the record as the caller saw it, e.g. "3"
+          schema: { type: string }
+      responses:
+        "200":
+          description: the record with the restored values
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+        "428": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/compare:
+    get:
+      operationId: compareVersions
+      summary: The fields that differ between two versions of a record
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - name: from
+          in: query
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: to
+          in: query
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: comparison
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comparison" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/history:
+    get:
+      operationId: recordHistory
+      summary: Every change of a record, oldest first
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditEntry" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}:batch:
+    post:
+      operationId: batchRecords
+      summary: Change chosen records by id, each at the version the caller saw (UI6); a result per row
+      description: >-
+        Up to 1,000 rows, each with one change: set (fields, roles under actors), transition
+        (with set as its fields) or trash. Every row goes through rights, field states, rules,
+        history and event like a single call, and stands alone. A row whose record has another
+        version now is a conflict and stays unchanged. The bulk (:bulk) stays the path of sources.
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BatchRequest" }
+      responses:
+        "200":
+          description: a result per row, in the order of the rows
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchOutcome" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}:export:
+    post:
+      operationId: exportRecords
+      summary: The list as a file (CSV, XLSX, ODS) with the condition, columns and sort of the list, as visible as the records
+      description: >-
+        Values as the list shows them: labels in the language asked for, references by their
+        title, numbers and dates as typed cells (CSV with semicolons and a byte order mark).
+        Up to 100,000 rows the file comes at once; more run as a job (202) whose output names
+        a temporary file of the caller (GET /api/v1/files/{id}). Every export is kept in the
+        security event log (/api/v1/audit/data).
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExportRequest" }
+      responses:
+        "200":
+          description: the file, with Content-Disposition attachment and the number of rows in ITSM-Rows
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+            application/vnd.oasis.opendocument.spreadsheet:
+              schema: { type: string, format: binary }
+        "202":
+          description: more than 100,000 rows; the job writes the file (output rows, file, name)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+        "503": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/presence:
+    put:
+      operationId: beatPresence
+      summary: Say that the session has the record open (every 20 s); the answer is who else has it open (UI8)
+      description: >-
+        editing says that the form holds unsaved changes. Whoever has not beaten for 60 seconds
+        is gone. Needs read on the record.
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                editing: { type: boolean, default: false }
+      responses:
+        "200":
+          description: the others on the record, those editing first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Presence" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: leavePresence
+      summary: Say that the session has left the record (UI8)
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: left }
+        "503": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/timeline:
+    get:
+      operationId: recordTimeline
+      summary: Entries and history of a record (trait timeline) in order of time, oldest first
+      description: >-
+        Entries come with their author, changes are the rows of the history (trait history).
+        Private entries only with the right read_private on the record; changes of fields the
+        session may not read are left out.
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: timeline
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TimelineItem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: addTimelineEntry
+      summary: Write an entry; needs comment on the record, a private one also read_private
+      description: >-
+        An entry never changes; a correction is a new entry. It keeps the record's version and
+        leaves the event comment, which notifications can name (WF15).
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TimelineEntryCreate" }
+      responses:
+        "201":
+          description: written
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimelineEntry" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}/documents:
+    get:
+      operationId: recordDocuments
+      summary: The files attached to a record (trait documents), as visible as the record
+      tags: [files]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: attached files
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/File" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: attachDocument
+      summary: Attach an uploaded file; needs update on the record, leaves an attach row in its history
+      tags: [files]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttachmentCreate" }
+      responses:
+        "201":
+          description: attached (attaching twice changes nothing)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/File" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}/documents/{fileId}:
+    delete:
+      operationId: detachDocument
+      summary: Detach a file from a record; the file itself stays
+      tags: [files]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/fileId"
+      responses:
+        "204":
+          description: detached
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/costs:
+    get:
+      operationId: recordCosts
+      summary: The cost and time entries of a record (trait costs) with their sums, as visible as the record
+      tags: [costs]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: entries by day of work, sums and currency
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CostList" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: addCost
+      summary: Book an entry; needs update on the record, keeps time_spent and cost_total, leaves the record's version
+      description: >-
+        A time entry takes minutes and optionally an hourly rate (else the setting
+        costs.hourly_rate of the record's node, 0 without one); its amount is minutes × rate / 60.
+        A fixed or material entry takes an amount. spent_on defaults to today.
+      tags: [costs]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CostCreate" }
+      responses:
+        "201":
+          description: booked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cost" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}/costs/{costId}:
+    patch:
+      operationId: changeCost
+      summary: Change an entry that still has the version in If-Match; the kind stays
+      tags: [costs]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/costId"
+        - name: If-Match
+          in: header
+          description: the version of the entry as the caller saw it, e.g. "1"
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CostChange" }
+      responses:
+        "200":
+          description: changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cost" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+        "428": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: removeCost
+      summary: Remove an entry; the sums follow, the history keeps the entry
+      tags: [costs]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/costId"
+      responses:
+        "204":
+          description: removed
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/files:
+    post:
+      operationId: uploadFile
+      summary: Upload a file as the raw body; it stays temporary until it is attached
+      description: >-
+        The name comes from the query parameter name or from Content-Disposition. The content
+        type is detected from the first bytes. Limits are the settings files.max_size and
+        files.blocked_extensions of the root node; unattached files are removed after
+        files.temporary_ttl (24 hours).
+      tags: [files]
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: uploaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/File" }
+        "413": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/files/{id}:
+    get:
+      operationId: downloadFile
+      summary: Download a file; needs read on one of the records it is attached to (or being its uploader while temporary)
+      tags: [files]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: the content, with Content-Disposition attachment and the SHA-256 in ITSM-SHA256
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/notes:
+    get:
+      operationId: recordNotes
+      summary: The notes of a record (trait notes; the notes arrive with PL35)
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "404": { $ref: "#/components/responses/Problem" }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/reservations:
+    get:
+      operationId: recordReservations
+      summary: The reservations of a record (trait reservable; they arrive with the reservation package)
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "404": { $ref: "#/components/responses/Problem" }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/v1/traits:
+    get:
+      operationId: listTraits
+      summary: The traits a type may pull in; the core's with behaviour and the field bundles of the packages (traits/*.yaml)
+      tags: [types]
+      responses:
+        "200":
+          description: traits
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Trait" }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: Sign in with a local account
+      description: Sets the session cookie. Unknown name, wrong password and disabled account all answer 401.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "200":
+          description: signed in
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: End the session
+      tags: [auth]
+      responses:
+        "204":
+          description: signed out, cookie cleared
+        "401": { $ref: "#/components/responses/Problem" }
+  /api/v1/forms:
+    get:
+      operationId: listForms
+      summary: The forms offered in the portal whose target type the session may create (UI11)
+      tags: [forms]
+      responses:
+        "200":
+          description: forms by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FormOffer" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /api/v1/forms/{formId}:
+    get:
+      operationId: getForm
+      summary: One offered form the session may submit (UI11)
+      tags: [forms]
+      parameters:
+        - $ref: "#/components/parameters/formId"
+      responses:
+        "200":
+          description: the form
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormOffer" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/forms/{formId}:submit:
+    post:
+      operationId: submitForm
+      summary: Submit a form; creates a record of its target type with the rights of the session (UI11)
+      description: >-
+        The answers to questions bound to a field become the record, the free answers its first
+        timeline entry, in one transaction; the person of the session becomes the requester when
+        the type has that role. Problems name the question ids.
+      tags: [forms]
+      parameters:
+        - $ref: "#/components/parameters/formId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: object
+                  description: the answer per question id
+                  additionalProperties: true
+      responses:
+        "201":
+          description: the new record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/types/{typeName}/customer:
+    get:
+      operationId: getCustomerLayer
+      summary: The customer layer of a type, each change with whether it applies (PL43)
+      description: >-
+        Needs the right customize on the pseudo type core.type. status is active, inactive
+        (stilled by a forced package update) or conflict (no longer fits the base).
+      tags: [types]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      responses:
+        "200":
+          description: the layer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerLayer" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: addCustomerChange
+      summary: Add one change to the customer layer of a type (PL43)
+      description: >-
+        version is the version of the layer seen (0 for none yet); another version is 409.
+        The change is checked against the effective type; a new field is named k_… and gets
+        its column at once. Fields of the package may only change label, description,
+        required and default, get options, be hidden or moved.
+      tags: [types]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, change]
+              properties:
+                version: { type: integer, format: int64 }
+                change: { $ref: "#/components/schemas/CustomerChange" }
+      responses:
+        "200":
+          description: the layer as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerLayer" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/types/{typeName}/customer/{changeId}:
+    delete:
+      operationId: removeCustomerChange
+      summary: Take a change of the customer layer back, if no later change needs it (PL43)
+      tags: [types]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - name: changeId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: version
+          in: query
+          required: true
+          description: the version of the layer seen
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: the layer as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerLayer" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/customer:
+    get:
+      operationId: exportCustomerLayers
+      summary: Every customer layer with changes, the content of a package of the customer (PL43)
+      tags: [types]
+      responses:
+        "200":
+          description: the layers by type
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CustomerLayer" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+  /api/v1/me/settings:
+    get:
+      operationId: mySettings
+      summary: The settings of the session's person, each with where it comes from (UI9)
+      description: >-
+        source is own, the path of the node whose setting applies (ui.language, ui.time_zone,
+        ui.theme at the person's unit, inherited), or default. defaults are the person's
+        presets per type for creating.
+      tags: [auth]
+      responses:
+        "200":
+          description: settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MySettings" }
+        "401": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: setMySettings
+      summary: Change one's own settings; null takes the own value away (UI9)
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                language: { type: string, nullable: true, enum: [de, en, null] }
+                time_zone: { type: string, nullable: true, description: an IANA time zone }
+                theme: { type: string, nullable: true }
+                defaults:
+                  type: object
+                  description: 'per type an object of field values, or null to remove'
+                  additionalProperties: { type: object, nullable: true, additionalProperties: true }
+      responses:
+        "200":
+          description: the settings as they are now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MySettings" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/auth/me:
+    get:
+      operationId: getMe
+      summary: Who am I
+      tags: [auth]
+      responses:
+        "200":
+          description: the account of the session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /api/v1/auth/context:
+    post:
+      operationId: setContext
+      summary: Narrow the session to one role and one node of the organisation tree (PL10)
+      description: Empty values lift the narrowing. The role must be one the person holds, the node one the person holds a role at or below it.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionContext" }
+      responses:
+        "200":
+          description: the session as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/auth/providers:
+    get:
+      operationId: listAuthProviders
+      summary: The ways to sign in besides the local account (PL11); public, for the sign-in page
+      tags: [auth]
+      security: []
+      responses:
+        "200":
+          description: providers (empty when none is configured)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuthProvider" }
+  /api/v1/auth/oidc/start:
+    get:
+      operationId: startOIDC
+      summary: Send the browser to the identity provider (authorization code flow with PKCE); public
+      tags: [auth]
+      security: []
+      parameters:
+        - name: next
+          in: query
+          description: path of this site to continue at after the sign-in
+          schema: { type: string }
+      responses:
+        "302":
+          description: redirect to the provider, or to /login?error=provider when it cannot start
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/auth/oidc/callback:
+    get:
+      operationId: completeOIDC
+      summary: Where the provider sends the browser back to; sets the session cookie and redirects on. Failures redirect to /login?error=state|refused|disabled|sso
+      tags: [auth]
+      security: []
+      parameters:
+        - name: state
+          in: query
+          schema: { type: string }
+        - name: code
+          in: query
+          schema: { type: string }
+        - name: error
+          in: query
+          schema: { type: string }
+      responses:
+        "302":
+          description: redirect to the next path with the session cookie set
+  /api/v1/auth/rules:
+    get:
+      operationId: listLoginRules
+      summary: The login rules that assign roles from the claims of the provider (G121; needs manage_rights)
+      tags: [auth]
+      responses:
+        "200":
+          description: rules in their order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LoginRule" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createLoginRule
+      summary: Add a login rule
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRuleInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginRule" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/auth/rules/{id}:
+    put:
+      operationId: updateLoginRule
+      summary: Replace a login rule
+      tags: [auth]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRuleInput" }
+      responses:
+        "200":
+          description: the rule as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginRule" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteLoginRule
+      summary: Remove a login rule; the assignments it made go with it
+      tags: [auth]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/directories:
+    get:
+      operationId: listDirectories
+      summary: The LDAP directories persons and groups are synced from (PL12; needs manage_rights). Bind passwords come from ITSM_LDAP_PASSWORD_<NAME>, never from here
+      tags: [directories]
+      responses:
+        "200":
+          description: directories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Directory" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createDirectory
+      summary: Add a directory
+      tags: [directories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DirectoryCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Directory" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/directories/{directoryName}:
+    get:
+      operationId: getDirectory
+      summary: One directory with the result of its last sync
+      tags: [directories]
+      parameters:
+        - $ref: "#/components/parameters/directoryName"
+      responses:
+        "200":
+          description: directory
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Directory" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: updateDirectory
+      summary: Change a directory; fields left out keep their value
+      tags: [directories]
+      parameters:
+        - $ref: "#/components/parameters/directoryName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DirectoryInput" }
+      responses:
+        "200":
+          description: the directory as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Directory" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteDirectory
+      summary: Remove a directory; the persons and groups it created stay
+      tags: [directories]
+      parameters:
+        - $ref: "#/components/parameters/directoryName"
+      responses:
+        "204": { description: removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/directories/{directoryName}:sync:
+    post:
+      operationId: syncDirectory
+      summary: Queue a sync of the directory now (job ldap.sync in the queue bulk); the job log shows the result
+      tags: [directories]
+      parameters:
+        - $ref: "#/components/parameters/directoryName"
+      responses:
+        "202":
+          description: the queued job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/auth/token:
+    post:
+      operationId: issueToken
+      summary: OAuth 2 token endpoint for API clients (client credentials, RFC 6749 §4.4; PL13). Public, form body, no CSRF header; the client comes as form fields or HTTP Basic. Errors follow RFC 6749 §5.2
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type]
+              properties:
+                grant_type: { type: string, enum: [client_credentials] }
+                client_id: { type: string }
+                client_secret: { type: string }
+      responses:
+        "200":
+          description: a bearer token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Token" }
+        "400": { description: invalid_request or unsupported_grant_type }
+        "401": { description: invalid_client }
+        "403": { description: "access_denied, the address is outside the client's ranges" }
+  /api/v1/clients:
+    get:
+      operationId: listClients
+      summary: The API clients (PL13; needs manage_rights). Secrets are never shown
+      tags: [clients]
+      responses:
+        "200":
+          description: clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Client" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createClient
+      summary: Add a client with its account and person; the answer carries the secret this once
+      tags: [clients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientCreate" }
+      responses:
+        "201":
+          description: created, with the secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientWithSecret" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/clients/{clientId}:
+    get:
+      operationId: getClient
+      summary: One client
+      tags: [clients]
+      parameters:
+        - $ref: "#/components/parameters/clientId"
+      responses:
+        "200":
+          description: client
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Client" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: updateClient
+      summary: Change name, address ranges, limits or state; disabling revokes the tokens
+      tags: [clients]
+      parameters:
+        - $ref: "#/components/parameters/clientId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientInput" }
+      responses:
+        "200":
+          description: the client as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Client" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteClient
+      summary: Remove the client, revoke its tokens and block its account
+      tags: [clients]
+      parameters:
+        - $ref: "#/components/parameters/clientId"
+      responses:
+        "204": { description: removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/clients/{clientId}:rotate:
+    post:
+      operationId: rotateClientSecret
+      summary: Give the client a new secret (shown this once); tokens issued so far stay valid
+      tags: [clients]
+      parameters:
+        - $ref: "#/components/parameters/clientId"
+      responses:
+        "200":
+          description: the client with its new secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientWithSecret" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/auth/password:
+    post:
+      operationId: changePassword
+      summary: Change the own password
+      description: The current password must match; the new one must satisfy the rules (E73). Clears a password expiry.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordChange" }
+      responses:
+        "204":
+          description: changed
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: itsm_session
+  parameters:
+    formId:
+      name: formId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    calendarId:
+      name: calendarId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ruleName:
+      name: ruleName
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
+    roleName:
+      name: name
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
+    orgPath:
+      name: path
+      in: path
+      required: true
+      description: path in the organisation tree, like root.it.support
+      schema: { type: string, pattern: "^root(\\.[a-z][a-z0-9_]*)*$" }
+    settingKey:
+      name: key
+      in: path
+      required: true
+      description: dotted snake_case, like ticket.default_priority
+      schema: { type: string, pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$" }
+    typeName:
+      name: typeName
+      in: path
+      required: true
+      description: qualified type name, package.type
+      schema: { type: string, pattern: "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$" }
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    versionNo:
+      name: n
+      in: path
+      required: true
+      description: a version number of the record, from 1
+      schema: { type: integer, format: int64, minimum: 1 }
+    translations:
+      name: translations
+      in: query
+      required: false
+      description: all returns every language of a translatable field as an object {de, en} (PL21)
+      schema: { type: string, enum: [all] }
+    fileId:
+      name: fileId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    webhookId:
+      name: webhookId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    costId:
+      name: costId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    jobId:
+      name: jobId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    clientId:
+      name: clientId
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9_-]{0,62}$" }
+    directoryName:
+      name: directoryName
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9_-]{0,62}$" }
+    scheduleName:
+      name: scheduleName
+      in: path
+      required: true
+      description: name of the periodic job, which is also its job kind
+      schema: { type: string, pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$" }
+  responses:
+    Problem:
+      description: error
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    ValidationProblem:
+      description: validation error
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ValidationProblem" }
+  schemas:
+    Permission:
+      type: object
+      required: [type_name, action, scope]
+      properties:
+        type_name: { type: string, description: package.type or * }
+        action: { type: string, description: "read, create, update, delete, a special right, or *" }
+        scope: { type: string, enum: [own, group, involved, unit, subtree, all], description: "involved: records where the person or one of their groups holds a role (WF3)" }
+        condition: { type: string, description: "CEL, comes with PL9" }
+        fields: { description: "field rights, come with PL9" }
+    Role:
+      type: object
+      required: [id, name, label, description, permissions]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        label:
+          type: object
+          additionalProperties: { type: string }
+        description:
+          type: object
+          additionalProperties: { type: string }
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/Permission" }
+    RoleCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
+        label:
+          type: object
+          additionalProperties: { type: string }
+        description:
+          type: object
+          additionalProperties: { type: string }
+    Assignment:
+      type: object
+      required: [id, role, org_path]
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string }
+        person_id: { type: string, format: uuid }
+        group_id: { type: string, format: uuid }
+        org_path: { type: string }
+    AssignmentCreate:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string }
+        person_id: { type: string, format: uuid }
+        group_id: { type: string, format: uuid }
+        org_path: { type: string, default: root }
+    GroupMember:
+      type: object
+      required: [person_id, last_name, group_id, group_name]
+      properties:
+        person_id: { type: string, format: uuid }
+        last_name: { type: string }
+        first_name: { type: string }
+        email: { type: string }
+        group_id: { type: string, format: uuid, description: the group the membership comes from }
+        group_name: { type: string }
+    OrgNode:
+      type: object
+      required: [path, name, label]
+      properties:
+        path: { type: string }
+        name: { type: string }
+        label:
+          type: object
+          additionalProperties: { type: string }
+        parent: { type: string }
+        tenant: { type: boolean, description: "the node is a tenant (PL44): directly below the root, with data and accounts of its own" }
+    OrgNodeCreate:
+      type: object
+      required: [parent, name]
+      properties:
+        parent: { type: string, description: path of the node above }
+        name: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
+        label:
+          type: object
+          additionalProperties: { type: string }
+    OrgSetting:
+      type: object
+      required: [key, value, source]
+      properties:
+        key: { type: string }
+        value: { description: any JSON value }
+        source: { type: string, description: the node whose value applies }
+    TransitionRequest:
+      type: object
+      required: [transition]
+      properties:
+        transition: { type: string, description: name of the transition in the type definition }
+        fields:
+          type: object
+          additionalProperties: true
+          description: "fields (and actors) set in the same version, like a PATCH, e.g. {\"solution\": \"…\"}"
+    FieldStatesRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid, description: the record; without it a new record of the type }
+        values:
+          type: object
+          additionalProperties: true
+          description: draft values over the record, for the form variant
+    FieldStates:
+      type: object
+      required: [state, required, hidden, read_only, locked, defaults]
+      properties:
+        state: { type: string, description: the state the rules were evaluated for }
+        required:
+          type: array
+          items: { type: string }
+        hidden:
+          type: array
+          items: { type: string }
+          description: not shown in the form; the API keeps them
+        read_only:
+          type: array
+          items: { type: string }
+        locked: { type: boolean, description: "read_only * : the whole record, roles included" }
+        defaults:
+          type: object
+          additionalProperties: true
+          description: presets of a new record
+    TransitionInfo:
+      type: object
+      required: [name, label, to, allowed]
+      properties:
+        name: { type: string }
+        label:
+          type: object
+          additionalProperties: { type: string }
+        to: { type: string }
+        allowed: { type: boolean }
+        reason:
+          type: string
+          description: why it is not allowed, "state" or "condition"
+    Event:
+      type: object
+      required: [position, at, kind, type_name, record_id, payload]
+      properties:
+        position: { type: integer, format: int64 }
+        at: { type: string, format: date-time }
+        kind: { type: string, enum: [create, update, trash, restore, purge, transition] }
+        type_name: { type: string }
+        record_id: { type: string, format: uuid }
+        actor: { type: string, format: uuid }
+        payload: { type: object, additionalProperties: true }
+    SecurityEvent:
+      type: object
+      required: [id, at, category, kind, outcome, details]
+      properties:
+        id: { type: integer, format: int64 }
+        at: { type: string, format: date-time }
+        category: { type: string, enum: [auth, change, data] }
+        kind: { type: string }
+        outcome: { type: string, enum: [success, failure] }
+        account: { type: string, format: uuid }
+        username: { type: string }
+        ip: { type: string }
+        user_agent: { type: string }
+        reason: { type: string }
+        target: { type: string }
+        details: { type: object, additionalProperties: true }
+        tenant: { type: string, description: "the tenant of the entry (PL45); absent for the installation" }
+    SecurityPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SecurityEvent" }
+        next: { type: integer, format: int64 }
+    SearchHit:
+      type: object
+      required: [type, id, rank, snippet]
+      properties:
+        type: { type: string }
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        rank: { type: number }
+        snippet: { type: string }
+    Webhook:
+      type: object
+      required: [id, name, url, owner, kinds, types, enabled, position, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        url: { type: string }
+        owner: { type: string, format: uuid, description: the account whose rights decide what is sent }
+        kinds:
+          type: array
+          items: { type: string }
+        types:
+          type: array
+          items: { type: string }
+        enabled: { type: boolean }
+        position: { type: integer, format: int64, description: the last event handed to the delivery queue }
+        tenant: { type: string, description: "the tenant whose events the subscription gets (PL45); root without tenants" }
+        secret: { type: string, description: only right after create or rotate }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, format: uuid }
+    WebhookInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 200 }
+        url: { type: string }
+        kinds:
+          type: array
+          items: { type: string }
+        types:
+          type: array
+          items: { type: string }
+        enabled: { type: boolean }
+    WebhookDelivery:
+      type: object
+      required: [job, position, state, attempt, max_attempts, created_at, scheduled_at]
+      properties:
+        job: { type: integer, format: int64 }
+        position: { type: integer, format: int64 }
+        state: { type: string }
+        attempt: { type: integer }
+        max_attempts: { type: integer }
+        last_error: { type: string }
+        created_at: { type: string, format: date-time }
+        scheduled_at: { type: string, format: date-time }
+        finalized_at: { type: string, format: date-time }
+    Job:
+      type: object
+      required: [id, kind, queue, state, priority, attempt, max_attempts, created_at, scheduled_at, args]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { type: string }
+        queue: { type: string }
+        state: { type: string, enum: [available, cancelled, completed, discarded, pending, retryable, running, scheduled] }
+        priority: { type: integer }
+        attempt: { type: integer }
+        max_attempts: { type: integer }
+        created_at: { type: string, format: date-time }
+        scheduled_at: { type: string, format: date-time }
+        attempted_at: { type: string, format: date-time }
+        finalized_at: { type: string, format: date-time }
+        args: { type: object, additionalProperties: true }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/JobError" }
+        output:
+          description: "what the job reported: for an asynchronous bulk run the progress while it runs and the result (done, lines, created, updated, unchanged, errors, the first 1,000 failures)"
+    JobError:
+      type: object
+      required: [at, attempt, error]
+      properties:
+        at: { type: string, format: date-time }
+        attempt: { type: integer }
+        error: { type: string }
+    JobSchedule:
+      type: object
+      required: [name, queue, default_schedule, schedule, enabled]
+      properties:
+        name: { type: string }
+        label: { type: object, additionalProperties: { type: string } }
+        queue: { type: string }
+        default_schedule: { type: string, description: cron expression of the code }
+        schedule: { type: string, description: "effective cron expression (five fields, local time of the worker)" }
+        enabled: { type: boolean }
+        next_run: { type: string, format: date-time }
+        last_run: { $ref: "#/components/schemas/Job" }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, format: uuid }
+    JobSchedulePatch:
+      type: object
+      properties:
+        schedule: { type: string, description: cron expression with five fields }
+        enabled: { type: boolean }
+    Credentials:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
+        password: { type: string, format: password }
+    Me:
+      type: object
+      required: [id, username, display_name, password_expired, session_expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+        password_expired:
+          type: boolean
+          description: when true only auth/me, auth/password and auth/logout are allowed
+        session_expires_at: { type: string, format: date-time }
+        active_role: { type: string, description: "the role the session is narrowed to, if any" }
+        active_org: { type: string, description: "the node the session is narrowed to, if any" }
+        roles:
+          type: array
+          items: { type: string }
+          description: the roles the person holds
+        workplace:
+          type: boolean
+          description: "the session may use the workplace (right workplace on core.ui, UI10); without, the portal"
+        person_id: { type: string, format: uuid, description: the person of the account }
+        nodes:
+          type: array
+          items: { type: string }
+          description: the nodes the person holds roles at
+        tenant: { type: string, description: "the tenant the session works in (PL44); root while the installation has no tenants" }
+        tenants:
+          type: array
+          description: the tenants the account may work in, one at a time; one entry for an account bound to a tenant
+          items: { $ref: "#/components/schemas/TenantRef" }
+    TenantRef:
+      type: object
+      required: [path, label]
+      properties:
+        path: { type: string }
+        label:
+          type: object
+          additionalProperties: { type: string }
+    SessionContext:
+      type: object
+      properties:
+        role: { type: string }
+        org_path: { type: string }
+        tenant: { type: string, description: "switch to this tenant (PL44); role and node then start empty unless given" }
+    Token:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer, description: seconds }
+    ClientInput:
+      type: object
+      properties:
+        name: { type: string }
+        ip_ranges:
+          type: array
+          description: CIDRs or single addresses the client may call from; empty means any
+          items: { type: string }
+        rate_limit: { type: integer, minimum: 1, maximum: 1000000, description: requests per minute; absent means the setting api.rate_limit of the root node (600) }
+        token_ttl: { type: integer, minimum: 60, maximum: 2592000, description: seconds a token lives; absent means the setting api.token_ttl (3600) }
+        enabled: { type: boolean }
+    ClientCreate:
+      allOf:
+        - type: object
+          required: [client_id]
+          properties:
+            client_id: { type: string, pattern: "^[a-z][a-z0-9_-]{0,62}$", description: also the username of the client's account }
+        - $ref: "#/components/schemas/ClientInput"
+    Client:
+      type: object
+      required: [client_id, account_id, name, ip_ranges, enabled, created_at, updated_at]
+      properties:
+        client_id: { type: string }
+        account_id: { type: string, format: uuid }
+        person_id: { type: string, format: uuid, description: the person that holds the roles }
+        name: { type: string }
+        ip_ranges:
+          type: array
+          items: { type: string }
+        rate_limit: { type: integer }
+        token_ttl: { type: integer }
+        enabled: { type: boolean }
+        last_used_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, format: uuid }
+    ClientWithSecret:
+      allOf:
+        - $ref: "#/components/schemas/Client"
+        - type: object
+          required: [secret]
+          properties:
+            secret: { type: string, description: shown only in this answer }
+    DirectoryAttributes:
+      type: object
+      description: LDAP attributes behind the fields; empty means the default (entryUUID, uid, givenName, sn, mail, telephoneNumber, mobile, cn, member). Active Directory uses objectGUID, sAMAccountName and member
+      properties:
+        id: { type: string }
+        username: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        mobile: { type: string }
+        group_name: { type: string }
+        group_member: { type: string }
+    DirectoryInput:
+      type: object
+      required: [url, bind_dn, base_dn]
+      properties:
+        url: { type: string, description: "ldap://host:389 or ldaps://host:636" }
+        bind_dn: { type: string }
+        base_dn: { type: string }
+        person_filter: { type: string, default: "(objectClass=person)" }
+        group_filter: { type: string, default: "(objectClass=groupOfUniqueNames)" }
+        attributes: { $ref: "#/components/schemas/DirectoryAttributes" }
+        org_path: { type: string, default: root, description: the node persons and groups are created at }
+        start_tls: { type: boolean, default: false }
+        skip_verify: { type: boolean, default: false, description: accept any certificate (test directories only) }
+        page_size: { type: integer, minimum: 0, maximum: 10000, default: 500, description: 0 turns paging off }
+        enabled: { type: boolean, default: true }
+    DirectoryCreate:
+      allOf:
+        - type: object
+          required: [name]
+          properties:
+            name: { type: string, pattern: "^[a-z][a-z0-9_-]{0,62}$" }
+        - $ref: "#/components/schemas/DirectoryInput"
+    Directory:
+      type: object
+      required: [name, url, bind_dn, base_dn, person_filter, group_filter, attributes, org_path, start_tls, skip_verify, page_size, enabled, created_at, updated_at]
+      properties:
+        name: { type: string }
+        url: { type: string }
+        bind_dn: { type: string }
+        base_dn: { type: string }
+        person_filter: { type: string }
+        group_filter: { type: string }
+        attributes: { $ref: "#/components/schemas/DirectoryAttributes" }
+        org_path: { type: string }
+        start_tls: { type: boolean }
+        skip_verify: { type: boolean }
+        page_size: { type: integer }
+        enabled: { type: boolean }
+        last_sync_at: { type: string, format: date-time }
+        last_result: { type: object, additionalProperties: true, description: counts of the last sync }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, format: uuid }
+    AuthProvider:
+      type: object
+      required: [name, start_url]
+      properties:
+        name: { type: string }
+        start_url: { type: string, description: where to send the browser to sign in }
+    LoginRule:
+      type: object
+      required: [id, position, name, condition, role, org_path, enabled, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        position: { type: integer }
+        name: { type: string }
+        condition: { type: string, description: 'CEL over `claims`, e.g. ''"it-admins" in claims.groups''' }
+        role: { type: string }
+        org_path: { type: string }
+        enabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, format: uuid }
+    LoginRuleInput:
+      type: object
+      required: [name, condition, role]
+      properties:
+        name: { type: string, pattern: "^[a-z][a-z0-9_-]{0,62}$" }
+        condition: { type: string }
+        role: { type: string }
+        org_path: { type: string, default: root }
+        enabled: { type: boolean, default: true }
+        position: { type: integer, minimum: 0, maximum: 10000, default: 100 }
+    PasswordChange:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, format: password }
+        new_password: { type: string, format: password }
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+    Checks:
+      type: object
+      additionalProperties: { type: string }
+    CustomerLayer:
+      type: object
+      required: [type, version, changes]
+      properties:
+        type: { type: string }
+        version: { type: integer, format: int64 }
+        changes:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerChange" }
+    CustomerChange:
+      type: object
+      description: one change of the customer layer (PL43); id, at, by and status are set by the server
+      required: [op, field]
+      properties:
+        id: { type: string }
+        op: { type: string, enum: [add_field, change_field, add_options, hide_field, show_field, remove_field, move_field] }
+        field: { type: string }
+        new: { type: object, additionalProperties: true, description: "add_field: the field, as in a type definition" }
+        set:
+          type: object
+          description: "change_field: label, description, required, default; max_length only on fields of the customer layer"
+          additionalProperties: true
+        options:
+          type: array
+          items: { type: object, additionalProperties: true }
+        after: { type: string, description: "move_field: the field to put it behind; empty for the first place" }
+        at: { type: string, format: date-time }
+        by: { type: string }
+        inactive: { type: string }
+        status: { type: string, enum: [active, inactive, conflict] }
+        reason: { type: string }
+    FormOffer:
+      type: object
+      required: [id, name, target_type, definition]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        target_type: { type: string, description: the type the form creates }
+        definition: { $ref: "#/components/schemas/FormDefinition" }
+    FormDefinition:
+      type: object
+      description: the structure of a form as kept in the field definition of core.form (UI11)
+      required: [sections]
+      properties:
+        title:
+          type: object
+          description: the name of the form in other languages than German (UI12)
+          additionalProperties: { type: string }
+        intro:
+          type: object
+          description: the description of the form in other languages than German (UI12)
+          additionalProperties: { type: string }
+        sections:
+          type: array
+          items: { $ref: "#/components/schemas/FormSection" }
+    FormSection:
+      type: object
+      required: [id, title, questions]
+      properties:
+        id: { type: string }
+        title: { type: object, additionalProperties: { type: string } }
+        show_if:
+          type: array
+          items: { $ref: "#/components/schemas/FormCondition" }
+        questions:
+          type: array
+          items: { $ref: "#/components/schemas/FormQuestion" }
+    FormQuestion:
+      type: object
+      description: bound to a field of the target type (field) or free with a type of the core (type)
+      required: [id]
+      properties:
+        id: { type: string }
+        field: { type: string }
+        type: { type: string, enum: [text, number, boolean, date, datetime, choice] }
+        label: { type: object, additionalProperties: { type: string } }
+        description: { type: object, additionalProperties: { type: string } }
+        required: { type: boolean }
+        options:
+          type: array
+          items:
+            type: object
+            required: [value, label]
+            properties:
+              value: { type: string }
+              label: { type: object, additionalProperties: { type: string } }
+        show_if:
+          type: array
+          items: { $ref: "#/components/schemas/FormCondition" }
+    FormCondition:
+      type: object
+      description: shows a section or question only when the answer to an earlier question holds (UI12); all conditions must hold
+      required: [question, op]
+      properties:
+        question: { type: string, description: the id of an earlier question }
+        op: { type: string, enum: [eq, ne, answered, empty] }
+        value: { type: string, description: 'for eq and ne: the answer as text, true or false for yes/no, the value of an option' }
+    Record:
+      type: object
+      description: system fields and the fields of the type side by side
+      additionalProperties: true
+    Query:
+      type: object
+      properties:
+        where:
+          type: object
+          additionalProperties: true
+          description: '{"and": [{"field": "state", "in": ["new"]}, {"field": "priority", "gte": 3}, {"not": {"field": "parent.title", "contains": "x"}}, {"field": "actors.assigned", "eq": "@my_groups"}]}; roles at the record take eq, in (ids, @me, @my_groups) and null'
+        fields:
+          type: array
+          items: { type: string }
+          description: fields to return; paths through references are allowed ("parent.title")
+        sort:
+          type: array
+          items: { type: string }
+          description: one field, "-" for descending; id breaks ties
+        limit: { type: integer, minimum: 1, maximum: 500, default: 50 }
+        after: { type: string, description: the next cursor of the previous page }
+        count: { type: boolean, description: also count the matches over all pages }
+        group:
+          type: array
+          items: { type: string }
+          description: fields to group by (then rows come back)
+        aggregate:
+          type: object
+          description: '{"n": {"count": "*"}, "p": {"sum": "priority"}}; count, sum, min, max, avg'
+          additionalProperties:
+            type: object
+            properties:
+              count: { type: string }
+              sum: { type: string }
+              min: { type: string }
+              max: { type: string }
+              avg: { type: string }
+    Rows:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    Page:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Record" }
+        next:
+          type: string
+          description: pass as "after" to get the next page; absent on the last page
+        total:
+          type: integer
+          format: int64
+          description: number of matching records over all pages, when count was asked for
+    TypeDefinition:
+      type: object
+      description: the effective definition of an entity type
+      additionalProperties: true
+    RelationEnd:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string }
+        id: { type: string, format: uuid }
+    Relation:
+      type: object
+      required: [id, kind, from, to, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string }
+        from: { $ref: "#/components/schemas/RelationEnd" }
+        to: { $ref: "#/components/schemas/RelationEnd" }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid }
+    RelationCreate:
+      type: object
+      required: [kind, from, to]
+      properties:
+        kind: { type: string, description: "qualified kind, e.g. core.depends_on" }
+        from: { $ref: "#/components/schemas/RelationEnd" }
+        to: { $ref: "#/components/schemas/RelationEnd" }
+    VersionInfo:
+      type: object
+      required: [version, at, actions, changed]
+      properties:
+        version: { type: integer, format: int64 }
+        at: { type: string, format: date-time }
+        actor: { type: string, format: uuid }
+        actions: { type: array, items: { type: string } }
+        changed: { type: array, items: { type: string } }
+    Comparison:
+      type: object
+      required: [from, to, changes]
+      properties:
+        from: { type: integer, format: int64 }
+        to: { type: integer, format: int64 }
+        changes:
+          type: array
+          items:
+            type: object
+            required: [field]
+            properties:
+              field: { type: string }
+              from: {}
+              to: {}
+    File:
+      type: object
+      required: [id, name, content_type, size, sha256, state, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        content_type: { type: string }
+        size: { type: integer, format: int64 }
+        sha256: { type: string }
+        state: { type: string, enum: [temporary, stored] }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid }
+        attached_at: { type: string, format: date-time }
+        attached_by: { type: string, format: uuid }
+    AttachmentCreate:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: uuid, description: id from POST /api/v1/files }
+    CostCreate:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [time, fixed, material] }
+        description: { type: string, maxLength: 1000, nullable: true }
+        spent_on: { type: string, format: date, description: "day of the work, default today" }
+        person: { type: string, format: uuid, nullable: true, description: id of a core.person }
+        minutes: { type: integer, minimum: 1, maximum: 525600, description: time entries only }
+        rate: { type: number, minimum: 0, nullable: true, description: "hourly rate, time entries only" }
+        amount: { type: number, minimum: 0, description: fixed and material entries only }
+    CostChange:
+      type: object
+      properties:
+        description: { type: string, maxLength: 1000, nullable: true }
+        spent_on: { type: string, format: date }
+        person: { type: string, format: uuid, nullable: true }
+        minutes: { type: integer, minimum: 1, maximum: 525600 }
+        rate: { type: number, minimum: 0, nullable: true }
+        amount: { type: number, minimum: 0 }
+    Cost:
+      type: object
+      required: [id, kind, spent_on, amount, version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [time, fixed, material] }
+        description: { type: string, nullable: true }
+        spent_on: { type: string, format: date }
+        person: { type: string, format: uuid, nullable: true }
+        minutes: { type: integer }
+        rate: { type: number }
+        amount: { type: number }
+        version: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, format: uuid }
+    CostList:
+      type: object
+      required: [currency, time_spent, cost_total, entries]
+      properties:
+        currency: { type: string, description: "setting costs.currency of the root node, EUR by default" }
+        time_spent: { type: number, description: minutes of all time entries }
+        cost_total: { type: number }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/Cost" }
+    Trait:
+      type: object
+      description: a definition building block; package is empty for a core trait
+      required: [name, label]
+      properties:
+        package: { type: string }
+        name: { type: string }
+        label: { type: object, additionalProperties: { type: string } }
+        description: { type: object, additionalProperties: { type: string } }
+        fields:
+          type: array
+          items: { type: object, additionalProperties: true }
+        sub_resources:
+          type: array
+          items: { type: string }
+    RelationKind:
+      type: object
+      required: [package, name, label, inverse, from, to]
+      properties:
+        package: { type: string }
+        name: { type: string }
+        label: { type: object, additionalProperties: { type: string } }
+        inverse: { type: object, additionalProperties: { type: string } }
+        description: { type: object, additionalProperties: { type: string } }
+        from:
+          type: array
+          items: { type: string }
+        to:
+          type: array
+          items: { type: string }
+        impact: { type: boolean }
+    GraphNode:
+      type: object
+      required: [type, id, depth]
+      properties:
+        type: { type: string }
+        id: { type: string, format: uuid }
+        depth: { type: integer }
+        title: {}
+    GraphEdge:
+      type: object
+      required: [id, kind, from, to, depth]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string }
+        from: { $ref: "#/components/schemas/RelationEnd" }
+        to: { $ref: "#/components/schemas/RelationEnd" }
+        depth: { type: integer }
+    Graph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/GraphNode" }
+        edges:
+          type: array
+          items: { $ref: "#/components/schemas/GraphEdge" }
+    AuditEntry:
+      type: object
+      required: [id, version, action, at]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, format: int64 }
+        action: { type: string, enum: [create, update, trash, restore, purge, transition, relate, unrelate, attach, detach, cost_add, cost_change, cost_remove, notify, breach, escalation] }
+        field: { type: string }
+        old: {}
+        new: {}
+        actor: { type: string, format: uuid }
+        rule: { type: string, description: the rule that made the change (WF4) }
+        at: { type: string, format: date-time }
+    BatchRequest:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/BatchRow" }
+    BatchRow:
+      type: object
+      required: [id, version]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, format: int64, description: the version the caller saw }
+        set: { type: object, additionalProperties: true, description: fields to set; roles under actors }
+        transition: { type: string, description: a transition of the state model; set are its fields }
+        trash: { type: boolean, description: move the record to the trash }
+    BatchOutcome:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/BatchResult" }
+    BatchResult:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [ok, conflict, refused, forbidden, not_found, invalid, error] }
+        version: { type: integer, format: int64, description: the version after the change }
+        message: { type: string }
+        problems:
+          type: array
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+    ExportRequest:
+      type: object
+      required: [format]
+      properties:
+        format: { type: string, enum: [csv, xlsx, ods] }
+        where:
+          type: object
+          additionalProperties: true
+          description: the where of the JSON query (as in :query); empty for every record the caller may read
+        columns:
+          type: array
+          items: { type: string }
+          description: fields and system columns in their order; empty for every field of the type
+        sort: { type: string, description: 'one column, "-" for descending' }
+        time_zone: { type: string, description: 'IANA name the moments are shown in, e.g. Europe/Berlin; default UTC' }
+        lang: { type: string, description: language of labels and yes/no; default the first of Accept-Language }
+    SettingValue:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: string }
+        source: { type: string, description: 'own, the path of a node, or default' }
+    MySettings:
+      type: object
+      required: [language, time_zone, theme, defaults]
+      properties:
+        language: { $ref: "#/components/schemas/SettingValue" }
+        time_zone: { $ref: "#/components/schemas/SettingValue" }
+        theme: { $ref: "#/components/schemas/SettingValue" }
+        defaults:
+          type: object
+          additionalProperties: { type: object, additionalProperties: true }
+    Presence:
+      type: object
+      required: [others]
+      properties:
+        others:
+          type: array
+          items:
+            type: object
+            required: [account, name, editing, since, at]
+            properties:
+              account: { type: string, format: uuid }
+              name: { type: string }
+              editing: { type: boolean, description: the form holds unsaved changes }
+              since: { type: string, format: date-time }
+              at: { type: string, format: date-time, description: the last beat }
+    TimelineEntry:
+      type: object
+      required: [id, body, format, private, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        body: { type: string, description: "plain text, or sanitized HTML with format html (UI7)" }
+        format: { type: string, enum: [text, html] }
+        private: { type: boolean, description: only for sessions with read_private on the record }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid, description: the account that wrote it }
+        created_by_name: { type: string }
+    TimelineEntryCreate:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 100000 }
+        format:
+          type: string
+          enum: [text, html]
+          default: text
+          description: >-
+            html is sanitized by the server (UI7); images point to files of the caller
+            (/api/v1/files/{id}) and are attached to the record with the entry
+        private: { type: boolean, default: false }
+    TimelineItem:
+      type: object
+      required: [kind, at]
+      properties:
+        kind: { type: string, enum: [entry, change] }
+        at: { type: string, format: date-time }
+        actor: { type: string, format: uuid, description: the account behind the entry or change }
+        actor_name: { type: string }
+        entry: { $ref: "#/components/schemas/TimelineEntry" }
+        change: { $ref: "#/components/schemas/AuditEntry" }
+    Clock:
+      type: object
+      required: [id, sla, sla_name, state, breached, levels, target_minutes, elapsed_minutes, remaining_minutes, calendar, started_at, due_at, breached_at, stopped_at]
+      properties:
+        id: { type: string, format: uuid }
+        sla: { type: string, format: uuid, description: id of the core.sla }
+        sla_name: { type: string }
+        state: { type: string, enum: [running, paused, stopped, cancelled], description: "stopped: the SLA is met; cancelled: it no longer holds" }
+        breached: { type: boolean, description: the clock went past its target }
+        levels:
+          type: array
+          items: { type: string }
+          description: the escalation levels (rules with trigger clock) the clock reached (WF10)
+        target_minutes: { type: number }
+        elapsed_minutes: { type: number, description: working time counted up to now }
+        remaining_minutes: { type: number, description: "negative past the deadline" }
+        calendar: { type: string, format: uuid, nullable: true, description: "the calendar it counts by; null: round the clock" }
+        started_at: { type: string, format: date-time }
+        due_at: { type: string, format: date-time, nullable: true, description: the deadline while it runs }
+        breached_at: { type: string, format: date-time, nullable: true }
+        stopped_at: { type: string, format: date-time, nullable: true }
+    EventConsumer:
+      type: object
+      required: [name, position, lag, durable, attempts, updated_at]
+      properties:
+        name: { type: string }
+        position: { type: integer, format: int64 }
+        lag: { type: integer, format: int64, description: events after its position }
+        durable: { type: boolean, description: the retention of events waits for it }
+        last_error: { type: string }
+        failing_since: { type: string, format: date-time }
+        attempts: { type: integer }
+        updated_at: { type: string, format: date-time }
+    DeliveryFailure:
+      type: object
+      required: [id, at, kind, target, attempts, error]
+      properties:
+        id: { type: integer, format: int64 }
+        at: { type: string, format: date-time }
+        kind: { type: string, enum: [webhook, rule, mail] }
+        target: { type: string, description: "the webhook id, the rule name or the mail address" }
+        event_position: { type: integer, format: int64 }
+        type_name: { type: string }
+        record_id: { type: string, format: uuid }
+        job_id: { type: integer, format: int64 }
+        attempts: { type: integer }
+        error: { type: string }
+    RuleAction:
+      type: object
+      description: exactly one of set, assign, create, notify, transition
+      properties:
+        set:
+          type: object
+          additionalProperties: true
+          description: field values, as in a PATCH
+        assign:
+          type: object
+          required: [role, to]
+          properties:
+            role: { type: string }
+            to:
+              type: array
+              items:
+                type: object
+                required: [type, id]
+                properties:
+                  type: { type: string }
+                  id: { type: string, format: uuid }
+            add: { type: boolean, description: keep the holders the record has }
+        create:
+          type: object
+          required: [type_name, fields]
+          properties:
+            type_name: { type: string }
+            fields:
+              type: object
+              additionalProperties: true
+        notify:
+          type: object
+          required: [to, message]
+          properties:
+            to:
+              type: array
+              items: { type: string }
+              description: 'actors.<role> or <package.type>:<id>'
+            message: { type: string }
+        transition:
+          type: object
+          required: [name]
+          description: after the write only (WF11); a transition the record no longer allows is refused and kept with the failures
+          properties:
+            name: { type: string }
+            fields:
+              type: object
+              additionalProperties: true
+              description: fields the transition sets, as in a transition with fields (WF2)
+    RuleInput:
+      type: object
+      required: [type_name, trigger, mode, actions]
+      properties:
+        label:
+          type: object
+          additionalProperties: { type: string }
+        description:
+          type: object
+          additionalProperties: { type: string }
+        type_name: { type: string }
+        trigger: { type: string, enum: [create, update, time, clock], description: "clock: an escalation level (WF10)" }
+        mode: { type: string, enum: [before, after] }
+        condition: { type: string, description: CEL over record and changed; empty means always }
+        schedule: { type: string, description: "cron expression, for trigger time only" }
+        sla: { type: string, format: uuid, nullable: true, description: "trigger clock only: the core.sla whose clocks the level watches" }
+        percent: { type: integer, minimum: 1, maximum: 1000, nullable: true, description: "trigger clock only: share of the target at which the level fires once per clock; above 100 after the deadline" }
+        minutes: { type: integer, minimum: 1, nullable: true, description: "trigger clock only, instead of percent: working minutes after which the level fires (WF11)" }
+        actions:
+          type: array
+          items: { $ref: "#/components/schemas/RuleAction" }
+        position: { type: integer, default: 0 }
+        stop: { type: boolean, default: false }
+        enabled: { type: boolean, default: true }
+        installation:
+          type: boolean
+          default: false
+          description: "a new rule of the installation, acting in every tenant (PL45); needs manage_rules on core.rule at the root. Without tenants every rule is one"
+    Rule:
+      type: object
+      required: [id, name, label, description, type_name, trigger, mode, condition, schedule, actions, position, stop, enabled, version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        label:
+          type: object
+          additionalProperties: { type: string }
+        description:
+          type: object
+          additionalProperties: { type: string }
+        type_name: { type: string }
+        trigger: { type: string, enum: [create, update, time, clock] }
+        mode: { type: string, enum: [before, after] }
+        condition: { type: string }
+        schedule: { type: string }
+        sla: { type: string, format: uuid, nullable: true }
+        percent: { type: integer, nullable: true }
+        minutes: { type: integer, nullable: true }
+        actions:
+          type: array
+          items: { $ref: "#/components/schemas/RuleAction" }
+        position: { type: integer }
+        stop: { type: boolean }
+        enabled: { type: boolean }
+        tenant: { type: string, description: "the tenant the rule acts in (PL45); absent for a rule of the installation" }
+        last_run: { type: string, format: date-time }
+        version: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    BulkRequest:
+      type: object
+      required: [source, rows]
+      properties:
+        source: { type: string, minLength: 1, maxLength: 100, description: "the delivering source, e.g. flowzilla or proxmox" }
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            type: object
+            required: [external_key]
+            description: "fields of the type as for creating a record, plus external_key"
+            properties:
+              external_key: { type: string, minLength: 1 }
+            additionalProperties: true
+    BulkOutcome:
+      type: object
+      required: [items, created, updated, unchanged, errors]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/BulkResult" }
+        created: { type: integer }
+        updated: { type: integer }
+        unchanged: { type: integer }
+        errors: { type: integer }
+    BulkResult:
+      type: object
+      required: [index, status]
+      properties:
+        index: { type: integer, description: position of the row in rows }
+        external_key: { type: string }
+        status: { type: string, enum: [created, updated, unchanged, error] }
+        id: { type: string, format: uuid }
+        version: { type: integer, format: int64 }
+        code: { type: string, enum: [validation, forbidden, not_found, conflict], description: with status error }
+        message: { type: string }
+        problems:
+          type: array
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+    Problem:
+      type: object
+      description: RFC 9457
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+    ValidationProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [field, code, message]
+                properties:
+                  field: { type: string }
+                  code: { type: string }
+                  message: { type: string }

@@ -1,0 +1,154 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# One type with every field kind the core supports in PL1.
+name: probe
+label:
+  de: Probe
+  en: Probe
+description:
+  de: Ein Datensatz ohne fachliche Bedeutung, für den Durchstich.
+  en: A record without business meaning, for the thin thread.
+title_field: title
+# Traits (PL17): history keeps audit rows, documents opens /documents (files with PL18),
+# costs opens /costs with the sums time_spent and cost_total (PL20), tagged is the probe
+# package's own bundle of fields (traits/tagged.yaml); actors gives the roles at the record
+# below (WF3).
+traits: [history, documents, costs, tagged, actors, timeline]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+    # German in the column, English in the table translation (PL21).
+    translatable: true
+  # The sums of the tasks (WF13): all minutes, and how many are still open.
+  - name: task_minutes
+    type: number
+    label: {de: Zeit der Aufgaben (Minuten), en: Time of the tasks (minutes)}
+    rollup: {from: probe.task, via: parent, op: sum, field: minutes}
+  - name: tasks_open
+    type: number
+    label: {de: Offene Aufgaben, en: Open tasks}
+    rollup: {from: probe.task, via: parent, op: count, where: record.state == "open"}
+  # The reason a record waits (WF11).
+  - name: wait_reason
+    type: reference
+    label: {de: Wartegrund, en: Reason to wait}
+    to: core.wait_reason
+  - name: priority
+    type: number
+    label: {de: Priorität, en: Priority}
+    min: 1
+    max: 5
+    default: 3
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    default: true
+  - name: due_on
+    type: date
+    label: {de: Fällig am, en: Due on}
+  - name: seen_at
+    type: datetime
+    label: {de: Gesehen am, en: Seen at}
+  - name: kind
+    type: choice
+    label: {de: Art, en: Kind}
+    options:
+      - {value: question, label: {de: Frage, en: Question}}
+      - {value: fault, label: {de: Störung, en: Fault}}
+      - {value: wish, label: {de: Wunsch, en: Wish}}
+    default: question
+  - name: parent
+    type: reference
+    label: {de: Übergeordnet, en: Parent}
+    to: probe.probe
+  - name: color
+    type: reference
+    label: {de: Farbe, en: Colour}
+    to: probe.color
+  - name: place
+    type: reference
+    label: {de: Ort, en: Place}
+    to: probe.place
+  - name: impact
+    type: choice
+    label: {de: Auswirkung, en: Impact}
+    options:
+      - {value: high, label: {de: Hoch, en: High}}
+      - {value: medium, label: {de: Mittel, en: Medium}}
+      - {value: low, label: {de: Gering, en: Low}}
+  - name: solution
+    type: text
+    label: {de: Lösung, en: Solution}
+    format: rich
+    max_length: 2000
+  - name: urgency
+    type: choice
+    label: {de: Dringlichkeit, en: Urgency}
+    options:
+      - {value: high, label: {de: Hoch, en: High}}
+      - {value: medium, label: {de: Mittel, en: Medium}}
+      - {value: low, label: {de: Gering, en: Low}}
+  # Calculated (PL22): the priority matrix of ITIL, 1 is the most urgent; empty until both
+  # impact and urgency are set.
+  - name: itil_priority
+    type: number
+    label: {de: Priorität nach Matrix, en: Priority by matrix}
+    formula: >-
+      {"high": {"high": 1.0, "medium": 2.0, "low": 3.0},
+       "medium": {"high": 2.0, "medium": 3.0, "low": 4.0},
+       "low": {"high": 3.0, "medium": 4.0, "low": 5.0}}[impact][urgency]
+# The state model of the Durchstich (WF1): three states, a transition back needs a condition.
+states:
+  - {name: new, label: {de: Neu, en: New}, initial: true}
+  - {name: in_progress, label: {de: In Arbeit, en: In progress}}
+  - {name: waiting, label: {de: Wartet, en: Waiting}}
+  - {name: done, label: {de: Erledigt, en: Done}}
+  - {name: resolved, label: {de: Gelöst, en: Resolved}}
+  - {name: closed, label: {de: Geschlossen, en: Closed}}
+transitions:
+  - {name: start, label: {de: Beginnen, en: Start}, from: [new], to: in_progress}
+  - {name: finish, label: {de: Erledigen, en: Finish}, from: [in_progress], to: done}
+  # Waiting for the requester pauses the SLA clocks of the tests (WF9).
+  - {name: wait, label: {de: Warten, en: Wait}, from: [in_progress], to: waiting}
+  - {name: resume, label: {de: Fortsetzen, en: Resume}, from: [waiting], to: in_progress}
+  - name: reopen
+    label: {de: Wieder öffnen, en: Reopen}
+    from: [done]
+    to: new
+    when: record.priority <= 3
+  # Also while waiting: a wait for the requester ends in a solution after some days (WF11).
+  - {name: resolve, label: {de: Lösen, en: Resolve}, from: [in_progress, waiting], to: resolved}
+  - {name: close, label: {de: Schließen, en: Close}, from: [resolved], to: closed}
+# Field states (WF2): a resolved record needs its solution; a closed one is read-only as a
+# whole; a wish (a form variant by kind) hides impact and urgency in the form and starts with
+# priority 4.
+field_states:
+  - states: [resolved, closed]
+    required: [solution]
+  - states: [closed]
+    read_only: ["*"]
+  - when: record.kind == "wish"
+    hidden: [impact, urgency, itil_priority]
+  - states: [new]
+    when: record.kind == "wish"
+    defaults: {priority: 4}
+# Roles at the record (WF3): who asked, who watches, who works on it; persons or groups of the
+# core package. A supplier type of a later package would join the list under to.
+# In the portal (UI10): users create with title and kind and answer in the timeline.
+portal:
+  fields: [title, kind]
+actors:
+  - name: requester
+    label: {de: Anforderer, en: Requester}
+    to: [core.person, core.group]
+  - name: observer
+    label: {de: Beobachter, en: Observer}
+    to: [core.person, core.group]
+  - name: assigned
+    label: {de: Bearbeiter, en: Assigned to}
+    to: [core.person, core.group]

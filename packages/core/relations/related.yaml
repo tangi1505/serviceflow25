@@ -1,0 +1,9 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A loose link in both directions without a dependency (GLPI: linked tickets, G48).
+name: related
+label: {de: verknüpft mit, en: related to}
+inverse: {de: verknüpft mit, en: related to}
+from: ["*"]
+to: ["*"]

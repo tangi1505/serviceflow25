@@ -1,0 +1,26 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Licenses of what itsm ships (PL29, Hauptplan E15): permissive licenses and MPL-2.0. No GPL,
+# LGPL or AGPL in dependencies: the group24 AG must be able to license itsm commercially too
+# (V4). Decided 2026-10-28.
+#
+#   allow <SPDX identifier>
+#   except <package> | <license as found> | <date> | <reason>
+#
+# An exception holds for every version of the package; the check fails when the license of the
+# package changes or the package is gone, so that the list stays true. Every exception is
+# approved by the Abnahme.
+
+allow MIT
+allow MIT-0
+allow Apache-2.0
+allow BSD-2-Clause
+allow BSD-3-Clause
+allow ISC
+allow 0BSD
+allow Zlib
+allow Unlicense
+allow CC0-1.0
+allow BlueOak-1.0.0
+allow MPL-2.0

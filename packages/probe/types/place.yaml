@@ -1,0 +1,18 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A select list as a tree with coordinates (PL16; the model of GLPI's locations, Inventar
+# G139): parent, path and the full name "Land > Stadt > Gebäude" come from the trait.
+name: place
+label: {de: Ort, en: Place}
+description:
+  de: Eine Auswahlliste als Baum mit Koordinaten, für den Durchstich.
+  en: A select list as a tree with coordinates, for the thin thread.
+traits: [list]
+list:
+  tree: true
+  coordinates: true
+  entries:
+    - {key: de, name: Deutschland}
+    - {key: duesseldorf, name: Düsseldorf, parent: de, lat: 51.2277, lon: 6.7735}
+    - {key: duesseldorf_hq, name: Hauptgebäude, parent: duesseldorf}

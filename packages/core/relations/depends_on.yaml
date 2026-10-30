@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The source depends on the target (a service on a server, a ticket on a change). A problem
+# at the target affects the source: the impact analysis follows this kind (PL15, KF2).
+name: depends_on
+label: {de: hängt ab von, en: depends on}
+inverse: {de: wird gebraucht von, en: is needed by}
+description:
+  de: Die Quelle braucht das Ziel; fällt das Ziel aus, ist die Quelle betroffen.
+  en: The source needs the target; when the target fails, the source is affected.
+from: ["*"]
+to: ["*"]
+impact: true

@@ -1,0 +1,397 @@
+{
+  "app": {
+    "title": "itsm",
+    "version": {
+      "loading": "Verbindung zum Server wird geprüft …",
+      "value": "Server-Version {{version}}",
+      "error": "Der Server ist nicht erreichbar."
+    }
+  },
+  "language": {
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "theme": {
+    "neutral": "Neutral",
+    "probe": "Probe (grün)"
+  },
+  "login": {
+    "title": "Anmelden",
+    "username": "Benutzername",
+    "password": "Kennwort",
+    "submit": "Anmelden",
+    "required": "Bitte ausfüllen.",
+    "failed": "Benutzername oder Kennwort ist falsch.",
+    "error": "Anmeldung nicht möglich: {{detail}}",
+    "with": "Anmelden mit {{name}}",
+    "sso": {
+      "sso": "Die Anmeldung über den Anbieter ist fehlgeschlagen.",
+      "refused": "Der Anbieter hat die Anmeldung abgelehnt.",
+      "state": "Die Anmeldung ist abgelaufen, bitte erneut versuchen.",
+      "disabled": "Das Konto ist gesperrt.",
+      "provider": "Der Anbieter ist nicht erreichbar."
+    }
+  },
+  "nav": {
+    "types": "Typen",
+    "typesError": "Die Typen konnten nicht geladen werden.",
+    "user": "Angemeldet als {{name}}",
+    "logout": "Abmelden",
+    "language": "Sprache",
+    "theme": "Theme",
+    "tenant": "Mandant"
+  },
+  "home": {
+    "welcome": "Willkommen, {{name}}",
+    "intro": "Wähle links einen Typ: Liste, Anlegen und Ändern kommen aus der Typdefinition."
+  },
+  "type": {
+    "unknown": "Diesen Typ gibt es nicht."
+  },
+  "column": {
+    "id": "ID",
+    "version": "Version",
+    "state": "Status",
+    "created_at": "Angelegt",
+    "updated_at": "Geändert"
+  },
+  "list": {
+    "new": "Neu",
+    "columns": "Spalten",
+    "loading": "Wird geladen …",
+    "loaded": "{{count}}{{more}} Datensätze",
+    "error": "Die Liste konnte nicht geladen werden.",
+    "select": "Auswählen: {{title}}",
+    "selectAll": "Alle geladenen auswählen"
+  },
+  "form": {
+    "newTitle": "Neuer Datensatz",
+    "notFound": "Diesen Datensatz gibt es nicht.",
+    "version": "Version {{version}}",
+    "create": "Anlegen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "none": "– keine Angabe –",
+    "error": "Speichern nicht möglich: {{detail}}",
+    "rule": {
+      "required": "Bitte ausfüllen.",
+      "number": "Bitte eine Zahl eingeben.",
+      "min": "Der Wert ist zu klein.",
+      "max": "Der Wert ist zu groß.",
+      "max_length": "Der Text ist zu lang.",
+      "choice": "Bitte einen Wert aus der Liste wählen.",
+      "uuid": "Bitte eine gültige ID eingeben.",
+      "read_only": "Dieses Feld ist im aktuellen Status schreibgeschützt."
+    },
+    "conflict": {
+      "title": "Jemand hat diesen Datensatz inzwischen gespeichert.",
+      "text": "Auf dem Server steht jetzt Version {{version}}. Unten stehen die Felder, die sich unterscheiden.",
+      "field": "Feld",
+      "theirs": "Auf dem Server",
+      "mine": "Meine Eingabe",
+      "reload": "Serverstand übernehmen",
+      "overwrite": "Meine Eingabe trotzdem speichern"
+    },
+    "locked": "Dieser Datensatz ist im Status „{{state}}“ schreibgeschützt.",
+    "saved": "Gespeichert.",
+    "roles": "Rollen am Datensatz",
+    "send": "Absenden"
+  },
+  "password": {
+    "title": "Kennwort ändern",
+    "expired": "Dein Kennwort ist abgelaufen. Bitte vergib ein neues, bevor du weiterarbeitest.",
+    "rules": "Mindestens 8 Zeichen mit Groß- und Kleinbuchstabe, Ziffer und Sonderzeichen.",
+    "current": "Aktuelles Kennwort",
+    "new": "Neues Kennwort",
+    "confirm": "Neues Kennwort wiederholen",
+    "submit": "Kennwort ändern",
+    "required": "Bitte ausfüllen.",
+    "weak": "Das Kennwort erfüllt die Regeln nicht.",
+    "mismatch": "Die Wiederholung stimmt nicht überein.",
+    "wrong": "Das aktuelle Kennwort ist falsch.",
+    "error": "Ändern nicht möglich: {{detail}}"
+  },
+  "state": {
+    "title": "Status",
+    "refused": "Übergang nicht möglich: {{detail}}",
+    "error": "Übergang fehlgeschlagen: {{detail}}",
+    "reason": {
+      "state": "Nicht aus dem aktuellen Status möglich.",
+      "condition": "Die Bedingung ist nicht erfüllt."
+    }
+  },
+  "timeline": {
+    "title": "Zeitleiste",
+    "history": "Verlauf",
+    "filter": "Anzeige der Zeitleiste",
+    "all": "Alles",
+    "entries": "Nur Einträge",
+    "new": "Neuer Eintrag",
+    "private": "Privat (nur für Berechtigte)",
+    "privateBadge": "Privat",
+    "add": "Eintragen",
+    "empty": "Noch nichts eingetragen.",
+    "loadError": "Die Zeitleiste konnte nicht geladen werden.",
+    "system": "System",
+    "rule": "Regel {{rule}}",
+    "forbidden": "Du darfst an diesem Datensatz nichts eintragen.",
+    "forbiddenPrivate": "Du darfst an diesem Datensatz keine privaten Einträge schreiben.",
+    "error": "Eintragen nicht möglich: {{detail}}",
+    "action": {
+      "create": "Angelegt",
+      "update": "Geändert",
+      "trash": "In den Papierkorb gelegt",
+      "restore": "Aus dem Papierkorb geholt",
+      "purge": "Endgültig gelöscht",
+      "transition": "Status geändert",
+      "relate": "Beziehung angelegt",
+      "unrelate": "Beziehung entfernt",
+      "attach": "Datei angehängt",
+      "detach": "Datei entfernt",
+      "cost_add": "Kosten gebucht",
+      "cost_change": "Kosten geändert",
+      "cost_remove": "Kosten entfernt",
+      "notify": "Benachrichtigt",
+      "breach": "SLA verletzt",
+      "escalation": "Eskaliert"
+    }
+  },
+  "sidebar": {
+    "roles": "Rollen",
+    "clocks": "SLA",
+    "none": "Keine.",
+    "more": "Weitere vorhanden.",
+    "remaining": "Noch {{time}}",
+    "overdue": "Überfällig seit {{time}}",
+    "due": "fällig {{at}}",
+    "light": {
+      "breached": "Verletzt",
+      "close": "Knapp",
+      "inTime": "Im Plan",
+      "met": "Erfüllt",
+      "paused": "Angehalten",
+      "cancelled": "Entfällt"
+    }
+  },
+  "picker": {
+    "chosen": "Gewählt",
+    "remove": "Entfernen",
+    "placeholder": "Suchen …",
+    "options": "Vorschläge",
+    "type": "Zum Suchen tippen.",
+    "none": "Nichts gefunden."
+  },
+  "filter": {
+    "title": "Filter",
+    "none": "Kein Filter: alle Datensätze, die du lesen darfst.",
+    "add": "Bedingung hinzufügen",
+    "remove": "Entfernen",
+    "field": "Feld",
+    "op": "Vergleich",
+    "value": "Wert",
+    "condition": "Bedingung {{n}}",
+    "me": "ich",
+    "myGroups": "meine Gruppen",
+    "yes": "ja",
+    "no": "nein",
+    "ops": {
+      "eq": "ist",
+      "neq": "ist nicht",
+      "contains": "enthält",
+      "starts": "beginnt mit",
+      "gte": "ab",
+      "lte": "bis",
+      "null": "ist leer"
+    }
+  },
+  "search": {
+    "saved": "Gespeicherte Suchen",
+    "all": "– alle Datensätze –",
+    "own": "Eigene",
+    "shared": "Mit mir geteilt",
+    "saveAs": "Als neue Suche speichern",
+    "update": "Änderungen speichern",
+    "save": "Speichern",
+    "name": "Name der Suche",
+    "share": "Teilen und verwalten",
+    "details": "Über diese Suche",
+    "forbidden": "Du darfst keine Suchen speichern.",
+    "error": "Speichern nicht möglich: {{detail}}",
+    "notFound": "Diese gespeicherte Suche gibt es nicht oder sie ist nicht mit dir geteilt.",
+    "raw": "Diese Suche hat eine Bedingung, die die Filter nicht darstellen können: {{where}}"
+  },
+  "export": {
+    "format": "Format des Exports",
+    "run": "Exportieren",
+    "queued": "Mehr als 100.000 Zeilen: Der Export läuft als Job, die Datei erscheint hier, sobald er fertig ist.",
+    "ready": "Export fertig: {{rows}} Zeilen.",
+    "download": "Datei herunterladen",
+    "failed": "Der Export ist gescheitert.",
+    "error": "Export nicht möglich: {{detail}}"
+  },
+  "batch": {
+    "title": "{{count}} gewählt",
+    "action": "Aktion",
+    "field": "Feld",
+    "value": "Neuer Wert",
+    "empty": "– leeren –",
+    "transition": "Übergang",
+    "role": "Rolle",
+    "run": "Auf {{count}} anwenden",
+    "confirmTrash": "Wirklich {{count}} in den Papierkorb",
+    "error": "Ausführen nicht möglich: {{detail}}",
+    "actions": {
+      "field": "Feld setzen",
+      "transition": "Übergang ausführen",
+      "role": "Rolle setzen",
+      "trash": "In den Papierkorb"
+    },
+    "status": {
+      "ok": "{{count}} geändert",
+      "conflict": "{{count}} inzwischen geändert (Konflikt)",
+      "refused": "{{count}} abgelehnt (Übergang gilt nicht)",
+      "forbidden": "{{count}} ohne Recht",
+      "not_found": "{{count}} nicht gefunden",
+      "invalid": "{{count}} ungültig",
+      "error": "{{count}} mit Fehler"
+    }
+  },
+  "editor": {
+    "toolbar": "Formatierung: {{label}}",
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "bullets": "Liste",
+    "numbers": "Nummeriert",
+    "quote": "Zitat",
+    "link": "Link",
+    "image": "Bild einfügen",
+    "linkPrompt": "Adresse des Links (leer entfernt ihn)",
+    "uploadError": "Bild nicht hochgeladen: {{detail}}"
+  },
+  "live": {
+    "allow": "Benachrichtigungen erlauben",
+    "viewing": "{{name}} schaut gerade",
+    "editing": "{{name}} bearbeitet gerade",
+    "someone": "jemand anders",
+    "changedBy": "Geändert von {{name}}, während du hier etwas geändert hast.",
+    "reload": "Neu laden",
+    "fresh_one": "{{count}} neuer Datensatz – anzeigen",
+    "fresh_other": "{{count}} neue Datensätze – anzeigen",
+    "kind": {
+      "create": "Neu angelegt",
+      "update": "Geändert",
+      "transition": "Status geändert",
+      "comment": "Neuer Eintrag",
+      "trash": "In den Papierkorb gelegt",
+      "breach": "SLA verletzt",
+      "escalation": "Eskaliert"
+    }
+  },
+  "settings": {
+    "title": "Meine Einstellungen",
+    "language": "Sprache",
+    "time_zone": "Zeitzone",
+    "theme": "Theme",
+    "inherit": "– wie für meine Einheit eingestellt –",
+    "inForce": "Gilt jetzt: {{value}} ({{source}})",
+    "source": {
+      "own": "eigene Einstellung",
+      "default": "Vorgabe",
+      "node": "eingestellt für {{node}}"
+    },
+    "presets": "Vorbelegung beim Anlegen",
+    "presetsHint": "Diese Werte setzt das Formular, wenn du einen neuen Datensatz des Typs anlegst; Vorgaben des Status gehen vor.",
+    "type": "Typ",
+    "preset": "Vorbelegung {{n}}",
+    "addPreset": "Feld hinzufügen",
+    "savePresets": "Vorbelegung speichern",
+    "global": "Globale Einstellungen",
+    "globalTitle": "Globale Einstellungen",
+    "globalHint": "Vorgaben für alle unterhalb eines Knotens; persönliche Einstellungen gehen vor. Ändern braucht das Recht manage_settings für den Knoten.",
+    "node": "Knoten",
+    "from": "Gilt hier aus {{node}}",
+    "notSet": "Nicht eingestellt: es gilt die Vorgabe.",
+    "remove": "Eigenen Wert entfernen",
+    "removed": "Entfernt.",
+    "forbidden": "Dafür fehlt dir das Recht manage_settings für diesen Knoten.",
+    "error": "Speichern nicht möglich: {{detail}}",
+    "loadError": "Die Einstellungen konnten nicht geladen werden."
+  },
+  "portal": {
+    "title": "itsm Portal",
+    "toWorkplace": "Zum Arbeitsplatz",
+    "mine": "Meine Vorgänge",
+    "new": "Neu",
+    "none": "Noch nichts angelegt.",
+    "nothing": "Hier gibt es noch nichts anzulegen.",
+    "newTitle": "{{type}} anlegen",
+    "toPortal": "Zum Portal",
+    "forms": "Formulare",
+    "formUnknown": "Dieses Formular gibt es nicht oder nicht für Sie.",
+    "sent": "Danke, „{{title}}“ ist angelegt."
+  },
+  "builder": {
+    "section": "Abschnitt {{n}}",
+    "sectionTitle": "Titel des Abschnitts",
+    "addSection": "Abschnitt hinzufügen",
+    "newQuestion": "Neue Frage",
+    "choose": "– auswählen –",
+    "fieldGroup": "Feld des Zieltyps",
+    "freeGroup": "Freie Frage",
+    "addQuestion": "Frage hinzufügen",
+    "empty": "Noch keine Fragen.",
+    "unnamed": "(ohne Beschriftung)",
+    "boundTo": "Feld: {{field}}",
+    "label": "Frage",
+    "labelOptional": "Frage (leer: Name des Felds)",
+    "required": "Pflicht",
+    "options": "Antworten, je Zeile eine",
+    "drag": "„{{name}}“ verschieben",
+    "up": "„{{name}}“ nach oben",
+    "down": "„{{name}}“ nach unten",
+    "remove": "„{{name}}“ entfernen",
+    "broken": "Der gespeicherte Aufbau ist nicht lesbar; der Baukasten beginnt neu.",
+    "noTarget": "Erst angeben, was das Formular anlegt (Typ mit Paket); dann stehen seine Felder zur Wahl.",
+    "type": {
+      "text": "Text",
+      "number": "Zahl",
+      "boolean": "Ja/Nein",
+      "date": "Datum",
+      "datetime": "Zeitpunkt",
+      "choice": "Auswahl"
+    },
+    "dnd": {
+      "help": "Leertaste nimmt das Element auf, Pfeiltasten verschieben es, Leertaste legt es ab, Escape bricht ab.",
+      "start": "„{{name}}“ aufgenommen.",
+      "over": "„{{name}}“ bei „{{other}}“.",
+      "end": "„{{name}}“ bei „{{other}}“ abgelegt.",
+      "cancel": "Verschieben von „{{name}}“ abgebrochen.",
+      "stay": "„{{name}}“ bleibt an seinem Platz."
+    },
+    "language": "Sprache der Texte",
+    "lang": {
+      "de": "Deutsch",
+      "en": "Englisch"
+    },
+    "titleEn": "Name des Formulars auf Englisch",
+    "introEn": "Beschreibung des Formulars auf Englisch",
+    "inEnglish": "{{label}} (Englisch)",
+    "optionEn": "Antwort „{{option}}“ auf Englisch",
+    "yes": "ja",
+    "no": "nein",
+    "cond": {
+      "legend": "Nur zeigen, wenn",
+      "question": "Bezug auf Frage",
+      "op": "Bedingung",
+      "value": "Wert",
+      "add": "Bedingung hinzufügen",
+      "remove": "Bedingung {{n}} entfernen",
+      "ops": {
+        "eq": "ist gleich",
+        "ne": "ist ungleich",
+        "answered": "ist beantwortet",
+        "empty": "ist leer"
+      }
+    }
+  }
+}

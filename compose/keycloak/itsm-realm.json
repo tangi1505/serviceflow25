@@ -1,0 +1,75 @@
+{
+  "realm": "itsm",
+  "displayName": "itsm (Entwicklung)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "clients": [
+    {
+      "clientId": "itsm",
+      "name": "itsm",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "itsm-dev",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:8092/*"],
+      "webOrigins": ["http://localhost:8092"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8092/*"
+      },
+      "defaultClientScopes": ["profile", "email", "roles", "web-origins"],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    { "name": "itsm-admins", "path": "/itsm-admins" },
+    { "name": "itsm-users", "path": "/itsm-users" }
+  ],
+  "users": [
+    {
+      "username": "test",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "test@example.org",
+      "firstName": "Testa",
+      "lastName": "Testerin",
+      "credentials": [{ "type": "password", "value": "Test-Pw1!", "temporary": false }],
+      "requiredActions": ["CONFIGURE_TOTP"],
+      "groups": ["/itsm-admins"]
+    },
+    {
+      "username": "user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "user@example.org",
+      "firstName": "Udo",
+      "lastName": "Nutzer",
+      "credentials": [{ "type": "password", "value": "User-Pw1!", "temporary": false }],
+      "requiredActions": ["CONFIGURE_TOTP"],
+      "groups": ["/itsm-users"]
+    }
+  ]
+}

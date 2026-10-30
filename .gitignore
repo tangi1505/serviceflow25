@@ -1,0 +1,16 @@
+/web/node_modules/
+/web/dist/
+/bin/
+*.local
+.env
+/.pnpm-store/
+
+# IDE
+/.idea/
+
+# Playwright
+/web/test-results/
+/web/playwright-report/
+
+# curl session of the README examples: holds a live session token
+/cookies.txt
