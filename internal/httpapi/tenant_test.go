@@ -19,12 +19,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
+	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/db/dbtest"
 	"group24.de/itsm/internal/httpapi/gen"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/notify/smtptest"
 	"group24.de/itsm/internal/records"
+	"group24.de/itsm/internal/schema"
 	"group24.de/itsm/internal/tenant"
 )
 
@@ -46,6 +49,35 @@ func (d tenantData) ids() []string {
 	return out
 }
 
+// tenantAccount makes an account of a tenant: with a database per tenant in the tenant's
+// database right away (PL47d), else of the installation until bindTenantAccount binds it.
+func tenantAccount(t *testing.T, admin *testAPI, name, path string) auth.Account {
+	t.Helper()
+	var acc auth.Account
+	var err error
+	if admin.rt.Separate() {
+		acc, err = admin.auth.CreateAccountIn(t.Context(), path, name, name, testPassword, nil)
+	} else {
+		acc, err = admin.auth.CreateAccount(t.Context(), name, name, testPassword, nil)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return acc
+}
+
+// bindTenantAccount binds the account to its tenant, once its person is there; with a database
+// per tenant the account lives there already.
+func bindTenantAccount(t *testing.T, admin *testAPI, name, path string) {
+	t.Helper()
+	if admin.rt.Separate() {
+		return
+	}
+	if err := tenant.Bind(t.Context(), admin.pool, name, path); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // tenantUser makes an account bound to the tenant, with the role admin at the tenant node,
 // and signs it in. The administrator of the installation switches into the tenant for it.
 func tenantUser(t *testing.T, admin *testAPI, name, path string) (*testAPI, string) {
@@ -54,10 +86,7 @@ func tenantUser(t *testing.T, admin *testAPI, name, path string) (*testAPI, stri
 	if r := call(t, admin, http.MethodPost, "/api/v1/auth/context", `{"tenant": "`+path+`"}`, nil); r.code != 200 {
 		t.Fatalf("switch to %s: %d %s", path, r.code, r.raw)
 	}
-	acc, err := admin.auth.CreateAccount(ctx, name, name, testPassword, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	acc := tenantAccount(t, admin, name, path)
 	p := call(t, admin, http.MethodPost, "/api/v1/records/core.person", `{"last_name": "`+name+`"}`, nil)
 	if p.code != 201 || p.body["org_path"] != path {
 		t.Fatalf("person in %s: %d %s", path, p.code, p.raw)
@@ -66,9 +95,7 @@ func tenantUser(t *testing.T, admin *testAPI, name, path string) (*testAPI, stri
 	if err := admin.authz.LinkPerson(ctx, acc.ID, &pid); err != nil {
 		t.Fatal(err)
 	}
-	if err := tenant.Bind(ctx, admin.pool, name, path); err != nil {
-		t.Fatal(err)
-	}
+	bindTenantAccount(t, admin, name, path)
 	a := call(t, admin, http.MethodPost, "/api/v1/assignments", `{"role": "admin", "person_id": "`+pid.String()+`"}`, nil)
 	if a.code != 201 || a.body["org_path"] != path {
 		t.Fatalf("assign in %s: %d %s", path, a.code, a.raw)
@@ -85,53 +112,40 @@ func tenantUser(t *testing.T, admin *testAPI, name, path string) (*testAPI, stri
 // account each holding the role admin (scope all) see nothing of each other over any route, in
 // list, search, single read and export (404), the event stream, jobs, logs, webhooks, clients
 // and directories included; an administrator of the installation sees one tenant at a time and
-// switches; roles and types stay with the installation.
+// switches; roles and types stay with the installation. PL47e runs it in both operating modes:
+// one database, and a database per tenant, where the data of each tenant stay in its own.
 func TestTenantBoundaryOverHTTP(t *testing.T) {
-	// A database of its own: tenants change what every other test sees.
-	if base := os.Getenv("ITSM_TEST_DATABASE_URL"); base != "" {
-		t.Setenv("ITSM_TEST_DATABASE_URL", dbtest.Isolated(t, base, "itsmtest_api_tenant"))
+	t.Run("shared", func(t *testing.T) { tenantBoundary(t, false) })
+	t.Run("database", func(t *testing.T) { tenantBoundary(t, true) })
+}
+
+func tenantBoundary(t *testing.T, separate bool) {
+	// Databases of their own: tenants change what every other test sees.
+	base := os.Getenv("ITSM_TEST_DATABASE_URL")
+	var admin *testAPI
+	urls := map[string]string{}
+	switch {
+	case !separate:
+		if base != "" {
+			t.Setenv("ITSM_TEST_DATABASE_URL", dbtest.Isolated(t, base, "itsmtest_api_tenant"))
+		}
+		admin = apiServer(t)
+	case base == "":
+		t.Skip("ITSM_TEST_DATABASE_URL not set")
+	default:
+		t.Setenv("ITSM_TEST_DATABASE_URL", dbtest.Isolated(t, base, "itsmtest_api_tenant_ctl"))
+		urls["root.ta"] = dbtest.Isolated(t, base, "itsmtest_api_tenant_ta")
+		urls["root.tb"] = dbtest.Isolated(t, base, "itsmtest_api_tenant_tb")
+		admin = apiServerWith(t, urls)
 	}
-	admin := apiServer(t)
 	ctx := t.Context()
 	types := installAllPackages(t, admin)
-
-	// Without tenants the root is the only one, as before.
-	if r := call(t, admin, http.MethodGet, "/api/v1/auth/me", "", nil); r.body["tenant"] != "root" || r.body["tenants"] != nil {
-		t.Fatalf("me without tenants: %s", r.raw)
-	}
-	before := call(t, admin, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "vor den Mandanten"}`, nil)
-	if before.code != 201 || before.body["org_path"] != "root" {
-		t.Fatalf("record before: %d %s", before.code, before.raw)
-	}
-	if r := call(t, admin, http.MethodPost, "/api/v1/org/nodes", `{"parent": "root", "name": "alt"}`, nil); r.code != 201 {
-		t.Fatalf("node before: %d %s", r.code, r.raw)
+	if separate {
+		tenantsInDatabases(t, admin, urls)
+	} else {
+		tenantsAdopted(t, admin)
 	}
 
-	// The first tenant adopts all that is there; the administrator stays with the installation.
-	res, err := tenant.Create(ctx, admin.pool, tenant.Options{Name: "ta", Label: map[string]string{"de": "Mandant A", "en": "Tenant A"}, Adopt: true, Admins: []string{"apitest"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Nodes < 1 || res.Records["probe.probe"] != 1 || res.Records["core.person"] < 1 {
-		t.Fatalf("adopted: %+v", res)
-	}
-	if _, err := tenant.Create(ctx, admin.pool, tenant.Options{Name: "tb", Adopt: true}); err == nil {
-		t.Fatal("a second tenant adopts")
-	}
-	if _, err := tenant.Create(ctx, admin.pool, tenant.Options{Name: "tb", Label: map[string]string{"de": "Mandant B"}}); err != nil {
-		t.Fatal(err)
-	}
-	admin.authz.Invalidate(ctx)
-	me := call(t, admin, http.MethodGet, "/api/v1/auth/me", "", nil)
-	if me.body["tenant"] != "root.ta" || !strings.Contains(me.raw, `"label":{"de":"Mandant B"}`) {
-		t.Fatalf("me with tenants: %s", me.raw)
-	}
-	if r := call(t, admin, http.MethodGet, "/api/v1/records/probe.probe/"+before.body["id"].(string), "", nil); r.code != 200 || r.body["org_path"] != "root.ta" {
-		t.Fatalf("the record before is in the first tenant: %d %s", r.code, r.raw)
-	}
-	if r := call(t, admin, http.MethodGet, "/api/v1/org/nodes/root.ta.alt", "", nil); r.code != 200 {
-		t.Fatalf("the node before is in the first tenant: %d %s", r.code, r.raw)
-	}
 	// Below the root there are only tenants now.
 	if r := call(t, admin, http.MethodPost, "/api/v1/org/nodes", `{"parent": "root", "name": "neu"}`, nil); r.code != 422 || !strings.Contains(r.raw, "tenants") {
 		t.Fatalf("node below the root: %d %s", r.code, r.raw)
@@ -179,7 +193,26 @@ func TestTenantBoundaryOverHTTP(t *testing.T) {
 		t.Errorf("setting of A after the walk of B: %d %s", r.code, r.raw)
 	}
 
+	if separate {
+		for _, d := range []tenantData{a, b} {
+			for name, id := range d.records {
+				table := schema.TableName(types[name])
+				for _, c := range []struct {
+					where string
+					pool  *pgxpool.Pool
+					want  int
+				}{{d.path, admin.rt.For(d.path), 1}, {"control", admin.rt.Control(), 0}, {"other", admin.rt.For(map[string]string{"root.ta": "root.tb", "root.tb": "root.ta"}[d.path]), 0}} {
+					var n int
+					if err := c.pool.QueryRow(ctx, "SELECT count(*) FROM "+table+" WHERE id = $1", id).Scan(&n); err != nil || n != c.want {
+						t.Errorf("%s %s of %s in the database of %s: %d %v, want %d", name, id, d.path, c.where, n, err, c.want)
+					}
+				}
+			}
+		}
+	}
+
 	tenantSideData(t, admin, userA, userB, a, b)
+	tenantCreateRules(t, admin, userA, userB)
 
 	// A tenant account cannot leave its tenant, change roles or types, or create at the root.
 	for _, c := range []struct {
@@ -193,7 +226,9 @@ func TestTenantBoundaryOverHTTP(t *testing.T) {
 		{http.MethodPut, "/api/v1/org/nodes/root/settings/apitest.tenant", `1`, 404},
 		{http.MethodPost, "/api/v1/assignments", `{"role": "admin", "person_id": "` + b.records["core.person"] + `", "org_path": "root.ta"}`, 404},
 		{http.MethodPost, "/api/v1/assignments", `{"role": "admin", "person_id": "` + a.records["core.person"] + `", "org_path": "root.tb"}`, 404},
-		{http.MethodPost, "/api/v1/records/probe.probe", `{"title": "fremd", "org_path": "root.tb"}`, 403},
+		// With one database the node of B exists and A may not write there; with a database per
+		// tenant A does not even know it (PL47e).
+		{http.MethodPost, "/api/v1/records/probe.probe", `{"title": "fremd", "org_path": "root.tb"}`, map[bool]int{false: 403, true: 422}[separate]},
 	} {
 		if r := call(t, userA, c.method, c.path, c.body, nil); r.code != c.want {
 			t.Errorf("%s %s as A: %d %s, want %d", c.method, c.path, r.code, r.raw, c.want)
@@ -219,8 +254,15 @@ func TestTenantBoundaryOverHTTP(t *testing.T) {
 		t.Fatalf("administrator in B: %s", l)
 	}
 	var switches int
-	if err := admin.pool.QueryRow(ctx, "SELECT count(*) FROM security_event WHERE kind = 'tenant' AND details->>'to' = 'root.tb'").Scan(&switches); err != nil || switches == 0 {
-		t.Fatalf("switch in the security log: %d %v", switches, err)
+	for _, pool := range admin.rt.Pools() {
+		var n int
+		if err := pool.QueryRow(ctx, "SELECT count(*) FROM security_event WHERE kind = 'tenant' AND details->>'to' = 'root.tb'").Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		switches += n
+	}
+	if switches == 0 {
+		t.Fatal("switch not in the security log")
 	}
 	again := call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "apitest", "password": "`+testPassword+`"}`, map[string]string{"Cookie": ""})
 	if again.code != 200 || again.body["tenant"] != "root.tb" {
@@ -365,6 +407,85 @@ func fillTemplate(tpl, typeName string, other tenantData) (string, bool) {
 // notifications and webhooks of one tenant do not act on events of the other, those of the
 // installation act in both; an API client of A gets nothing of B; the security log of B
 // shows no switch of the administrator.
+// The acceptance of PL46: unique fields and external keys are unique per tenant; a new record
+// lands in the node of the person or of the one right, and never in the tenant by stealth
+// when the person has to choose.
+func tenantCreateRules(t *testing.T, admin, userA, userB *testAPI) {
+	t.Helper()
+	ctx := t.Context()
+	// The same serial number in A and B; twice in A not.
+	for _, c := range []struct {
+		api  *testAPI
+		want int
+	}{{userA, 201}, {userB, 201}, {userA, 409}} {
+		if r := call(t, c.api, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "Gerät", "serial": "SN-PL46"}`, nil); r.code != c.want {
+			t.Fatalf("serial: %d %s, want %d", r.code, r.raw, c.want)
+		}
+	}
+	// The same external key from the same source makes one record per tenant.
+	for _, api := range []*testAPI{userA, userB} {
+		if r := call(t, api, http.MethodPost, "/api/v1/records/probe.probe:bulk", `{"source": "pl46", "rows": [{"external_key": "k1", "title": "Import"}]}`, nil); r.code/100 != 2 {
+			t.Fatalf("bulk: %d %s", r.code, r.raw)
+		}
+	}
+	for _, api := range []*testAPI{userA, userB} {
+		r := call(t, api, http.MethodGet, "/api/v1/records/probe.probe?filter[external_key]=k1", "", nil)
+		if items, _ := r.body["items"].([]any); r.code != 200 || len(items) != 1 {
+			t.Fatalf("one import per tenant: %d %s", r.code, r.raw)
+		}
+	}
+
+	// A person of A with the role in one node below the tenant creates there without naming
+	// it (before PL46: 403).
+	if r := call(t, admin, http.MethodPost, "/api/v1/auth/context", `{"tenant": "root.ta"}`, nil); r.code != 200 {
+		t.Fatalf("switch to A: %d %s", r.code, r.raw)
+	}
+	acc := tenantAccount(t, admin, "apitest_unit", "root.ta")
+	p := call(t, admin, http.MethodPost, "/api/v1/records/core.person", `{"last_name": "unit"}`, nil)
+	if p.code != 201 || p.body["org_path"] != "root.ta" {
+		t.Fatalf("person: %d %s", p.code, p.raw)
+	}
+	pid := uuid.MustParse(p.body["id"].(string))
+	if err := admin.authz.LinkPerson(ctx, acc.ID, &pid); err != nil {
+		t.Fatal(err)
+	}
+	bindTenantAccount(t, admin, "apitest_unit", "root.ta")
+	assign := func(node string) {
+		if r := call(t, admin, http.MethodPost, "/api/v1/assignments", `{"role": "admin", "person_id": "`+pid.String()+`", "org_path": "`+node+`"}`, nil); r.code != 201 {
+			t.Fatalf("assign at %s: %d %s", node, r.code, r.raw)
+		}
+		admin.authz.Invalidate(ctx)
+	}
+	assign("root.ta.unit")
+	in := call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "apitest_unit", "password": "`+testPassword+`"}`, map[string]string{"Cookie": ""})
+	if in.code != 200 {
+		t.Fatalf("login: %d %s", in.code, in.raw)
+	}
+	unit := &testAPI{Server: admin.Server, cookie: sessionCookieOf(t, in.hdr)}
+	fs := call(t, unit, http.MethodPost, "/api/v1/records/probe.probe:field-states", `{}`, nil)
+	if nodes, _ := fs.body["nodes"].([]any); fs.code != 200 || fs.body["node"] != "root.ta.unit" || len(nodes) != 1 {
+		t.Fatalf("field states of a new record: %d %s", fs.code, fs.raw)
+	}
+	if r := call(t, unit, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "unten"}`, nil); r.code != 201 || r.body["org_path"] != "root.ta.unit" {
+		t.Fatalf("create below: %d %s", r.code, r.raw)
+	}
+	// A second node with the right leaves a choice: the form offers both, the API wants one.
+	if r := call(t, admin, http.MethodPost, "/api/v1/org/nodes", `{"parent": "root.ta", "name": "zwei"}`, nil); r.code != 201 {
+		t.Fatalf("node zwei: %d %s", r.code, r.raw)
+	}
+	assign("root.ta.zwei")
+	fs = call(t, unit, http.MethodPost, "/api/v1/records/probe.probe:field-states", `{}`, nil)
+	if nodes, _ := fs.body["nodes"].([]any); fs.code != 200 || fs.body["node"] != "" || len(nodes) != 2 {
+		t.Fatalf("field states with two nodes: %d %s", fs.code, fs.raw)
+	}
+	if r := call(t, unit, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "wo"}`, nil); r.code != 422 || !strings.Contains(r.raw, `"org_path"`) {
+		t.Fatalf("create without a node: %d %s", r.code, r.raw)
+	}
+	if r := call(t, unit, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "wo", "org_path": "root.ta.zwei"}`, nil); r.code != 201 {
+		t.Fatalf("create in zwei: %d %s", r.code, r.raw)
+	}
+}
+
 func tenantSideData(t *testing.T, admin, userA, userB *testAPI, a, b tenantData) {
 	t.Helper()
 	ctx := t.Context()
@@ -436,11 +557,13 @@ func tenantSideData(t *testing.T, admin, userA, userB *testAPI, a, b tenantData)
 		return r.body["id"].(string)
 	}
 	hookA, hookB := hook(userA, "pl45 a"), hook(userB, "pl45 b")
+	// The stream of A lies in the database of A with a database per tenant (PL47c).
+	inA := admin.rt.BindFor(ctx, "root.ta")
 	rec := create(userA, "probe.probe", `{"title": "PL45 Webhook"}`)
 	id := uuid.MustParse(rec["id"].(string))
 	var e records.Event
 	for deadline := time.Now().Add(10 * time.Second); e.Position == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
-		list, err := records.New(admin.pool).Events(ctx, 0, 100000)
+		list, err := records.New(admin.rt).Events(inA, 0, 100000)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -450,7 +573,7 @@ func tenantSideData(t *testing.T, admin, userA, userB *testAPI, a, b tenantData)
 			}
 		}
 	}
-	if err := admin.hooks.Handle(ctx, e); err != nil {
+	if err := admin.hooks.Handle(inA, e); err != nil {
 		t.Fatal(err)
 	}
 	deliveries := func(api *testAPI, hook string) int {
@@ -513,5 +636,66 @@ func tenantSideData(t *testing.T, admin, userA, userB *testAPI, a, b tenantData)
 		if r.code != 200 || (u == userB) != (len(items) == 0) {
 			t.Fatalf("switches in the log: %d %s", r.code, r.raw)
 		}
+	}
+}
+
+// tenantsAdopted turns an installation into tenants (PL44): the first one adopts all that is
+// there, the administrator stays with the installation, the second starts empty.
+func tenantsAdopted(t *testing.T, admin *testAPI) {
+	t.Helper()
+	ctx := t.Context()
+	// Without tenants the root is the only one, as before.
+	if r := call(t, admin, http.MethodGet, "/api/v1/auth/me", "", nil); r.body["tenant"] != "root" || r.body["tenants"] != nil {
+		t.Fatalf("me without tenants: %s", r.raw)
+	}
+	before := call(t, admin, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "vor den Mandanten"}`, nil)
+	if before.code != 201 || before.body["org_path"] != "root" {
+		t.Fatalf("record before: %d %s", before.code, before.raw)
+	}
+	if r := call(t, admin, http.MethodPost, "/api/v1/org/nodes", `{"parent": "root", "name": "alt"}`, nil); r.code != 201 {
+		t.Fatalf("node before: %d %s", r.code, r.raw)
+	}
+
+	// The first tenant adopts all that is there; the administrator stays with the installation.
+	res, err := tenant.Create(ctx, admin.pool, tenant.Options{Name: "ta", Label: map[string]string{"de": "Mandant A", "en": "Tenant A"}, Adopt: true, Admins: []string{"apitest"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Nodes < 1 || res.Records["probe.probe"] != 1 || res.Records["core.person"] < 1 {
+		t.Fatalf("adopted: %+v", res)
+	}
+	if _, err := tenant.Create(ctx, admin.pool, tenant.Options{Name: "tb", Adopt: true}); err == nil {
+		t.Fatal("a second tenant adopts")
+	}
+	if _, err := tenant.Create(ctx, admin.pool, tenant.Options{Name: "tb", Label: map[string]string{"de": "Mandant B"}}); err != nil {
+		t.Fatal(err)
+	}
+	admin.authz.Invalidate(ctx)
+	me := call(t, admin, http.MethodGet, "/api/v1/auth/me", "", nil)
+	if me.body["tenant"] != "root.ta" || !strings.Contains(me.raw, `"label":{"de":"Mandant B"}`) {
+		t.Fatalf("me with tenants: %s", me.raw)
+	}
+	if r := call(t, admin, http.MethodGet, "/api/v1/records/probe.probe/"+before.body["id"].(string), "", nil); r.code != 200 || r.body["org_path"] != "root.ta" {
+		t.Fatalf("the record before is in the first tenant: %d %s", r.code, r.raw)
+	}
+	if r := call(t, admin, http.MethodGet, "/api/v1/org/nodes/root.ta.alt", "", nil); r.code != 200 {
+		t.Fatalf("the node before is in the first tenant: %d %s", r.code, r.raw)
+	}
+}
+
+// tenantsInDatabases makes the two tenants in the databases the operator made for them
+// (PL47d): they start empty; the administrator of the installation stays at the root.
+func tenantsInDatabases(t *testing.T, admin *testAPI, urls map[string]string) {
+	t.Helper()
+	ctx := t.Context()
+	for _, name := range []string{"ta", "tb"} {
+		label := map[string]string{"de": "Mandant " + strings.ToUpper(name[1:])}
+		if _, err := tenant.CreateIn(ctx, admin.rt.Control(), urls["root."+name], tenant.Options{Name: name, Label: label}, quiet); err != nil {
+			t.Fatal(err)
+		}
+	}
+	admin.authz.Invalidate(ctx)
+	if me := call(t, admin, http.MethodGet, "/api/v1/auth/me", "", nil); !strings.Contains(me.raw, `"label":{"de":"Mandant B"}`) {
+		t.Fatalf("me with tenants: %s", me.raw)
 	}
 }

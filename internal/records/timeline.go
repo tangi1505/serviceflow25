@@ -118,7 +118,7 @@ func (s *Service) Timeline(ctx context.Context, typeName string, id uuid.UUID) (
 	if err != nil {
 		return nil, err
 	}
-	q := queries.New(s.pool)
+	q := queries.New(s.db.Tenant(ctx))
 	rows, err := q.EntriesOfRecord(ctx, queries.EntriesOfRecordParams{TypeName: typeName, RecordID: id, WithPrivate: readsPrivate(ctx, t, rec)})
 	if err != nil {
 		return nil, fmt.Errorf("records: timeline: %w", err)
@@ -245,7 +245,7 @@ func (s *Service) GetEntry(ctx context.Context, typeName string, id, entryID uui
 	if err != nil {
 		return Entry{}, err
 	}
-	row, err := queries.New(s.pool).GetEntry(ctx, queries.GetEntryParams{ID: entryID, TypeName: typeName, RecordID: id})
+	row, err := queries.New(s.db.Tenant(ctx)).GetEntry(ctx, queries.GetEntryParams{ID: entryID, TypeName: typeName, RecordID: id})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.Private && !readsPrivate(ctx, t, rec)) {
 		return Entry{}, fmt.Errorf("entry %s of %s %s: %w", entryID, typeName, id, ErrNotFound)
 	}

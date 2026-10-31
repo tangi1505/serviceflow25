@@ -126,13 +126,13 @@ const (
 // the test jobs.
 func TestBulkDoesNotDelayInteractive(t *testing.T) {
 	ctx, pool := setup(t)
-	s := New(pool, Options{Logger: quiet, Workers: map[string]int{queueFast: 4, queueSlow: 2}})
+	s := New(db.Single(pool), Options{Logger: quiet, Workers: map[string]int{queueFast: 4, queueSlow: 2}})
 	AddWorker(s, sleepWorker{})
 	if err := s.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Stop(context.Background()) })
-	events, cancel := s.client.Subscribe(river.EventKindJobCompleted)
+	events, cancel := s.clients[""].Subscribe(river.EventKindJobCompleted)
 	defer cancel()
 	done := watch(events)
 
@@ -183,7 +183,7 @@ func TestBulkDoesNotDelayInteractive(t *testing.T) {
 // Schedules: the default of the code, the override of the table, next and last run, run now.
 func TestSchedulesOverrideAndRunNow(t *testing.T) {
 	ctx, pool := setup(t)
-	s := New(pool, Options{Logger: quiet, Workers: map[string]int{queueFast: 1}})
+	s := New(db.Single(pool), Options{Logger: quiet, Workers: map[string]int{queueFast: 1}})
 	AddWorker(s, tickWorker{})
 	tick := Periodic{Name: "jobstest.tick", Label: map[string]string{"de": "Tick"}, Schedule: "*/5 * * * *", Queue: queueFast,
 		Args: func() river.JobArgs { return tickArgs{} }}
@@ -246,7 +246,7 @@ func TestSchedulesOverrideAndRunNow(t *testing.T) {
 		t.Fatalf("table: %+v %v", row, err)
 	}
 
-	events, cancel := s.client.Subscribe(river.EventKindJobCompleted)
+	events, cancel := s.clients[""].Subscribe(river.EventKindJobCompleted)
 	defer cancel()
 	done := watch(events)
 	job, err := s.RunNow(ctx, "jobstest.tick")
@@ -307,7 +307,7 @@ func TestEventRetention(t *testing.T) {
 	if _, err := tx.Exec(ctx, "UPDATE event SET at = now() - interval '8 days' WHERE position = $1", old.Position); err != nil {
 		t.Fatal(err)
 	}
-	w := &eventRetentionWorker{pool: pool, keep: 7 * 24 * time.Hour, logger: quiet, db: tx}
+	w := &eventRetentionWorker{dbs: db.Single(pool), keep: 7 * 24 * time.Hour, logger: quiet, db: tx}
 	// A durable consumer that has not taken the old event holds it back (PL41).
 	if _, err := tx.Exec(ctx, `INSERT INTO event_consumer (name, position, durable) VALUES ('jobstest-slow', $1, true)
 		ON CONFLICT (name) DO UPDATE SET position = $1, durable = true`, old.Position-1); err != nil {
@@ -347,7 +347,7 @@ func TestEventRetention(t *testing.T) {
 	if !kept[fresh.Position] {
 		t.Fatal("the fresh event must stay")
 	}
-	s := New(pool, Options{Logger: quiet})
+	s := New(db.Single(pool), Options{Logger: quiet})
 	if err := RegisterEventRetention(s, 7*24*time.Hour); err != nil {
 		t.Fatal(err)
 	}

@@ -97,6 +97,45 @@ func TestTenantBoundary(t *testing.T) {
 	}
 }
 
+// Where a new record lands that names no node (PL46): the node of the context, else the
+// person's node if the access may create there, else the one node with the right; two nodes
+// leave a choice. The reach lists the nodes to choose from, inner ones swallowed.
+func TestCreateNode(t *testing.T) {
+	g := func(path string, scope Scope) Grant {
+		return Grant{TypeName: Any, Action: ActionCreate, Scope: scope, OrgPath: path, Role: "r"}
+	}
+	root := []string{"root"}
+	for _, c := range []struct {
+		name  string
+		a     Access
+		node  string
+		ok    bool
+		reach string
+	}{
+		{"one subtree", Access{Tenants: root, Grants: []Grant{g("root.a", ScopeSubtree)}}, "root.a", true, "root.a+"},
+		{"person inside", Access{Tenants: root, PersonNode: "root.a.x", Grants: []Grant{g("root.a", ScopeSubtree)}}, "root.a.x", true, "root.a+"},
+		{"person outside", Access{Tenants: root, PersonNode: "root.b", Grants: []Grant{g("root.a", ScopeSubtree)}}, "root.a", true, "root.a+"},
+		{"two nodes", Access{Tenants: root, Grants: []Grant{g("root.a", ScopeSubtree), g("root.b", ScopeUnit)}}, "", false, "root.a+,root.b"},
+		{"inner swallowed", Access{Tenants: root, Grants: []Grant{g("root.a", ScopeAll), g("root.a.x", ScopeUnit)}}, "root.a", true, "root.a+"},
+		{"context", Access{Tenants: root, ActiveOrg: "root.a.y", Grants: []Grant{g("root.a", ScopeSubtree), g("root.b", ScopeSubtree)}}, "root.a.y", true, "root.a.y+"},
+		{"role at the root, in a tenant", Access{Tenants: []string{"root.a", "root.b"}, Grants: []Grant{g("root", ScopeAll)}}, "root.a", true, "root.a+"},
+		{"no right", Access{Tenants: []string{"root.a"}}, "root.a", true, ""},
+	} {
+		node, ok := c.a.CreateNode("p.t")
+		var parts []string
+		for _, r := range c.a.CreateReach("p.t") {
+			s := r.Path
+			if r.Below {
+				s += "+"
+			}
+			parts = append(parts, s)
+		}
+		if reach := strings.Join(parts, ","); node != c.node || ok != c.ok || reach != c.reach {
+			t.Errorf("%s: node %q %v, reach %s; want %q %v, %s", c.name, node, ok, reach, c.node, c.ok, c.reach)
+		}
+	}
+}
+
 // The tenants an account may work in.
 func TestEnterable(t *testing.T) {
 	tenants := []queries.ListTenantsRow{{Path: "root.a"}, {Path: "root.b"}}

@@ -15,11 +15,13 @@
 package engine
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -33,6 +35,7 @@ import (
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/cache"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/jobs"
 	"group24.de/itsm/internal/meta"
@@ -173,8 +176,7 @@ func scope(ctx context.Context) pgtype.Text {
 
 // Engine keeps the rules and runs them.
 type Engine struct {
-	pool   *pgxpool.Pool
-	q      *queries.Queries
+	db     *db.Router
 	rec    *records.Service
 	jobs   *jobs.Service
 	kv     *cache.Client
@@ -188,11 +190,63 @@ type Engine struct {
 }
 
 // New wires the engine; kv may be nil (then only this instance hears of changes).
-func New(pool *pgxpool.Pool, rec *records.Service, js *jobs.Service, kv *cache.Client, logger *slog.Logger) *Engine {
+func New(rt *db.Router, rec *records.Service, js *jobs.Service, kv *cache.Client, logger *slog.Logger) *Engine {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Engine{pool: pool, q: queries.New(pool), rec: rec, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault}
+	return &Engine{db: rt, rec: rec, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault}
+}
+
+// ruleDB is the query handle in the database of a rule (PL47b): the tenant's, or the control
+// database for a rule of the installation.
+func (e *Engine) ruleDB(tenant pgtype.Text) *queries.Queries {
+	if !tenant.Valid {
+		return queries.New(e.db.Control())
+	}
+	return queries.New(e.db.For(tenant.String))
+}
+
+// allRules lists the rules of every database (PL47b), by type and position; with one database
+// that is one query, as before.
+func (e *Engine) allRules(ctx context.Context) ([]queries.Rule, error) {
+	var out []queries.Rule
+	for _, pool := range e.db.Pools() {
+		rows, err := queries.New(pool).ListRules(ctx)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rows...)
+	}
+	if e.db.Separate() {
+		slices.SortStableFunc(out, func(a, b queries.Rule) int {
+			if c := strings.Compare(a.TypeName, b.TypeName); c != 0 {
+				return c
+			}
+			if c := cmp.Compare(a.Position, b.Position); c != 0 {
+				return c
+			}
+			return strings.Compare(a.Name, b.Name)
+		})
+	}
+	return out, nil
+}
+
+// getRule finds the rule of that name the request sees: the tenant's own before the
+// installation's (PL45), in the tenant's database, then the control database (PL47b).
+func (e *Engine) getRule(ctx context.Context, name string) (queries.Rule, error) {
+	pools := []*pgxpool.Pool{e.db.Tenant(ctx)}
+	if c := e.db.Control(); c != pools[0] {
+		pools = append(pools, c)
+	}
+	err := pgx.ErrNoRows
+	for _, pool := range pools {
+		var row queries.Rule
+		row, err = queries.New(pool).GetRule(ctx, queries.GetRuleParams{Name: name, Tenant: scope(ctx)})
+		if err == nil || !errors.Is(err, pgx.ErrNoRows) {
+			return row, err
+		}
+	}
+	return queries.Rule{}, err
 }
 
 // Run keeps the rules in step with the other instances until the context ends.
@@ -232,7 +286,7 @@ func (e *Engine) of(ctx context.Context, typeName, trigger, mode string) ([]*com
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.byType == nil || time.Since(e.loaded) > reloadAfter {
-		rows, err := e.q.ListRules(ctx)
+		rows, err := e.allRules(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("rules: load: %w", err)
 		}
@@ -372,7 +426,7 @@ func setRole(rec map[string]any, role string, holders any) {
 // List returns the rules the request sees, by type and position: in a tenant its own and those
 // of the installation (PL45).
 func (e *Engine) List(ctx context.Context) ([]Rule, error) {
-	rows, err := e.q.ListRules(ctx)
+	rows, err := e.allRules(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("rules: list: %w", err)
 	}
@@ -394,7 +448,7 @@ func (e *Engine) List(ctx context.Context) ([]Rule, error) {
 // Get returns the rule of that name the request sees: the tenant's own, else the
 // installation's (PL45).
 func (e *Engine) Get(ctx context.Context, name string) (Rule, error) {
-	row, err := e.q.GetRule(ctx, queries.GetRuleParams{Name: name, Tenant: scope(ctx)})
+	row, err := e.getRule(ctx, name)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Rule{}, fmt.Errorf("rule %s: %w", name, records.ErrNotFound)
 	}
@@ -413,12 +467,12 @@ func (e *Engine) Put(ctx context.Context, name string, r Rule, installation bool
 	if installation {
 		target = pgtype.Text{}
 	}
-	existing, err := e.q.GetRule(ctx, queries.GetRuleParams{Name: name, Tenant: scope(ctx)})
+	existing, err := e.getRule(ctx, name)
 	switch {
 	case err == nil && existing.Tenant != target:
 		return Rule{}, false, fmt.Errorf("%w: the name %s belongs to a rule of %s", records.ErrConflict, name, owner(existing.Tenant))
 	case errors.Is(err, pgx.ErrNoRows) && !target.Valid:
-		if taken, err := e.q.RuleNameInTenants(ctx, name); err != nil {
+		if taken, err := e.nameInTenants(ctx, name); err != nil {
 			return Rule{}, false, err
 		} else if taken {
 			return Rule{}, false, fmt.Errorf("%w: a tenant has a rule named %s", records.ErrConflict, name)
@@ -450,11 +504,11 @@ func (e *Engine) Put(ctx context.Context, name string, r Rule, installation bool
 		if idErr != nil {
 			return Rule{}, false, idErr
 		}
-		row, err = e.q.InsertRule(ctx, queries.InsertRuleParams{ID: id, Name: name, Label: label, Description: desc, TypeName: r.TypeName,
+		row, err = e.ruleDB(target).InsertRule(ctx, queries.InsertRuleParams{ID: id, Name: name, Label: label, Description: desc, TypeName: r.TypeName,
 			Trigger: r.Trigger, Mode: r.Mode, Condition: r.Condition, Schedule: r.Schedule, Actions: actions,
 			Position: int32(r.Position), Stop: r.Stop, Enabled: r.Enabled, Sla: sla, Percent: percent, Minutes: minutes, Actor: by, Tenant: target}) //nolint:gosec // checked to fit
 	} else {
-		row, err = e.q.UpdateRule(ctx, queries.UpdateRuleParams{ID: existing.ID, Label: label, Description: desc, TypeName: r.TypeName,
+		row, err = e.ruleDB(existing.Tenant).UpdateRule(ctx, queries.UpdateRuleParams{ID: existing.ID, Label: label, Description: desc, TypeName: r.TypeName,
 			Trigger: r.Trigger, Mode: r.Mode, Condition: r.Condition, Schedule: r.Schedule, Actions: actions,
 			Position: int32(r.Position), Stop: r.Stop, Enabled: r.Enabled, Sla: sla, Percent: percent, Minutes: minutes, Actor: by}) //nolint:gosec // checked to fit
 	}
@@ -464,6 +518,17 @@ func (e *Engine) Put(ctx context.Context, name string, r Rule, installation bool
 	e.changed(ctx)
 	out, err := fromRow(row)
 	return out, created, err
+}
+
+// nameInTenants reports whether a tenant has a rule of that name, in any database (PL47b).
+func (e *Engine) nameInTenants(ctx context.Context, name string) (bool, error) {
+	for _, pool := range e.db.Pools() {
+		taken, err := queries.New(pool).RuleNameInTenants(ctx, name)
+		if err != nil || taken {
+			return taken, err
+		}
+	}
+	return false, nil
 }
 
 // owner names who a rule belongs to, for messages.
@@ -480,7 +545,7 @@ func (e *Engine) Delete(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	n, err := e.q.DeleteRule(ctx, r.ID)
+	n, err := e.ruleDB(pgtype.Text{String: r.Tenant, Valid: r.Tenant != ""}).DeleteRule(ctx, r.ID)
 	if err != nil {
 		return fmt.Errorf("rules: delete: %w", err)
 	}

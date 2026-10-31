@@ -36,7 +36,7 @@ func TestOrgRightsOverHTTP(t *testing.T) {
 
 	// A unit administrator: both rights, assigned at root.orgrights, reaching its subtree.
 	const unitRole = "orgr_unit"
-	call(t, admin, http.MethodDelete, "/api/v1/roles/"+unitRole, "", nil)
+	dropRole(t, admin, unitRole)
 	call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+unitRole+`", "label": {"de": "Einheit"}}`, nil)
 	for _, action := range []string{"manage_org", "manage_settings"} {
 		if r := call(t, admin, http.MethodPut, "/api/v1/roles/"+unitRole+"/permissions", `{"type_name": "core.org", "action": "`+action+`", "scope": "subtree"}`, nil); r.code != 204 {

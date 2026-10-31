@@ -62,9 +62,15 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL43** | Kundenschicht und wirksame Definition: Änderungen aus der Oberfläche als Liste in der Schicht `customer`, die wirksame Definition aus Basis und Kunde (gecacht, Hash als Version), Konflikte beim Aktualisieren eines Pakets angezeigt, Export der Kundenschicht als Paket; die Erweiterungsschicht bleibt bei EX (Hauptplan E135, E37; Architektur §4) | 🟢 | 2 d | Ein Feld per API in der Kundenschicht ergänzen → erscheint im Typ und in der Tabelle; das Basispaket neu installieren → das Feld bleibt; ein Paket, das ein von der Kundenschicht geändertes Feld entfernt, meldet den Konflikt vor der Aktivierung; der Export enthält genau die Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL44** | Mandantengrenze: Knoten mit `tenant` direkt unter der Wurzel, Konto und Person mit Mandant, die Sitzung trägt einen Mandanten, der Rechtefilter setzt die Grenze vor jede Reichweite (auch `all`), Admins der Installation wechseln den Mandanten wie den Rechtekontext (Hauptplan E136; architektur.md §5.1; V24, V25, V27) | 🟢 | 2 d | Zwei Mandanten mit je einem Konto und der Rolle `all`: keiner sieht in Liste, Suche, Einzelabruf und Export einen Datensatz des anderen (404); ein Admin sieht nach dem Wechsel nur den gewählten; ein Test ruft jede Route mit beiden auf; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL45** | Nebendaten je Mandant: Ereignisstrom und SSE, Webhooks, Benachrichtigungen, Dateien, Jobs, Exporte, Ereignisprotokoll, Einstellungen, API-Clients, Verzeichnisabgleich und Valkey-Schlüssel tragen den Mandanten; Vorgaben der Pakete als Kopie für einen neuen Mandanten (Hauptplan E136; V28) | 🟢 | 2 d | Ein Ereignis in Mandant A erreicht weder SSE noch Webhook noch Benachrichtigung in B; ein API-Client von A bekommt in B nichts; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL46** | Anlegen und Eindeutigkeit je Mandant: ein neuer Datensatz landet im Knoten des Rechtekontexts oder im Heimatknoten der Person, die Oberfläche wählt den Knoten; eindeutige Felder und externer Schlüssel je Mandant (Hauptplan E136) | ⬜ | 1,5 d | Dieselbe Seriennummer in A und B geht, zweimal in A nicht; eine Person mit Rolle nur im Unterbaum legt ohne Angabe in ihrem Knoten an; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL47** | Datenbank je Mandant als Betriebsart: Steuer-Datenbank (Mandantenverzeichnis mit Verbindung, Admin-Konten, Benutzername → Mandant, Pakete und Typen samt Kundenschicht), Pool je Mandant aus der Sitzung, Migrationen, Paket-Installation und Schemaänderung für jede Mandanten-Datenbank, River je Datenbank; die Betriebsart steht in der Konfiguration (Hauptplan E137; architektur.md §5.1) | ⬜ | 2,5 d | Zwei Mandanten in eigenen Datenbanken: der Grenztest aus PL44 läuft in beiden Betriebsarten grün; ein Paket-Update erreicht beide Datenbanken; eine Mandanten-Datenbank lässt sich allein sichern und wiederherstellen; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL48** | Auswertungen über Mandanten: Sonderrecht für Admins der Installation, JSON-Abfrage mit Gruppierung und Aggregation sowie Listen je Mandant mit dessen Rechten, Zusammenführen mit dem Mandanten als Spalte, Eintrag im Ereignisprotokoll jedes Mandanten; nur lesen (Hauptplan E137) | ⬜ | 1,5 d | Ein Admin mit dem Recht sieht offene Vorgänge je Status für A und B in einer Tabelle, in beiden Betriebsarten; ohne das Recht 403; beide Mandanten haben den Eintrag im Ereignisprotokoll; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL46** | Anlegen und Eindeutigkeit je Mandant: ein neuer Datensatz landet im Knoten des Rechtekontexts oder im Heimatknoten der Person, die Oberfläche wählt den Knoten; eindeutige Felder und externer Schlüssel je Mandant (Hauptplan E136, E140) | 🟢 | 1,5 d | Dieselbe Seriennummer in A und B geht, zweimal in A nicht; eine Person mit Rolle nur im Unterbaum legt ohne Angabe in ihrem Knoten an; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL47a** | Datenbank je Mandant, Naht: `db.Router` mit `Control()`, `Tenant(ctx)`, `For(tenant)`; kein Dienst hält mehr einen Pool, jeder Zugriff wählt Steuer- oder Mandanten-Datenbank; bei einer Datenbank ändert sich nichts (Hauptplan E137, E141) | 🟢 | 1,5 d | Ein Test findet keinen Pool und keine Abfrage-Verbindung als Feld eines Dienstes; der Router wählt mit zwei Mandanten-Datenbanken richtig; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL47b** | Datenbank je Mandant, Steuer-Datenbank: Benutzername → Mandant und Anmeldung über sie; Konten, Regeln, API-Clients und Protokoll der Installation zentral; Rollen und Rechte zentral, Zuweisungen beim Mandanten, die der Installationskonten zentral; Anmelderegeln und Identitäten zentral; Spiegelkonto mit Person für Admins bei jedem Betreten; Baum geteilt (Wurzel und Mandantenknoten zentral, Teilbaum beim Mandanten) (Hauptplan E141, E142) | 🟢 | 2 d | Mit zwei Mandanten-Datenbanken: Anmeldung von Konten beider Mandanten und eines Admins; ein Admin ist Bearbeiter an einem Vorgang in A; eine Regel der Installation wirkt in A und B; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL47c** | Datenbank je Mandant, Hintergrund: je Mandanten-Datenbank ein River-Client, Verteiler und Zeitplaner (SLA, Wiederholung, Benachrichtigung), dazu einer für die Steuer-Datenbank (Hauptplan E141, E143) | 🟢 | 1 d | Ein Ereignis in A erreicht Webhook und Benachrichtigung von A über den Verteiler von A; ein Job von B läuft in B; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL47d** | Datenbank je Mandant, Betrieb: `ITSM_TENANT_MODE=shared\|database`, je Mandant `ITSM_TENANT_<NAME>_DATABASE_URL` (Zugangsdaten nur in der Konfiguration); `migrate`, `package install` und `tenant create` wirken auf jede Datenbank; Sicherung und Wiederherstellung einer Mandanten-Datenbank (Hauptplan E141, E144) | 🟢 | 1 d | Ein Paket-Update erreicht beide Mandanten-Datenbanken; eine Mandanten-Datenbank lässt sich allein sichern und wiederherstellen; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL47e** | Datenbank je Mandant, Tests: der Grenz-Rundgang aus PL44 bis PL46 läuft in beiden Betriebsarten mit eigenen Datenbanken (Hauptplan E141, E145; architektur.md §5.1) | 🟢 | 1 d | Der Rundgang findet in beiden Betriebsarten keinen Treffer über die Grenze; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL48** | Auswertungen über Mandanten: Sonderrecht für Admins der Installation, JSON-Abfrage mit Gruppierung und Aggregation sowie Listen je Mandant mit dessen Rechten, Zusammenführen mit dem Mandanten als Spalte, Eintrag im Ereignisprotokoll jedes Mandanten; nur lesen (Hauptplan E137, E146) | 🟢 | 1,5 d | Ein Admin mit dem Recht sieht offene Vorgänge je Status für A und B in einer Tabelle, in beiden Betriebsarten; ohne das Recht 403; beide Mandanten haben den Eintrag im Ereignisprotokoll; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL49** | Laufende Nummer je Typ: Feldtyp `sequence` mit Präfix (etwa `INC-24817`), vom Kern beim Anlegen vergeben, fortlaufend je Typ und Mandant in beiden Betriebsarten, danach nicht änderbar, in Liste, Suche und Betreff von Mails nutzbar; Lücken nach abgebrochenen Transaktionen sind erlaubt (aus dem [SD-Plan](05_service-desk.md) §2.3, N1; Hauptplan E137, E141) | ⬜ | 1 d | Typ mit Feld `sequence` und Präfix `INC-` → neue Datensätze `INC-1`, `INC-2`; 100 Anlagen gleichzeitig ergeben 100 verschiedene Nummern; Mandant B beginnt wieder bei `INC-1`; PATCH auf das Feld → 422; `/api/v1/search?q=INC-2` findet den Datensatz; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL50** | Zwei CIs gleichzeitig (Spuren K und O, Hauptplan E147): die festen Namen der Test-Datenbanken aus `dbtest.Isolated` bekommen eine Endung aus einer Umgebungsvariable, ebenso die CI-Datenbank `itsm_ci`; Valkey getrennt je Spur (eigene Valkey-Datenbank oder Präfix der Schlüssel, Entscheidung vor dem Bau); Compose-Projekt und Ports der zweiten WSL-Kopie stören die erste nicht. Bis dahin läuft nie mehr als eine CI | ⬜ | 0,5 d | Zwei `scripts/ci.sh` mit verschiedener Endung laufen gleichzeitig und sind beide grün; keine löscht Datenbanken oder Schlüssel der anderen |
 
 ### C — Meilenstein 2
 
@@ -86,9 +92,9 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL38** | CalDAV-Server für Planung und Notizen (E26) (Inventar G227) | ⬜ | 2 d | Thunderbird abonniert den Kalender einer Person und zeigt ihre Aufgaben mit Termin; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL39** | Aufbewahrung je Typ: Partitionen im Voraus anlegen, abgelaufene löschen oder auslagern (E47); Verlauf und Vorgänge nach Frist (Inventar G175, G244) | ⬜ | 2 d | Ein Typ mit Monatspartitionen hat nach dem Wartungsjob die nächsten drei Monate angelegt; eine abgelaufene Partition ist gelöscht; `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 80,5 d; 64 d geschätzt vor dem Bau (Block A: 10 d), PL40 am 2026-10-27 aus PL22 abgetrennt, PL41 am 2026-10-28 aus dem Befund von WF4 dazu, PL42 am 2026-10-29 vor UI3 eingeschoben (Hauptplan E121), PL43 am 2026-10-29 vor UI25 eingeschoben (Hauptplan E135), PL44 bis PL48 am 2026-10-29 für die Mandanten (Hauptplan E136, E137).
+**Summe:** 80,5 d; 64 d geschätzt vor dem Bau (Block A: 10 d), PL40 am 2026-10-27 aus PL22 abgetrennt, PL41 am 2026-10-28 aus dem Befund von WF4 dazu, PL42 am 2026-10-29 vor UI3 eingeschoben (Hauptplan E121), PL43 am 2026-10-29 vor UI25 eingeschoben (Hauptplan E135), PL44 bis PL48 am 2026-10-29 für die Mandanten (Hauptplan E136, E137), PL47 am 2026-10-30 in PL47a bis PL47e geteilt und von 2,5 d auf 6,5 d geschätzt (Hauptplan E141). Mit PL49 am 2026-10-31 aus dem SD-Plan (§2.3, N1) 81,5 d.
 
-**Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B ist fertig; PL31 und PL32 aus Block C sind vorgezogen gebaut. PL41 (Verteiler in Stapeln, Hauptplan E112) ist auf deine Entscheidung nach dem Befund von WF4 in Block B dazugekommen und vor WF8 gebaut. PL42 (Zeitleiste, Hauptplan E121) ist am 2026-10-29 auf deine Entscheidung vor UI3 eingeschoben, weil die Detailseite Folgemeldungen braucht, die es noch nicht gab. Der Rest von Block C und Block D wartet bis nach Meilenstein 1; vorher kommen WF und UI.
+**Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B ist fertig; PL31 und PL32 aus Block C sind vorgezogen gebaut. PL41 (Verteiler in Stapeln, Hauptplan E112) ist auf deine Entscheidung nach dem Befund von WF4 in Block B dazugekommen und vor WF8 gebaut. PL42 (Zeitleiste, Hauptplan E121) ist am 2026-10-29 auf deine Entscheidung vor UI3 eingeschoben, weil die Detailseite Folgemeldungen braucht, die es noch nicht gab. Der Rest von Block C und Block D wartet bis nach Meilenstein 1; vorher kommen WF und UI. PL49 (laufende Nummer) ist am 2026-10-31 aus dem SD-Plan dazugekommen und steht vor SD2.
 
 **Reihenfolge:** Block A ist der Durchstich (Hauptplan E59): PL1 bis PL5 in dieser Reihenfolge, zusammen mit UI1, UI2 und WF1; PL29 läuft daneben. Davor muss Hauptplan H11 stehen. Abgenommen wird der Durchstich als Ganzes mit Hauptplan H13. Danach Block B: zuerst PL6 bis PL10 (Organisationsbaum, Personen, Rechte), weil fast alles danach Rechte braucht; dann PL23 und PL24 (Jobs, Ereignisse), weil WF darauf aufsetzt; der Rest in der Reihenfolge der Tabelle. Block C nach Meilenstein 1, Block D mit Meilenstein 3 und 4.
 
@@ -1409,6 +1415,405 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Fortschrittsanzeige ist nur über die Ausgabe des Jobs belegt, nicht während eines langen
   Laufs beobachtet. Ein Strom über 1 GiB.
 
+### PL48 — Auswertungen über Mandanten, 2026-10-31
+
+- **Grundlage:** Hauptplan E137, E146; architektur.md §5.1; deine Entscheidungen vom 2026-10-31
+  (Recht nur ausdrücklich und nur für die Installation; eigener Endpunkt; Mandant ohne Recht
+  überspringen und melden; nur API).
+- **Gebaut:**
+  - `authz`: `TenantType` (`core.tenant`), `ActionReportTenants` (`report_tenants`) und
+    `Access.ReportsAcrossTenants`: wahr nur für ein Konto der Installation (`Home` leer) mit
+    einer Berechtigung genau dieser Art und Aktion an der Wurzel (Reichweite all oder subtree)
+    und, wenn die Sitzung auf eine Rolle eingeengt ist, in dieser Rolle. Platzhalter zählen nicht.
+  - `POST /api/v1/tenants:query` (`internal/httpapi/tenants.go`, OpenAPI `TenantQuery`,
+    `TenantRows`): je Mandant `Access.Enter` und dieselbe JSON-Abfrage wie `:query` in dessen
+    Datenbank; Zeilen mit der Spalte `tenant`; `skipped` mit `unknown` oder `no_read`;
+    `query.after` ergibt 422; eine Liste ohne Grenze bekommt 500. Je ausgewertetem Mandanten
+    ein Eintrag `report.tenants` (Kategorie data) in seinem Sicherheitsprotokoll, mit Abfrage,
+    Zeilenzahl und der Liste der Mandanten.
+  - Typen der Oberfläche neu erzeugt (`web/src/api/schema.d.ts`).
+  - Nachtrag (Befund aus dem Test, deine Entscheidung 2026-10-31): Mit einer Datenbank fand
+    `POST /api/v1/assignments` die Person eines Admins der Installation nicht (404), wenn seine
+    Sitzung in einem Mandanten arbeitete: die Person liegt an der Wurzel, außerhalb des
+    Mandanten; mit eigenen Datenbanken ging es über den Spiegel. Jetzt prüft die API die Person
+    eines Kontos der Installation zentral (`authz.Service.InstallationPerson`), wenn der Admin
+    das Recht auf Rollen an der Wurzel hat; in beiden Betriebsarten gleich.
+- **Belegt:**
+  - `TestTenantQueryOverHTTP/shared` und `/database` (der Admin gibt sich die Rolle über die
+    API aus einer Sitzung im Mandanten): Die eingebaute Rolle admin bekommt 403;
+    mit der Rolle `pl48_report` an der Wurzel kommen die Datensätze je Status als
+    `root.ta new 2`, `root.tb new 1`; eine Liste von B trägt den Mandanten, `root.tc` steht als
+    `unknown` in `skipped`; `after` gibt 422; ein Admin von A bekommt 403; beide Mandanten haben
+    den Eintrag in ihrem Protokoll, in ihrer eigenen Datenbank.
+  - Der Grenz-Rundgang ruft den neuen Endpunkt als Konto eines Mandanten auf und bleibt grün.
+  - Geändert: `TestConsumersKeepTheirPositions` lässt den freigegebenen Abnehmer laufen, bis er
+    weiterkommt (bis zu einer Minute), statt nach einem Durchlauf zu prüfen; in der CI war das
+    Ereignis der Änderung unter Last noch nicht sichtbar (E87, wie in PL47d und PL47e).
+  - Ganze CI grün am 2026-10-31 im zweiten Lauf: Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 4,00 ms, LZ2 7,95 ms, LZ3 8,82 ms, LZ4 14,52 ms, LZ5 9.062 Zeilen/s, LZ13 8.958 Zeilen/s. Davor einmal `TestConsumersKeepTheirPositions` (oben).
+- **Nicht geprüft und Befund:**
+  - Keine Oberfläche (E146); Übersetzungen der Feldwerte kommen roh (ohne `Accept-Language`).
+  - Wie lange eine Auswertung über viele Mandanten dauert, ist nicht gemessen; die Mandanten
+    werden nacheinander abgefragt.
+
+### PL47e — Datenbank je Mandant, Tests, 2026-10-30
+
+- **Grundlage:** Hauptplan E141, E145; architektur.md §5.1; deine Entscheidungen vom 2026-10-30
+  (Rundgang in jeder CI in beiden Betriebsarten; eigene CI-Datenbank und Testreste aufräumen).
+- **Gebaut:**
+  - `apiServerWith(t, tenantURLs)`: der Testserver der API mit einem Router wie im Binary; alle
+    Dienste, Paketinstallation (`installPackage` legt die Tabellen in jeder Datenbank an),
+    Jobs, Dateien und die Verteiler der Tests hängen am Router. `apiServer` ist der Fall mit
+    einer Datenbank. Die Abnehmer der Tests springen in jeder Datenbank ans Ende, und
+    `waitForMail` lässt den Verteiler jeder Datenbank laufen.
+  - `TestTenantBoundaryOverHTTP` läuft als `shared` und `database`. Mit eigenen Datenbanken
+    entstehen die Mandanten mit `tenant.CreateIn` (leer, ohne Übernahme), die Konten mit
+    `CreateAccountIn`; danach derselbe Rundgang über jede Route in beide Richtungen, die
+    Nebendaten aus PL45 (Webhooks, Benachrichtigungen, API-Client, Ereignisprotokoll) und die
+    Regeln zum Anlegen aus PL46.
+  - Neu nur mit eigenen Datenbanken: jeder Datensatz jedes Typs liegt in der Datenbank seines
+    Mandanten, in keiner anderen und nicht in der Steuer-Datenbank.
+  - CI: eigene Datenbank `itsm_ci` (`ITSM_TEST_DATABASE_URL` in `compose.yaml`); `scripts/ci.sh`
+    legt sie an, wenn sie fehlt; die Tests migrieren sie selbst. Die Entwicklungsinstanz auf
+    8092 bleibt auf `itsm`, die Befehle aus dem Werkzeug-Container ebenso.
+  - Aufgeräumt in `itsm` (einmalig): 6 Mio. erledigte Jobs, rund 960.000 Regel-Jobs aus der
+    Laststufe, die die Instanz auf 8092 ununterbrochen abarbeitete, die Abnehmer-Zeilen der Tests
+    und die Ereignisse bis auf die letzten 10.000; Datenbank von 25 auf 15 GB. Datensätze und
+    Verlauf (`audit_default`, 15 GB) sind geblieben.
+  - Nachtrag (deine Entscheidung 2026-10-30): Migration 40 macht die Nummern des
+    Sicherheitsprotokolls je Datenbank monoton. Eine neue Nummer ist mindestens die letzte plus
+    eins (Tabelle `security_event_last` mit einer Zeile, Funktion `security_event_next_id()`),
+    sonst die Zeitnummer aus PL47b; springt die Uhr zurück, bleibt die Reihenfolge richtig.
+- **Belegt:**
+  - `TestTenantBoundaryOverHTTP/shared` und `/database` grün (gezielt, 5 s und 7 s).
+  - `TestIDsStayInOrderWhenTheClockStepsBack`: Die letzte Nummer steht eine Stunde vor der
+    Uhr; die nächsten beiden Einträge bekommen sie plus eins und plus zwei und stehen in der
+    Liste oben.
+  - Geändert: Mit eigenen Datenbanken antwortet das Anlegen eines Datensatzes von A im Knoten
+    von B mit 422 („kein Knoten des Baums“) statt 403, weil die Datenbank von A den Knoten von B
+    nicht kennt; abgelehnt wird beides, und 422 verrät nicht einmal, dass es den Knoten gibt.
+  - Geändert: `TestConsumersKeepTheirPositions` wartet vor dem ersten Durchlauf, bis die
+    Ereignisse seiner beiden Datensätze sichtbar sind (bis zu einer Minute); sonst fand der
+    Durchlauf unter Last noch nichts und meldete keinen Fehler (E87, wie die Tests in PL47d).
+  - Ganze CI grün am 2026-10-30 im dritten Lauf, zum ersten Mal auf `itsm_ci` (vom ersten Lauf frisch angelegt): Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,73 ms, LZ2 5,89 ms, LZ3 7,67 ms, LZ4 14,12 ms, LZ5 13.616 Zeilen/s, LZ13 8.143 Zeilen/s (LZ2 und LZ3 deutlich schneller als auf der aufgeblähten `itsm`). Davor einmal `TestConsumersKeepTheirPositions` (oben) und einmal `TestSecuritySettingsOverHTTP`: der neueste Eintrag des Sicherheitsprotokolls war nicht die Sperre, weil die Uhr der WSL zurücksprang und die zeitgeordnete Nummer (PL47b) kleiner ausfiel; behoben mit monotonen Nummern je Datenbank (deine Entscheidung 2026-10-30, Migration 40, siehe oben); die CI danach steht im folgenden Eintrag.
+  - Ganze CI nach Migration 40 grün am 2026-10-30 im ersten Lauf: Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 4,05 ms, LZ2 6,78 ms, LZ3 8,58 ms, LZ4 12,18 ms, LZ5 9.842 Zeilen/s, LZ13 8.720 Zeilen/s.
+- **Nicht geprüft:**
+  - Die Instanz auf 8092 und die CI teilen sich weiter Valkey (Weckrufe, Sperrzähler,
+    Rechte-Cache).
+  - Der Verlauf in `itsm` (15 GB) ist nicht aufgeräumt.
+  - Die übrigen API-Tests laufen nur mit einer Datenbank; mit eigenen Datenbanken laufen der
+    Rundgang, `TestControlDatabaseOverHTTP`, `TestBackgroundPerDatabase` und `TestTenantDatabase`.
+
+### PL47d — Datenbank je Mandant, Betrieb, 2026-10-30
+
+- **Grundlage:** Hauptplan E141, E144; architektur.md §5.1; deine Entscheidungen vom 2026-10-30
+  (der Betrieb legt die Datenbank an; streng; Sicherung mit den Werkzeugen von PostgreSQL;
+  Webhook der Installation liest alle Datenbanken); mein Vorschlag ohne Einwand: kein Umzug
+  bestehender Mandanten in PL47d.
+- **Gebaut:**
+  - Konfiguration: `ITSM_TENANT_MODE=shared|database` (Vorgabe `shared`),
+    `ITSM_TENANT_<NAME>_DATABASE_URL` je Mandant (`platform.TenantDatabaseVar`). Die URL eines
+    Mandanten steht nur in der Umgebung, die Steuer-Datenbank kennt nur den Namen.
+  - `db.OpenTenants`: öffnet die Datenbank jedes Mandanten im Verzeichnis. Fehlt eine URL
+    (`db.ErrNoDatabase`, mit dem Namen der Variable) oder steht eine Datenbank auf einer anderen
+    Migration als die Steuer-Datenbank, startet itsm nicht. `db.MigrateTenants` migriert alle.
+  - Befehlszeile: `openDatabases` öffnet die Datenbanken für `serve` und alle Befehle (`user`,
+    `client`, `ldap`, `calendar`, `package`). `migrate` migriert auch jede Mandanten-Datenbank.
+    `package install` legt die Tabellen in jeder Datenbank an und stellt die Neuberechnung je
+    Datenbank ein; die Definitionen bleiben zentral. `user create --tenant` legt das Konto in der
+    Datenbank des Mandanten an, die Person mit `user grant` ebenso; `user tenant` lehnt mit
+    eigenen Datenbanken ab, weil ein Konto seine Datenbank nicht wechselt.
+  - `tenant create` mit eigenen Datenbanken (`tenant.CreateIn`): migriert die leere Datenbank,
+    legt die Tabellen aller installierten Typen, den Knoten und die Auswahllisten an und trägt
+    den Mandanten zuletzt ins Verzeichnis. Bricht es mittendrin ab, kennt die Installation den
+    Mandanten noch nicht, und ein zweiter Aufruf macht weiter. Eine Datenbank mit fremden Knoten
+    oder Konten wird abgelehnt, `--adopt` auch.
+  - `tenant check <name>` (`tenant.Check`): vergleicht Migration, Knoten in beiden Datenbanken,
+    Konten mit dem zentralen Namensverzeichnis und Spiegelkonten mit den Konten der Installation.
+    Es ändert nichts und endet mit Fehler, wenn etwas nicht passt.
+  - Webhooks der Installation über alle Datenbanken: Migration 39 (`webhook_position`, in jeder
+    Mandanten-Datenbank die Position eines zentralen Webhooks); der Verteiler eines Mandanten
+    reiht die Zustellungen ein, beginnend mit den Ereignissen nach dem Anlegen des Webhooks; die
+    Zustellung liest das Ereignis in der Datenbank ihres Jobs; die Liste der Zustellungen mischt
+    alle Datenbanken; Löschen entfernt die Positionen.
+  - Behoben (Fehler aus PL47b): `records.SeedListsInto` schrieb die Auswahllisten eines Mandanten
+    in die Steuer-Datenbank; jetzt in die Datenbank des Mandanten (`Router.BindFor`).
+  - Werkzeug-Container: `postgresql-client-18` aus dem Paketarchiv von PostgreSQL, für den Test
+    von Sicherung und Wiederherstellung.
+  - README: Abschnitt „Datenbank je Mandant“ und die neuen Variablen.
+- **Belegt:**
+  - `TestTenantDatabase` (eigene Datenbanken):
+    - Ohne URL und mit `--adopt` lehnt `CreateIn` ab, ein zweites Mal mit `ErrExists`.
+    - Der neue Mandant hat seine Auswahllisten in seiner Datenbank, keine in der Steuer-Datenbank.
+    - Ohne URL stoppt `OpenTenants` mit dem Namen der Variable.
+    - Ein danach installiertes Paket (probe) legt seine Tabelle auch in der Mandanten-Datenbank an.
+    - `pg_dump` sichert die Mandanten-Datenbank; ein Konto, das danach entsteht, fehlt in der
+      mit `pg_restore` in eine neue Datenbank wiederhergestellten Fassung, und `tenant.Check`
+      nennt genau dieses Konto; Datensatz und älteres Konto sind wieder da.
+  - `TestBackgroundPerDatabase` erweitert: Ein Webhook der Installation liegt zentral, bekommt
+    je einen Zustelljob in A und B, hat dort je eine Position, zeigt beide Zustellungen in seiner
+    Liste und nimmt beim Löschen die Positionen mit.
+  - `TestLoadConfigTenantMode`: Vorgabe, Variable je Mandant, unbekannte Betriebsart.
+  - Geändert: `TestStreamDispatchAndRetention`, die Ereignis-Hilfe der Webhook-Tests und
+    `waitUntil` warten bis zu einer Minute statt 10 bzw. 20 Sekunden, bis ihr Ereignis sichtbar
+    ist. Der Horizont gilt für den ganzen Datenbankserver; eine Bulk-Transaktion anderer Tests
+    hielt ihn in der CI mit `-race` auf einem ausgelasteten Rechner länger als 10 Sekunden auf
+    (in vier Läufen seit PL47c rot). Ein Lauf mit sekündlichem Blick auf `pg_stat_activity`
+    fand keine Transaktion aus dem Code über 4 Sekunden; ein grüner Lauf wird nicht langsamer.
+  - Durchgang von Hand mit Wegwerf-Datenbanken (`migrate`, `package install`, `tenant create`
+    mit und ohne URL, `user create --tenant`, `user tenant`, `tenant check`, `pg_dump` und
+    `pg_restore`, `serve` ohne und mit URL): alles wie erwartet; `serve` meldet zwei Datenbanken
+    für Jobs und Verteiler.
+  - Ganze CI grün am 2026-10-30 im dritten Lauf, in der WSL-Kopie: Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 4,92 ms, LZ2 10,79 ms, LZ3 18,22 ms, LZ4 15,39 ms, LZ5 7.795 Zeilen/s, LZ13 5.695 Zeilen/s (der Rechner war durch glpi-perf ausgelastet). Davor einmal Lint (gosec G602, Fehlalarm an `args[1]`), einmal die drei Ereignis-Tests oben.
+- **Nicht geprüft:**
+  - `serve` mit `ITSM_TENANT_MODE=database` im Container (der Start wird über `OpenTenants`
+    getestet, nicht über den ganzen Prozess); folgt mit PL47e.
+  - Umzug eines bestehenden Mandanten in eine eigene Datenbank: nicht gebaut (spätere Aufgabe).
+  - Ein Mandant, der nach dem Start angelegt wird, braucht einen Neustart der Instanzen.
+  - Ist `ITSM_TENANT_<NAME>_DATABASE_URL` gesetzt, aber die Betriebsart `shared`, wird die
+    Variable still übergangen.
+
+### PL47c — Datenbank je Mandant, Hintergrund, 2026-10-30
+
+- **Grundlage:** Hauptplan E141, E143; architektur.md §5.1; deine Entscheidungen vom 2026-10-30
+  (Jobansicht je Datenbank; Zeitpläne zentral für alle; wiederkehrende Jobs je Datenbank, nur der
+  LDAP-Abgleich zentral).
+- **Gebaut:**
+  - `db.Database` mit `Name` und `Bind`: Eine an eine Datenbank gebundene Arbeit (Job,
+    Verteiler) bekommt von `Router.Tenant` diese Datenbank, was die Sitzung auch sagt.
+    `Router.Databases()` zählt jede Datenbank einmal mit Namen auf (leer für die
+    Steuer-Datenbank), `Router.Current(ctx)` nennt die Datenbank einer Anfrage.
+  - `jobs`: ein River-Client je Datenbank. Eine Middleware bindet jeden Job an die Datenbank
+    seines Clients. Einreihen, Liste, Abbrechen und Wiederholen gehen an den Client der Datenbank,
+    in der die Anfrage arbeitet; `EnqueueTx` schreibt wie bisher in die Transaktion der Änderung.
+    Wiederkehrende Jobs stehen in jedem Client, ein Job mit `Periodic.Central` nur in der
+    Steuer-Datenbank. Die Überschreibungen der Zeitpläne liest und schreibt der Dienst zentral.
+  - `events`: ein Verteiler je Datenbank mit eigenen Positionen, gebunden an seine Datenbank. Das
+    Wecksignal nach einem Schreiben weckt nur den Verteiler der Datenbank, in die geschrieben
+    wurde (Kanal `events.wake.<Mandant>`, die Steuer-Datenbank behält `events.wake`).
+  - Regeln nach Zeitplan: Der Minutenjob einer Datenbank führt die Regeln aus, die in ihr liegen.
+    Eine Regel der Installation liegt zentral, sucht ihre Datensätze in jeder Datenbank und gilt
+    danach einmal als gelaufen.
+  - Aufbewahrung des Ereignisprotokolls: Der nächtliche Job räumt nur die eigene Datenbank auf;
+    er läuft ja in jeder.
+  - LDAP-Abgleich: `Central`.
+  - Webhooks: Die Liste der Zustellungen liest die Jobs der Datenbank des Abonnements.
+  - Leistungsgate: `measure.Best` lässt Läufe ohne erfolgreiche Anfrage weg (E76 ergänzt).
+- **Belegt:**
+  - `TestBackgroundPerDatabase` (drei eigene Datenbanken):
+    - Ein Job, der an B gebunden eingereiht wird, liegt und läuft in B; einer aus einer Anfrage
+      in A liegt und läuft in A.
+    - Die Jobliste von A zeigt ihn, die der Wurzel nicht.
+    - Jede Datenbank bekommt ihren Verteiler.
+    - Ein neuer Datensatz in A erzeugt den Zustelljob für den Webhook von A in A, keinen in der
+      Steuer-Datenbank oder in B.
+    - Eine Regel der Installation nach Zeitplan läuft nicht aus den Jobs von A und B, sondern
+      aus der Steuer-Datenbank, setzt den Wert in beiden Mandanten und läuft in derselben Minute
+      kein zweites Mal.
+  - `TestRouter`: `Databases`, `Bind`, `Current`.
+  - `TestBest`: Läufe ohne erfolgreiche Anfrage zählen nicht.
+  - Geändert: `jobs_test.go` hört die erledigten Jobs am Client der Steuer-Datenbank ab
+    (`s.clients[""]` statt `s.client`), weil es jetzt einen Client je Datenbank gibt.
+  - Ganze CI grün am 2026-10-30 im vierten Lauf, in der WSL-Kopie: Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,44 ms, LZ2 7,82 ms, LZ3 14,64 ms, LZ4 12,08 ms, LZ5 8.260 Zeilen/s, LZ13 7.780 Zeilen/s. Davor dreimal rot in Tests, die PL47c nicht berührt, während fremde Container den Rechner auslasteten (glpi-perf-db bei 78 % CPU, ein Supabase-Stapel, Last um 7): zweimal fanden `TestFanOutFiltersAndRights` und `TestStreamDispatchAndRetention` ihr Ereignis nicht binnen 10 s, einmal brach der Bulk-Job in `TestBulkStreamOverHTTP` nach einer Minute ab. Allein liefen die Tests je fünfmal grün; ein Lauf aller Go-Tests mit sekündlichem Blick auf `pg_stat_activity` fand keine Transaktion aus dem Code über 3 s.
+- **Nicht geprüft:**
+  - Benachrichtigungen per Mail mit eigenen Datenbanken. Sie laufen über denselben Verteiler wie
+    die Webhooks, ein eigener Test fehlt.
+  - Ein Webhook der Installation (an der Wurzel angelegt) liegt zentral und sieht deshalb mit
+    eigenen Datenbanken nur die Ereignisse der Steuer-Datenbank, nicht die der Mandanten. Mit
+    einer Datenbank sieht er alle, die sein Besitzer lesen darf. Entschieden und gebaut mit PL47d
+    (E144): er liest alle Datenbanken.
+  - Die Rechnung „ein Verteiler je Datenbank“ für viele Mandanten (Verbindungen, Abfragen je
+    Weckruf) ist nicht gemessen.
+  - Betrieb, Kommandozeile und Anlegen eines Mandanten mit eigener Datenbank kommen mit PL47d,
+    die Rundgänge in beiden Betriebsarten mit PL47e.
+
+### PL47b — Datenbank je Mandant, Steuer-Datenbank, 2026-10-30
+
+- **Grundlage:** Hauptplan E141, E142; architektur.md §5.1; deine Entscheidungen vom 2026-10-30
+  (Anmelderegeln und Identitäten zentral; eine Rolle in Gebrauch wird nicht gelöscht; der
+  Spiegel gleicht sich bei jedem Betreten an; Namen zentral zuerst reservieren und bei einem
+  Fehler zurückgeben; alle Zuweisungen der Installationskonten zentral).
+- **Gebaut:**
+  - Migration 38: Tabelle `account_home` (Konto → Name → Mandant; nur bei eigenen
+    Datenbanken gepflegt), `identity.tenant`. Die Fremdschlüssel `role_assignment.role_id`,
+    `role_assignment.rule_id` und `identity.account_id` fallen weg, weil sie über die Grenze
+    zeigen; ihre Kaskaden übernimmt der Code. Die Nummern des Ereignisprotokolls sind zeitgeordnet
+    (Mikrosekunden × 1024 plus Zufall), damit sich Einträge aus zwei Datenbanken nach Nummer
+    mischen und blättern lassen.
+  - `db/accounts.go`:
+    - `Router.Account(id)` und `Router.User(name)` finden die Heimat-Datenbank eines Kontos.
+    - `Reserve` reserviert den Namen zentral, `Release` gibt ihn bei einem Fehler zurück. Eine
+      Reservierung ohne Konto, die älter als zehn Minuten ist, darf ein neues Konto übernehmen.
+    - `Taken` prüft, ob ein Name irgendwo vergeben ist.
+    - Mit einer Datenbank macht keiner dieser Aufrufe eine Abfrage.
+  - `auth`: Mit `CreateAccountIn(tenant, …)` entsteht ein Konto gleich in seinem Mandanten.
+    Anmeldung, Kennwort und Sperre arbeiten in der Heimat-Datenbank; `ListAccounts` liest alle
+    Datenbanken.
+  - `authz`:
+    - Das Konto, seine Person, Gruppen und Zuweisungen kommen aus der Heimat-Datenbank, die
+      Rechte der Rollen aus der Steuer-Datenbank (`AssignmentsOfHolders`, `PermissionsOfRoles`).
+    - Eine Zuweisung an die Person eines Installationskontos liegt zentral, alle anderen beim
+      Mandanten. `Assignments` ergänzt die Rollennamen aus der Steuer-Datenbank.
+    - `DeleteRole` zählt die Zuweisungen in jeder Datenbank und lehnt mit 409 ab
+      (`authz.ErrInUse`).
+  - `authn`:
+    - Anmelderegeln liegen zentral. Löscht man eine Regel, löscht das auch ihre Zuweisungen in
+      der Datenbank ihres Knotens.
+    - Identitäten liegen zentral und tragen ihren Mandanten.
+    - Ein neues OIDC-Konto und das Konto eines API-Clients entstehen in ihrer
+      Mandanten-Datenbank, der Name wird vorher reserviert.
+    - Clients findet der Code über den Namen ihres Kontos.
+  - `authn.Mirror` und `records.Mirror`: Spiegelkonto ohne Kennwort und Spiegelperson unter
+    denselben Kennungen. Die Middleware zieht sie nach, wenn die Sitzung einen Mandanten betritt
+    (`Session.Entered`): nach der Anmeldung und nach jedem Wechsel.
+  - `org`: Ein Knoten lebt in der Datenbank seines Mandanten (`For(path)`). Wurzel und
+    Mandantenliste liegen zentral. Einstellungen der Wurzel gelten im Mandanten, wo dieser
+    nichts setzt.
+  - Regel-Engine: Sie liest alle Datenbanken. Eine Regel wird in der Datenbank ihres Mandanten
+    geschrieben, eine Regel der Installation zentral.
+  - Ereignisprotokoll: Ein Eintrag geht in die Datenbank seines Mandanten, Einträge der
+    Installation gehen zentral. Die Liste mischt beide; der Ablauf der Aufbewahrungsfrist läuft
+    über alle Datenbanken.
+  - Webhooks: Die Zustellung liest Abo, Ereignis und Fehler in der Datenbank des Mandanten aus
+    den Job-Argumenten.
+  - Einstellungen eines Kontos liegen in seiner Heimat-Datenbank.
+- **Belegt:**
+  - `httpapi.TestControlDatabaseOverHTTP` mit drei eigenen Datenbanken (Steuer, A, B), jeweils
+    direkt in der Datenbank geprüft:
+    - **Konten:** Jedes Konto liegt nur in seiner Datenbank, das Verzeichnis kennt alle.
+      `ctl_anna` ein zweites Mal in B wird abgelehnt und nicht geschrieben.
+    - **Anmeldung:** Anna, Ben und der Admin melden sich an. Der Admin landet in A und bekommt
+      dort Spiegelkonto und Spiegelperson, in B erst nach dem Wechsel.
+    - **Regeln:** Eine Regel der Installation liegt zentral und setzt die Lösung beim Anlegen in
+      A und in B.
+    - **Datensätze:** Sie liegen in ihrer Mandanten-Datenbank, keiner in der Steuer-Datenbank.
+    - **Spiegel:** Der Admin trägt sich in A als Bearbeiter ein, 201.
+    - **Rollen:** Eine Zuweisung in A liegt in A. Die Rolle zu löschen gibt 409, ohne die
+      Zuweisung 204.
+    - **Protokoll:** Annas Anmeldung liegt in A, die des Admins zentral. Der Admin sieht in A
+      beide, Ben nicht. Die Nummern sind zeitgeordnet.
+  - Angepasst: 21 Tests räumten alte Rollen auf und verließen sich darauf, dass die Datenbank
+    deren Zuweisungen mitlöscht. Sie rufen jetzt `dropRole` auf (erst die Zuweisungen, dann die
+    Rolle), weil eine Rolle in Gebrauch abgelehnt wird. `actors_test` löscht seine Rolle am Ende
+    ebenso.
+  - Ganze CI grün am 2026-10-30 im dritten Lauf, in der WSL-Kopie: Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,33 ms, LZ2 7,70 ms, LZ3 13,84 ms, LZ4 10,95 ms, LZ5 9.488 Zeilen/s, LZ13 7.259 Zeilen/s. Davor: einmal `TestRightsScopesOverHTTP`, weil `DeleteRole` die eingebaute Rolle admin erst nach der Zählung der Zuweisungen abwies (409 statt 422; jetzt zuerst die Prüfung auf admin); einmal das Leistungsgate an LP2, weil ein Lauf der Basislinie während eines Uhrensprungs der WSL 0 Anfragen maß und das Gate den besten Lauf (0,00 ms) als Vergleich nahm; seitdem lässt `measure.Best` Läufe ohne erfolgreiche Anfrage weg (E76 ergänzt, Test `TestBest`).
+- **Nicht geprüft:**
+  - Gruppen eines Admins in einem Mandanten bringen ihm keine Rechte. Seine Rechte kommen nur
+    aus direkten Zuweisungen; seine Gruppen und Gruppenkollegen liest der Code zentral.
+  - Kommandozeile und `tenant.Create`/`tenant.Bind` arbeiten weiter mit einer Datenbank.
+    `itsm user create --tenant` und `itsm user tenant` kommen mit PL47d auf mehrere Datenbanken.
+    Ein Konto kann seine Datenbank nicht wechseln.
+  - Jobs, Verteiler und Zeitpläne laufen noch an der Steuer-Datenbank (erledigt mit PL47c). Damit auch:
+    Regeln nach dem Schreiben, Benachrichtigungen, Webhook-Zustellung und LDAP-Abgleich bei
+    eigenen Datenbanken.
+  - Eine Reservierung bleibt stehen, wenn der Prozess zwischen den beiden Schreibvorgängen
+    abbricht. Sie wird erst beim nächsten Anlegen desselben Namens nach zehn Minuten frei. Einen
+    eigenen Aufräumbefehl gibt es nicht.
+  - Die Rundgänge aus PL44 bis PL46 laufen erst mit PL47e auch mit eigenen Datenbanken.
+
+### PL47a — Datenbank je Mandant, Naht, 2026-10-30
+
+- **Grundlage:** Hauptplan E137, E141; architektur.md §5.1; deine Entscheidungen vom 2026-10-30
+  (PL47 ganz bauen; Zugangsdaten nur in der Konfiguration; Installation zentral; Hintergrund je
+  Mandant im selben Prozess; Bauplan PL47a bis PL47e freigegeben; Spiegelkonto für Admins).
+- **Gebaut:**
+  - `internal/db/router.go`: `Router` mit `Control()` (Datenbank der Installation),
+    `Tenant(ctx)` (Datenbank des Mandanten der Anfrage), `For(tenant)` (ein Knoten unter dem
+    Mandanten zählt als der Mandant; Wurzel und unbekannte Mandanten gehen an die
+    Steuer-Datenbank), `Separate()`, `Pools()`. `Single(pool)` ist eine Datenbank für alles,
+    `NewRouter` die Betriebsart mit eigenen Datenbanken (verdrahtet mit PL47d).
+  - 17 Dienste halten statt eines Pools und einer festen `queries.Queries` einen Router. Gewählt
+    wird je Zugriff:
+    - **Steuer-Datenbank:** Definitionen und Typen, Kundenschicht, Merkmale, Rollen und
+      Rechte, die Liste der Mandanten (`ListTenants`, `TenantPaths`), Beziehungsarten.
+    - **Mandanten-Datenbank:** alles andere, über die Hilfen `tq(ctx)` und `cq()` in `auth`,
+      `authz`, `files`, `notify`, `org`, `prefs`, `engine`, `seclog`, `webhooks`.
+  - Die Schemaänderung der Kundenschicht läuft über `Pools()` in jeder Datenbank.
+  - River bleibt bis PL47c an der Steuer-Datenbank.
+  - Kommandozeile und `internal/tenant` reichen ihren Pool als `db.Single(pool)` weiter, bis
+    PL47d sie auf mehrere Datenbanken stellt; 24 Testdateien ebenso.
+- **Belegt:**
+  - `db.TestRouter`: mit zwei Mandanten-Datenbanken wählt der Router für `root.a`,
+    `root.a.x.y`, `root.b`, die Wurzel, einen leeren und einen unbekannten Mandanten richtig;
+    `Single` antwortet überall mit sich.
+  - `db.TestNoServiceHoldsAPool` durchsucht `internal/` nach Feldern vom Typ `*pgxpool.Pool`
+    oder `*queries.Queries` außerhalb von `internal/db`; mit einer eingeschmuggelten Datei schlug
+    er an, ohne sie ist er grün.
+  - Ganze CI grün am 2026-10-30 im zweiten Lauf, in der WSL-Kopie: Go und Web (56
+    Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,16 ms, LZ13
+    7.810 Zeilen/s, also wie vor dem Umbau. Davor ein Lint-Hinweis (ST1023 in
+    `jobs/retention.go`).
+- **Nicht geprüft:**
+  - Tabellen, deren Zeilen teils der Installation und teils einem Mandanten gehören (Konten,
+    Identitäten, Regeln, API-Clients, Protokoll, Baum und Einstellungen, Zuweisungen), gehen
+    noch alle an die Mandanten-Datenbank; die Aufteilung kommt mit PL47b. `GrantsForPerson`
+    verbindet Zuweisungen mit Rollen und Rechten in einer Abfrage und muss dafür geteilt werden.
+  - Funktionen mit einem Pool als Argument (Migration, `schema.Apply`, `meta.Store`,
+    `tenant.Create`) wählen ihre Datenbank selbst; das ordnet PL47d.
+
+### PL46 — Anlegen und Eindeutigkeit je Mandant, 2026-10-30
+
+- **Grundlage:** Hauptplan E136, E140; architektur.md §5.1; deine Entscheidungen vom 2026-10-30
+  (Standardknoten Kontext → Person → einziges Anlegerecht; Feld „Ablegen in“ im Formular;
+  eindeutige Felder und externe Schlüssel immer je Mandant; Hilfsspalte `tenant` per Trigger
+  statt Umbau der Indexe beim ersten Mandanten).
+- **Gebaut:**
+  - Migration 37: Funktion `tenant_of(ltree)` (der Mandant eines Knotens, sonst `root`),
+    Trigger `set_tenant`, Spalte `tenant` an `list_entry` und jeder bestehenden Typtabelle; die
+    Listen-Indexe aus PL45 gehen von `subltree` auf die Spalte. `schema.Apply` legt Spalte und
+    Trigger für jede Typtabelle an und baut eindeutige Indexe ohne `tenant` um (`ensureUnique`,
+    `ensureTrigger`); neue Tabellen haben 14 Systemspalten.
+  - Eindeutige Felder: Index `(tenant, feld)` außerhalb des Papierkorbs; externer Schlüssel:
+    `(tenant, source, external_key)`. Die Schlüsselsuche von `Sync` und der Stapel bleibt im
+    Mandanten des Knotens der Zeile, sonst der Sitzung (`tenant = tenant_of($n)`).
+  - Standardknoten (`authz.Access.CreateNode`, `CreateReach`; `PersonNode` kommt beim Laden der
+    Rechte aus `rec_core_person`): der Rechtekontext (PL10); sonst der Knoten der Person, wenn
+    sie dort anlegen darf; sonst der einzige Knoten mit Anlegerecht; bei mehreren 422 am Feld
+    `org_path`, nie stillschweigend der Mandant (E136). `records.createNode` gilt für Anlegen,
+    Sync und Stapel.
+  - `POST …:field-states` ohne `id` liefert `node` (die Vorgabe, leer bei Wahl) und `nodes`
+    (alle erlaubten Knoten mit Beschriftung). Das Anlegeformular zeigt bei mehr als einem Knoten
+    das Pflichtfeld „Ablegen in“ (`form.node`) und schickt `org_path`; Formulare des Portals
+    bleiben bei ihrem Knoten. `probe.probe` hat das eindeutige Feld `serial`.
+  - Befund aus dem ersten CI-Lauf, behoben: `ListAudit` sortierte nach `at`; springt die Uhr
+    zurück (WSL meldet „Time jumped backwards“, in der Test-Datenbank lagen bei vier Datensätzen
+    Zeilen der Version 1 hinter höheren Versionen), stand eine Zeile der Version 1 am Ende und
+    `stateAt` brach ab, bevor es etwas zurücknahm (`TestRolesAtTheRecord`, Version 1 zeigte den
+    Stand von Version 3). Jetzt `ORDER BY version, at, id`; das trifft jede VM mit Zeitkorrektur.
+- **Belegt:**
+  - `authz.TestCreateNode`: acht Fälle (ein Unterbaum; Person innen und außen; zwei Knoten →
+    Wahl; innere Reichweite verschluckt; Kontext; Rolle an der Wurzel im Mandanten; kein Recht).
+  - `schema`: der Trigger zählt als Änderung, die Spalte `tenant` ist da, der Index gilt je
+    Mandant.
+  - `httpapi.TestTenantBoundaryOverHTTP` → `tenantCreateRules`: dieselbe Seriennummer in A und B
+    je 201, zweimal in A 409; derselbe externe Schlüssel aus derselben Quelle macht je Mandant
+    einen Datensatz; eine Person von A mit Rolle nur in `root.ta.unit` legt ohne Angabe dort an
+    (vorher 403) und `field-states` nennt den Knoten; mit zweitem Knoten `root.ta.zwei` zwei
+    Knoten und `node` leer, Anlegen ohne Angabe 422, mit Angabe 201.
+  - Web: `Form.test` wählt bei zwei Knoten „Polizei Süd“ und schickt `org_path` (mit axe).
+  - Angepasst: `TestRightsScopesOverHTTP` erwartete 403, wenn eine Person mit Rolle nur in
+    `root.rights` ohne Knoten anlegt (der Datensatz landete an der Wurzel). Seit PL46 landet er
+    in `root.rights`; der Test nennt für 403 jetzt die Wurzel ausdrücklich und prüft am Ende das
+    neue Verhalten.
+  - Ganze CI grün am 2026-10-30 im vierten Lauf, in der WSL-Kopie: Go und Web (56
+    Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,26 ms, LZ13
+    7.938 Zeilen/s. Davor: erster Lauf der alte Rechte-Test und `ListAudit` (oben); zweiter Lauf
+    ein Stream-Job, dessen Kontext 3 ms nach dem Start abgelaufen war, zwischen zwei Sprüngen
+    der WSL-Uhr; dritter Lauf alles grün, aber das Leistungsgate verweigerte die Messung (Last
+    10 bis 13 durch eine parallele GLPI-Leistungsmessung).
+  - Prüfweg mit eigener Datenbank auf 8093: SN-1 in Nord und Süd je 201, zweimal in Nord 409;
+    `udo` mit Rolle nur in `root.nord.revier` legt ohne Angabe dort an, `tenant` = `root.nord`;
+    `chef` bekommt beide Knoten von Nord angeboten.
+- **Nicht geprüft:**
+  - Der Knoten der Person steht im Rechte-Cache; zieht die Person um, gilt der neue Knoten nach
+    bis zu 5 s (Hauptplan E83). `core.person` löst keine Invalidierung aus, damit ein
+    LDAP-Abgleich keinen Sturm erzeugt.
+  - Bedingungen an Rechten (CEL) zählen bei der Knotenwahl nicht: Ein Knoten kann angeboten
+    werden, in dem die Bedingung den Datensatz dann ablehnt (403 beim Speichern).
+  - Datensätze an der Wurzel (die Personen der Installations-Admins) bilden den Bereich `root`.
+  - Kommandozeile und Jobs ohne Sitzung (`authz.System()`) legen ohne Knoten weiter an der
+    Wurzel an.
+  - Der Trigger kostet je Einfügen einen Schlüsselzugriff auf `org_node`.
+
 ### PL45 — Nebendaten je Mandant, 2026-10-30
 
 - **Grundlage:** Hauptplan E136, E139; architektur.md §5.1; E62 dieses Plans; deine
@@ -1475,8 +1880,9 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     abgelehnt, sondern bekommt beim Versand niemanden.
   - Kalender, SLAs und Formulare sind Datensätze und gehören ohnehin einem Mandanten. Vorgaben
     für sie aus Paketen gibt es noch nicht.
-  - Externe Schlüssel und eindeutige Felder je Mandant kommen mit PL46, außer bei den
-    Auswahllisten.
+  - Behoben mit PL46: externe Schlüssel und eindeutige Felder gelten je Mandant. Die
+    Listen-Indexe über `subltree` trennten ohne Mandanten die Knoten unter der Wurzel; sie
+    nutzen jetzt die Spalte `tenant`.
 
 ### PL44 — Mandantengrenze, 2026-10-30
 
@@ -1539,9 +1945,8 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     Jobs, Webhooks, Dateien, API-Clients, Verzeichnissen, Anmelderegeln und Valkey-Schlüsseln.
   - Startet ein Konto der Installation einen Export oder eine Massenaktion als Job, arbeitet der
     Job im ersten seiner Mandanten statt im gewählten. PL45 gibt dem Job den Mandanten mit.
-  - Eindeutige Felder und externe Schlüssel gelten weiter für die ganze Installation. Beim
-    Anlegen ist der Knoten der Mandant, noch nicht der Knoten des Kontexts oder der Person.
-    Beides kommt mit PL46.
+  - Behoben mit PL46: eindeutige Felder und externe Schlüssel gelten je Mandant; ohne Angabe
+    landet ein Datensatz im Knoten des Kontexts, der Person oder des einzigen Anlegerechts.
   - Versionen von vor `--adopt` nennen noch den alten Knoten; eine Wiederherstellung brächte den
     Datensatz an die Wurzel zurück.
   - Den Wechsel im Kopf prüft kein Browser-Test (Playwright): die gemeinsame Test-Datenbank darf

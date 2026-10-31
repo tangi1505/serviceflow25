@@ -63,6 +63,8 @@ type testAPI struct {
 	auth   *auth.Service
 	authz  *authz.Service
 	pool   *pgxpool.Pool
+	// rt routes like the binary: one database, or one per tenant (PL47e).
+	rt     *db.Router
 	kv     *cache.Client
 	events *events.Service
 	idp    *authntest.IDP
@@ -102,6 +104,14 @@ const slaTestQueue = "slatest"
 
 func apiServer(t *testing.T) *testAPI {
 	t.Helper()
+	return apiServerWith(t, nil)
+}
+
+// apiServerWith is apiServer with a database of their own for the tenants named in
+// tenantURLs, by path (PL47e): every service routes as the binary does with
+// ITSM_TENANT_MODE=database; without, everything is in ITSM_TEST_DATABASE_URL.
+func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
+	t.Helper()
 	url := os.Getenv("ITSM_TEST_DATABASE_URL")
 	addr := os.Getenv("ITSM_TEST_VALKEY_ADDR")
 	if url == "" || addr == "" {
@@ -117,8 +127,24 @@ func apiServer(t *testing.T) *testAPI {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	rt := db.Single(pool)
+	if len(tenantURLs) > 0 {
+		tenants := map[string]*pgxpool.Pool{}
+		for path, u := range tenantURLs {
+			if err := db.Migrate(ctx, u, quiet); err != nil {
+				t.Fatal(err)
+			}
+			p, err := db.Open(ctx, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(p.Close)
+			tenants[path] = p
+		}
+		rt = db.NewRouter(pool, tenants, func(ctx context.Context) string { return authz.From(ctx).CurrentTenant() })
+	}
 	for _, dir := range []string{"../../packages/core", "../../packages/probe"} {
-		installPackage(t, ctx, pool, dir)
+		installPackage(t, ctx, rt, dir)
 	}
 	// Start from an empty probe table: other tests and manual runs leave rows behind.
 	if _, err := pool.Exec(ctx, "DELETE FROM rec_probe_probe"); err != nil {
@@ -129,7 +155,7 @@ func apiServer(t *testing.T) *testAPI {
 		t.Fatal(err)
 	}
 	t.Cleanup(kv.Close)
-	a := auth.New(pool, kv, quiet)
+	a := auth.New(rt, kv, quiet)
 	if _, err := pool.Exec(ctx, "DELETE FROM role_assignment WHERE person_id IN (SELECT person_id FROM account WHERE username LIKE 'apitest%')"); err != nil {
 		t.Fatal(err)
 	}
@@ -150,8 +176,8 @@ func apiServer(t *testing.T) *testAPI {
 		t.Fatal(err)
 	}
 	// The test account is an administrator: a person, linked, with the role admin at root.
-	az := authz.New(pool, kv, quiet)
-	person, err := records.New(pool).Create(ctx, "core.person", map[string]any{"last_name": "API Test"}, nil)
+	az := authz.New(rt, kv, quiet)
+	person, err := records.New(rt).Create(ctx, "core.person", map[string]any{"last_name": "API Test"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,14 +191,14 @@ func apiServer(t *testing.T) *testAPI {
 	runCtx, stopRun := context.WithCancel(context.Background())
 	t.Cleanup(stopRun)
 	go func() { _ = az.Run(runCtx) }()
-	recs := withHook(pool, az)
-	ev := events.New(pool, recs, kv, quiet)
+	recs := withHook(rt, az)
+	ev := events.New(rt, recs, kv, quiet)
 	hook := recs.AfterWrite
 	recs.AfterWrite = func(ctx context.Context, typeName string) {
 		hook(ctx, typeName)
 		ev.Wake(ctx)
 	}
-	orgSvc := org.New(pool)
+	orgSvc := org.New(rt)
 	// The tests sign in wrongly on purpose, all from 127.0.0.1: without a setting of their own
 	// the lockout stays off, so that one test does not lock the next (PL28).
 	a.Settings = func(ctx context.Context, path, key string) (json.RawMessage, string, error) {
@@ -190,8 +216,8 @@ func apiServer(t *testing.T) *testAPI {
 		return acc.Allowed("core.role", "manage_rights"), nil
 	}
 	idp := authntest.New(t)
-	an := authn.New(pool, kv, a, az, recs, orgSvc, quiet, authn.Options{Issuer: idp.Issuer, ClientID: idp.ClientID, ClientSecret: idp.Secret, Name: "Fake IdP"})
-	js := testJobs(t, ctx, pool)
+	an := authn.New(rt, kv, a, az, recs, orgSvc, quiet, authn.Options{Issuer: idp.Issuer, ClientID: idp.ClientID, ClientSecret: idp.Secret, Name: "Fake IdP"})
+	js := testJobs(t, ctx, rt)
 	// The asynchronous bulk (PL32) with a worker on a queue of its own, so that a running
 	// instance on the same database does not take the test's jobs.
 	if _, err := pool.Exec(ctx, "DELETE FROM river_job WHERE queue = $1", bulkTestQueue); err != nil {
@@ -201,12 +227,12 @@ func apiServer(t *testing.T) *testAPI {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bulkJobs := jobs.New(pool, jobs.Options{Logger: quiet, Workers: map[string]int{bulkTestQueue: 2}})
+	bulkJobs := jobs.New(rt, jobs.Options{Logger: quiet, Workers: map[string]int{bulkTestQueue: 2}})
 	stream := bulk.NewAsync(bulkStore, bulkJobs, recs, az.Load, orgSvc.Setting, quiet)
 	stream.Queue = bulkTestQueue
 	stream.Register()
 	// Exports (UI5): large ones as jobs on the same queue.
-	fileSvc := testFiles(t, pool, recs)
+	fileSvc := testFiles(t, rt, recs)
 	exp := export.New(recs, fileSvc, bulkJobs, az.Load, quiet)
 	exp.Queue = bulkTestQueue
 	exp.Register()
@@ -219,8 +245,8 @@ func apiServer(t *testing.T) *testAPI {
 	if _, err := pool.Exec(ctx, "DELETE FROM river_job WHERE queue = $1", ruleTestQueue); err != nil {
 		t.Fatal(err)
 	}
-	ruleJobs := jobs.New(pool, jobs.Options{Logger: quiet, Workers: map[string]int{ruleTestQueue: 2}})
-	ruleEngine := engine.New(pool, recs, ruleJobs, nil, quiet)
+	ruleJobs := jobs.New(rt, jobs.Options{Logger: quiet, Workers: map[string]int{ruleTestQueue: 2}})
+	ruleEngine := engine.New(rt, recs, ruleJobs, nil, quiet)
 	ruleEngine.Queue = ruleTestQueue
 	ruleEngine.RegisterWorkers(ruleJobs)
 	if err := ruleJobs.Start(runCtx); err != nil {
@@ -228,18 +254,21 @@ func apiServer(t *testing.T) *testAPI {
 	}
 	t.Cleanup(func() { _ = ruleJobs.Stop(context.Background()) })
 	recs.Before = ruleEngine.Before
-	ruleEvents := events.New(pool, recs, nil, quiet)
+	ruleEvents := events.New(rt, recs, nil, quiet)
 	ruleEvents.Prefix = "apitest-"
 	ruleEvents.Consume(events.ConsumerRules, ruleEngine.HandleBatch)
-	if err := ruleEvents.SkipToEnd(ctx); err != nil {
-		t.Fatal(err)
+	// Each database has its own stream and positions (PL47c).
+	for _, d := range rt.Databases() {
+		if err := ruleEvents.SkipToEnd(d.Bind(ctx)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	// SLA clocks (WF9) in the transaction of the write; the deadline jobs on a queue of their own.
 	if _, err := pool.Exec(ctx, "DELETE FROM river_job WHERE queue = $1", slaTestQueue); err != nil {
 		t.Fatal(err)
 	}
 	calendars := calendar.New(recs, orgSvc.Setting)
-	slaSvc := sla.New(pool, recs, calendars, js, nil, quiet)
+	slaSvc := sla.New(rt, recs, calendars, js, nil, quiet)
 	slaSvc.Queue = slaTestQueue
 	recur := recurrence.New(recs, quiet)
 	// Notifications (WF15) to a test SMTP server, on a queue of their own with workers, through
@@ -248,8 +277,8 @@ func apiServer(t *testing.T) *testAPI {
 		t.Fatal(err)
 	}
 	mailbox := smtptest.Start(t)
-	notifyJobs := jobs.New(pool, jobs.Options{Logger: quiet, Workers: map[string]int{notifyTestQueue: 2}})
-	notifySvc := notify.New(pool, recs, notifyJobs, az.Load,
+	notifyJobs := jobs.New(rt, jobs.Options{Logger: quiet, Workers: map[string]int{notifyTestQueue: 2}})
+	notifySvc := notify.New(rt, recs, notifyJobs, az.Load,
 		notify.NewMailer(notify.SMTP{Host: mailbox.Host, Port: mailbox.Port, From: "ITSM Test <itsm@test.local>"}), quiet)
 	notifySvc.Queue, notifySvc.PublicURL = notifyTestQueue, "http://itsm.test"
 	notifySvc.Register(notifyJobs)
@@ -257,11 +286,13 @@ func apiServer(t *testing.T) *testAPI {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = notifyJobs.Stop(context.Background()) })
-	notifyEvents := events.New(pool, recs, nil, quiet)
+	notifyEvents := events.New(rt, recs, nil, quiet)
 	notifyEvents.Prefix = "apitest-"
 	notifyEvents.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
-	if err := notifyEvents.SkipToEnd(ctx); err != nil {
-		t.Fatal(err)
+	for _, d := range rt.Databases() {
+		if err := notifyEvents.SkipToEnd(d.Bind(ctx)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs))
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {
@@ -277,13 +308,13 @@ func apiServer(t *testing.T) *testAPI {
 		wrote(ctx, typeName)
 		slaSvc.Wrote(ctx, typeName)
 	}
-	hooks := webhooks.New(pool, recs, js, orgSvc.Setting, az.Load, quiet)
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(pool), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(pool, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(pool, recs, orgSvc.Setting), Forms: forms.New(recs), Customer: customer.New(pool, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(pool, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
+	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(rt, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs), Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
 		Calendars: calendars, SLA: slaSvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	an.SetPublicURL(srv.URL)
-	api := &testAPI{Server: srv, auth: a, authz: az, pool: pool, kv: kv, events: ev, idp: idp, authn: an, hooks: hooks, export: exp,
+	api := &testAPI{Server: srv, auth: a, authz: az, pool: pool, rt: rt, kv: kv, events: ev, idp: idp, authn: an, hooks: hooks, export: exp,
 		rules: ruleEngine, ruleEvents: ruleEvents, sla: slaSvc, recur: recur, notify: notifySvc, notifyEvents: notifyEvents,
 		smtp: mailbox, person: pid}
 	r := call(t, api, http.MethodPost, "/api/v1/auth/login", `{"username": "apitest", "password": "`+testPassword+`"}`, nil)
@@ -295,33 +326,36 @@ func apiServer(t *testing.T) *testAPI {
 }
 
 // installPackage loads a package directory and installs it: definitions, tables, list entries.
-func installPackage(t *testing.T, ctx context.Context, pool *pgxpool.Pool, dir string) meta.Package {
+func installPackage(t *testing.T, ctx context.Context, rt *db.Router, dir string) meta.Package {
 	t.Helper()
 	p, err := meta.Load(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := meta.Store(ctx, pool, p); err != nil {
+	if err := meta.Store(ctx, rt.Control(), p); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
-		t.Fatal(err)
+	// The tables go into every database, as itsm package install does (PL47d).
+	for _, pool := range rt.Pools() {
+		if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if _, err := records.New(pool).SeedLists(ctx, p); err != nil {
+	if _, err := records.New(rt).SeedLists(ctx, p); err != nil {
 		t.Fatal(err)
 	}
 	return p
 }
 
 // testJobs is an insert-only job service with one periodic job for the API tests (PL23).
-func testJobs(t *testing.T, ctx context.Context, pool *pgxpool.Pool) *jobs.Service {
+func testJobs(t *testing.T, ctx context.Context, rt *db.Router) *jobs.Service {
 	t.Helper()
 	for _, sql := range []string{"DELETE FROM river_job WHERE kind LIKE 'apitest.%'", "DELETE FROM job_schedule WHERE name LIKE 'apitest.%'"} {
-		if _, err := pool.Exec(ctx, sql); err != nil {
+		if _, err := rt.Control().Exec(ctx, sql); err != nil {
 			t.Fatal(err)
 		}
 	}
-	js := jobs.New(pool, jobs.Options{Logger: quiet})
+	js := jobs.New(rt, jobs.Options{Logger: quiet})
 	if err := js.AddPeriodic(jobs.Periodic{Name: "apitest.tick", Schedule: "*/10 * * * *", Queue: "apitest",
 		Args: func() river.JobArgs { return tickArgs{} }}); err != nil {
 		t.Fatal(err)
@@ -337,8 +371,8 @@ type tickArgs struct{}
 func (tickArgs) Kind() string { return "apitest.tick" }
 
 // withHook wires the record service like the binary: memberships change rights (PL9).
-func withHook(pool *pgxpool.Pool, az *authz.Service) *records.Service {
-	rec := records.New(pool)
+func withHook(rt *db.Router, az *authz.Service) *records.Service {
+	rec := records.New(rt)
 	rec.AfterWrite = func(ctx context.Context, typeName string) {
 		if typeName == "core.group_member" {
 			az.Invalidate(ctx)
@@ -364,6 +398,21 @@ type resp struct {
 	hdr  http.Header
 	body map[string]any
 	raw  string
+}
+
+// dropRole deletes a role with its assignments, for the cleanup of a test: a role in use is not
+// deleted any more (PL47b, Hauptplan E141), the cascade of before is the test's job now.
+func dropRole(t *testing.T, api *testAPI, name string) {
+	t.Helper()
+	r := call(t, api, http.MethodGet, "/api/v1/assignments", "", nil)
+	var list []map[string]any
+	_ = json.Unmarshal([]byte(r.raw), &list)
+	for _, a := range list {
+		if a["role"] == name {
+			call(t, api, http.MethodDelete, "/api/v1/assignments/"+a["id"].(string), "", nil)
+		}
+	}
+	call(t, api, http.MethodDelete, "/api/v1/roles/"+name, "", nil)
 }
 
 // call sends a request with the session cookie and the CSRF header (E74). A header "Cookie"

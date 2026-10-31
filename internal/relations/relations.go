@@ -23,9 +23,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
@@ -94,18 +94,18 @@ type Walk struct {
 
 // Service is the relation store.
 type Service struct {
-	pool *pgxpool.Pool
-	rec  *records.Service
+	db  *db.Router
+	rec *records.Service
 }
 
 // New wires the service.
-func New(pool *pgxpool.Pool, rec *records.Service) *Service {
-	return &Service{pool: pool, rec: rec}
+func New(rt *db.Router, rec *records.Service) *Service {
+	return &Service{db: rt, rec: rec}
 }
 
 // Kinds lists the installed relation kinds in name order.
 func (s *Service) Kinds(ctx context.Context) ([]meta.RelationKind, error) {
-	rows, err := queries.New(s.pool).ListDefinitions(ctx, meta.KindRelation)
+	rows, err := queries.New(s.db.Control()).ListDefinitions(ctx, meta.KindRelation)
 	if err != nil {
 		return nil, fmt.Errorf("relations: kinds: %w", err)
 	}
@@ -171,7 +171,7 @@ func (s *Service) Create(ctx context.Context, kind string, from, to End, actor r
 	if actor != nil {
 		by = uuid.NullUUID{UUID: *actor, Valid: true}
 	}
-	row, err := queries.New(s.pool).InsertRelation(ctx, queries.InsertRelationParams{
+	row, err := queries.New(s.db.Tenant(ctx)).InsertRelation(ctx, queries.InsertRelationParams{
 		ID: id, Kind: kind, FromType: from.Type, FromID: from.ID, ToType: to.Type, ToID: to.ID, CreatedBy: by,
 	})
 	if err != nil {
@@ -200,7 +200,7 @@ func (s *Service) trace(ctx context.Context, rel Relation, action string, actor 
 
 // Get returns one relation when the session may read both ends.
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (Relation, error) {
-	row, err := queries.New(s.pool).GetRelation(ctx, id)
+	row, err := queries.New(s.db.Tenant(ctx)).GetRelation(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Relation{}, fmt.Errorf("%w: relation %s", ErrNotFound, id)
 	}
@@ -227,7 +227,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor records.Actor)
 			return err
 		}
 	}
-	if _, err := queries.New(s.pool).DeleteRelation(ctx, id); err != nil {
+	if _, err := queries.New(s.db.Tenant(ctx)).DeleteRelation(ctx, id); err != nil {
 		return fmt.Errorf("relations: delete: %w", err)
 	}
 	return s.trace(ctx, rel, "unrelate", actor)
@@ -247,7 +247,7 @@ func (s *Service) Of(ctx context.Context, rec End, kind, direction string) ([]Re
 	if kind != "" {
 		k = &kind
 	}
-	rows, err := queries.New(s.pool).ListRelationsOf(ctx, queries.ListRelationsOfParams{TypeName: rec.Type, RecordID: rec.ID, Outgoing: out, Incoming: in, Kind: textOrNull(k)})
+	rows, err := queries.New(s.db.Tenant(ctx)).ListRelationsOf(ctx, queries.ListRelationsOfParams{TypeName: rec.Type, RecordID: rec.ID, Outgoing: out, Incoming: in, Kind: textOrNull(k)})
 	if err != nil {
 		return nil, fmt.Errorf("relations: of %s: %w", rec, err)
 	}
@@ -339,7 +339,7 @@ SELECT DISTINCT ON (id) id, kind, from_type, from_id, to_type, to_id, depth FROM
 	if len(kinds) > 0 {
 		kindArg = kinds
 	}
-	rows, err := s.pool.Query(ctx, sql, start.Type, start.ID, kindArg, depth)
+	rows, err := s.db.Tenant(ctx).Query(ctx, sql, start.Type, start.ID, kindArg, depth)
 	if err != nil {
 		return fmt.Errorf("relations: walk: %w", err)
 	}

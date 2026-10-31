@@ -26,10 +26,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/cache"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/records"
 )
@@ -71,7 +71,7 @@ type consumer struct {
 
 // Service reads the stream and runs the dispatcher.
 type Service struct {
-	pool      *pgxpool.Pool
+	db        *db.Router
 	rec       *records.Service
 	kv        *cache.Client
 	logger    *slog.Logger
@@ -90,11 +90,11 @@ type Service struct {
 
 // New wires the service; kv may be nil in tests without Valkey (no Pub/Sub then). With
 // Valkey the consumer "live" publishes every event for the SSE of every instance.
-func New(pool *pgxpool.Pool, rec *records.Service, kv *cache.Client, logger *slog.Logger) *Service {
+func New(rt *db.Router, rec *records.Service, kv *cache.Client, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.New(slog.DiscardHandler)
 	}
-	s := &Service{pool: pool, rec: rec, kv: kv, logger: logger, Poll: time.Second, StuckAfter: 5 * time.Minute,
+	s := &Service{db: rt, rec: rec, kv: kv, logger: logger, Poll: time.Second, StuckAfter: 5 * time.Minute,
 		ensured: map[string]bool{}}
 	if kv != nil {
 		s.Consume(ConsumerLive, s.publish)
@@ -118,7 +118,7 @@ func (s *Service) publish(ctx context.Context, _ pgx.Tx, list []records.Event) e
 
 // Latest is the position of the newest event (0 before the first).
 func (s *Service) Latest(ctx context.Context) (int64, error) {
-	n, err := queries.New(s.pool).LatestEventPosition(ctx)
+	n, err := queries.New(s.db.Tenant(ctx)).LatestEventPosition(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("events: latest position: %w", err)
 	}
@@ -132,7 +132,7 @@ func (s *Service) Stream(ctx context.Context, after int64, limit int) (out []rec
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
-	oldest, err := queries.New(s.pool).OldestEventPosition(ctx)
+	oldest, err := queries.New(s.db.Tenant(ctx)).OldestEventPosition(ctx)
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("events: oldest position: %w", err)
 	}
@@ -174,20 +174,43 @@ func (s *Service) Subscribe(ctx context.Context, fn func(records.Event)) error {
 }
 
 // Wake tells the dispatcher (on any instance) that there is something new; the record
-// service calls it after every commit (AfterWrite). Without Valkey it does nothing.
+// service calls it after every commit (AfterWrite). It wakes the dispatcher of the database
+// the write went to only (PL47c). Without Valkey it does nothing.
 func (s *Service) Wake(ctx context.Context) {
 	if s.kv == nil {
 		return
 	}
-	if err := s.kv.Publish(ctx, wakeChannel, ""); err != nil {
+	if err := s.kv.Publish(ctx, wakeChannelOf(s.db.Current(ctx).Name), ""); err != nil {
 		s.logger.Debug("events: wake not published", "error", err.Error())
 	}
 }
 
-// RunDispatcher runs every consumer in a loop of its own until the context ends (the worker
-// role): a wake through Valkey starts a pass at once, a poll every Poll interval covers lost
+// wakeChannelOf is the wake channel of one database: the control database keeps the channel
+// of one database, a tenant's database gets its name after it.
+func wakeChannelOf(database string) string {
+	if database == "" {
+		return wakeChannel
+	}
+	return wakeChannel + "." + database
+}
+
+// RunDispatcher runs every consumer of every database in a loop of its own until the context
+// ends (the worker role; PL47c: each database has its own stream and positions, read bound to
+// it): a wake through Valkey starts a pass at once, a poll every Poll interval covers lost
 // wakes, a full batch goes on at once, a failure waits from one second up to thirty.
 func (s *Service) RunDispatcher(ctx context.Context) error {
+	dbs := s.db.Databases()
+	s.logger.Info("events: dispatcher started", "consumers", len(s.consumers), "databases", len(dbs))
+	var wg sync.WaitGroup
+	for _, d := range dbs {
+		wg.Go(func() { s.dispatch(d.Bind(ctx), wakeChannelOf(d.Name)) })
+	}
+	wg.Wait()
+	return nil
+}
+
+// dispatch runs the consumers of the database the context is bound to.
+func (s *Service) dispatch(ctx context.Context, channel string) {
 	wakes := make([]chan struct{}, len(s.consumers))
 	for i := range wakes {
 		wakes[i] = make(chan struct{}, 1)
@@ -195,7 +218,7 @@ func (s *Service) RunDispatcher(ctx context.Context) error {
 	if s.kv != nil {
 		go func() {
 			for ctx.Err() == nil {
-				err := s.kv.Subscribe(ctx, wakeChannel, func(string) {
+				err := s.kv.Subscribe(ctx, channel, func(string) {
 					for _, w := range wakes {
 						select {
 						case w <- struct{}{}:
@@ -213,17 +236,11 @@ func (s *Service) RunDispatcher(ctx context.Context) error {
 			}
 		}()
 	}
-	s.logger.Info("events: dispatcher started", "consumers", len(s.consumers))
 	var wg sync.WaitGroup
 	for i, c := range s.consumers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			s.loop(ctx, c, wakes[i])
-		}()
+		wg.Go(func() { s.loop(ctx, c, wakes[i]) })
 	}
 	wg.Wait()
-	return nil
 }
 
 func (s *Service) loop(ctx context.Context, c consumer, wake chan struct{}) {
@@ -283,7 +300,7 @@ func (s *Service) pass(ctx context.Context, c consumer) (int, error) {
 	if err := s.ensure(ctx, name); err != nil {
 		return 0, err
 	}
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Tenant(ctx).Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("events: begin: %w", err)
 	}
@@ -317,10 +334,11 @@ func (s *Service) pass(ctx context.Context, c consumer) (int, error) {
 }
 
 // ensure makes the consumer's row on its first pass in this process: a new consumer starts at
-// the end of the stream; a consumer of a test is not durable.
+// the end of the stream; a consumer of a test is not durable. Each database has its own row.
 func (s *Service) ensure(ctx context.Context, name string) error {
+	key := s.db.Current(ctx).Name + "/" + name
 	s.mu.Lock()
-	done := s.ensured[name]
+	done := s.ensured[key]
 	s.mu.Unlock()
 	if done {
 		return nil
@@ -329,11 +347,11 @@ func (s *Service) ensure(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	if err := queries.New(s.pool).EnsureConsumer(ctx, queries.EnsureConsumerParams{Name: name, Position: latest, Durable: s.Prefix == ""}); err != nil {
+	if err := queries.New(s.db.Tenant(ctx)).EnsureConsumer(ctx, queries.EnsureConsumerParams{Name: name, Position: latest, Durable: s.Prefix == ""}); err != nil {
 		return fmt.Errorf("events: consumer %s: %w", name, err)
 	}
 	s.mu.Lock()
-	s.ensured[name] = true
+	s.ensured[key] = true
 	s.mu.Unlock()
 	return nil
 }
@@ -341,7 +359,7 @@ func (s *Service) ensure(ctx context.Context, name string) error {
 // failed keeps the error of a pass; a consumer failing for longer than StuckAfter is logged
 // as stuck at every further failure.
 func (s *Service) failed(ctx context.Context, name string, at int64, cause error) {
-	row, err := queries.New(s.pool).ConsumerFailed(ctx, queries.ConsumerFailedParams{Name: name, Error: pgtype.Text{String: cause.Error(), Valid: true}})
+	row, err := queries.New(s.db.Tenant(ctx)).ConsumerFailed(ctx, queries.ConsumerFailedParams{Name: name, Error: pgtype.Text{String: cause.Error(), Valid: true}})
 	if err != nil {
 		s.logger.Error("events: consumer failed, state not kept", "consumer", name, "position", at, "error", cause.Error(), "store_error", err.Error())
 		return
@@ -365,7 +383,7 @@ func (s *Service) SkipToEnd(ctx context.Context) error {
 		if err := s.ensure(ctx, name); err != nil {
 			return err
 		}
-		if err := queries.New(s.pool).ConsumerDone(ctx, queries.ConsumerDoneParams{Name: name, Position: latest}); err != nil {
+		if err := queries.New(s.db.Tenant(ctx)).ConsumerDone(ctx, queries.ConsumerDoneParams{Name: name, Position: latest}); err != nil {
 			return err
 		}
 	}
@@ -390,7 +408,7 @@ func (s *Service) Consumers(ctx context.Context) ([]ConsumerStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := queries.New(s.pool).ListConsumers(ctx)
+	rows, err := queries.New(s.db.Tenant(ctx)).ListConsumers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("events: consumers: %w", err)
 	}
@@ -409,7 +427,7 @@ func (s *Service) Consumers(ctx context.Context) ([]ConsumerStatus, error) {
 
 // Position is where a consumer of this service stands (0 before its first pass).
 func (s *Service) Position(ctx context.Context, name string) int64 {
-	n, err := queries.New(s.pool).GetConsumerPosition(ctx, s.Prefix+name)
+	n, err := queries.New(s.db.Tenant(ctx)).GetConsumerPosition(ctx, s.Prefix+name)
 	if err != nil {
 		return 0
 	}
@@ -474,7 +492,7 @@ func (s *Service) Failures(ctx context.Context, before int64, limit int) ([]Fail
 		p.Tenant = pgtype.Text{String: a.CurrentTenant(), Valid: true}
 		p.Installation = a.Installation("core.job", authz.ActionRead)
 	}
-	rows, err := queries.New(s.pool).ListDeliveryFailures(ctx, p)
+	rows, err := queries.New(s.db.Tenant(ctx)).ListDeliveryFailures(ctx, p)
 	if err != nil {
 		return nil, fmt.Errorf("events: failures: %w", err)
 	}

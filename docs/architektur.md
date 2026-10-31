@@ -126,9 +126,10 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 | --- | --- | --- |
 | `id` | `uuid` (v7, E36) | Schlüssel; trägt die Zeit, darum auch Partitionsschlüssel (E47) |
 | `org_path` | `ltree` | Ort im Organisationsbaum, für Rechte (§5) |
+| `tenant` | `ltree` | Mandant des Knotens, `root` ohne Mandanten; setzt der Trigger `set_tenant` (PL46). Bereich für eindeutige Werte und externe Schlüssel, nicht für Rechte |
 | `version` | `bigint` | steigt bei jeder Änderung; Konflikterkennung über `If-Match` (E29) |
 | `state` | `text` | Status aus dem Statusmodell, wenn der Typ eins hat |
-| `source`, `external_key` | `text` | Herkunft für den Abgleich (E38); eindeutig zusammen, wo gesetzt |
+| `source`, `external_key` | `text` | Herkunft für den Abgleich (E38); eindeutig zusammen je Mandant, wo gesetzt |
 | `row_hash` | `bytea` | Prüfsumme der fachlichen Spalten; Bulk schreibt nur bei Änderung |
 | `search` | `tsvector` | erzeugt aus den als durchsuchbar markierten Feldern (E21) |
 | `created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at` | | Lebenslauf, Papierkorb |
@@ -262,12 +263,16 @@ Hauptplan, hier mit ihrer Beta-Antwort.
   Sicherheitsprotokoll, der zuletzt gewählte gilt bei der nächsten Anmeldung. Rollen, Typen und
   die Einstellungen der Wurzel ändert nur, wer das Recht aus einer Rolle an der Wurzel hat.
   Auswertungen über Mandanten kommen mit PL48.
-- **Eindeutigkeit gilt je Mandant:** eindeutige Felder und der externe Schlüssel (`source`,
-  `external_key`) bekommen den Mandanten in den Index (`subltree(org_path, 0, 2)`). Ein Wert in
-  Mandant B sperrt ihn nicht für A und verrät ihn nicht.
-- **Anlegen landet im richtigen Knoten:** im Knoten aus dem Rechtekontext der Sitzung, sonst im
-  Heimatknoten der Person; nie stillschweigend an der Wurzel. Ein Formular legt im Knoten des
-  Formulars an.
+- **Eindeutigkeit gilt je Mandant** (PL46, E140): eindeutige Felder und der externe Schlüssel
+  (`source`, `external_key`) bekommen den Mandanten aus der Spalte `tenant` in den Index
+  (`(tenant, feld)`, `(tenant, source, external_key)`); die Spalte setzt ein Trigger aus dem
+  Knoten, `root` ohne Mandanten. Ein Wert in Mandant B sperrt ihn nicht für A und verrät ihn
+  nicht; Datensätze an der Wurzel bilden den Bereich `root`.
+- **Anlegen landet im richtigen Knoten** (PL46, E140): im Knoten aus dem Rechtekontext der
+  Sitzung, sonst im Knoten der Person, wenn sie dort anlegen darf, sonst im einzigen Knoten mit
+  Anlegerecht; bleibt eine Wahl, verlangt die API den Knoten (422) und das Formular fragt
+  („Ablegen in“). Nie stillschweigend an der Wurzel oder im Mandanten. Ein Formular legt im
+  Knoten des Formulars an.
 - **Ereignisstrom, SSE, Webhooks und Benachrichtigungen** liefern nur Ereignisse des eigenen
   Mandanten (PL45). Der Valkey-Kanal `events` trägt alle Mandanten, gefiltert wird je Abonnent;
   die übrigen Schlüssel hängen an Sitzung, Konto oder Datensatz und mischen keine Mandanten.
@@ -283,13 +288,32 @@ Hauptplan, hier mit ihrer Beta-Antwort.
 - **Wo die Daten liegen, ist je Installation einstellbar** (deine Entscheidung zu V24,
   2026-10-29, E137): entweder alle Mandanten in einer Datenbank, getrennt durch die Grenze im
   Rechtefilter, oder jeder Mandant in einer eigenen Datenbank mit eigener Sicherung und eigenen
-  Zugangsdaten. Die Logik oben gilt in beiden Fällen gleich; der Kern wählt je Sitzung den Pool
-  des Mandanten. Weil jeder Zugriff auf Typtabellen über `records` und `query` läuft (E34), ist
-  das eine Stelle. Bei eigenen Datenbanken kommt eine **Steuer-Datenbank** der Installation dazu:
-  Mandantenverzeichnis mit der Verbindung je Mandant, Konten der Installations-Admins, die
-  Zuordnung Benutzername → Mandant für die Anmeldung, Pakete und Typdefinitionen samt
-  Kundenschicht. Migrationen, Paket-Installationen und Schemaänderungen laufen dann für jede
-  Mandanten-Datenbank; River-Jobs laufen je Datenbank. Abgesichert wird beides wie E34: die
+  Zugangsdaten. Die Logik oben gilt in beiden Fällen gleich; der Kern wählt je Zugriff die
+  Datenbank (E141): Jeder Dienst hält einen `db.Router` statt eines Pools und fragt `Control()`
+  für die Installation oder `Tenant(ctx)` für den Mandanten der Anfrage; mit einer Datenbank sind
+  beide dieselbe. Ein Test wacht darüber, dass kein Dienst einen Pool als Feld hält (PL47a).
+  Jede Datenbank hat dasselbe Schema; eine Tabelle wird nur auf einer Seite benutzt. Bei eigenen
+  Datenbanken kommt eine **Steuer-Datenbank** der Installation dazu: Mandantenverzeichnis (die
+  Zugangsdaten je Mandant stehen nur in der Konfiguration), Konten der Installations-Admins mit
+  allen ihren Zuweisungen (E142), die Zuordnung Benutzername → Mandant für die Anmeldung
+  (`account_home`), Anmelderegeln und OIDC-Identitäten, Pakete und Typdefinitionen samt
+  Kundenschicht, Rollen und Rechte, Regeln, API-Clients und Protokolleinträge der Installation,
+  die Sicherheits- und Betriebseinstellungen der Wurzel. Jedes Konto hat genau eine
+  Heimat-Datenbank; dort liegen seine Person, Gruppen, Zuweisungen und Einstellungen. Ein Admin
+  bekommt bei jedem Betreten eines Mandanten dort ein Spiegelkonto ohne Kennwort mit Person
+  unter denselben Kennungen, damit die Datensätze des Mandanten auf ihn verweisen können
+  (PL47b). Eine Rolle in Gebrauch wird nicht gelöscht; die Nummern des Ereignisprotokolls sind
+  zeitgeordnet, damit sich Einträge zweier Datenbanken mischen lassen, und je Datenbank monoton,
+  damit ein Uhrsprung zurück die Reihenfolge nicht umdreht (PL47e). Migrationen, Paket-Installationen und
+  Schemaänderungen laufen dann für jede Mandanten-Datenbank; River-Jobs, Verteiler und
+  Zeitplaner laufen je Datenbank im selben Prozess: Ein Job liegt und läuft in der Datenbank
+  der Änderung, die ihn einreiht, und arbeitet an sie gebunden; die Jobansicht zeigt die Jobs
+  der Datenbank, in der man arbeitet; Zeitpläne gelten zentral für alle; nur der LDAP-Abgleich
+  läuft einmal zentral (PL47c). Betrieb (PL47d, E144): `ITSM_TENANT_MODE=database` und je Mandant
+  `ITSM_TENANT_<NAME>_DATABASE_URL`; der Betrieb legt die leere Datenbank an, `itsm tenant create`
+  richtet sie ein; fehlt eine URL, startet itsm nicht; gesichert wird je Datenbank mit
+  `pg_dump`/`pg_restore`, `itsm tenant check` prüft den Abgleich mit der Steuer-Datenbank; ein
+  Webhook der Installation bekommt die Ereignisse aller Mandanten mit einer Position je Datenbank. Der Grenz-Rundgang läuft in jeder CI in beiden Betriebsarten (PL47e, E145). Abgesichert wird beides wie E34: die
   Linter-Regel gegen direktes SQL auf Typtabellen und ein Test, der jede Route mit zwei Mandanten
   in beiden Betriebsarten aufruft und keinen Treffer über die Grenze findet. Für VS-NfD beurteilt
   der IT-Sicherheitsbeauftragte, welche Betriebsart nötig ist; E16 bleibt der äußerste Ausweg.
@@ -299,21 +323,23 @@ Hauptplan, hier mit ihrer Beta-Antwort.
   der Kern führt die Ergebnisse zusammen, mit dem Mandanten als Spalte. Es gibt keine Kopie der
   Daten in einer gemeinsamen Datenbank. Jede Auswertung über Mandanten steht im
   Ereignisprotokoll jedes betroffenen Mandanten. Schreiben über Mandanten hinweg gibt es nicht.
+  Gebaut mit PL48 (E146): `POST /api/v1/tenants:query`; das Recht `report_tenants` an
+  `core.tenant` zählt nur ausdrücklich, an der Wurzel, für Konten der Installation.
 
-**Stand heute (2026-10-30, nach PL45), die Lücken zu diesem Bild:**
+**Stand heute (2026-10-30, nach PL46), die Lücken zu diesem Bild:**
 
 1. Behoben mit PL44: „alle“ endet an der Grenze des Mandanten; der Rechtefilter setzt sie vor
    jede Reichweite, und ein Rundgang über jede Route der API belegt das (Kern-Plan PL44).
 2. Behoben mit PL44 und PL45: Konten, Ereignisprotokoll, Regeln, Webhooks, API-Clients,
    Verzeichnisse, Anmelderegeln, Jobs von Export und Massenlauf und die Fehler des Verteilers
    tragen ihren Mandanten; Dateien hängen an ihrem Datensatz.
-3. Ein neuer Datensatz ohne Knoten landet im Mandanten statt an der Wurzel (PL44). Der Knoten des
-   Kontexts oder der Person kommt mit PL46; bis dahin bekommt 403, wer nur in einem Unterbaum
-   anlegen darf.
+3. Behoben mit PL44 und PL46: ein neuer Datensatz ohne Knoten landet im Knoten des Kontexts,
+   der Person oder des einzigen Anlegerechts; bleibt eine Wahl, fragt die Oberfläche.
 4. Formulare (UI11) wurden jedem angeboten, der den Zieltyp irgendwo anlegen darf; behoben am
    2026-10-29: angeboten wird ein Formular nur, wer im Knoten des Formulars anlegen darf, und es
    legt dort an.
-5. Eindeutige Felder und externe Schlüssel gelten für die ganze Installation.
+5. Behoben mit PL46: eindeutige Felder und externe Schlüssel gelten je Mandant (Spalte
+   `tenant`).
 6. Behoben mit PL45: Ereignisstrom, SSE, Webhooks und Benachrichtigungen enden an der Grenze;
    auch das Recht, alle Ereignisse zu lesen, gilt nur im eigenen Mandanten.
 

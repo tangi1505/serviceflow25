@@ -91,7 +91,7 @@ func setupFormulas(t *testing.T) (*Service, context.Context, *pgxpool.Pool) {
 		}
 	}
 	installTickets(t, ctx, pool, "impact * urgency")
-	return New(pool), ctx, pool
+	return New(db.Single(pool)), ctx, pool
 }
 
 // The acceptance of PL22: priority from impact and urgency is set on create and update, and

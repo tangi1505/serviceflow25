@@ -18,19 +18,19 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/files"
 	"group24.de/itsm/internal/records"
 )
 
-func testFiles(t *testing.T, pool *pgxpool.Pool, recs *records.Service) *files.Service {
+func testFiles(t *testing.T, rt *db.Router, recs *records.Service) *files.Service {
 	t.Helper()
 	store, err := files.NewFS(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return files.New(pool, store, recs, nil, quiet)
+	return files.New(rt, store, recs, nil, quiet)
 }
 
 // raw sends a request with the session and the CSRF header and returns status, headers and

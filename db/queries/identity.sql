@@ -2,13 +2,14 @@
 -- SPDX-License-Identifier: AGPL-3.0-only
 
 -- name: GetIdentity :one
-SELECT issuer, subject, account_id, email, claims, first_login_at, last_login_at
+SELECT issuer, subject, account_id, coalesce(tenant::text, '')::text AS tenant, email, claims, first_login_at, last_login_at
 FROM identity
 WHERE issuer = sqlc.arg(issuer) AND subject = sqlc.arg(subject);
 
 -- name: UpsertIdentity :exec
-INSERT INTO identity (issuer, subject, account_id, email, claims)
-VALUES (sqlc.arg(issuer), sqlc.arg(subject), sqlc.arg(account_id), sqlc.narg(email), sqlc.arg(claims))
+-- The identity names the tenant of its account (PL47b): it is central, the account may not be.
+INSERT INTO identity (issuer, subject, account_id, tenant, email, claims)
+VALUES (sqlc.arg(issuer), sqlc.arg(subject), sqlc.arg(account_id), sqlc.narg(tenant)::ltree, sqlc.narg(email), sqlc.arg(claims))
 ON CONFLICT (issuer, subject) DO UPDATE
     SET email = EXCLUDED.email, claims = EXCLUDED.claims, last_login_at = now();
 

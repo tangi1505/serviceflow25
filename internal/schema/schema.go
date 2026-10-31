@@ -45,6 +45,9 @@ const ListTable = "list_entry"
 var systemColumns = []struct{ name, def string }{
 	{"id", "uuid PRIMARY KEY"},
 	{"org_path", "ltree NOT NULL DEFAULT 'root'"},
+	// The tenant of the node, filled by the trigger set_tenant (PL46): unique values and
+	// external keys are unique per tenant.
+	{"tenant", "ltree NOT NULL DEFAULT 'root'"},
 	{"version", "bigint NOT NULL DEFAULT 1"},
 	{"state", "text"},
 	{"source", "text"},
@@ -165,6 +168,23 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 	for _, c := range cols {
 		have[c.Name] = c.UdtName
 	}
+	// The tenant column and its trigger (PL46); a table from before gets them here, and its
+	// unique indexes are rebuilt per tenant below.
+	if _, ok := have["tenant"]; !ok && len(cols) > 0 {
+		id := pgx.Identifier{table}.Sanitize()
+		if err := run("add column tenant", fmt.Sprintf("ALTER TABLE %s ADD COLUMN tenant ltree NOT NULL DEFAULT 'root'", id)); err != nil {
+			return nil, err
+		}
+		if err := run("fill tenant", fmt.Sprintf("UPDATE %s SET tenant = tenant_of(org_path)", id)); err != nil {
+			return nil, err
+		}
+	}
+	if err := ensureTrigger(ctx, tx, table, run); err != nil {
+		return nil, err
+	}
+	if err := ensureUnique(ctx, tx, table, table+"_source_key", sourceKeyIndex(table), run); err != nil {
+		return nil, err
+	}
 
 	for _, f := range t.Fields {
 		ct, err := ColumnType(f.Type)
@@ -190,17 +210,12 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 			}
 		}
 		if f.Unique {
+			// Unique per tenant (PL46, E136), outside the trash.
 			idx := table + "_" + f.Name + "_key"
-			stmt := fmt.Sprintf("CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (%s) WHERE deleted_at IS NULL",
+			stmt := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (tenant, %s) WHERE deleted_at IS NULL",
 				pgx.Identifier{idx}.Sanitize(), pgx.Identifier{table}.Sanitize(), pgx.Identifier{f.Name}.Sanitize())
-			exists, err := indexExists(ctx, tx, table, idx)
-			if err != nil {
+			if err := ensureUnique(ctx, tx, table, idx, stmt, run); err != nil {
 				return nil, err
-			}
-			if !exists {
-				if err := run("unique index "+f.Name, stmt); err != nil {
-					return nil, err
-				}
 			}
 		}
 	}
@@ -235,9 +250,60 @@ func systemIndexes(table string) []string {
 	id := pgx.Identifier{table}.Sanitize()
 	return []string{
 		fmt.Sprintf("CREATE INDEX %s ON %s USING gist (org_path)", pgx.Identifier{table + "_org_path_idx"}.Sanitize(), id),
-		fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (source, external_key) WHERE source IS NOT NULL", pgx.Identifier{table + "_source_key"}.Sanitize(), id),
+		sourceKeyIndex(table),
 		fmt.Sprintf("CREATE INDEX %s ON %s (updated_at)", pgx.Identifier{table + "_updated_at_idx"}.Sanitize(), id),
 	}
+}
+
+// sourceKeyIndex makes the external key of a source unique per tenant (PL46).
+func sourceKeyIndex(table string) string {
+	return fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (tenant, source, external_key) WHERE source IS NOT NULL",
+		pgx.Identifier{table + "_source_key"}.Sanitize(), pgx.Identifier{table}.Sanitize())
+}
+
+// ensureUnique creates a unique index, or rebuilds one from before the tenant column (PL46):
+// the definition of a current one names tenant first.
+func ensureUnique(ctx context.Context, tx pgx.Tx, table, idx, stmt string, run func(change, stmt string) error) error {
+	def, err := indexDef(ctx, tx, table, idx)
+	if err != nil {
+		return err
+	}
+	if strings.Contains(def, "(tenant, ") {
+		return nil
+	}
+	if def != "" {
+		if err := run("drop index "+idx, "DROP INDEX "+pgx.Identifier{idx}.Sanitize()); err != nil {
+			return err
+		}
+	}
+	return run("unique index "+idx, stmt)
+}
+
+// ensureTrigger puts the trigger that fills the tenant column on the table (PL46).
+func ensureTrigger(ctx context.Context, tx pgx.Tx, table string, run func(change, stmt string) error) error {
+	name := table + "_tenant"
+	var n int
+	err := tx.QueryRow(ctx, "SELECT count(*) FROM pg_trigger WHERE tgname = $1 AND tgrelid = $2::regclass", name, pgx.Identifier{table}.Sanitize()).Scan(&n)
+	if err != nil {
+		return fmt.Errorf("schema: read triggers of %s: %w", table, err)
+	}
+	if n > 0 {
+		return nil
+	}
+	return run("trigger tenant", fmt.Sprintf("CREATE TRIGGER %s BEFORE INSERT OR UPDATE OF org_path ON %s FOR EACH ROW EXECUTE FUNCTION set_tenant()",
+		pgx.Identifier{name}.Sanitize(), pgx.Identifier{table}.Sanitize()))
+}
+
+// indexDef is the definition of an index of the table, empty when there is none.
+func indexDef(ctx context.Context, tx pgx.Tx, table, idx string) (string, error) {
+	var def string
+	err := tx.QueryRow(ctx,
+		"SELECT coalesce(max(indexdef), '') FROM pg_indexes WHERE schemaname = current_schema() AND tablename = $1 AND indexname = $2",
+		table, idx).Scan(&def)
+	if err != nil {
+		return "", fmt.Errorf("schema: read index %s of %s: %w", idx, table, err)
+	}
+	return def, nil
 }
 
 // indexExists asks pg_indexes directly; sqlc does not know that catalog view.

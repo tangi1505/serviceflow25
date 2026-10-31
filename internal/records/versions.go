@@ -71,14 +71,14 @@ func (s *Service) versioned(ctx context.Context, typeName string, id uuid.UUID) 
 	if !t.HasHistory() {
 		return meta.Type{}, nil, nil, fmt.Errorf("%s has no versions (trait history): %w", typeName, ErrNotFound)
 	}
-	rec, err := s.read(ctx, s.pool, t, id, false, false)
+	rec, err := s.read(ctx, s.db.Tenant(ctx), t, id, false, false)
 	if err != nil {
 		return meta.Type{}, nil, nil, err
 	}
 	if err := checkAccess(ctx, t, rec, authz.ActionRead); err != nil {
 		return meta.Type{}, nil, nil, err
 	}
-	rows, err := queries.New(s.pool).ListAudit(ctx, queries.ListAuditParams{TypeName: typeName, RecordID: id})
+	rows, err := queries.New(s.db.Tenant(ctx)).ListAudit(ctx, queries.ListAuditParams{TypeName: typeName, RecordID: id})
 	if err != nil {
 		return meta.Type{}, nil, nil, fmt.Errorf("records: versions: %w", err)
 	}

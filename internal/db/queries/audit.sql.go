@@ -53,7 +53,7 @@ const listAudit = `-- name: ListAudit :many
 SELECT id, type_name, record_id, version, action, field, old_value, new_value, actor, at, rule
 FROM audit
 WHERE type_name = $1 AND record_id = $2
-ORDER BY at, id
+ORDER BY version, at, id
 `
 
 type ListAuditParams struct {
@@ -61,6 +61,10 @@ type ListAuditParams struct {
 	RecordID uuid.UUID
 }
 
+// The history of a record in the order it happened: by version first, because the clock of a
+// VM can jump backwards (seen in WSL, 2026-10-30) and a create row would then follow later
+// versions and cut the reconstruction of a version short; ids (v7) order the rows of one
+// version.
 func (q *Queries) ListAudit(ctx context.Context, arg ListAuditParams) ([]Audit, error) {
 	rows, err := q.db.Query(ctx, listAudit, arg.TypeName, arg.RecordID)
 	if err != nil {

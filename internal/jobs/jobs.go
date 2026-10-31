@@ -8,7 +8,9 @@
 // Package jobs runs background work with River in PostgreSQL (Hauptplan E19, E85; PL23):
 // queues with precedence, periodic jobs on cron schedules that a table may override, and the
 // log of runs for the API. Jobs are inserted in the transaction of the change that causes
-// them (EnqueueTx), so a job never exists without its change and vice versa.
+// them (EnqueueTx), so a job never exists without its change and vice versa. With databases of
+// their own for the tenants every database has its River client in this process (PL47c): a job
+// lives and runs in the database of the change that queued it, bound to it (db.Database.Bind).
 package jobs
 
 import (
@@ -23,13 +25,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/cache"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 )
 
@@ -64,6 +66,9 @@ type Periodic struct {
 	Schedule string
 	Queue    string
 	Args     func() river.JobArgs
+	// Central runs the job in the control database only (PL47c): work that picks its databases
+	// itself, like the LDAP sync. Every other periodic job runs in each database.
+	Central bool
 }
 
 // Schedule is a periodic job as the API shows it: defaults and effective values.
@@ -138,18 +143,19 @@ type Options struct {
 
 // Service is the job runner of one process.
 type Service struct {
-	pool    *pgxpool.Pool
+	db      *db.Router
 	o       Options
 	workers *river.Workers
 
 	mu       sync.Mutex
 	periodic map[string]Periodic
-	client   *river.Client[pgx.Tx]
-	started  bool
+	// clients holds the River client of every database by its name (db.Database.Name).
+	clients map[string]*river.Client[pgx.Tx]
+	started bool
 }
 
 // New prepares a service; workers and periodic jobs are added before Start.
-func New(pool *pgxpool.Pool, o Options) *Service {
+func New(rt *db.Router, o Options) *Service {
 	if o.Logger == nil {
 		o.Logger = slog.New(slog.DiscardHandler)
 	}
@@ -159,7 +165,7 @@ func New(pool *pgxpool.Pool, o Options) *Service {
 	if o.DiscardedRetention == 0 {
 		o.DiscardedRetention = 30 * 24 * time.Hour
 	}
-	return &Service{pool: pool, o: o, workers: river.NewWorkers(), periodic: map[string]Periodic{}}
+	return &Service{db: rt, o: o, workers: river.NewWorkers(), periodic: map[string]Periodic{}}
 }
 
 // AddWorker registers the worker of a job kind; call it before Start.
@@ -187,10 +193,54 @@ func (s *Service) AddPeriodic(p Periodic) error {
 	return nil
 }
 
-// Start builds the River client. With workers it starts working its queues and enqueuing the
-// periodic jobs (River elects one leader per database for that); without workers the client
-// only inserts and reads. Start returns at once; Stop ends the work.
+// bind is the middleware that works every job bound to the database of its client (PL47c).
+type bind struct {
+	river.WorkerMiddlewareDefaults
+	to func(context.Context) context.Context
+}
+
+func (b *bind) Work(ctx context.Context, _ *rivertype.JobRow, doInner func(context.Context) error) error {
+	return doInner(b.to(ctx))
+}
+
+// Start builds a River client for every database. With workers they start working their
+// queues and enqueuing the periodic jobs (River elects one leader per database for that);
+// without workers the clients only insert and read. Start returns at once; Stop ends the work.
 func (s *Service) Start(ctx context.Context) error {
+	clients := map[string]*river.Client[pgx.Tx]{}
+	for _, d := range s.db.Databases() {
+		client, err := s.newClient(d)
+		if err != nil {
+			return err
+		}
+		clients[d.Name] = client
+	}
+	s.mu.Lock()
+	s.clients = clients
+	s.mu.Unlock()
+	if len(s.o.Workers) == 0 {
+		return nil
+	}
+	if err := s.reload(ctx); err != nil {
+		return err
+	}
+	for _, d := range s.db.Databases() {
+		if err := clients[d.Name].Start(ctx); err != nil {
+			return fmt.Errorf("jobs: start in database %q: %w", d.Name, err)
+		}
+	}
+	s.mu.Lock()
+	s.started = true
+	s.mu.Unlock()
+	s.o.Logger.Info("worker started", "queues", s.o.Workers, "periodic", len(s.periodic), "databases", len(clients))
+	if s.o.Cache != nil {
+		go s.listen(ctx)
+	}
+	return nil
+}
+
+// newClient builds the River client of one database.
+func (s *Service) newClient(d db.Database) (*river.Client[pgx.Tx], error) {
 	cfg := &river.Config{
 		Logger: s.o.Logger,
 		// Fetch only kinds this instance works, so that instances with different workers
@@ -206,35 +256,17 @@ func (s *Service) Start(ctx context.Context) error {
 		cfg.Queues = make(map[string]river.QueueConfig, len(s.o.Workers))
 		for q, n := range s.o.Workers {
 			if q == "" {
-				return fmt.Errorf("jobs: %w: empty queue name", ErrInvalid)
+				return nil, fmt.Errorf("jobs: %w: empty queue name", ErrInvalid)
 			}
 			cfg.Queues[q] = river.QueueConfig{MaxWorkers: n}
 		}
 	}
-	client, err := river.NewClient(riverpgxv5.New(s.pool), cfg)
+	cfg.Middleware = []rivertype.Middleware{&bind{to: d.Bind}}
+	client, err := river.NewClient(riverpgxv5.New(d.Pool()), cfg)
 	if err != nil {
-		return fmt.Errorf("jobs: %w", err)
+		return nil, fmt.Errorf("jobs: database %q: %w", d.Name, err)
 	}
-	s.mu.Lock()
-	s.client = client
-	s.mu.Unlock()
-	if len(s.o.Workers) == 0 {
-		return nil
-	}
-	if err := s.reload(ctx); err != nil {
-		return err
-	}
-	if err := client.Start(ctx); err != nil {
-		return fmt.Errorf("jobs: start: %w", err)
-	}
-	s.mu.Lock()
-	s.started = true
-	s.mu.Unlock()
-	s.o.Logger.Info("worker started", "queues", s.o.Workers, "periodic", len(s.periodic))
-	if s.o.Cache != nil {
-		go s.listen(ctx)
-	}
-	return nil
+	return client, nil
 }
 
 // listen reloads the schedules whenever an instance changed one (PL9 did the same for rights).
@@ -258,55 +290,71 @@ func (s *Service) listen(ctx context.Context) {
 // Stop ends the work gracefully: running jobs finish within the context.
 func (s *Service) Stop(ctx context.Context) error {
 	s.mu.Lock()
-	client, started := s.client, s.started
+	clients, started := s.clients, s.started
 	s.started = false
 	s.mu.Unlock()
 	if !started {
 		return nil
 	}
-	if err := client.Stop(ctx); err != nil {
-		return fmt.Errorf("jobs: stop: %w", err)
+	var errs []error
+	for name, client := range clients {
+		if err := client.Stop(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("jobs: stop in database %q: %w", name, err))
+		}
 	}
 	s.o.Logger.Info("worker stopped")
-	return nil
+	return errors.Join(errs...)
 }
 
-func (s *Service) ready() (*river.Client[pgx.Tx], error) {
+// ready is the client of the database the context works in (PL47c): the tenant's for a
+// request in a tenant, the bound one for a job.
+func (s *Service) ready(ctx context.Context) (*river.Client[pgx.Tx], error) {
+	return s.clientOf(s.db.Current(ctx).Name)
+}
+
+func (s *Service) clientOf(name string) (*river.Client[pgx.Tx], error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.client == nil {
+	if s.clients == nil {
 		return nil, errors.New("jobs: service not started")
 	}
-	return s.client, nil
+	client, ok := s.clients[name]
+	if !ok {
+		return nil, fmt.Errorf("jobs: no client for database %q", name)
+	}
+	return client, nil
 }
 
-// reload replaces River's periodic jobs with the effective schedules.
+// reload replaces River's periodic jobs with the effective schedules, in every database; a
+// central job only in the control database.
 func (s *Service) reload(ctx context.Context) error {
-	client, err := s.ready()
-	if err != nil {
-		return err
-	}
 	effective, err := s.effective(ctx)
 	if err != nil {
 		return err
 	}
-	list := make([]*river.PeriodicJob, 0, len(effective))
-	for _, e := range effective {
-		if !e.Enabled {
-			continue
-		}
-		schedule, err := parseCron(e.Schedule)
+	for _, d := range s.db.Databases() {
+		client, err := s.clientOf(d.Name)
 		if err != nil {
 			return err
 		}
-		p := s.periodicOf(e.Name)
-		list = append(list, river.NewPeriodicJob(schedule, func() (river.JobArgs, *river.InsertOpts) {
-			return p.Args(), &river.InsertOpts{Queue: p.Queue}
-		}, &river.PeriodicJobOpts{ID: e.Name}))
+		list := make([]*river.PeriodicJob, 0, len(effective))
+		for _, e := range effective {
+			p := s.periodicOf(e.Name)
+			if !e.Enabled || (p.Central && d.Name != "") {
+				continue
+			}
+			schedule, err := parseCron(e.Schedule)
+			if err != nil {
+				return err
+			}
+			list = append(list, river.NewPeriodicJob(schedule, func() (river.JobArgs, *river.InsertOpts) {
+				return p.Args(), &river.InsertOpts{Queue: p.Queue}
+			}, &river.PeriodicJobOpts{ID: e.Name}))
+		}
+		bundle := client.PeriodicJobs()
+		bundle.Clear()
+		bundle.AddMany(list)
 	}
-	bundle := client.PeriodicJobs()
-	bundle.Clear()
-	bundle.AddMany(list)
 	return nil
 }
 
@@ -316,9 +364,10 @@ func (s *Service) periodicOf(name string) Periodic {
 	return s.periodic[name]
 }
 
-// effective merges the registered defaults with the overrides of the table, sorted by name.
+// effective merges the registered defaults with the overrides of the table, sorted by name. The
+// overrides are central (PL47c): they lie in the control database and hold for every database.
 func (s *Service) effective(ctx context.Context) ([]Schedule, error) {
-	rows, err := queries.New(s.pool).ListJobSchedules(ctx)
+	rows, err := queries.New(s.db.Control()).ListJobSchedules(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("jobs: schedules: %w", err)
 	}
@@ -346,9 +395,10 @@ func (s *Service) effective(ctx context.Context) ([]Schedule, error) {
 	return out, nil
 }
 
-// Schedules lists the periodic jobs with their next and last run.
+// Schedules lists the periodic jobs with their next and last run; the last run is the one in
+// the database the request works in.
 func (s *Service) Schedules(ctx context.Context) ([]Schedule, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +460,7 @@ func (s *Service) SetSchedule(ctx context.Context, name string, patch SchedulePa
 	if actor != nil {
 		by = uuid.NullUUID{UUID: *actor, Valid: true}
 	}
-	if _, err := queries.New(s.pool).UpsertJobSchedule(ctx, queries.UpsertJobScheduleParams{
+	if _, err := queries.New(s.db.Control()).UpsertJobSchedule(ctx, queries.UpsertJobScheduleParams{
 		Name: name, Schedule: schedule, Enabled: enabled, UpdatedBy: by,
 	}); err != nil {
 		return Schedule{}, fmt.Errorf("jobs: store schedule: %w", err)
@@ -431,11 +481,15 @@ func (s *Service) SetSchedule(ctx context.Context, name string, patch SchedulePa
 	return s.ScheduleByName(ctx, name)
 }
 
-// RunNow enqueues a periodic job right away, regardless of its schedule.
+// RunNow enqueues a periodic job right away, regardless of its schedule, in the database the
+// request works in; a central job in the control database.
 func (s *Service) RunNow(ctx context.Context, name string) (Job, error) {
 	p, ok := s.periodicLookup(name)
 	if !ok {
 		return Job{}, fmt.Errorf("%w: schedule %s", ErrNotFound, name)
+	}
+	if p.Central {
+		ctx = s.db.Databases()[0].Bind(ctx)
 	}
 	return s.Enqueue(ctx, p.Args(), &river.InsertOpts{Queue: p.Queue})
 }
@@ -449,7 +503,7 @@ func (s *Service) periodicLookup(name string) (Periodic, bool) {
 
 // Enqueue inserts a job outside a transaction (opts may be nil: queue default).
 func (s *Service) Enqueue(ctx context.Context, args river.JobArgs, opts *river.InsertOpts) (Job, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return Job{}, err
 	}
@@ -462,7 +516,7 @@ func (s *Service) Enqueue(ctx context.Context, args river.JobArgs, opts *river.I
 
 // EnqueueTx inserts a job in the transaction of the change that causes it (E19).
 func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts *river.InsertOpts) (Job, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return Job{}, err
 	}
@@ -479,7 +533,7 @@ func (s *Service) EnqueueManyTx(ctx context.Context, tx pgx.Tx, params []river.I
 	if len(params) == 0 {
 		return nil
 	}
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return err
 	}
@@ -537,7 +591,7 @@ func Visible(ctx context.Context, args []byte, installation bool) bool {
 
 // List returns the newest jobs first, at most Filter.Limit (default 50, at most 500).
 func (s *Service) List(ctx context.Context, f Filter) ([]Job, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -580,7 +634,7 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Job, error) {
 
 // Get returns one job.
 func (s *Service) Get(ctx context.Context, id int64) (Job, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return Job{}, err
 	}
@@ -591,7 +645,7 @@ func (s *Service) Get(ctx context.Context, id int64) (Job, error) {
 // Cancel stops a job: a waiting one is cancelled at once, a running one when it checks
 // its context, a finished one stays as it is.
 func (s *Service) Cancel(ctx context.Context, id int64) (Job, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return Job{}, err
 	}
@@ -601,7 +655,7 @@ func (s *Service) Cancel(ctx context.Context, id int64) (Job, error) {
 
 // Retry makes a job available again right away, also one that used up its attempts.
 func (s *Service) Retry(ctx context.Context, id int64) (Job, error) {
-	client, err := s.ready()
+	client, err := s.ready(ctx)
 	if err != nil {
 		return Job{}, err
 	}

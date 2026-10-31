@@ -80,7 +80,30 @@ type Config struct {
 	TrustProxy bool
 	// SMTP is the mail server of the notifications (WF15); Host empty means no mail.
 	SMTP SMTP
+	// TenantMode is where the data of the tenants live (PL47d, Hauptplan E141, E144),
+	// ITSM_TENANT_MODE: TenantModeShared (the default) keeps everything in ITSM_DATABASE_URL;
+	// TenantModeDatabase gives every tenant a database of its own, whose URL only the
+	// configuration holds (TenantURL).
+	TenantMode string
+	// TenantURL reads the URL of a tenant's database by the tenant's name from
+	// ITSM_TENANT_<NAME>_DATABASE_URL (TenantDatabaseVar); empty when it is not set.
+	TenantURL func(name string) string
 }
+
+// The operating modes of the tenants (ITSM_TENANT_MODE).
+const (
+	TenantModeShared   = "shared"
+	TenantModeDatabase = "database"
+)
+
+// TenantDatabaseVar is the variable that holds the URL of a tenant's database: the tenant's
+// name in capitals, "nord" → ITSM_TENANT_NORD_DATABASE_URL.
+func TenantDatabaseVar(name string) string {
+	return "ITSM_TENANT_" + strings.ToUpper(name) + "_DATABASE_URL"
+}
+
+// SeparateDatabases reports whether the tenants have databases of their own.
+func (c Config) SeparateDatabases() bool { return c.TenantMode == TenantModeDatabase }
 
 // SMTP configures the mail out (ITSM_SMTP_HOST, _PORT, _FROM, _USER, _PASSWORD, _STARTTLS).
 type SMTP struct {
@@ -217,6 +240,14 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		}
 		cfg.ShutdownTimeout = d
 	}
+	cfg.TenantMode = TenantModeShared
+	if v := getenv("ITSM_TENANT_MODE"); v != "" {
+		if v != TenantModeShared && v != TenantModeDatabase {
+			errs = append(errs, fmt.Errorf("ITSM_TENANT_MODE: %q is neither %s nor %s", v, TenantModeShared, TenantModeDatabase))
+		}
+		cfg.TenantMode = v
+	}
+	cfg.TenantURL = func(name string) string { return getenv(TenantDatabaseVar(name)) }
 	if cfg.DatabaseURL == "" {
 		errs = append(errs, errors.New("ITSM_DATABASE_URL is required"))
 	}

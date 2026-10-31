@@ -26,7 +26,7 @@ func TestRolesAtTheRecordOverHTTP(t *testing.T) {
 	suffix := strings.ReplaceAll(uuid.NewString()[:8], "-", "")
 
 	// The role wf3_involved reads and changes probe.probe where one holds a role.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/wf3_involved", "", nil)
+	dropRole(t, admin, "wf3_involved")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "wf3_involved", "label": {"de": "Beteiligt", "en": "Involved"}}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}
@@ -151,10 +151,10 @@ func TestRolesAtTheRecordOverHTTP(t *testing.T) {
 	// Clean up the record (with its actor rows) and the group.
 	for _, step := range []struct{ method, path string }{
 		{http.MethodDelete, base + "/" + id}, {http.MethodPost, base + "/" + id + ":purge"},
-		{http.MethodDelete, "/api/v1/roles/wf3_involved"},
 	} {
 		if r := call(t, admin, step.method, step.path, "", nil); r.code != 204 {
 			t.Fatalf("%s %s: %d %s", step.method, step.path, r.code, r.raw)
 		}
 	}
+	dropRole(t, admin, "wf3_involved")
 }

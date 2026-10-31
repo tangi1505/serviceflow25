@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
@@ -65,7 +66,7 @@ type Result struct {
 // Create adds a tenant; with Adopt the first one takes over all that is there, in one
 // transaction.
 func Create(ctx context.Context, pool *pgxpool.Pool, o Options) (Result, error) {
-	svc := org.New(pool)
+	svc := org.New(db.Single(pool))
 	if !o.Adopt {
 		if len(o.Admins) > 0 {
 			return Result{}, fmt.Errorf("%w: --admin only goes with --adopt", ErrInvalid)
@@ -79,7 +80,7 @@ func Create(ctx context.Context, pool *pgxpool.Pool, o Options) (Result, error) 
 		if err != nil {
 			return Result{Tenant: n}, err
 		}
-		seeded, err := records.New(pool).SeedListsInto(ctx, types, n.Path)
+		seeded, err := records.New(db.Single(pool)).SeedListsInto(ctx, types, n.Path)
 		return Result{Tenant: n, Seeded: seeded}, err
 	}
 	tenants, err := svc.Tenants(ctx)
@@ -192,7 +193,7 @@ func Bind(ctx context.Context, pool *pgxpool.Pool, username, tenant string) erro
 }
 
 func isTenant(ctx context.Context, pool *pgxpool.Pool, path string) error {
-	n, err := org.New(pool).Node(ctx, path)
+	n, err := org.New(db.Single(pool)).Node(ctx, path)
 	if err != nil {
 		return fmt.Errorf("%w: tenant %s: %w", ErrInvalid, path, err)
 	}
@@ -203,7 +204,7 @@ func isTenant(ctx context.Context, pool *pgxpool.Pool, path string) error {
 }
 
 func personIn(ctx context.Context, pool *pgxpool.Pool, person uuid.UUID, tenant string) error {
-	p, err := records.New(pool).Get(ctx, "core.person", person)
+	p, err := records.New(db.Single(pool)).Get(ctx, "core.person", person)
 	if err != nil {
 		return fmt.Errorf("tenant: person of the account: %w", err)
 	}

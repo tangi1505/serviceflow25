@@ -24,6 +24,12 @@ fields:
     max_length: 200
     # German in the column, English in the table translation (PL21).
     translatable: true
+  # Unique per tenant (PL46): the same serial number in two tenants, not twice in one.
+  - name: serial
+    type: text
+    label: {de: Seriennummer, en: Serial number}
+    unique: true
+    max_length: 50
   # The sums of the tasks (WF13): all minutes, and how many are still open.
   - name: task_minutes
     type: number

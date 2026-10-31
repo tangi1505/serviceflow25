@@ -59,9 +59,17 @@ func TestRunCountsErrorsAndLatency(t *testing.T) {
 }
 
 func TestBest(t *testing.T) {
-	got := Best([]Result{{P95ms: 9}, {P95ms: 1}, {P95ms: 5}})
+	got := Best([]Result{{Requests: 10, P95ms: 9}, {Requests: 10, P95ms: 1}, {Requests: 10, P95ms: 5}})
 	if got.P95ms != 1 {
 		t.Fatalf("best p95 = %v, want 1", got.P95ms)
+	}
+	// A run without a successful call measured nothing and must not win with p95 0.
+	got = Best([]Result{{Requests: 10, P95ms: 0.65}, {}, {Requests: 3, Errors: 3}, {Requests: 10, P95ms: 0.71}})
+	if got.P95ms != 0.65 {
+		t.Fatalf("best p95 with empty runs = %v, want 0.65", got.P95ms)
+	}
+	if got := Best([]Result{{}, {}}); got.Requests != 0 || got.P95ms != 0 {
+		t.Fatalf("best of empty runs = %+v, want the empty run", got)
 	}
 	if Best(nil).P95ms != 0 {
 		t.Fatal("best of nothing must be empty")

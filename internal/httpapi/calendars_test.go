@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/calendar"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
 )
@@ -87,7 +88,7 @@ func TestCalendarsOverHTTP(t *testing.T) {
 	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.wf8/settings/calendar.default", `"`+id+`"`, nil); r.code != 200 && r.code != 204 {
 		t.Fatalf("setting: %d %s", r.code, r.raw)
 	}
-	svc := calendar.New(records.New(api.pool), org.New(api.pool).Setting)
+	svc := calendar.New(records.New(db.Single(api.pool)), org.New(db.Single(api.pool)).Setting)
 	c, got, err := svc.ForNode(ctx, "root.wf8")
 	if err != nil || c == nil || got.String() != id {
 		t.Fatalf("calendar of the unit: %v %v", got, err)

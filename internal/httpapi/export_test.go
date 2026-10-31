@@ -115,7 +115,7 @@ func TestExportOverHTTP(t *testing.T) {
 
 	// Another person reads only their own records: their export has only those.
 	const role = "ui5_own"
-	call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+	dropRole(t, admin, role)
 	call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "UI5"}}`, nil)
 	for _, p := range []string{`{"type_name": "probe.probe", "action": "read", "scope": "own"}`, `{"type_name": "probe.probe", "action": "create", "scope": "all"}`} {
 		if r := call(t, admin, http.MethodPut, "/api/v1/roles/"+role+"/permissions", p, nil); r.code != 204 {

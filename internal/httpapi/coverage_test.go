@@ -25,6 +25,7 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/google/uuid"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
 )
@@ -113,7 +114,7 @@ func installAllPackages(t *testing.T, api *testAPI) map[string]meta.Type {
 				continue
 			}
 			// core and probe are in already (apiServer); installing again changes nothing.
-			p = installPackage(t, t.Context(), api.pool, filepath.Join("../../packages", dir))
+			p = installPackage(t, t.Context(), api.rt, filepath.Join("../../packages", dir))
 			for _, typ := range p.Types {
 				types[typ.QualifiedName()] = typ
 			}
@@ -350,7 +351,7 @@ func (s *sampler) cleanup() {
 	for _, n := range s.purged {
 		done[n] = true
 	}
-	recs := records.New(s.api.pool)
+	recs := records.New(db.Single(s.api.pool))
 	for i := len(s.order) - 1; i >= 0; i-- {
 		name := s.order[i]
 		if done[name] {

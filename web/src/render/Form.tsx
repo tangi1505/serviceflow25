@@ -180,6 +180,10 @@ export function Form({
     : shown;
   const locked = states?.locked === true;
   const readOnly = new Set(states?.read_only ?? []);
+  // Where a new record goes (PL46): the nodes the person may create in, preset with the
+  // server's default; one node needs no choice. A form of the portal has a node of its own.
+  const nodes = !record && !submit ? (states?.nodes ?? []) : [];
+  const [node, setNode] = useState(states?.node ?? "");
   const [base, setBase] = useState<RecordData | undefined>(record);
   const [conflict, setConflict] = useState<Conflict | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -225,6 +229,9 @@ export function Form({
     }
     if (!base && extra) {
       Object.assign(body, extra);
+    }
+    if (nodes.length > 1 && node) {
+      body["org_path"] = node;
     }
     try {
       const saved = base
@@ -445,6 +452,30 @@ export function Form({
       onSubmit={handleSubmit((v) => save(v))}
       noValidate
     >
+      {nodes.length > 1 && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={`${id}-org_path`}>
+            {t("form.node")}
+            <span aria-hidden="true"> *</span>
+          </Label>
+          <select
+            id={`${id}-org_path`}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            value={node}
+            onChange={(e) => setNode(e.target.value)}
+            aria-required="true"
+            aria-invalid={errors["org_path"] ? true : undefined}
+          >
+            {node === "" && <option value="">{t("form.none")}</option>}
+            {nodes.map((n) => (
+              <option key={n.path} value={n.path}>
+                {labelOf(n.label, i18n.language, n.path)}
+              </option>
+            ))}
+          </select>
+          {errorText("org_path")}
+        </div>
+      )}
       {groups
         ? groups
             .filter((g) => !hidden?.groups.has(g.key))

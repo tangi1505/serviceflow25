@@ -81,9 +81,9 @@ func TestCreateTableAddColumnUniqueIndexAndLog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// create table + 3 system indexes + 7 columns + 1 unique index
-	if len(changes) != 12 {
-		t.Fatalf("got %d changes, want 12: %+v", len(changes), changes)
+	// create table + 3 system indexes + the tenant trigger (PL46) + 7 columns + 1 unique index
+	if len(changes) != 13 {
+		t.Fatalf("got %d changes, want 13: %+v", len(changes), changes)
 	}
 
 	cols, err := q.TableColumns(ctx, "rec_schematest_alpha")
@@ -95,7 +95,7 @@ func TestCreateTableAddColumnUniqueIndexAndLog(t *testing.T) {
 		got[c.Name] = c.UdtName
 	}
 	want := map[string]string{
-		"id": "uuid", "org_path": "ltree", "version": "int8", "state": "text", "source": "text",
+		"id": "uuid", "org_path": "ltree", "tenant": "ltree", "version": "int8", "state": "text", "source": "text",
 		"external_key": "text", "row_hash": "bytea", "search": "tsvector", "created_at": "timestamptz",
 		"created_by": "uuid", "updated_at": "timestamptz", "updated_by": "uuid", "deleted_at": "timestamptz",
 		"title": "text", "priority": "numeric", "active": "bool", "due_on": "date", "seen_at": "timestamptz",
@@ -193,9 +193,10 @@ func TestParallelApplyEndsWithOneTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Exactly one creation: create table + 3 indexes + 1 column + 1 unique index.
-	if len(log) != 6 {
-		t.Fatalf("schema log has %d rows, want 6 (one creation only)", len(log))
+	// Exactly one creation: create table + 3 indexes + the tenant trigger (PL46) + 1 column
+	// + 1 unique index.
+	if len(log) != 7 {
+		t.Fatalf("schema log has %d rows, want 7 (one creation only)", len(log))
 	}
 }
 

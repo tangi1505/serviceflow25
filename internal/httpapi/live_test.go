@@ -60,7 +60,7 @@ func TestLiveOverHTTP(t *testing.T) {
 		t.Fatalf("after Ben left: %v", others)
 	}
 	// A record one may not read: no presence there.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/ui8_none", "", nil)
+	dropRole(t, admin, "ui8_none")
 	call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "ui8_none", "label": {"de": "nichts"}}`, nil)
 	nobody := timelineLogin(t, admin, "apitest_ui8_nobody", "ui8_none", `{"last_name": "UI8 Niemand"}`)
 	if r := call(t, nobody.api, http.MethodPut, base+"/presence", `{"editing": false}`, nil); r.code != 404 {

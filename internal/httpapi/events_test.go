@@ -100,7 +100,7 @@ func TestEventsAPI(t *testing.T) {
 	}
 
 	// A person who reads only own records sees only own events, the positions still advance.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/ev_own", "", nil)
+	dropRole(t, admin, "ev_own")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "ev_own"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

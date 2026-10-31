@@ -20,7 +20,6 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/calendar"
-	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/platform"
 	"group24.de/itsm/internal/records"
@@ -46,12 +45,12 @@ func calendarCmd(args []string, getenv func(string) string, stdout, _ io.Writer)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	rt, closeDBs, err := openDatabases(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
-	n, err := calendar.New(records.New(pool), org.New(pool).Setting).GenerateHolidays(ctx, id, year, args[2], nil)
+	defer closeDBs()
+	n, err := calendar.New(records.New(rt), org.New(rt).Setting).GenerateHolidays(ctx, id, year, args[2], nil)
 	if err != nil {
 		return err
 	}

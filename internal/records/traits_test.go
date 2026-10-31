@@ -63,7 +63,7 @@ func TestHistoryTraitDecidesOverAudit(t *testing.T) {
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	s := New(pool)
+	s := New(db.Single(pool))
 	traits, err := s.Traits(ctx)
 	if err != nil {
 		t.Fatal(err)

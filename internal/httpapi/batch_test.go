@@ -89,7 +89,7 @@ func TestBatchOverHTTP(t *testing.T) {
 
 	// Someone who may only read gets forbidden per row.
 	const role = "ui6_reader"
-	call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+	dropRole(t, admin, role)
 	call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "UI6"}}`, nil)
 	call(t, admin, http.MethodPut, "/api/v1/roles/"+role+"/permissions", `{"type_name": "probe.probe", "action": "read", "scope": "all"}`, nil)
 	reader := timelineLogin(t, admin, "apitest_ui6", role, `{"last_name": "UI6 Leser"}`)

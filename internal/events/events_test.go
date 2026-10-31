@@ -81,8 +81,8 @@ transitions:
 		t.Fatal(err)
 	}
 	t.Cleanup(kv.Close)
-	rec := records.New(pool)
-	return ctx, New(pool, rec, kv, quiet), rec, pool
+	rec := records.New(db.Single(pool))
+	return ctx, New(db.Single(pool), rec, kv, quiet), rec, pool
 }
 
 // ownDatabase gives a test a database of its own: it deletes the start of the event log, which
@@ -258,9 +258,10 @@ func TestStreamDispatchAndRetention(t *testing.T) {
 	}
 	kinds := []string{"create", "update", "transition", "trash", "restore", "trash", "purge"}
 	// An open transaction elsewhere (a bulk batch of another package's tests, PL32) holds the
-	// horizon back for a moment (E87): wait until the events are visible.
+	// horizon back for a moment (E87): wait until the events are visible. On a busy machine
+	// with -race such a batch took longer than ten seconds (PL47d), hence a minute at most.
 	var list []records.Event
-	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+	for deadline := time.Now().Add(time.Minute); ; time.Sleep(50 * time.Millisecond) {
 		list = ofRecord(readAll(t, ctx, s, start), id)
 		if len(list) >= len(kinds) || time.Now().After(deadline) {
 			break

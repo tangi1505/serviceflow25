@@ -100,7 +100,7 @@ actors:
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	return New(pool), ctx, pool
+	return New(db.Single(pool)), ctx, pool
 }
 
 func holderRef(typ string, rec Record) map[string]any {

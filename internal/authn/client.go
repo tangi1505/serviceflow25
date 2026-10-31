@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authz"
@@ -131,8 +132,22 @@ func clientOf(r queries.ListClientsRow, person *uuid.UUID) Client {
 	return c
 }
 
+// clientDB is the query handle in the database of the client's account (PL47b): the client id
+// is the account's username.
+func (s *Service) clientDB(ctx context.Context, id string) (*queries.Queries, error) {
+	pool, err := s.db.User(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return queries.New(pool), nil
+}
+
 func (s *Service) personOfAccount(ctx context.Context, accountID uuid.UUID) *uuid.UUID {
-	acc, err := queries.New(s.pool).GetAccount(ctx, accountID)
+	home, _, err := s.db.Account(ctx, accountID)
+	if err != nil {
+		return nil
+	}
+	acc, err := queries.New(home).GetAccount(ctx, accountID)
 	if err != nil || !acc.PersonID.Valid {
 		return nil
 	}
@@ -140,11 +155,30 @@ func (s *Service) personOfAccount(ctx context.Context, accountID uuid.UUID) *uui
 	return &p
 }
 
-// Clients lists the clients.
-func (s *Service) Clients(ctx context.Context) ([]Client, error) {
-	rows, err := queries.New(s.pool).ListClients(ctx)
+// mustClientDB is the database of the client's account; the control database when the
+// directory cannot be read, where the change then finds no client (404).
+func (s *Service) mustClientDB(ctx context.Context, id string) *pgxpool.Pool {
+	pool, err := s.db.User(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("authn: clients: %w", err)
+		return s.db.Control()
+	}
+	return pool
+}
+
+// Clients lists the clients: of the tenant's database, and with a database per tenant those of
+// the installation from the control database (PL47b); the HTTP layer keeps the own ones.
+func (s *Service) Clients(ctx context.Context) ([]Client, error) {
+	pools := []*pgxpool.Pool{s.db.Tenant(ctx)}
+	if s.db.Separate() && pools[0] != s.db.Control() {
+		pools = append(pools, s.db.Control())
+	}
+	var rows []queries.ListClientsRow
+	for _, pool := range pools {
+		rs, err := queries.New(pool).ListClients(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("authn: clients: %w", err)
+		}
+		rows = append(rows, rs...)
 	}
 	out := make([]Client, 0, len(rows))
 	for _, r := range rows {
@@ -155,7 +189,11 @@ func (s *Service) Clients(ctx context.Context) ([]Client, error) {
 
 // Client returns one client.
 func (s *Service) Client(ctx context.Context, id string) (Client, error) {
-	r, err := queries.New(s.pool).GetClient(ctx, id)
+	q, err := s.clientDB(ctx, id)
+	if err != nil {
+		return Client{}, err
+	}
+	r, err := q.GetClient(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Client{}, fmt.Errorf("%w: client %s", ErrNotFound, id)
 	}
@@ -201,8 +239,14 @@ func (s *Service) CreateClient(ctx context.Context, id string, in ClientInput, b
 			return Client{}, "", err
 		}
 	}
-	q := queries.New(s.pool)
-	if taken, err := q.UsernameTaken(ctx, id); err != nil || taken {
+	// A client made in a tenant belongs to it: its account, and its person below (PL45), in the
+	// tenant's database with the name reserved centrally (PL47b).
+	tenant := ""
+	if a := authz.From(ctx); a.Bounded() {
+		tenant = a.CurrentTenant()
+	}
+	q := queries.New(s.db.For(tenant))
+	if taken, err := s.db.Taken(ctx, id); err != nil || taken {
 		if err != nil {
 			return Client{}, "", err
 		}
@@ -212,13 +256,16 @@ func (s *Service) CreateClient(ctx context.Context, id string, in ClientInput, b
 	if err != nil {
 		return Client{}, "", err
 	}
+	if err := s.db.Reserve(ctx, accID, id, tenant); err != nil {
+		return Client{}, "", fmt.Errorf("%w: %q is already an account or client", ErrInvalid, id)
+	}
 	acc, err := q.InsertExternalAccount(ctx, queries.InsertExternalAccountParams{ID: accID, Username: id, DisplayName: in.Name})
 	if err != nil {
+		s.db.Release(ctx, accID)
 		return Client{}, "", fmt.Errorf("%w: account for client: %w", ErrInvalid, err)
 	}
-	// A client made in a tenant belongs to it: its account, and its person below (PL45).
-	if a := authz.From(ctx); a.Bounded() {
-		if err := q.SetAccountTenant(ctx, queries.SetAccountTenantParams{ID: acc.ID, Tenant: pgtype.Text{String: a.CurrentTenant(), Valid: true}}); err != nil {
+	if tenant != "" {
+		if err := q.SetAccountTenant(ctx, queries.SetAccountTenantParams{ID: acc.ID, Tenant: pgtype.Text{String: tenant, Valid: true}}); err != nil {
 			return Client{}, "", fmt.Errorf("authn: tenant of the client: %w", err)
 		}
 	}
@@ -274,7 +321,7 @@ func (s *Service) UpdateClient(ctx context.Context, id string, in ClientInput, b
 	if in.Enabled != nil {
 		enabled = *in.Enabled
 	}
-	n, err := queries.New(s.pool).UpdateClient(ctx, queries.UpdateClientParams{
+	n, err := queries.New(s.mustClientDB(ctx, id)).UpdateClient(ctx, queries.UpdateClientParams{
 		ClientID: id, Name: name, IpRanges: ranges, RateLimit: int4(rate), TokenTtl: int4(ttl), Enabled: enabled, UpdatedBy: nullUUID(by),
 	})
 	if err != nil {
@@ -296,7 +343,7 @@ func (s *Service) RotateSecret(ctx context.Context, id string, by *uuid.UUID) (s
 	if err != nil {
 		return "", err
 	}
-	n, err := queries.New(s.pool).SetClientSecret(ctx, queries.SetClientSecretParams{ClientID: id, SecretHash: hash, UpdatedBy: nullUUID(by)})
+	n, err := queries.New(s.mustClientDB(ctx, id)).SetClientSecret(ctx, queries.SetClientSecretParams{ClientID: id, SecretHash: hash, UpdatedBy: nullUUID(by)})
 	if err != nil {
 		return "", fmt.Errorf("authn: rotate secret: %w", err)
 	}
@@ -313,7 +360,7 @@ func (s *Service) DeleteClient(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := queries.New(s.pool).DeleteClient(ctx, id); err != nil {
+	if _, err := queries.New(s.mustClientDB(ctx, id)).DeleteClient(ctx, id); err != nil {
 		return fmt.Errorf("authn: delete client: %w", err)
 	}
 	s.revokeTokens(ctx, id)
@@ -369,7 +416,10 @@ func (s *Service) setting(ctx context.Context, key string, def int) int {
 
 // IssueToken checks client id, secret, state and address and returns a token (RFC 6749 §4.4).
 func (s *Service) IssueToken(ctx context.Context, clientID, secret string, addr netip.Addr) (Token, error) {
-	q := queries.New(s.pool)
+	q, err := s.clientDB(ctx, clientID)
+	if err != nil {
+		return Token{}, err
+	}
 	row, err := q.GetClient(ctx, clientID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -429,7 +479,11 @@ func (s *Service) Authenticate(ctx context.Context, token string, addr netip.Add
 	if err := json.Unmarshal(raw, &g); err != nil || time.Now().After(g.ExpiresAt) {
 		return auth.Session{}, ErrInvalidToken
 	}
-	row, err := queries.New(s.pool).GetClient(ctx, g.ClientID)
+	q, err := s.clientDB(ctx, g.ClientID)
+	if err != nil {
+		return auth.Session{}, err
+	}
+	row, err := q.GetClient(ctx, g.ClientID)
 	if err != nil || !row.Enabled {
 		return auth.Session{}, ErrInvalidToken
 	}

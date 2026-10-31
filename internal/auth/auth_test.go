@@ -95,7 +95,7 @@ func testService(t *testing.T) (*Service, *cache.Client) {
 	if _, err := pool.Exec(ctx, "DELETE FROM account WHERE username LIKE 'authtest%'"); err != nil {
 		t.Fatal(err)
 	}
-	return New(pool, kv, quiet), kv
+	return New(db.Single(pool), kv, quiet), kv
 }
 
 func TestAccountsAndLogin(t *testing.T) {

@@ -72,7 +72,7 @@ func setupCosts(t *testing.T) (*Service, context.Context, *pgxpool.Pool) {
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	s := New(pool)
+	s := New(db.Single(pool))
 	s.Settings = func(_ context.Context, path, key string) (json.RawMessage, string, error) {
 		if key == SettingHourlyRate && strings.HasPrefix(path, "root") {
 			return json.RawMessage("80"), "root", nil

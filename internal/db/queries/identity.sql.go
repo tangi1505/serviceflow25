@@ -26,7 +26,7 @@ func (q *Queries) DeleteLoginRule(ctx context.Context, id uuid.UUID) (int64, err
 
 const getIdentity = `-- name: GetIdentity :one
 
-SELECT issuer, subject, account_id, email, claims, first_login_at, last_login_at
+SELECT issuer, subject, account_id, coalesce(tenant::text, '')::text AS tenant, email, claims, first_login_at, last_login_at
 FROM identity
 WHERE issuer = $1 AND subject = $2
 `
@@ -36,15 +36,27 @@ type GetIdentityParams struct {
 	Subject string
 }
 
+type GetIdentityRow struct {
+	Issuer       string
+	Subject      string
+	AccountID    uuid.UUID
+	Tenant       string
+	Email        pgtype.Text
+	Claims       []byte
+	FirstLoginAt pgtype.Timestamptz
+	LastLoginAt  pgtype.Timestamptz
+}
+
 // Copyright (C) 2026 group24 AG
 // SPDX-License-Identifier: AGPL-3.0-only
-func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error) {
+func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error) {
 	row := q.db.QueryRow(ctx, getIdentity, arg.Issuer, arg.Subject)
-	var i Identity
+	var i GetIdentityRow
 	err := row.Scan(
 		&i.Issuer,
 		&i.Subject,
 		&i.AccountID,
+		&i.Tenant,
 		&i.Email,
 		&i.Claims,
 		&i.FirstLoginAt,
@@ -307,8 +319,8 @@ func (q *Queries) UpdateLoginRule(ctx context.Context, arg UpdateLoginRuleParams
 }
 
 const upsertIdentity = `-- name: UpsertIdentity :exec
-INSERT INTO identity (issuer, subject, account_id, email, claims)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO identity (issuer, subject, account_id, tenant, email, claims)
+VALUES ($1, $2, $3, $4::ltree, $5, $6)
 ON CONFLICT (issuer, subject) DO UPDATE
     SET email = EXCLUDED.email, claims = EXCLUDED.claims, last_login_at = now()
 `
@@ -317,15 +329,18 @@ type UpsertIdentityParams struct {
 	Issuer    string
 	Subject   string
 	AccountID uuid.UUID
+	Tenant    pgtype.Text
 	Email     pgtype.Text
 	Claims    []byte
 }
 
+// The identity names the tenant of its account (PL47b): it is central, the account may not be.
 func (q *Queries) UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error {
 	_, err := q.db.Exec(ctx, upsertIdentity,
 		arg.Issuer,
 		arg.Subject,
 		arg.AccountID,
+		arg.Tenant,
 		arg.Email,
 		arg.Claims,
 	)

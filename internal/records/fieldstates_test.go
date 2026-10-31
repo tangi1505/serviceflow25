@@ -94,7 +94,7 @@ func setupStates(t *testing.T) (*Service, context.Context) {
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	return New(pool), ctx
+	return New(db.Single(pool)), ctx
 }
 
 // The core of WF2: presets and read-only fields on create, read-only and locked records on

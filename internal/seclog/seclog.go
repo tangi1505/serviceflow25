@@ -14,11 +14,13 @@
 package seclog
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/jobs"
 )
@@ -114,17 +117,17 @@ type Settings func(ctx context.Context, path, key string) (json.RawMessage, stri
 
 // Log writes and reads the security event log.
 type Log struct {
-	q        *queries.Queries
+	db       *db.Router
 	settings Settings
 	logger   *slog.Logger
 }
 
 // New returns the log; settings may be nil (default retention).
-func New(pool *pgxpool.Pool, settings Settings, logger *slog.Logger) *Log {
+func New(rt *db.Router, settings Settings, logger *slog.Logger) *Log {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Log{q: queries.New(pool), settings: settings, logger: logger}
+	return &Log{db: rt, settings: settings, logger: logger}
 }
 
 // Record writes an entry. A failure to write is logged, not returned: the action it reports
@@ -150,7 +153,13 @@ func (l *Log) Record(ctx context.Context, e Event) {
 	}
 	p.Tenant = text(e.Tenant)
 	// Without the request's cancellation: the entry belongs to an action that has happened.
-	if err := l.q.InsertSecurityEvent(context.WithoutCancel(ctx), p); err != nil {
+	// An entry of a tenant goes to its database, one of the installation to the control
+	// database (PL47b).
+	pool := l.db.Control()
+	if e.Tenant != "" {
+		pool = l.db.For(e.Tenant)
+	}
+	if err := queries.New(pool).InsertSecurityEvent(context.WithoutCancel(ctx), p); err != nil {
 		l.logger.Error("security event not recorded", "kind", e.Kind, "outcome", e.Outcome, "error", err.Error())
 	}
 }
@@ -181,9 +190,23 @@ func (l *Log) List(ctx context.Context, f Filter) (Page, error) {
 	if !f.Until.IsZero() {
 		p.Until = pgtype.Timestamptz{Time: f.Until, Valid: true}
 	}
-	rows, err := l.q.ListSecurityEvents(ctx, p)
-	if err != nil {
-		return Page{}, fmt.Errorf("seclog: list: %w", err)
+	// The tenant's entries in its database; with a database per tenant those of the
+	// installation from the control database, merged by id, which orders by time (PL47b).
+	pools := []*pgxpool.Pool{l.db.For(f.Tenant)}
+	if f.Installation && pools[0] != l.db.Control() {
+		pools = append(pools, l.db.Control())
+	}
+	var rows []queries.ListSecurityEventsRow
+	for _, pool := range pools {
+		rs, err := queries.New(pool).ListSecurityEvents(ctx, p)
+		if err != nil {
+			return Page{}, fmt.Errorf("seclog: list: %w", err)
+		}
+		rows = append(rows, rs...)
+	}
+	if len(pools) > 1 {
+		slices.SortFunc(rows, func(a, b queries.ListSecurityEventsRow) int { return cmp.Compare(b.ID, a.ID) })
+		rows = rows[:min(len(rows), limit+1)]
 	}
 	page := Page{Items: make([]Entry, 0, len(rows))}
 	for i, r := range rows {
@@ -219,14 +242,15 @@ func (l *Log) Retention(ctx context.Context) time.Duration {
 	return time.Duration(days) * 24 * time.Hour
 }
 
-// Expire removes the entries older than the retention and returns how many.
+// Expire removes the entries older than the retention and returns how many, in the database
+// the context works in: the nightly job runs in each database and clears its own (PL47c).
 func (l *Log) Expire(ctx context.Context) (int64, error) {
 	keep := l.Retention(ctx)
-	n, err := l.q.DeleteSecurityEventsBefore(ctx, pgtype.Timestamptz{Time: time.Now().Add(-keep), Valid: true})
+	n, err := queries.New(l.db.Tenant(ctx)).DeleteSecurityEventsBefore(ctx, pgtype.Timestamptz{Time: time.Now().Add(-keep), Valid: true})
 	if err != nil {
 		return 0, fmt.Errorf("seclog: expire: %w", err)
 	}
-	l.logger.Info("security events expired", "deleted", n, "older_than", keep.String())
+	l.logger.Info("security events expired", "deleted", n, "older_than", keep.String(), "database", l.db.Current(ctx).Name)
 	return n, nil
 }
 

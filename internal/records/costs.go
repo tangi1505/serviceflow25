@@ -111,7 +111,7 @@ func (s *Service) Costs(ctx context.Context, typeName string, id uuid.UUID) (Cos
 	if _, err := s.Get(ctx, typeName, id); err != nil {
 		return CostList{}, err
 	}
-	rows, err := queries.New(s.pool).CostsOfRecord(ctx, queries.CostsOfRecordParams{TypeName: typeName, RecordID: id})
+	rows, err := queries.New(s.db.Tenant(ctx)).CostsOfRecord(ctx, queries.CostsOfRecordParams{TypeName: typeName, RecordID: id})
 	if err != nil {
 		return CostList{}, fmt.Errorf("records: costs: %w", err)
 	}

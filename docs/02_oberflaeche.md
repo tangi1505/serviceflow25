@@ -45,8 +45,13 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI15** | Kalenderansicht für Aufgaben und Termine aller Bearbeiter (trägt KF10; Inventar G73) | ⬜ | 2 d | Aufgaben mit Termin erscheinen im Wochenkalender; Verschieben per Ziehen ändert den Termin; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI16** | Weitere Sprachen als ladbares Sprachpaket (Inventar G247) | ⬜ | 0,5 d | Ein Probe-Sprachpaket „fr" mit drei Texten wird geladen, fehlende Texte fallen auf Deutsch zurück; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI25** | Typ- und Feld-Editor: Kunden ändern Typen in der Oberfläche, Änderungen landen in der Kundenschicht (E37) | ⬜ | 2 d | Feld an einem Typ ergänzen → erscheint in Liste und Formular ohne Neustart; Export der Kundenschicht enthält genau diese Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI26** | Workflow-Editor: Statusmodell als Graph mit React Flow | ⬜ | 2 d | Status und Übergang im Editor ergänzen → per API sofort nutzbar; ein Status ohne eingehenden Übergang wird gemeldet; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI26** | Workflow-Editor, geteilt am 2026-10-30 in UI26.1 und UI26.2 (E26, §2) | ⬜ | 3,5 d | siehe UI26.1 und UI26.2 |
+| **UI26.1** | Workflow-Editor als Tabelle: Status anlegen, umbenennen, Anfangsstatus wählen; Übergänge mit Von (mehrere), Nach und CEL-Bedingung; Prüfung im Editor, Speichern in die Kundenschicht (E26) | ⬜ | 1,5 d | Im Editor des Typs `probe` nur mit Tastatur einen Status und einen Übergang mit zwei Ausgangsstatus und Bedingung anlegen → per API sofort nutzbar, der Export der Kundenschicht enthält genau diese Änderung; eine ungültige CEL-Bedingung → Fehler am Feld; ein Status ohne eingehenden Übergang wird gemeldet; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI26.2** | Workflow-Editor als Graph mit React Flow neben der Tabelle: Status als Knoten, je Ausgangsstatus eine Kante, ein Übergang wird als Ganzes markiert; Anordnen mit dagre, Knoten verschieben, Übergang per Ziehen als Abkürzung zur Tabelle; Anordnung im Feld `layout` der Kundenschicht, dafür kennt `internal/meta` das Feld (E26, E27) | ⬜ | 2 d | Der Graph zeigt alle Status und Übergänge von `probe`; Klick auf eine Kante markiert alle Kanten ihres Übergangs und die Zeile in der Tabelle; Knoten per Pfeiltaste verschieben und speichern → nach Neuladen an derselben Stelle; „Anordnen“ ordnet neu; ein gezogener Übergang erscheint in der Tabelle; neue Pakete nur unter MIT; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI27** | Rollen-Editor: Berechtigungen, Reichweite, Feldrechte | ⬜ | 1,5 d | Rolle im Editor einschränken → die betroffene Person sieht in der Liste sofort weniger; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI29** | Design-Kit „Klartext“ in die Tokens und Bausteine übernehmen: Werte in `tokens.css`, neue Tokens `--accent`, `--accent-soft`, `--foreground-2`, `--warning-foreground`; IBM Plex Sans und Mono (OFL) im Werkzeug ausgeliefert; Knöpfe in den Varianten des Kits, Bausteine für Status, Priorität und Frist (E22, E25); dunkler Modus mit der Einstellung „Hell, Dunkel, wie das System“ (E24) | ⬜ | 2 d | Im Browser http://localhost:8092 → Schrift IBM Plex, Hauptknopf graphit, Fokusrahmen petrol; das Netzwerkprotokoll zeigt keinen Abruf außerhalb des Werkzeugs; Theme `probe` ändert weiter alle Bausteine; „Dunkel“ in Meine Einstellungen → alle Seiten dunkel, auch nach Neuanmeldung; Playwright mit `axe` (mit Kontrast) in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI30** | Rahmen und Liste nach dem Entwurf (E22): Kopf mit Suchfeld und Mandant, Navigation mit Bereichen und gespeicherten Suchen, Zeilenhöhe kompakt oder normal, Vorschau des gewählten Datensatzes neben der Liste, Fristen auf der Detailseite aus `…/clocks`. Eine Fristspalte in der Liste nur, wenn die API die Restzeit je Zeile liefert, sonst als neue Aufgabe | ⬜ | 2 d | Umschalter „Kompakt“ → Zeilen 36 px, bleibt nach Neuladen; Klick auf eine Zeile zeigt die Vorschau, „Öffnen“ führt zur Detailseite; eine Frist über 75 % erscheint gelb, eine überschrittene rot, beide mit Text; bei 375 px Breite steht die Navigation über der Liste; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI31** | Befehlszeile mit Strg K: Datensätze nach Nummer und Titel finden über `/api/v1/search`, Befehle wie „Neuer Vorgang“ und „Ansicht wechseln“, Kürzel am Knopf angezeigt (E22) | ⬜ | 1,5 d | Strg K, `24817` tippen → der Vorgang erscheint, Enter öffnet ihn; „neu“ tippen → „Neuer Vorgang“; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -66,11 +71,11 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI23** | Feste Berichte und Export als PDF (Inventar G111, G232) | ⬜ | 2 d | Bericht „Verträge, die in 90 Tagen enden" als PDF exportieren, Inhalt stimmt mit der Liste überein; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI24** | Kartenansicht über Orte mit Koordinaten, mit Kartenmaterial ohne Internet (PMTiles und MapLibre nach E2) (Inventar G233) | ⬜ | 2 d | Orte erscheinen auf der Karte, ohne dass der Browser eine Adresse außerhalb des Werkzeugs aufruft (Netzwerkprotokoll); `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 44,5 d; 43 d geschätzt vor dem Bau (Block A: 4 d), UI28 am 2026-10-29 vor UI4 eingeschoben (Hauptplan E123).
+**Summe:** 51,5 d; 43 d geschätzt vor dem Bau (Block A: 4 d), UI28 am 2026-10-29 vor UI4 eingeschoben (Hauptplan E123), UI29 bis UI31 am 2026-10-30 aus dem Designentwurf (E22), UI26 am 2026-10-30 von 2 d auf 3,5 d (E26).
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B der Oberfläche kommt nach Block B der Workflow-Engine. Schon gebaut aus WF2 (WF-Plan E7): Das Formular holt die Feldzustände (`:field-states`), blendet Versteckte aus, markiert Pflichtfelder, zeigt Schreibgeschützte als Text und einen gesperrten Datensatz ohne „Speichern“. Offen für Block B: Rollen am Datensatz (WF3), Regeln (WF4), Kalender (WF8), SLAs (WF9), Eskalationsstufen (WF10, Regeln mit Auslöser `clock`), Wartegründe (WF11) und Zeitregeln (WF12), beide mit SLA und Stufen anzulegen, sowie Aufgaben am Vorgang (WF13; der Kalender UI15 liest sie per `:query` über `planned_start`) wiederkehrende Vorgänge (WF14, Vorlage als JSON-Text) und Benachrichtigungen (WF15, Empfänger und Ereignisse als Text) haben außer Liste und Formular der Typen und der Regel-API noch keine Oberfläche; die Uhren eines Datensatzes (`…/clocks`, Restzeit, verletzt) zeigt die Detailseite noch nicht. Für UI3 liefert PL42 (Hauptplan E121) die Zeitleiste: `GET …/{id}/timeline` mit Einträgen und Verlauf in zeitlicher Reihenfolge samt Namen, `POST …/{id}/timeline` für einen neuen Eintrag (Recht `comment`, privat zusätzlich `read_private`).
 
-**Reihenfolge:** Block A mit dem Durchstich (Hauptplan E59): UI1, dann UI2, sobald PL4 steht. Danach Block B: UI3, UI8 und UI10 zuerst, weil der Service Desk (SD) sie als Erstes braucht; dann die Editoren UI25 bis UI27; Formulare UI11 und UI12 vor SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1. Block C und D mit ihren Meilensteinen.
+**Reihenfolge:** Block A mit dem Durchstich (Hauptplan E59): UI1, dann UI2, sobald PL4 steht. Danach Block B: UI3, UI8 und UI10 zuerst, weil der Service Desk (SD) sie als Erstes braucht; dann die Editoren UI25 bis UI27; Formulare UI11 und UI12 vor SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1. Block C und D mit ihren Meilensteinen. UI29, UI30 und UI31 kommen in dieser Folge nach den Editoren UI25 bis UI27 und vor SD (E23).
 
 ---
 
@@ -100,6 +105,12 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E21** | Bedingungen im Portal (Hauptplan E134): `Form` nimmt eine Sichtbarkeit `visibility(values)`, die ausgeblendete Felder und Gruppen nennt; sie werden weder gezeigt noch geprüft noch gesendet. Der Resolver rechnet sie aus den Werten, die er prüft. Dieselbe Auswertung steht im Server (`internal/forms`) und im Portal (`portal/conditions.ts`) | 2026-10-29 | Umsetzung |
 | **E20** | Formulare (Hauptplan E133): der Baukasten ist die Darstellung des Felds `definition` von `core.form` im Formular des Datensatzes; das Portal füllt ein Formular mit demselben `Form`, dessen Felder aus den Fragen gebildet werden (gebundene mit dem Feld des Zieltyps, freie als Feld ohne Spalte), gruppiert nach Abschnitten | 2026-10-29 | Umsetzung |
 | **E19** | Portal (Hauptplan E132): eigene Routen unter `/portal` mit eigenem Rahmen (`portal/Portal.tsx`); der Rahmen des Arbeitsplatzes prüft `me.workplace` im `beforeLoad` und schickt sonst ins Portal. Das Portal nutzt dieselben Bausteine (Formular mit `only`, Zeitleiste mit `portal`) und dieselbe API; „Meine“ ist eine JSON-Abfrage über Anforderer und Ersteller | 2026-10-29 | Umsetzung |
+| **E22** | Gestaltung nach dem Designentwurf „Klartext“ ([Design-Fläche](https://claude.ai/artifact/1TScdXrimrgmFwUWFUdejH), mit erfundenen Beispielen und ohne Kundendaten). Graphit (#15171A) für Text und Hauptaktion, Petrol (#0B6E80) als einziger Akzent für Fokus, Auswahl und Links. Gelb und Rot nur für knappe und überschrittene Fristen, die Priorität ohne Ampel. Nummern und Zeiten in IBM Plex Mono, Text in IBM Plex Sans, beide im Werkzeug ausgeliefert. Neutral im Sinne von Hauptplan E62: ein Kunde tauscht Tokens, nicht Bausteine. Maßgeblich ist nach UI29 `tokens.css`, nicht die Design-Fläche | 2026-10-30 | Pascal |
+| **E23** | Reihenfolge des Designs (V5): UI29 bis UI31 nach den Editoren UI25 bis UI27 und vor SD. Die Editoren entstehen noch im bisherigen Aussehen; UI29 zieht sie über die Tokens nach | 2026-10-30 | Pascal |
+| **E24** | Dunkler Modus (V3): ein zweiter Satz Werte für dieselben Tokens, unabhängig vom Theme des Kunden; ein Theme-Paket liefert seine Werte für hell und dunkel. Gewählt in Meine Einstellungen mit „Hell, Dunkel, wie das System“, Vorgabe „wie das System“ (`prefers-color-scheme`). Werte nach der Design-Fläche, Kontrast nach WCAG 2.1 AA in beiden Modi | 2026-10-30 | Pascal |
+| **E25** | Hauptaktion (V4): standardmäßig Graphit; ein Theme-Paket darf `--primary` auf die Farbe des Kunden setzen, die Fristfarben bleiben | 2026-10-30 | Pascal |
+| **E26** | Workflow-Editor (UI26): bearbeitet wird zuerst in einer Tabelle, die allein mit Tastatur vollständig ist; der Graph mit React Flow (Hauptplan E41) steht daneben zum Ansehen, Prüfen und Anordnen. Automatisches Anordnen mit dagre (MIT), nicht mit elkjs (EPL-2.0). Begründung in §2 | 2026-10-30 | Pascal |
+| **E27** | Anordnung im Workflow-Graph (V6): Feld `layout` am Typ in der Kundenschicht, je Status `x` und `y`; die Engine liest es nicht, `internal/meta` prüft nur, dass jeder Name ein Status des Typs ist. Ohne `layout` ordnet dagre bei jedem Öffnen. Gebaut mit UI26.2, ohne eigene Aufgabe im Kern-Plan | 2026-10-30 | Pascal |
 | **E6** | Barrierefreiheit prüft `axe-core` direkt: in Vitest je gerenderter Seite (ohne Kontrast, da jsdom kein Layout hat), in Playwright mit `@axe-core/playwright` nach WCAG 2 A und AA im Browser; ein Befund bricht die CI | 2026-10-20 | Umsetzung |
 
 ## 2. Begründung
@@ -109,6 +120,22 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
   KF10, KF11 als Träger. Dazu die Editoren UI25 bis UI27, die keine GLPI-Zeile haben, aber
   E7 und E37 brauchen.
 - **Barrierefreiheit** (E42) ist keine eigene Aufgabe: `axe` läuft ab UI1 in jeder Prüfung.
+- **Workflow-Editor mit React Flow** (E26), gelesen am 2026-10-30:
+  - Lizenz MIT, Rechteinhaber webkid GmbH
+    ([LICENSE](https://github.com/xyflow/xyflow/blob/main/LICENSE)). Knoten und Kanten sind
+    DOM-Elemente, Tokens und dunkler Modus greifen ohne eigene Zeichenlogik.
+  - Laut [Hersteller](https://reactflow.dev/learn/advanced-use/accessibility): Knoten und Kanten
+    per Tab erreichbar, Verschieben mit Pfeiltasten, Ansage der Bewegung über `aria-live`,
+    Beschriftungen übersetzbar über `ariaLabelConfig`. WCAG AA erreicht man nach eigener Aussage
+    nur „when properly implemented“.
+  - Lücke: Einen Übergang legt man durch Ziehen zwischen Anschlüssen an; einen Weg per Tastatur
+    nennt die Seite nicht (gelesen, nicht ausprobiert). Darum ist die Tabelle der vollständige Weg.
+  - Verworfen: Cytoscape.js (zeichnet auf Canvas, kaum barrierefrei, keine Tokens), JointJS
+    (Bearbeiten nur in der bezahlten Fassung), bpmn-js (anderes Modell, Lizenz verlangt das
+    Wasserzeichen), maxGraph (schwer, altes Aussehen), Eigenbau (etwa 3 bis 4 d mehr).
+  - Aus dem Code: Ein Übergang hat mehrere Ausgangsstatus (`From []string`,
+    `internal/meta/model.go:150` auf `main`), im Graph also mehrere Kanten für einen Übergang. Ein
+    Status hat keine Position (`internal/meta/model.go:139`); gespeicherte Anordnung siehe E27.
 
 ## 3. Offene Fragen
 
@@ -116,7 +143,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | --- | --- | --- |
 Keine offen.
 
-**Beantwortet am 2026-10-20:** V1 (E1), V2 (E2).
+**Beantwortet am 2026-10-20:** V1 (E1), V2 (E2). **Am 2026-10-30:** V3 (E24), V4 (E25), V5 (E23), V6 (E27).
 
 Die Fragen an die Fachseite stehen im Hauptplan.
 

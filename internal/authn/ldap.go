@@ -150,7 +150,7 @@ func directoryOf(r queries.LdapDirectory) Directory {
 
 // Directories lists the directories.
 func (s *Service) Directories(ctx context.Context) ([]Directory, error) {
-	rows, err := queries.New(s.pool).ListDirectories(ctx)
+	rows, err := queries.New(s.db.Tenant(ctx)).ListDirectories(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("authn: directories: %w", err)
 	}
@@ -163,7 +163,7 @@ func (s *Service) Directories(ctx context.Context) ([]Directory, error) {
 
 // Directory returns one directory.
 func (s *Service) Directory(ctx context.Context, name string) (Directory, error) {
-	r, err := queries.New(s.pool).GetDirectory(ctx, name)
+	r, err := queries.New(s.db.Tenant(ctx)).GetDirectory(ctx, name)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Directory{}, fmt.Errorf("%w: directory %s", ErrNotFound, name)
 	}
@@ -235,7 +235,7 @@ func (s *Service) CreateDirectory(ctx context.Context, name string, in Directory
 		return Directory{}, err
 	}
 	p.Name, p.UpdatedBy = name, nullUUID(by)
-	if err := queries.New(s.pool).InsertDirectory(ctx, p); err != nil {
+	if err := queries.New(s.db.Tenant(ctx)).InsertDirectory(ctx, p); err != nil {
 		return Directory{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	return s.Directory(ctx, name)
@@ -251,7 +251,7 @@ func (s *Service) UpdateDirectory(ctx context.Context, name string, in Directory
 	if err != nil {
 		return Directory{}, err
 	}
-	n, err := queries.New(s.pool).UpdateDirectory(ctx, queries.UpdateDirectoryParams{
+	n, err := queries.New(s.db.Tenant(ctx)).UpdateDirectory(ctx, queries.UpdateDirectoryParams{
 		Name: name, Url: p.Url, BindDn: p.BindDn, BaseDn: p.BaseDn, PersonFilter: p.PersonFilter, GroupFilter: p.GroupFilter,
 		Attributes: p.Attributes, OrgPath: p.OrgPath, StartTls: p.StartTls, SkipVerify: p.SkipVerify, PageSize: p.PageSize,
 		Enabled: p.Enabled, UpdatedBy: nullUUID(by),
@@ -267,7 +267,7 @@ func (s *Service) UpdateDirectory(ctx context.Context, name string, in Directory
 
 // DeleteDirectory removes a directory and its entry mapping; persons and groups stay.
 func (s *Service) DeleteDirectory(ctx context.Context, name string) error {
-	n, err := queries.New(s.pool).DeleteDirectory(ctx, name)
+	n, err := queries.New(s.db.Tenant(ctx)).DeleteDirectory(ctx, name)
 	if err != nil {
 		return fmt.Errorf("authn: delete directory: %w", err)
 	}
@@ -326,7 +326,7 @@ func (s *Service) Sync(ctx context.Context, name string) (SyncResult, error) {
 		return res, fmt.Errorf("authn: bind as %s: %w", d.BindDN, err)
 	}
 	attrs := d.Attributes.withDefaults()
-	q := queries.New(s.pool)
+	q := queries.New(s.db.Tenant(ctx))
 
 	// Persons.
 	entries, err := s.search(conn, d, d.PersonFilter, []string{attrs.ID, attrs.Username, attrs.FirstName, attrs.LastName, attrs.Email, attrs.Phone, attrs.Mobile})
@@ -479,7 +479,7 @@ type knownEntry struct {
 }
 
 func (s *Service) knownEntries(ctx context.Context, directory, kind string) (map[string]*knownEntry, error) {
-	rows, err := queries.New(s.pool).ListDirectoryEntries(ctx, queries.ListDirectoryEntriesParams{Directory: directory, Kind: kind})
+	rows, err := queries.New(s.db.Tenant(ctx)).ListDirectoryEntries(ctx, queries.ListDirectoryEntriesParams{Directory: directory, Kind: kind})
 	if err != nil {
 		return nil, fmt.Errorf("authn: directory entries: %w", err)
 	}

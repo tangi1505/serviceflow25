@@ -123,7 +123,7 @@ func underCondition(ref string) string {
 // SeedLists creates the entries a package ships for its lists (meta.ListSpec.Entries) in
 // every tenant, each its own copy (PL45, V28); without tenants at the root.
 func (s *Service) SeedLists(ctx context.Context, p meta.Package) (int, error) {
-	tenants, err := queries.New(s.pool).ListTenants(ctx)
+	tenants, err := queries.New(s.db.Control()).ListTenants(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("records: tenants: %w", err)
 	}
@@ -149,7 +149,8 @@ func (s *Service) SeedLists(ctx context.Context, p meta.Package) (int, error) {
 // root: an entry whose key exists there is left as it is, a missing one is created with the
 // system access and without an actor. Parents are resolved by key.
 func (s *Service) SeedListsInto(ctx context.Context, types []meta.Type, scope string) (int, error) {
-	ctx = authz.WithAccess(ctx, authz.System())
+	// The copy goes into the database of the scope's tenant (PL47d), whatever the caller works in.
+	ctx = s.db.BindFor(authz.WithAccess(ctx, authz.System()), scope)
 	created := 0
 	for _, t := range types {
 		if !t.IsList() || t.List == nil {
@@ -158,7 +159,7 @@ func (s *Service) SeedListsInto(ctx context.Context, types []meta.Type, scope st
 		ids := map[string]uuid.UUID{}
 		for _, e := range t.List.Entries {
 			var id uuid.UUID
-			err := s.pool.QueryRow(ctx, fmt.Sprintf("SELECT id FROM %s WHERE list = $1 AND key = $2 AND deleted_at IS NULL AND org_path <@ $3::ltree", schema.ListTable),
+			err := s.db.Tenant(ctx).QueryRow(ctx, fmt.Sprintf("SELECT id FROM %s WHERE list = $1 AND key = $2 AND deleted_at IS NULL AND org_path <@ $3::ltree", schema.ListTable),
 				t.QualifiedName(), e.Key, scope).Scan(&id)
 			switch {
 			case err == nil:

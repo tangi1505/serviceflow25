@@ -206,7 +206,7 @@ func (s *Service) SearchUnfilled(ctx context.Context, typeName string) (bool, er
 		sql += " AND " + c
 	}
 	var unfilled bool
-	err = s.pool.QueryRow(ctx, sql+")").Scan(&unfilled)
+	err = s.db.Tenant(ctx).QueryRow(ctx, sql+")").Scan(&unfilled)
 	return unfilled, err
 }
 
@@ -319,7 +319,7 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) ([]SearchHit, error
 FROM (%s) AS hits
 ORDER BY rank DESC, id
 LIMIT %d`, tsq, strings.Join(subs, " UNION ALL "), limit)
-	rows, err := s.pool.Query(ctx, sql, args...)
+	rows, err := s.db.Tenant(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("records: search: %w", err)
 	}

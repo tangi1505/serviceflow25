@@ -58,7 +58,7 @@ func ruleOf(r queries.ListLoginRulesRow) Rule {
 
 // Rules lists the login rules in their order.
 func (s *Service) Rules(ctx context.Context) ([]Rule, error) {
-	rows, err := queries.New(s.pool).ListLoginRules(ctx)
+	rows, err := queries.New(s.db.Control()).ListLoginRules(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("authn: rules: %w", err)
 	}
@@ -71,7 +71,7 @@ func (s *Service) Rules(ctx context.Context) ([]Rule, error) {
 
 // Rule returns one rule.
 func (s *Service) Rule(ctx context.Context, id uuid.UUID) (Rule, error) {
-	r, err := queries.New(s.pool).GetLoginRule(ctx, id)
+	r, err := queries.New(s.db.Control()).GetLoginRule(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Rule{}, fmt.Errorf("%w: rule %s", ErrNotFound, id)
 	}
@@ -89,7 +89,7 @@ func (s *Service) check(ctx context.Context, in RuleInput) (roleID uuid.UUID, or
 	if _, err := rules.CompileClaims(in.Condition); err != nil {
 		return uuid.Nil, "", fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
-	role, err := queries.New(s.pool).GetRoleByName(ctx, in.Role)
+	role, err := queries.New(s.db.Control()).GetRoleByName(ctx, in.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, "", fmt.Errorf("%w: no role %q", ErrInvalid, in.Role)
 	}
@@ -123,7 +123,7 @@ func (s *Service) CreateRule(ctx context.Context, in RuleInput, by *uuid.UUID) (
 	if in.Position != nil {
 		position = *in.Position
 	}
-	err = queries.New(s.pool).InsertLoginRule(ctx, queries.InsertLoginRuleParams{
+	err = queries.New(s.db.Control()).InsertLoginRule(ctx, queries.InsertLoginRuleParams{
 		ID: id, Position: position, Name: in.Name, Condition: in.Condition, RoleID: roleID, OrgPath: orgPath,
 		Enabled: enabled, UpdatedBy: nullUUID(by),
 	})
@@ -150,7 +150,7 @@ func (s *Service) UpdateRule(ctx context.Context, id uuid.UUID, in RuleInput, by
 	if in.Position != nil {
 		position = *in.Position
 	}
-	n, err := queries.New(s.pool).UpdateLoginRule(ctx, queries.UpdateLoginRuleParams{
+	n, err := queries.New(s.db.Control()).UpdateLoginRule(ctx, queries.UpdateLoginRuleParams{
 		ID: id, Position: position, Name: in.Name, Condition: in.Condition, RoleID: roleID, OrgPath: orgPath,
 		Enabled: enabled, UpdatedBy: nullUUID(by),
 	})
@@ -163,10 +163,17 @@ func (s *Service) UpdateRule(ctx context.Context, id uuid.UUID, in RuleInput, by
 	return s.Rule(ctx, id)
 }
 
-// DeleteRule removes a rule; the assignments it made go with it (ON DELETE CASCADE), so the
-// rights cache is invalidated.
+// DeleteRule removes a rule and the assignments it made, so the rights cache is invalidated.
+// The rule is central, its assignments are in the database of the tenant of its node (PL47b).
 func (s *Service) DeleteRule(ctx context.Context, id uuid.UUID) error {
-	n, err := queries.New(s.pool).DeleteLoginRule(ctx, id)
+	rule, err := s.Rule(ctx, id)
+	if err != nil {
+		return err
+	}
+	if _, err := queries.New(s.db.For(rule.OrgPath)).DeleteAssignmentsOfLoginRule(ctx, uuid.NullUUID{UUID: id, Valid: true}); err != nil {
+		return fmt.Errorf("authn: assignments of the rule: %w", err)
+	}
+	n, err := queries.New(s.db.Control()).DeleteLoginRule(ctx, id)
 	if err != nil {
 		return fmt.Errorf("authn: delete rule: %w", err)
 	}
@@ -186,7 +193,7 @@ func nullUUID(u *uuid.UUID) uuid.NullUUID {
 
 // matching lists the enabled login rules the claims match, in their order.
 func (s *Service) matching(ctx context.Context, claims Claims) ([]queries.ListLoginRulesRow, error) {
-	list, err := queries.New(s.pool).ListLoginRules(ctx)
+	list, err := queries.New(s.db.Control()).ListLoginRules(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("authn: rules: %w", err)
 	}
@@ -216,7 +223,7 @@ func (s *Service) matching(ctx context.Context, claims Claims) ([]queries.ListLo
 // tenantByRules is the tenant of the first login rule the claims match, "" without tenants or
 // without a match (PL45).
 func (s *Service) tenantByRules(ctx context.Context, claims Claims) (string, error) {
-	tenants, err := org.TenantPaths(ctx, queries.New(s.pool))
+	tenants, err := org.TenantPaths(ctx, queries.New(s.db.Control()))
 	if err != nil || len(tenants) == 0 {
 		return "", err
 	}
@@ -237,7 +244,8 @@ func (s *Service) tenantByRules(ctx context.Context, claims Claims) (string, err
 // assignment away. Assignments made by hand are not touched. For an account of a tenant only
 // the rules of that tenant count (PL45).
 func (s *Service) ApplyRules(ctx context.Context, person uuid.UUID, tenant string, claims Claims) error {
-	q := queries.New(s.pool)
+	// The person's assignments are in the database of the account's tenant (PL47b).
+	q := queries.New(s.db.For(tenant))
 	list, err := s.matching(ctx, claims)
 	if err != nil {
 		return err

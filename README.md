@@ -63,12 +63,51 @@ den Mandanten im Kopf der Oberfläche. Die Übernahme lässt sich nicht zurückn
 first one adopts what is there (for good); named administrators stay with the installation and
 switch tenants in the header.*
 
+Eindeutige Felder und externe Schlüssel gelten je Mandant (PL46). Ein neuer Datensatz landet im
+Knoten des Rechtekontexts, der Person oder des einzigen Anlegerechts; bleibt eine Wahl, fragt das
+Formular „Ablegen in“. *Unique fields and external keys are unique per tenant; a new record lands
+in the node of the context, the person or the one right, else the form asks.*
+
 ```bash
 docker compose run --rm itsm tenant create nord --label "Polizei Nord" --adopt --admin pascal
 ```
 
 ```bash
 docker compose run --rm itsm tenant create sued --label "Polizei Süd"
+```
+
+Datenbank je Mandant (PL47d): Mit `ITSM_TENANT_MODE=database` liegt jeder Mandant in seiner
+eigenen Datenbank; die Steuer-Datenbank (`ITSM_DATABASE_URL`) kennt ihn nur beim Namen. Der
+Betrieb legt die leere Datenbank samt Benutzer an und trägt ihre URL ein; `tenant create` richtet
+sie ein (Migrationen, Tabellen aller Pakete, Auswahllisten) und trägt den Mandanten zuletzt ins
+Verzeichnis. Danach die Instanzen neu starten. `migrate` und `package install` wirken auf jede
+Datenbank. Gesichert wird je Datenbank mit `pg_dump`, wiederhergestellt mit `pg_restore` in eine
+neue, leere Datenbank, auf die dann die URL zeigt; `tenant check` prüft danach, ob sie zur
+Steuer-Datenbank passt, und nennt, was fehlt (etwa Konten, die nach der Sicherung angelegt
+wurden). *Database per tenant: the operator creates the empty database and sets its URL; tenant
+create sets it up; back up and restore per database with pg_dump and pg_restore, then tenant
+check.*
+
+Auswertungen über Mandanten (PL48): `POST /api/v1/tenants:query` mit Typ, Mandanten und
+JSON-Abfrage liefert die Zeilen jedes Mandanten mit der Spalte `tenant`. Dafür braucht ein Konto
+der Installation das Recht `report_tenants` an `core.tenant`, ausdrücklich in einer Rolle an der
+Wurzel; die Rolle admin allein reicht nicht. *Evaluations across tenants need the right
+report_tenants on core.tenant, named explicitly in a role at the root.*
+
+```bash
+ITSM_TENANT_MODE=database ITSM_TENANT_NORD_DATABASE_URL=postgres://nord:…@db/itsm_nord docker compose run --rm itsm tenant create nord --label "Polizei Nord"
+```
+
+```bash
+pg_dump --format=custom --file=nord.dump postgres://nord:…@db/itsm_nord
+```
+
+```bash
+pg_restore --no-owner --exit-on-error --dbname=postgres://nord:…@db/itsm_nord_neu nord.dump
+```
+
+```bash
+ITSM_TENANT_MODE=database ITSM_TENANT_NORD_DATABASE_URL=postgres://nord:…@db/itsm_nord_neu docker compose run --rm itsm tenant check nord
 ```
 
 ```bash
@@ -123,7 +162,9 @@ Nur über Umgebungsvariablen / environment variables only:
 
 | Variable | Pflicht | Vorgabe | Zweck |
 | --- | --- | --- | --- |
-| `ITSM_DATABASE_URL` | ja | — | PostgreSQL |
+| `ITSM_DATABASE_URL` | ja | — | PostgreSQL; mit eigenen Datenbanken je Mandant die Steuer-Datenbank |
+| `ITSM_TENANT_MODE` | nein | `shared` | `shared`: alle Mandanten in einer Datenbank; `database`: jeder Mandant in seiner eigenen (PL47d, Hauptplan E144) |
+| `ITSM_TENANT_<NAME>_DATABASE_URL` | mit `database` | — | Datenbank des Mandanten `<name>`, z. B. `ITSM_TENANT_NORD_DATABASE_URL`; fehlt sie für einen Mandanten, startet itsm nicht |
 | `ITSM_VALKEY_ADDR` | ja | — | Valkey, `host:port` |
 | `ITSM_ROLE` | nein | `all` | `api`, `worker` oder `all` |
 | `ITSM_HTTP_ADDR` | nein | `:8080` | Adresse des HTTP-Servers |

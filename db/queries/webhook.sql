@@ -45,3 +45,14 @@ SELECT position, at, kind, type_name, record_id, actor, payload FROM event WHERE
 -- name: EnabledWebhooks :many
 -- The subscriptions a batch of the dispatcher matches in memory (PL41).
 SELECT * FROM webhook WHERE enabled ORDER BY id;
+
+-- name: WebhookPositions :many
+-- Where the subscriptions of the installation stand in this tenant's database (PL47d).
+SELECT webhook_id, position FROM webhook_position;
+
+-- name: SetWebhookPosition :exec
+INSERT INTO webhook_position (webhook_id, position) VALUES (sqlc.arg(webhook_id), sqlc.arg(position))
+ON CONFLICT (webhook_id) DO UPDATE SET position = excluded.position WHERE webhook_position.position < excluded.position;
+
+-- name: DeleteWebhookPosition :exec
+DELETE FROM webhook_position WHERE webhook_id = sqlc.arg(webhook_id);

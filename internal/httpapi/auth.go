@@ -133,6 +133,19 @@ func authenticate(o Options) func(http.Handler) http.Handler {
 				}
 			}
 			access = access.Enter(sess.Tenant)
+			// An administrator of the installation entering a tenant with a database of its own
+			// brings the mirror there up to date: after signing in and after every switch (PL47b).
+			if o.Authn != nil && o.Authn.Mirrors() && access.Home == "" && bearerToken == "" && sess.Entered != access.CurrentTenant() {
+				if err := o.Authn.Mirror(r.Context(), sess.AccountID, access.CurrentTenant()); err != nil {
+					writeError(w, r, o.Logger, err)
+					return
+				}
+				sess.Entered = access.CurrentTenant()
+				if err := o.Auth.Sessions().Update(r.Context(), sess); err != nil {
+					writeError(w, r, o.Logger, err)
+					return
+				}
+			}
 			// The session narrows it further (PL10).
 			access.ActiveRole, access.ActiveOrg = sess.ActiveRole, sess.ActiveOrg
 			ctx := auth.WithSession(r.Context(), sess)

@@ -86,7 +86,7 @@ func (e *Engine) HandleBatch(ctx context.Context, tx pgx.Tx, batch []records.Eve
 
 // Handle runs one event as a batch of its own, in a transaction of its own (tests).
 func (e *Engine) Handle(ctx context.Context, ev records.Event) error {
-	return pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error {
+	return pgx.BeginFunc(ctx, e.db.Tenant(ctx), func(tx pgx.Tx) error {
 		return e.HandleBatch(ctx, tx, []records.Event{ev})
 	})
 }
@@ -168,7 +168,7 @@ func (w *applyWorker) Work(ctx context.Context, job *river.Job[ApplyArgs]) error
 		}
 		f := events.Failure{Kind: events.FailureRule, Target: rule, EventPosition: &pos, TypeName: job.Args.Type, RecordID: &rec,
 			JobID: &id, Attempts: job.Attempt, Error: err.Error()}
-		if ferr := events.RecordFailure(ctx, w.e.pool, f); ferr != nil {
+		if ferr := events.RecordFailure(ctx, w.e.db.Tenant(ctx), f); ferr != nil {
 			w.e.logger.Error("rules: failure not kept", "error", ferr.Error())
 		}
 	}
@@ -285,7 +285,7 @@ func (e *Engine) inTenant(ctx context.Context, r Rule, rec map[string]any, field
 	}
 	node := r.Tenant
 	if node == "" {
-		tenants, err := org.TenantPaths(ctx, e.q)
+		tenants, err := org.TenantPaths(ctx, queries.New(e.db.Control()))
 		if err != nil {
 			return nil, err
 		}
@@ -325,9 +325,11 @@ func (w *timeWorker) Work(ctx context.Context, _ *river.Job[TimeArgs]) error {
 
 // RunSchedules runs every rule on a schedule whose next time has come since its last run (or
 // its creation): the records its condition finds, at most MaxMatches, get its actions. It
-// returns how many records each rule that ran found.
+// returns how many records each rule that ran found. It runs the rules kept in the database of
+// the job (PL47c): a tenant's rules there; a rule of the installation lies in the control
+// database and finds its records in every database, so it runs once and counts as run once.
 func (e *Engine) RunSchedules(ctx context.Context, now time.Time) (map[string]int, error) {
-	rows, err := e.q.ListRules(ctx)
+	rows, err := queries.New(e.db.Tenant(ctx)).ListRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -351,19 +353,30 @@ func (e *Engine) RunSchedules(ctx context.Context, now time.Time) (map[string]in
 		if err != nil {
 			return nil, err
 		}
-		ids, err := e.rec.Matching(ctx, r.TypeName, r.Condition, r.Tenant, MaxMatches)
-		if err != nil {
-			return nil, err
-		}
-		for _, id := range ids {
-			if err := e.apply(ctx, r, r.TypeName, id, 1); err != nil {
-				e.logger.Warn("rules: scheduled rule failed on a record", "rule", r.Name, "record", id, "error", err.Error())
+		where := []context.Context{ctx}
+		if !row.Tenant.Valid && e.db.Separate() {
+			where = where[:0]
+			for _, d := range e.db.Databases() {
+				where = append(where, d.Bind(ctx))
 			}
 		}
-		if err := e.q.SetRuleLastRun(ctx, queries.SetRuleLastRunParams{ID: r.ID, LastRun: pgtype.Timestamptz{Time: now, Valid: true}}); err != nil {
+		found := 0
+		for _, in := range where {
+			ids, err := e.rec.Matching(in, r.TypeName, r.Condition, r.Tenant, MaxMatches)
+			if err != nil {
+				return nil, err
+			}
+			for _, id := range ids {
+				if err := e.apply(in, r, r.TypeName, id, 1); err != nil {
+					e.logger.Warn("rules: scheduled rule failed on a record", "rule", r.Name, "record", id, "error", err.Error())
+				}
+			}
+			found += len(ids)
+		}
+		if err := e.ruleDB(row.Tenant).SetRuleLastRun(ctx, queries.SetRuleLastRunParams{ID: r.ID, LastRun: pgtype.Timestamptz{Time: now, Valid: true}}); err != nil {
 			return nil, err
 		}
-		ran[r.Name] = len(ids)
+		ran[r.Name] = found
 	}
 	return ran, nil
 }

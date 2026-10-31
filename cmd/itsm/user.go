@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authz"
@@ -60,14 +59,14 @@ func userCmd(args []string, getenv func(string) string, stdin io.Reader, stdout 
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	rt, closeDBs, err := openDatabases(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer closeDBs()
 	// Account commands do not touch sessions, so no Valkey connection is needed here.
-	svc := auth.New(pool, nil, platform.NewLogger(io.Discard, cfg.LogLevel))
-	sec := seclog.New(pool, nil, platform.NewLogger(io.Discard, cfg.LogLevel))
+	svc := auth.New(rt, nil, platform.NewLogger(io.Discard, cfg.LogLevel))
+	sec := seclog.New(rt, nil, platform.NewLogger(io.Discard, cfg.LogLevel))
 
 	switch args[0] {
 	case "create":
@@ -87,12 +86,21 @@ func userCmd(args []string, getenv func(string) string, stdin io.Reader, stdout 
 		if err != nil {
 			return err
 		}
-		acc, err := svc.CreateAccount(ctx, username, *display, pw, exp)
+		var acc auth.Account
+		if *home != "" && rt.Separate() {
+			// With a database per tenant the account is made in its tenant's database (PL47d).
+			if err := tenant.IsTenant(ctx, rt.Control(), tenant.Path(*home)); err != nil {
+				return err
+			}
+			acc, err = svc.CreateAccountIn(ctx, tenant.Path(*home), username, *display, pw, exp)
+		} else {
+			acc, err = svc.CreateAccount(ctx, username, *display, pw, exp)
+		}
 		if err != nil {
 			return err
 		}
-		if *home != "" {
-			if err := tenant.Bind(ctx, pool, username, *home); err != nil {
+		if *home != "" && !rt.Separate() {
+			if err := tenant.Bind(ctx, rt.Control(), username, *home); err != nil {
 				return err
 			}
 		}
@@ -108,7 +116,11 @@ func userCmd(args []string, getenv func(string) string, stdin io.Reader, stdout 
 		if to == "-" {
 			to = ""
 		}
-		if err := tenant.Bind(ctx, pool, args[1], to); err != nil {
+		if rt.Separate() {
+			// An account lives in its tenant's database and cannot move (PL47b, PL47d).
+			return errors.New("with a database per tenant an account keeps its tenant; create a new account in the other tenant")
+		}
+		if err := tenant.Bind(ctx, rt.Control(), args[1], to); err != nil {
 			return err
 		}
 		cliChanged(ctx, sec, "account.tenant", args[1], map[string]any{"after": map[string]any{"tenant": to}})
@@ -154,7 +166,7 @@ func userCmd(args []string, getenv func(string) string, stdin io.Reader, stdout 
 		if len(args) != 3 {
 			return errors.New("usage: itsm user link <username> <person-id>")
 		}
-		if err := userLink(ctx, pool, args[1], args[2], stdout); err != nil {
+		if err := userLink(ctx, rt, args[1], args[2], stdout); err != nil {
 			return err
 		}
 		cliChanged(ctx, sec, "account.link_person", args[1], map[string]any{"after": map[string]any{"person": args[2]}})
@@ -171,7 +183,7 @@ func userCmd(args []string, getenv func(string) string, stdin io.Reader, stdout 
 		if err := fs.Parse(args[3:]); err != nil {
 			return err
 		}
-		if err := userGrant(ctx, pool, args[1], args[2], *node, stdout); err != nil {
+		if err := userGrant(ctx, rt, args[1], args[2], *node, stdout); err != nil {
 			return err
 		}
 		cliChanged(ctx, sec, "assignment.create", args[2], map[string]any{"after": map[string]any{"username": args[1], "org_path": *node}})
@@ -202,29 +214,28 @@ func userCmd(args []string, getenv func(string) string, stdin io.Reader, stdout 
 	}
 }
 
-func userLink(ctx context.Context, pool *pgxpool.Pool, username, personID string, stdout io.Writer) error {
+func userLink(ctx context.Context, rt *db.Router, username, personID string, stdout io.Writer) error {
 	pid, err := uuid.Parse(personID)
 	if err != nil {
 		return fmt.Errorf("person id: %w", err)
 	}
-	acc, err := queries.New(pool).GetAccountByUsername(ctx, username)
+	acc, err := accountByName(ctx, rt, username)
 	if err != nil {
-		return fmt.Errorf("account %q: %w", username, err)
+		return err
 	}
-	if err := authz.New(pool, nil, nil).LinkPerson(ctx, acc.ID, &pid); err != nil {
+	if err := authz.New(rt, nil, nil).LinkPerson(ctx, acc.ID, &pid); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "Konto %s mit Person %s verknüpft\n", username, pid)
 	return nil
 }
 
-func userGrant(ctx context.Context, pool *pgxpool.Pool, username, role, node string, stdout io.Writer) error {
-	q := queries.New(pool)
-	acc, err := q.GetAccountByUsername(ctx, username)
+func userGrant(ctx context.Context, rt *db.Router, username, role, node string, stdout io.Writer) error {
+	acc, err := accountByName(ctx, rt, username)
 	if err != nil {
-		return fmt.Errorf("account %q: %w", username, err)
+		return err
 	}
-	az := authz.New(pool, nil, nil)
+	az := authz.New(rt, nil, nil)
 	// The account's tenant is where its person lives and, without --node, where the role goes.
 	home := org.Root
 	if acc.Tenant.Valid {
@@ -237,7 +248,8 @@ func userGrant(ctx context.Context, pool *pgxpool.Pool, username, role, node str
 	if acc.PersonID.Valid {
 		pid = acc.PersonID.UUID
 	} else {
-		rec, err := records.New(pool).Create(ctx, "core.person", map[string]any{"last_name": acc.DisplayName, "org_path": home}, nil)
+		// The person lives with the account, in its tenant's database (PL47d).
+		rec, err := records.New(rt).Create(rt.BindFor(ctx, home), "core.person", map[string]any{"last_name": acc.DisplayName, "org_path": home}, nil)
 		if err != nil {
 			return fmt.Errorf("create person for %s (is packages/core installed?): %w", username, err)
 		}
@@ -253,6 +265,19 @@ func userGrant(ctx context.Context, pool *pgxpool.Pool, username, role, node str
 	}
 	fmt.Fprintf(stdout, "Rolle %s für %s an %s zugewiesen (%s)\n", role, username, a.OrgPath, a.ID)
 	return nil
+}
+
+// accountByName reads an account in its home database (PL47b).
+func accountByName(ctx context.Context, rt *db.Router, username string) (queries.Account, error) {
+	home, err := rt.User(ctx, username)
+	if err != nil {
+		return queries.Account{}, fmt.Errorf("account %q: %w", username, err)
+	}
+	acc, err := queries.New(home).GetAccountByUsername(ctx, username)
+	if err != nil {
+		return queries.Account{}, fmt.Errorf("account %q: %w", username, err)
+	}
+	return acc, nil
 }
 
 func parseUser(fs *flag.FlagSet, args []string) (string, error) {

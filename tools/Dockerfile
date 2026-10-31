@@ -20,6 +20,15 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx --yes playwright@1.64.1 install --with-deps chromium chromium-headless-shell \
  && rm -rf /root/.npm
 
+# pg_dump and pg_restore of the server's major version, for the test of backing up and
+# restoring a tenant's database (PL47d, Hauptplan E144); from the repository of PostgreSQL,
+# since Debian ships an older client.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-common \
+ && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+ && apt-get install -y --no-install-recommends postgresql-client-18 \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 \
  && go install github.com/pressly/goose/v3/cmd/goose@v3.29.0 \
  && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 \

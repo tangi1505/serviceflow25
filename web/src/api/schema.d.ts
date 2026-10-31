@@ -158,6 +158,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenants:query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluation across tenants (PL48, Hauptplan E137, E146): the JSON query of one type runs in each tenant with the rights the administrator has there, in the tenant's database; the rows come together with the tenant as a column. Groups and aggregates in full, lists at most 500 rows per tenant without paging. A tenant the administrator may not read is skipped and named. Only for an account of the installation with the right report_tenants on core.tenant named in a role at the root (every action of a role does not count); each tenant evaluated gets an entry in its security log. Read only */
+        post: operations["queryTenants"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records/{typeName}:bulk": {
         parameters: {
             query?: never;
@@ -1924,6 +1941,16 @@ export interface components {
             defaults: {
                 [key: string]: unknown;
             };
+            /** @description for a new record (PL46): the node it lands in without a choice (the context, the person's node, the one node with the right); empty when one has to be named */
+            node?: string;
+            /** @description for a new record, the nodes where the session may create it */
+            nodes?: components["schemas"]["NodeRef"][];
+        };
+        NodeRef: {
+            path: string;
+            label: {
+                [key: string]: string;
+            };
         };
         TransitionInfo: {
             name: string;
@@ -2433,6 +2460,24 @@ export interface components {
         Rows: {
             rows: {
                 [key: string]: unknown;
+            }[];
+        };
+        TenantQuery: {
+            /** @description the type, e.g. probe.probe */
+            type: string;
+            /** @description the tenants by path; empty for every tenant the right reaches */
+            tenants?: string[];
+            query: components["schemas"]["Query"];
+        };
+        TenantRows: {
+            /** @description the rows of an aggregate, or the records of a list, each with the column tenant */
+            rows: {
+                [key: string]: unknown;
+            }[];
+            skipped: {
+                tenant: string;
+                /** @description unknown (not a tenant the administrator may work in) or no_read (no right to read the type there) */
+                reason: string;
             }[];
         };
         Page: {
@@ -3338,6 +3383,33 @@ export interface operations {
                     "application/json": components["schemas"]["Page"] | components["schemas"]["Rows"];
                 };
             };
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    queryTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantQuery"];
+            };
+        };
+        responses: {
+            /** @description the rows of every tenant, and the tenants skipped */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRows"];
+                };
+            };
+            403: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
         };

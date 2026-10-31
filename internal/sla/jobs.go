@@ -59,7 +59,7 @@ func (w *dueWorker) Work(ctx context.Context, job *river.Job[DueArgs]) error {
 func (s *Service) Due(ctx context.Context, a DueArgs) (bool, error) {
 	var c *Clock
 	breached := false
-	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, s.db.Tenant(ctx), func(tx pgx.Tx) error {
 		q := queries.New(tx)
 		row, err := q.ClockForUpdate(ctx, a.Clock)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -132,7 +132,7 @@ func (s *Service) Of(ctx context.Context, typeName string, id uuid.UUID) ([]View
 	if _, err := s.rec.Get(ctx, typeName, id); err != nil {
 		return nil, err
 	}
-	rows, err := queries.New(s.pool).ClocksOfRecord(ctx, id)
+	rows, err := queries.New(s.db.Tenant(ctx)).ClocksOfRecord(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("sla: clocks: %w", err)
 	}

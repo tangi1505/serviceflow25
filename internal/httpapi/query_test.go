@@ -66,7 +66,7 @@ func TestQueryOverHTTP(t *testing.T) {
 	}
 
 	// A person who reads only own records: the same query gives nothing of the admin's.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/q_own", "", nil)
+	dropRole(t, admin, "q_own")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "q_own"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

@@ -42,7 +42,7 @@ func TestFormsOverHTTP(t *testing.T) {
 		"ui11_reader": {`{"type_name": "probe.probe", "action": "read", "scope": "all"}`},
 	}
 	for role, list := range perms {
-		call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+		dropRole(t, admin, role)
 		if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "`+role+`"}}`, nil); r.code != 201 {
 			t.Fatalf("role %s: %d %s", role, r.code, r.raw)
 		}
@@ -170,7 +170,7 @@ func TestFormsOverHTTP(t *testing.T) {
 // question is refused when saving. The entry is German, the English texts travel with the form.
 func TestFormConditionsOverHTTP(t *testing.T) {
 	admin := apiServer(t)
-	call(t, admin, http.MethodDelete, "/api/v1/roles/ui12_user", "", nil)
+	dropRole(t, admin, "ui12_user")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "ui12_user", "label": {"de": "ui12"}}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}
@@ -240,7 +240,7 @@ func TestFormNodeOverHTTP(t *testing.T) {
 		t.Fatalf("node: %d %s", r.code, r.raw)
 	}
 	for _, role := range []string{"ui11_unit", "ui11_none"} {
-		call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+		dropRole(t, admin, role)
 		if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "`+role+`"}}`, nil); r.code != 201 {
 			t.Fatalf("role: %d %s", r.code, r.raw)
 		}

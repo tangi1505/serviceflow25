@@ -157,12 +157,13 @@ func (s *Service) bulkExisting(ctx context.Context, t meta.Type, source string, 
 		keys[i] = r.Key
 	}
 	cols := columns(t)
-	sql := fmt.Sprintf("SELECT %s, row_hash, deleted_at IS NOT NULL FROM %s WHERE source = $1 AND external_key = ANY($2)",
+	// A batch stays in the tenant of the request; the keys are unique there (PL46).
+	sql := fmt.Sprintf("SELECT %s, row_hash, deleted_at IS NOT NULL FROM %s WHERE source = $1 AND external_key = ANY($2) AND tenant = tenant_of($3::ltree)",
 		strings.Join(selected(t, cols), ", "), table(t))
 	if c := listScope(t, ""); c != "" {
 		sql += " AND " + c
 	}
-	res, err := s.pool.Query(ctx, sql, source, keys)
+	res, err := s.db.Tenant(ctx).Query(ctx, sql, source, keys, authz.From(ctx).HomeNode())
 	if err != nil {
 		return nil, fmt.Errorf("records: bulk read %s: %w", t.QualifiedName(), err)
 	}
@@ -203,9 +204,9 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 		if err = withProblems(err, tps); err != nil {
 			return fail(err)
 		}
-		path := authz.From(ctx).HomeNode()
-		if p, ok := values[orgPathField].(string); ok {
-			path = p
+		path, err := createNode(ctx, t, values)
+		if err != nil {
+			return fail(err)
 		}
 		if s.rulesWould(ctx, t, TriggerCreate, apiShape(t, Record{stateField: t.InitialState(), orgPathField: path}, values), changedNames(t, nil, values, nil)) {
 			// Rules before the write (WF4) go the way of Sync, with the history naming them.

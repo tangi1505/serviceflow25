@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
 )
@@ -32,7 +33,7 @@ func TestSelectListsOverHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n, err := records.New(admin.pool).SeedLists(ctx, probe); err != nil || n != 6 {
+	if n, err := records.New(db.Single(admin.pool)).SeedLists(ctx, probe); err != nil || n != 6 {
 		t.Fatalf("seed: %d %v", n, err)
 	}
 

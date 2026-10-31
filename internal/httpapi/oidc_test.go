@@ -44,7 +44,7 @@ func TestSignInThroughProvider(t *testing.T) {
 	}
 
 	// A rule: members of itsm-readers read every probe record.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/sso_reader", "", nil)
+	dropRole(t, admin, "sso_reader")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "sso_reader"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

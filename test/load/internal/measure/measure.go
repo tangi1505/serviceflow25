@@ -124,11 +124,17 @@ func Percentile(sorted []time.Duration, p float64) time.Duration {
 // Best of several repeated runs: the result with the smallest p95 (Hauptplan E76). Disturbance
 // on a shared machine only ever slows a run down, so the best run is the closest to the cost
 // of the code itself; the median still carried the noise of cooling down after the test phase.
+// A run without a single successful call measured nothing (the machine stalled, the clock of
+// WSL jumped) and would win with a p95 of 0, so it is left out while another run has calls.
 func Best(results []Result) Result {
 	if len(results) == 0 {
 		return Result{}
 	}
-	return slices.MinFunc(results, func(a, b Result) int {
+	measured := slices.DeleteFunc(slices.Clone(results), func(r Result) bool { return r.Requests == r.Errors })
+	if len(measured) == 0 {
+		return results[0]
+	}
+	return slices.MinFunc(measured, func(a, b Result) int {
 		switch {
 		case a.P95ms < b.P95ms:
 			return -1

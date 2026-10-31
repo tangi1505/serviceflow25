@@ -219,7 +219,19 @@ func (s *server) CreateAssignment(w http.ResponseWriter, r *http.Request) {
 		if group != nil {
 			holder, typeName = group, "core.group"
 		}
-		if holder != nil {
+		// The person of an account of the installation lives at the root, outside the tenant:
+		// an administrator with the rights at the root assigns it from any tenant, checked
+		// centrally, in both operating modes (PL48, your decision of 2026-10-31).
+		central := false
+		if person != nil && access.Installation(rightsType, "manage_rights") {
+			ok, err := s.o.Authz.InstallationPerson(r.Context(), *person)
+			if err != nil {
+				writeError(w, r, s.o.Logger, err)
+				return
+			}
+			central = ok
+		}
+		if holder != nil && !central {
 			if _, err := s.o.Records.Get(r.Context(), typeName, *holder); err != nil {
 				writeError(w, r, s.o.Logger, err)
 				return

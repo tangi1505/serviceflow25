@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
 	"group24.de/itsm/internal/customer"
@@ -48,11 +47,11 @@ func packageCmd(args []string, getenv func(string) string, stdout, stderr io.Wri
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	rt, closeDBs, err := openDatabases(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer closeDBs()
 
 	switch args[0] {
 	case "install":
@@ -64,14 +63,14 @@ func packageCmd(args []string, getenv func(string) string, stdout, stderr io.Wri
 			return errors.New("usage: itsm package install [--force] <dir>")
 		}
 		// Logs go to stderr so that stdout stays readable for the operator.
-		return packageInstall(ctx, pool, rest[0], force, platform.NewLogger(stderr, cfg.LogLevel), stdout)
+		return packageInstall(ctx, rt, rest[0], force, platform.NewLogger(stderr, cfg.LogLevel), stdout)
 	case "export-customer":
 		if len(args) != 2 {
 			return errors.New("usage: itsm package export-customer <dir>")
 		}
-		return exportCustomer(ctx, pool, args[1], platform.NewLogger(stderr, cfg.LogLevel), stdout)
+		return exportCustomer(ctx, rt, args[1], platform.NewLogger(stderr, cfg.LogLevel), stdout)
 	case "list":
-		return packageList(ctx, queries.New(pool), stdout)
+		return packageList(ctx, queries.New(rt.Control()), stdout)
 	default:
 		return fmt.Errorf("unknown package subcommand %q", args[0])
 	}
@@ -80,11 +79,12 @@ func packageCmd(args []string, getenv func(string) string, stdout, stderr io.Wri
 // errCustomerConflicts stops an install that would break changes of the customer layer.
 var errCustomerConflicts = errors.New("the package conflicts with the customer layer; install with --force to still these changes")
 
-func packageInstall(ctx context.Context, pool *pgxpool.Pool, dir string, force bool, logger *slog.Logger, stdout io.Writer) error {
+func packageInstall(ctx context.Context, rt *db.Router, dir string, force bool, logger *slog.Logger, stdout io.Writer) error {
 	p, err := meta.Load(dir)
 	if err != nil {
 		return fmt.Errorf("package %s: %w", dir, err)
 	}
+	pool := rt.Control()
 	before, err := meta.Types(ctx, queries.New(pool))
 	if err != nil {
 		return err
@@ -120,16 +120,21 @@ func packageInstall(ctx context.Context, pool *pgxpool.Pool, dir string, force b
 		}
 		fmt.Fprintf(stdout, "Die Änderungen oben sind stillgelegt.\n")
 	}
-	changes, err := schema.Apply(ctx, pool, p.Types, logger)
-	if err != nil {
-		return err
+	// The tables of the types go into every database (PL47d); the definitions stay central.
+	var changes []schema.Change
+	for _, d := range rt.Pools() {
+		c, err := schema.Apply(ctx, d, p.Types, logger)
+		if err != nil {
+			return err
+		}
+		changes = append(changes, c...)
 	}
-	seeded, err := records.New(pool).SeedLists(ctx, p)
+	seeded, err := records.New(rt).SeedLists(ctx, p)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "Paket %s %s installiert, %d Schemaänderungen, %d Listeneinträge angelegt\n", p.Name, p.Version, len(changes), seeded)
-	if err := recomputeChanged(ctx, pool, before, p, logger, stdout); err != nil {
+	if err := recomputeChanged(ctx, rt, before, p, logger, stdout); err != nil {
 		return err
 	}
 	for _, t := range p.Types {
@@ -178,12 +183,27 @@ func packageInstall(ctx context.Context, pool *pgxpool.Pool, dir string, force b
 // changed against the definitions installed before (PL22, E99), and with Search for every type
 // whose searched fields changed or that has records without a search column (PL26, E101). A
 // type that did not exist has no records and needs none.
-func recomputeChanged(ctx context.Context, pool *pgxpool.Pool, before []meta.Type, p meta.Package, logger *slog.Logger, stdout io.Writer) error {
+func recomputeChanged(ctx context.Context, rt *db.Router, before []meta.Type, p meta.Package, logger *slog.Logger, stdout io.Writer) error {
+	js := jobs.New(rt, jobs.Options{Logger: logger})
+	if err := js.Start(ctx); err != nil {
+		return err
+	}
+	// Each database recomputes its own records (PL47d).
+	for _, d := range rt.Databases() {
+		if err := recomputeIn(d.Bind(ctx), rt, js, before, p, stdout); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// recomputeIn queues the recomputation of the changed types in the database of the context.
+func recomputeIn(ctx context.Context, rt *db.Router, js *jobs.Service, before []meta.Type, p meta.Package, stdout io.Writer) error {
 	old := map[string]meta.Type{}
 	for _, t := range before {
 		old[t.QualifiedName()] = t
 	}
-	rec := records.New(pool)
+	rec := records.New(rt)
 	var due []records.RecomputeArgs
 	for _, t := range p.Types {
 		prev, existed := old[t.QualifiedName()]
@@ -211,10 +231,6 @@ func recomputeChanged(ctx context.Context, pool *pgxpool.Pool, before []meta.Typ
 	}
 	if len(due) == 0 {
 		return nil
-	}
-	js := jobs.New(pool, jobs.Options{Logger: logger})
-	if err := js.Start(ctx); err != nil {
-		return err
 	}
 	for _, args := range due {
 		job, err := js.Enqueue(ctx, args, &river.InsertOpts{Queue: jobs.QueueBulk})
@@ -269,8 +285,8 @@ func packageList(ctx context.Context, q *queries.Queries, stdout io.Writer) erro
 // exportCustomer writes the customer layers as a directory: package.yaml naming the packages
 // the changes extend, and customer/<package>.<type>.yaml per type with its changes, in order.
 // Installing it comes with EX (architektur.md §4).
-func exportCustomer(ctx context.Context, pool *pgxpool.Pool, dir string, logger *slog.Logger, stdout io.Writer) error {
-	views, err := customer.New(pool, records.New(pool), logger).Export(ctx)
+func exportCustomer(ctx context.Context, rt *db.Router, dir string, logger *slog.Logger, stdout io.Writer) error {
+	views, err := customer.New(rt, records.New(rt), logger).Export(ctx)
 	if err != nil {
 		return err
 	}

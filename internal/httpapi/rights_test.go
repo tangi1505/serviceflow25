@@ -34,7 +34,7 @@ func TestRightsScopesOverHTTP(t *testing.T) {
 
 	// Roles: one per scope on probe.probe, read and create; no update.
 	for _, role := range []string{"rights_own", "rights_unit", "rights_subtree", "rights_group"} {
-		call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+		dropRole(t, admin, role)
 		if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "`+role+`"}}`, nil); r.code != 201 {
 			t.Fatalf("role %s: %d %s", role, r.code, r.raw)
 		}
@@ -123,7 +123,9 @@ func TestRightsScopesOverHTTP(t *testing.T) {
 			t.Fatalf("create: %d %s", r.code, r.raw)
 		}
 	}
-	if r := create(own.api, `{"title": "rights r4"}`); r.code != 403 {
+	// Naming the root, outside the node: refused. Without a node the record lands in the one
+	// node of the right since PL46 (checked at the end, after the counts).
+	if r := create(own.api, `{"title": "rights r4", "org_path": "root"}`); r.code != 403 {
 		t.Fatalf("own creating at root (outside the node): %d %s", r.code, r.raw)
 	}
 	if r := create(unit.api, `{"title": "rights r5", "org_path": "root.rights.sub"}`); r.code != 403 {
@@ -223,5 +225,11 @@ func TestRightsScopesOverHTTP(t *testing.T) {
 	}
 	if seen, total := ids(subtree.api); len(seen) != 0 || total != 0 {
 		t.Fatalf("after revoke list: %d %d", len(seen), total)
+	}
+
+	// Without a node a record lands in the one node of the right (PL46); before, at the root
+	// and so 403.
+	if r := create(own.api, `{"title": "rights r6"}`); r.code != 201 || r.body["org_path"] != "root.rights" {
+		t.Fatalf("own creating without a node: %d %s", r.code, r.raw)
 	}
 }

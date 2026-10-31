@@ -205,7 +205,7 @@ func (s *Service) Matching(ctx context.Context, typeName, condition, under strin
 		where, args = append(where, cond), a
 	}
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE %s ORDER BY id LIMIT %d", table(t), strings.Join(where, " AND "), limit)
-	rows, err := s.pool.Query(ctx, sql, args...)
+	rows, err := s.db.Tenant(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("records: matching %s: %w", typeName, err)
 	}

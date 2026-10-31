@@ -57,8 +57,10 @@ func RegisterSyncJob(js *jobs.Service, svc *Service) error {
 		Name:     LDAPSyncArgs{}.Kind(),
 		Label:    map[string]string{"de": "Verzeichnisse abgleichen (LDAP)", "en": "Sync directories (LDAP)"},
 		Schedule: "0 * * * *",
-		Queue:    jobs.QueueBulk,
-		Args:     func() river.JobArgs { return LDAPSyncArgs{} },
+		// Directories and login rules are central; the sync puts each account in its tenant.
+		Central: true,
+		Queue:   jobs.QueueBulk,
+		Args:    func() river.JobArgs { return LDAPSyncArgs{} },
 	})
 }
 

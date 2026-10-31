@@ -48,7 +48,10 @@ type Session struct {
 	ActiveOrg  string `json:"active_org,omitempty"`
 	// Tenant is the tenant the session works in (PL44); empty until the first request picks
 	// one.
-	Tenant      string    `json:"tenant,omitempty"`
+	Tenant string `json:"tenant,omitempty"`
+	// Entered is the tenant whose mirror of the account this session last brought up to date
+	// (PL47b): a new session and every switch refresh it.
+	Entered     string    `json:"entered,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	RefreshedAt time.Time `json:"refreshed_at"`
 	// Sliding and MaxAge are the lifetimes of the settings when the session was last used

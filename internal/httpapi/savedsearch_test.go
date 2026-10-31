@@ -24,7 +24,7 @@ func TestSavedSearchesOverHTTP(t *testing.T) {
 	admin := apiServer(t)
 	suffix := strings.ReplaceAll(uuid.NewString()[:8], "-", "")
 	const role = "ui4_searcher"
-	call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+	dropRole(t, admin, role)
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "UI4"}}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

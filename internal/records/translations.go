@@ -218,7 +218,7 @@ func (s *Service) Localize(ctx context.Context, typeName string, recs ...Record)
 			ids = append(ids, id)
 		}
 	}
-	all, err := loadTranslations(ctx, queries.New(s.pool), typeName, ids)
+	all, err := loadTranslations(ctx, queries.New(s.db.Tenant(ctx)), typeName, ids)
 	if err != nil {
 		return "", err
 	}

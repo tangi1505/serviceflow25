@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/query"
 )
@@ -27,12 +28,12 @@ import (
 // rights service and cache: what a second pod in Kubernetes is.
 func secondInstance(t *testing.T, first *testAPI) *testAPI {
 	t.Helper()
-	az := authz.New(first.pool, first.kv, quiet)
+	az := authz.New(db.Single(first.pool), first.kv, quiet)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	go func() { _ = az.Run(ctx) }()
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: withHook(first.pool, az), Auth: first.auth,
-		Org: org.New(first.pool), Groups: query.NewGroups(first.pool), Authz: az})
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: withHook(first.rt, az), Auth: first.auth,
+		Org: org.New(db.Single(first.pool)), Groups: query.NewGroups(db.Single(first.pool)), Authz: az})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &testAPI{Server: srv, cookie: first.cookie, auth: first.auth, authz: az, pool: first.pool, kv: first.kv}
@@ -47,7 +48,7 @@ func TestFieldRightsConditionsAndInvalidation(t *testing.T) {
 	const base = "/api/v1/records/probe.probe"
 
 	// Role: probe.probe read only title and kind, write only title, only faults (condition).
-	call(t, admin, http.MethodDelete, "/api/v1/roles/rights_fields", "", nil)
+	dropRole(t, admin, "rights_fields")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "rights_fields"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

@@ -37,7 +37,7 @@ func timelineRoles(t *testing.T, admin *testAPI, prefix string) {
 		prefix + "_reader": {`{"type_name": "probe.probe", "action": "read", "scope": "all"}`},
 	}
 	for role, list := range perms {
-		call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+		dropRole(t, admin, role)
 		if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "`+role+`"}}`, nil); r.code != 201 {
 			t.Fatalf("role %s: %d %s", role, r.code, r.raw)
 		}

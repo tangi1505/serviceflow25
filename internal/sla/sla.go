@@ -25,12 +25,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/jobs"
 	"group24.de/itsm/internal/meta"
@@ -67,7 +67,7 @@ type SLA struct {
 
 // Service keeps the SLAs and moves the clocks.
 type Service struct {
-	pool   *pgxpool.Pool
+	db     *db.Router
 	rec    *records.Service
 	cals   *calendar.Service
 	jobs   *jobs.Service
@@ -88,11 +88,11 @@ type Service struct {
 }
 
 // New wires the service; kv may be nil (then only this instance hears of changes).
-func New(pool *pgxpool.Pool, rec *records.Service, cals *calendar.Service, js *jobs.Service, kv *cache.Client, logger *slog.Logger) *Service {
+func New(rt *db.Router, rec *records.Service, cals *calendar.Service, js *jobs.Service, kv *cache.Client, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Service{pool: pool, rec: rec, cals: cals, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault, Now: time.Now}
+	return &Service{db: rt, rec: rec, cals: cals, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault, Now: time.Now}
 }
 
 // Run keeps the SLAs in step with the other instances until the context ends.

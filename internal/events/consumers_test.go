@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -59,7 +60,17 @@ func TestConsumersKeepTheirPositions(t *testing.T) {
 	}
 	start := s.Position(ctx, "flaky")
 	id := create(t, ctx, rec, "pl41 one")
-	create(t, ctx, rec, "pl41 two")
+	two := create(t, ctx, rec, "pl41 two")
+	// Both events must be visible before the first pass: an open transaction of another
+	// package holds the horizon back (E87), on a busy machine for seconds (PL47e).
+	for deadline := time.Now().Add(time.Minute); ; time.Sleep(50 * time.Millisecond) {
+		if seen := readAll(t, ctx, s, start); len(ofRecord(seen, id)) > 0 && len(ofRecord(seen, two)) > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the events of the two records did not become visible")
+		}
+	}
 
 	// The flaky one fails: position kept, error kept, its writes rolled back; steady goes on.
 	if err := s.Dispatch(ctx); err == nil {
@@ -124,11 +135,15 @@ func TestConsumersKeepTheirPositions(t *testing.T) {
 		t.Fatalf("a held consumer moved: %d → %d", before, p)
 	}
 	_ = tx.Rollback(ctx)
-	if err := s.Dispatch(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if p := s.Position(ctx, "steady"); p == before {
-		t.Fatal("the released consumer did not go on")
+	// Once released it goes on, as soon as the event of the update is visible (E87; under load
+	// an open transaction of another package holds the horizon back, PL48).
+	for deadline := time.Now().Add(time.Minute); s.Position(ctx, "steady") == before; time.Sleep(50 * time.Millisecond) {
+		if err := s.Dispatch(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the released consumer did not go on")
+		}
 	}
 	if biggest > batch {
 		t.Fatalf("a batch of %d", biggest)

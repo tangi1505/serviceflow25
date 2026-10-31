@@ -108,7 +108,7 @@ func (s *Service) SeeEvent(ctx context.Context, e Event) (visible, mine bool) {
 	if err != nil {
 		return all, false
 	}
-	if rec, err := s.read(ctx, s.pool, t, e.RecordID, true, false); err == nil {
+	if rec, err := s.read(ctx, s.db.Tenant(ctx), t, e.RecordID, true, false); err == nil {
 		mine = a.Involved(rec)
 		return all || a.Permits(e.TypeName, authz.ActionRead, rec), mine
 	}
@@ -161,6 +161,30 @@ func VisibleType(ctx context.Context, t meta.Type) meta.Type {
 		out.Actors = nil
 	}
 	return out
+}
+
+// createNode is the node a new record lands in: the one it names, else the default of the
+// access (PL46: context, person, the one node with the right). When that leaves a choice the
+// caller has to name one, never the tenant by stealth (E136).
+func createNode(ctx context.Context, t meta.Type, values map[string]any) (string, error) {
+	if p, ok := values[orgPathField].(string); ok {
+		return p, nil
+	}
+	node, ok := authz.From(ctx).CreateNode(t.QualifiedName())
+	if !ok {
+		return "", &ValidationError{Problems: []Problem{{Field: orgPathField, Code: "required",
+			Message: "you may create in several nodes; name one"}}}
+	}
+	return node, nil
+}
+
+// syncNode is the node whose tenant the search for an external key stays in (PL46): the one
+// the row names, else the home of the access.
+func syncNode(ctx context.Context, fields map[string]any) string {
+	if p, ok := fields[orgPathField].(string); ok && p != "" {
+		return p
+	}
+	return authz.From(ctx).HomeNode()
 }
 
 // checkCreate applies the rights to a record about to be created at a node.

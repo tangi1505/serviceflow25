@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
@@ -53,19 +53,19 @@ type Entry struct {
 
 // Service keeps the customer layers.
 type Service struct {
-	pool   *pgxpool.Pool
+	db     *db.Router
 	rec    *records.Service
 	logger *slog.Logger
 }
 
 // New returns the service.
-func New(pool *pgxpool.Pool, rec *records.Service, logger *slog.Logger) *Service {
-	return &Service{pool: pool, rec: rec, logger: logger}
+func New(rt *db.Router, rec *records.Service, logger *slog.Logger) *Service {
+	return &Service{db: rt, rec: rec, logger: logger}
 }
 
 // base returns the type as its package ships it.
 func (s *Service) base(ctx context.Context, typeName string) (meta.Type, error) {
-	ts, err := meta.BaseTypes(ctx, queries.New(s.pool))
+	ts, err := meta.BaseTypes(ctx, queries.New(s.db.Control()))
 	if err != nil {
 		return meta.Type{}, err
 	}
@@ -104,7 +104,7 @@ func (s *Service) Get(ctx context.Context, typeName string) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	l, version, err := meta.GetCustomerLayer(ctx, queries.New(s.pool), t.Package, t.Name)
+	l, version, err := meta.GetCustomerLayer(ctx, queries.New(s.db.Control()), t.Package, t.Name)
 	if err != nil {
 		return View{}, err
 	}
@@ -130,7 +130,7 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 	if t.IsList() && c.Op == meta.OpAddField {
 		return View{}, problems("op", "a select list keeps its entries in a core table and takes no fields of its own")
 	}
-	q := queries.New(s.pool)
+	q := queries.New(s.db.Control())
 	l, version, err := meta.GetCustomerLayer(ctx, q, t.Package, t.Name)
 	if err != nil {
 		return View{}, err
@@ -170,10 +170,13 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 		}
 		return View{}, err
 	}
-	// The new column right away: the type is used with it on the next request.
+	// The new column right away, in every database with type tables (PL47): the type is used
+	// with it on the next request.
 	if !eff.IsList() {
-		if _, err := schema.Apply(ctx, s.pool, []meta.Type{eff}, s.logger); err != nil {
-			return View{}, err
+		for _, pool := range s.db.Pools() {
+			if _, err := schema.Apply(ctx, pool, []meta.Type{eff}, s.logger); err != nil {
+				return View{}, err
+			}
 		}
 	}
 	s.logger.Info("customer layer changed", "type", typeName, "op", c.Op, "field", c.Field, "by", by)
@@ -187,7 +190,7 @@ func (s *Service) Remove(ctx context.Context, typeName, changeID string, expecte
 	if err != nil {
 		return View{}, err
 	}
-	q := queries.New(s.pool)
+	q := queries.New(s.db.Control())
 	l, version, err := meta.GetCustomerLayer(ctx, q, t.Package, t.Name)
 	if err != nil {
 		return View{}, err
@@ -228,7 +231,7 @@ func (s *Service) Remove(ctx context.Context, typeName, changeID string, expecte
 // Export returns every customer layer, by type name: the content of a package of the
 // customer (architektur.md §4); importing it comes with EX.
 func (s *Service) Export(ctx context.Context) ([]View, error) {
-	q := queries.New(s.pool)
+	q := queries.New(s.db.Control())
 	layers, versions, err := meta.CustomerLayers(ctx, q)
 	if err != nil {
 		return nil, err

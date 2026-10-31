@@ -72,11 +72,11 @@ func TestCustomerLayerOverHTTP(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	installPackage(t, ctx, admin.pool, customerPackage(t, "0.1.0", true))
+	installPackage(t, ctx, admin.rt, customerPackage(t, "0.1.0", true))
 	const base = "/api/v1/types/customertest.thing/customer"
 
 	// Without the right customize on core.type: 403.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/pl43_reader", "", nil)
+	dropRole(t, admin, "pl43_reader")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "pl43_reader", "label": {"de": "pl43"}}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}
@@ -198,7 +198,7 @@ func TestCustomerLayerOverHTTP(t *testing.T) {
 	}
 
 	// Installed again, the base keeps its customer layer.
-	installPackage(t, ctx, admin.pool, customerPackage(t, "0.1.0", true))
+	installPackage(t, ctx, admin.rt, customerPackage(t, "0.1.0", true))
 	if field(typeOf(), "k_dienststelle") == nil {
 		t.Fatal("the customer layer is lost after a re-install")
 	}
@@ -215,7 +215,7 @@ func TestCustomerLayerOverHTTP(t *testing.T) {
 	if cs := conflicts["customertest.thing"]; len(cs) != 1 || cs[0].Change.Op != meta.OpAddOptions || !strings.Contains(cs[0].Reason, "no field color") {
 		t.Fatalf("conflicts: %+v", conflicts)
 	}
-	installPackage(t, ctx, admin.pool, customerPackage(t, "0.2.0", false))
+	installPackage(t, ctx, admin.rt, customerPackage(t, "0.2.0", false))
 	if err := customer.Still(ctx, q, conflicts); err != nil {
 		t.Fatal(err)
 	}

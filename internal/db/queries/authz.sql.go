@@ -12,12 +12,78 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignmentsOfHolders = `-- name: AssignmentsOfHolders :many
+SELECT a.role_id, a.org_path::text AS org_path
+FROM role_assignment a
+WHERE a.person_id = $1 OR a.group_id = ANY($2::uuid[])
+ORDER BY a.org_path, a.id
+`
+
+type AssignmentsOfHoldersParams struct {
+	PersonID uuid.NullUUID
+	GroupIds []uuid.UUID
+}
+
+type AssignmentsOfHoldersRow struct {
+	RoleID  uuid.UUID
+	OrgPath string
+}
+
+// The assignments that reach a person: to the person and to the groups the person is a member
+// of (the caller resolves the groups through internal/query, E34). The permissions of the roles
+// come from the control database (PL47b).
+func (q *Queries) AssignmentsOfHolders(ctx context.Context, arg AssignmentsOfHoldersParams) ([]AssignmentsOfHoldersRow, error) {
+	rows, err := q.db.Query(ctx, assignmentsOfHolders, arg.PersonID, arg.GroupIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssignmentsOfHoldersRow
+	for rows.Next() {
+		var i AssignmentsOfHoldersRow
+		if err := rows.Scan(&i.RoleID, &i.OrgPath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countAssignmentsOfRole = `-- name: CountAssignmentsOfRole :one
+SELECT count(*) FROM role_assignment WHERE role_id = $1
+`
+
+// A role in use is not deleted (PL47b): its assignments may lie in every tenant database.
+func (q *Queries) CountAssignmentsOfRole(ctx context.Context, roleID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAssignmentsOfRole, roleID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteAssignment = `-- name: DeleteAssignment :execrows
 DELETE FROM role_assignment WHERE id = $1
 `
 
 func (q *Queries) DeleteAssignment(ctx context.Context, id uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteAssignment, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteAssignmentsOfLoginRule = `-- name: DeleteAssignmentsOfLoginRule :execrows
+DELETE FROM role_assignment WHERE rule_id = $1
+`
+
+// What the cascade from login_rule did before PL47b: the rule is central, its assignments are
+// in the database of the tenant of its node.
+func (q *Queries) DeleteAssignmentsOfLoginRule(ctx context.Context, ruleID uuid.NullUUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAssignmentsOfLoginRule, ruleID)
 	if err != nil {
 		return 0, err
 	}
@@ -82,60 +148,6 @@ func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) 
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const grantsForPerson = `-- name: GrantsForPerson :many
-SELECT p.type_name, p.action, p.scope, p.condition, p.fields, a.org_path::text AS org_path, r.name AS role_name
-FROM role_assignment a
-JOIN role r ON r.id = a.role_id
-JOIN permission p ON p.role_id = a.role_id
-WHERE a.person_id = $1 OR a.group_id = ANY($2::uuid[])
-ORDER BY r.name, p.type_name, p.action
-`
-
-type GrantsForPersonParams struct {
-	PersonID uuid.NullUUID
-	GroupIds []uuid.UUID
-}
-
-type GrantsForPersonRow struct {
-	TypeName  string
-	Action    string
-	Scope     string
-	Condition string
-	Fields    []byte
-	OrgPath   string
-	RoleName  string
-}
-
-// Every permission that reaches a person: through assignments to the person and to the groups
-// the person is a member of (the caller resolves the groups through internal/query, E34).
-func (q *Queries) GrantsForPerson(ctx context.Context, arg GrantsForPersonParams) ([]GrantsForPersonRow, error) {
-	rows, err := q.db.Query(ctx, grantsForPerson, arg.PersonID, arg.GroupIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GrantsForPersonRow
-	for rows.Next() {
-		var i GrantsForPersonRow
-		if err := rows.Scan(
-			&i.TypeName,
-			&i.Action,
-			&i.Scope,
-			&i.Condition,
-			&i.Fields,
-			&i.OrgPath,
-			&i.RoleName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const insertAssignment = `-- name: InsertAssignment :one
@@ -215,21 +227,22 @@ func (q *Queries) InsertRole(ctx context.Context, arg InsertRoleParams) (Role, e
 }
 
 const listAssignments = `-- name: ListAssignments :many
-SELECT a.id, a.role_id, r.name AS role_name, a.person_id, a.group_id, a.org_path::text AS org_path, a.created_at
-FROM role_assignment a JOIN role r ON r.id = a.role_id
-ORDER BY r.name, a.org_path
+SELECT a.id, a.role_id, a.person_id, a.group_id, a.org_path::text AS org_path, a.created_at
+FROM role_assignment a
+ORDER BY a.org_path, a.id
 `
 
 type ListAssignmentsRow struct {
 	ID        uuid.UUID
 	RoleID    uuid.UUID
-	RoleName  string
 	PersonID  uuid.NullUUID
 	GroupID   uuid.NullUUID
 	OrgPath   string
 	CreatedAt pgtype.Timestamptz
 }
 
+// The names of the roles come from the control database (PL47b): roles are central, the
+// assignments of a tenant's persons are in its database.
 func (q *Queries) ListAssignments(ctx context.Context) ([]ListAssignmentsRow, error) {
 	rows, err := q.db.Query(ctx, listAssignments)
 	if err != nil {
@@ -242,7 +255,6 @@ func (q *Queries) ListAssignments(ctx context.Context) ([]ListAssignmentsRow, er
 		if err := rows.Scan(
 			&i.ID,
 			&i.RoleID,
-			&i.RoleName,
 			&i.PersonID,
 			&i.GroupID,
 			&i.OrgPath,
@@ -310,6 +322,51 @@ func (q *Queries) ListRoles(ctx context.Context) ([]Role, error) {
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const permissionsOfRoles = `-- name: PermissionsOfRoles :many
+SELECT p.role_id, r.name AS role_name, p.type_name, p.action, p.scope, p.condition, p.fields
+FROM permission p JOIN role r ON r.id = p.role_id
+WHERE p.role_id = ANY($1::uuid[])
+ORDER BY r.name, p.type_name, p.action
+`
+
+type PermissionsOfRolesRow struct {
+	RoleID    uuid.UUID
+	RoleName  string
+	TypeName  string
+	Action    string
+	Scope     string
+	Condition string
+	Fields    []byte
+}
+
+func (q *Queries) PermissionsOfRoles(ctx context.Context, roleIds []uuid.UUID) ([]PermissionsOfRolesRow, error) {
+	rows, err := q.db.Query(ctx, permissionsOfRoles, roleIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionsOfRolesRow
+	for rows.Next() {
+		var i PermissionsOfRolesRow
+		if err := rows.Scan(
+			&i.RoleID,
+			&i.RoleName,
+			&i.TypeName,
+			&i.Action,
+			&i.Scope,
+			&i.Condition,
+			&i.Fields,
 		); err != nil {
 			return nil, err
 		}

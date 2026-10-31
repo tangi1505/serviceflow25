@@ -110,7 +110,7 @@ func TestSecurityEventLog(t *testing.T) {
 
 	// Changes of rights and settings, with before and after.
 	role := strings.ReplaceAll(name, "apitest_audit_", "audit_role_")
-	call(t, admin, http.MethodDelete, "/api/v1/roles/"+role, "", nil)
+	dropRole(t, admin, role)
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`"}`, nil); r.code != 201 {
 		t.Fatalf("create role: %d %s", r.code, r.raw)
 	}

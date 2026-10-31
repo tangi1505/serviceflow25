@@ -30,8 +30,8 @@ func TestSessionContextNarrowsTheView(t *testing.T) {
 			t.Fatalf("node: %d %s", r.code, r.raw)
 		}
 	}
-	call(t, admin, http.MethodDelete, "/api/v1/roles/ctx_reader", "", nil)
-	call(t, admin, http.MethodDelete, "/api/v1/roles/ctx_writer", "", nil)
+	dropRole(t, admin, "ctx_reader")
+	dropRole(t, admin, "ctx_writer")
 	for _, role := range []string{"ctx_reader", "ctx_writer"} {
 		if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`"}`, nil); r.code != 201 {
 			t.Fatalf("role: %d %s", r.code, r.raw)

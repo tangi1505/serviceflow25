@@ -31,12 +31,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/oauth2"
 
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/cache"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
@@ -83,7 +83,7 @@ type Options struct {
 // Service runs the sign-in and the login rules.
 type Service struct {
 	o      Options
-	pool   *pgxpool.Pool
+	db     *db.Router
 	kv     *cache.Client
 	auth   *auth.Service
 	az     *authz.Service
@@ -99,7 +99,7 @@ type Service struct {
 
 // New wires the service without touching the network; discovery runs at first use and is
 // retried, so a provider that is still starting does not stop the server.
-func New(pool *pgxpool.Pool, kv *cache.Client, a *auth.Service, az *authz.Service, rec *records.Service, o *org.Service, logger *slog.Logger, opts Options) *Service {
+func New(rt *db.Router, kv *cache.Client, a *auth.Service, az *authz.Service, rec *records.Service, o *org.Service, logger *slog.Logger, opts Options) *Service {
 	if logger == nil {
 		logger = slog.New(slog.DiscardHandler)
 	}
@@ -112,7 +112,7 @@ func New(pool *pgxpool.Pool, kv *cache.Client, a *auth.Service, az *authz.Servic
 	if opts.GroupsClaim == "" {
 		opts.GroupsClaim = "groups"
 	}
-	s := &Service{o: opts, pool: pool, kv: kv, auth: a, az: az, rec: rec, org: o, logger: logger}
+	s := &Service{o: opts, db: rt, kv: kv, auth: a, az: az, rec: rec, org: o, logger: logger}
 	s.client = &http.Client{Timeout: 15 * time.Second, Transport: http.DefaultTransport}
 	if opts.InternalURL != "" {
 		if from, err := url.Parse(opts.Issuer); err == nil {
@@ -296,7 +296,8 @@ func usernameFrom(claims Claims) string {
 
 // account finds the account of the identity or creates account, person and identity.
 func (s *Service) account(ctx context.Context, issuer, subject string, claims Claims) (queries.Account, uuid.UUID, error) {
-	q := queries.New(s.pool)
+	// Identities are central, the account is in the database of its tenant (PL47b).
+	q := queries.New(s.db.Control())
 	email := claims.str("email")
 	var emailArg pgtype.Text
 	if email != "" {
@@ -306,7 +307,7 @@ func (s *Service) account(ctx context.Context, issuer, subject string, claims Cl
 	ident, err := q.GetIdentity(ctx, queries.GetIdentityParams{Issuer: issuer, Subject: subject})
 	switch {
 	case err == nil:
-		acc, err := q.GetAccount(ctx, ident.AccountID)
+		acc, err := queries.New(s.db.For(ident.Tenant)).GetAccount(ctx, ident.AccountID)
 		if err != nil {
 			return queries.Account{}, uuid.Nil, fmt.Errorf("authn: account of identity: %w", err)
 		}
@@ -314,7 +315,7 @@ func (s *Service) account(ctx context.Context, issuer, subject string, claims Cl
 			s.logger.Info("login refused", "username", acc.Username, "reason", "account disabled", "provider", s.o.Name)
 			return queries.Account{}, uuid.Nil, ErrRefused
 		}
-		if err := q.UpsertIdentity(ctx, queries.UpsertIdentityParams{Issuer: issuer, Subject: subject, AccountID: acc.ID, Email: emailArg, Claims: rawClaims}); err != nil {
+		if err := q.UpsertIdentity(ctx, queries.UpsertIdentityParams{Issuer: issuer, Subject: subject, AccountID: acc.ID, Tenant: acc.Tenant, Email: emailArg, Claims: rawClaims}); err != nil {
 			return queries.Account{}, uuid.Nil, fmt.Errorf("authn: identity: %w", err)
 		}
 		person, err := s.personOf(ctx, acc, claims)
@@ -324,10 +325,17 @@ func (s *Service) account(ctx context.Context, issuer, subject string, claims Cl
 		return queries.Account{}, uuid.Nil, fmt.Errorf("authn: identity: %w", err)
 	}
 
-	// First sign-in: account without a local password, person, identity (E88).
+	// First sign-in: account without a local password, person, identity (E88). With tenants the
+	// account belongs to the tenant of the first login rule that matches; with none it is an
+	// account of the installation that reaches no tenant (PL45). It is written to that tenant's
+	// database, its name reserved centrally first (PL47b).
+	tenant, err := s.tenantByRules(ctx, claims)
+	if err != nil {
+		return queries.Account{}, uuid.Nil, err
+	}
 	username := usernameFrom(claims)
 	for i := 2; ; i++ {
-		taken, err := q.UsernameTaken(ctx, username)
+		taken, err := s.db.Taken(ctx, username)
 		if err != nil {
 			return queries.Account{}, uuid.Nil, err
 		}
@@ -344,24 +352,25 @@ func (s *Service) account(ctx context.Context, issuer, subject string, claims Cl
 	if err != nil {
 		return queries.Account{}, uuid.Nil, err
 	}
-	acc, err := q.InsertExternalAccount(ctx, queries.InsertExternalAccountParams{ID: id, Username: username, DisplayName: display})
+	if err := s.db.Reserve(ctx, id, username, tenant); err != nil {
+		return queries.Account{}, uuid.Nil, fmt.Errorf("authn: reserve %s: %w", username, err)
+	}
+	home := queries.New(s.db.For(tenant))
+	acc, err := home.InsertExternalAccount(ctx, queries.InsertExternalAccountParams{ID: id, Username: username, DisplayName: display})
 	if err != nil {
+		s.db.Release(ctx, id)
 		return queries.Account{}, uuid.Nil, fmt.Errorf("authn: create account: %w", err)
 	}
-	if err := q.UpsertIdentity(ctx, queries.UpsertIdentityParams{Issuer: issuer, Subject: subject, AccountID: acc.ID, Email: emailArg, Claims: rawClaims}); err != nil {
-		return queries.Account{}, uuid.Nil, fmt.Errorf("authn: identity: %w", err)
-	}
-	s.logger.Info("account created from identity provider", "username", username, "provider", s.o.Name)
-	// With tenants the account belongs to the tenant of the first login rule that matches; with
-	// none it is an account of the installation that reaches no tenant (PL45).
-	if tenant, err := s.tenantByRules(ctx, claims); err != nil {
-		return queries.Account{}, uuid.Nil, err
-	} else if tenant != "" {
+	if tenant != "" {
 		acc.Tenant = pgtype.Text{String: tenant, Valid: true}
-		if err := q.SetAccountTenant(ctx, queries.SetAccountTenantParams{ID: acc.ID, Tenant: acc.Tenant}); err != nil {
+		if err := home.SetAccountTenant(ctx, queries.SetAccountTenantParams{ID: acc.ID, Tenant: acc.Tenant}); err != nil {
 			return queries.Account{}, uuid.Nil, fmt.Errorf("authn: tenant of the account: %w", err)
 		}
 	}
+	if err := q.UpsertIdentity(ctx, queries.UpsertIdentityParams{Issuer: issuer, Subject: subject, AccountID: acc.ID, Tenant: acc.Tenant, Email: emailArg, Claims: rawClaims}); err != nil {
+		return queries.Account{}, uuid.Nil, fmt.Errorf("authn: identity: %w", err)
+	}
+	s.logger.Info("account created from identity provider", "username", username, "provider", s.o.Name)
 	person, err := s.personOf(ctx, acc, claims)
 	return acc, person, err
 }

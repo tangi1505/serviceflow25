@@ -17,15 +17,17 @@ import (
 	"log/slog"
 	"net/netip"
 	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/cache"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 )
 
@@ -79,7 +81,7 @@ func (a Account) PasswordExpired(now time.Time) bool {
 
 // Service manages accounts and sessions.
 type Service struct {
-	q        *queries.Queries
+	db       *db.Router
 	kv       *cache.Client
 	sessions *Sessions
 	logger   *slog.Logger
@@ -94,13 +96,31 @@ type Service struct {
 
 // New returns a service on the database pool and the Valkey client. Without Valkey (the
 // command line) there are no sessions and no lockout.
-func New(pool *pgxpool.Pool, kv *cache.Client, logger *slog.Logger) *Service {
-	s := &Service{q: queries.New(pool), kv: kv, sessions: NewSessions(kv), logger: logger, now: time.Now}
+func New(rt *db.Router, kv *cache.Client, logger *slog.Logger) *Service {
+	s := &Service{db: rt, kv: kv, sessions: NewSessions(kv), logger: logger, now: time.Now}
 	s.sessions.Lifetimes = func(ctx context.Context) (time.Duration, time.Duration) {
 		p := s.Policy(ctx)
 		return p.Sliding, p.MaxLifetime
 	}
 	return s
+}
+
+// user is the query handle in the database of the account with the username (PL47b).
+func (s *Service) user(ctx context.Context, username string) (*queries.Queries, error) {
+	pool, err := s.db.User(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	return queries.New(pool), nil
+}
+
+// account is the query handle in the database of the account (PL47b).
+func (s *Service) account(ctx context.Context, id uuid.UUID) (*queries.Queries, error) {
+	pool, _, err := s.db.Account(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return queries.New(pool), nil
 }
 
 // Policy is the effective security settings (cached for 30 seconds).
@@ -129,8 +149,16 @@ func (s *Service) passwordRules(ctx context.Context, username, password string, 
 // Sessions gives access to the session store (for the HTTP layer).
 func (s *Service) Sessions() *Sessions { return s.sessions }
 
-// CreateAccount makes a local account; the password must satisfy CheckPassword.
+// CreateAccount makes a local account of the installation; the password must satisfy
+// CheckPassword.
 func (s *Service) CreateAccount(ctx context.Context, username, displayName, password string, expires *time.Time) (Account, error) {
+	return s.CreateAccountIn(ctx, "", username, displayName, password, expires)
+}
+
+// CreateAccountIn makes a local account of the tenant ("" for the installation), in the
+// tenant's database (PL47b). With a database per tenant the name is reserved centrally first
+// and given back when the account cannot be written.
+func (s *Service) CreateAccountIn(ctx context.Context, tenant, username, displayName, password string, expires *time.Time) (Account, error) {
 	if !usernameRe.MatchString(username) {
 		return Account{}, ErrInvalidUsername
 	}
@@ -149,10 +177,18 @@ func (s *Service) CreateAccount(ctx context.Context, username, displayName, pass
 	if err != nil {
 		return Account{}, fmt.Errorf("auth: id: %w", err)
 	}
-	row, err := s.q.CreateAccount(ctx, queries.CreateAccountParams{
+	if err := s.db.Reserve(ctx, id, username, tenant); err != nil {
+		if errors.Is(err, db.ErrUsernameTaken) {
+			return Account{}, ErrAccountExists
+		}
+		return Account{}, err
+	}
+	row, err := queries.New(s.db.For(tenant)).CreateAccount(ctx, queries.CreateAccountParams{
 		ID: id, Username: username, DisplayName: displayName, PasswordHash: hash, PasswordExpiresAt: ts(expires),
+		Tenant: pgtype.Text{String: tenant, Valid: tenant != ""},
 	})
 	if err != nil {
+		s.db.Release(ctx, id)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return Account{}, ErrAccountExists
@@ -168,7 +204,11 @@ func (s *Service) SetPassword(ctx context.Context, username, password string, ex
 	if err != nil {
 		return err
 	}
-	row, err := s.q.GetAccountByUsername(ctx, username)
+	q, err := s.user(ctx, username)
+	if err != nil {
+		return err
+	}
+	row, err := q.GetAccountByUsername(ctx, username)
 	if err != nil {
 		return notFound(err)
 	}
@@ -176,7 +216,7 @@ func (s *Service) SetPassword(ctx context.Context, username, password string, ex
 	if err != nil {
 		return err
 	}
-	if err := s.q.SetAccountPassword(ctx, queries.SetAccountPasswordParams{ID: row.ID, PasswordHash: hash, PasswordExpiresAt: ts(expires)}); err != nil {
+	if err := q.SetAccountPassword(ctx, queries.SetAccountPasswordParams{ID: row.ID, PasswordHash: hash, PasswordExpiresAt: ts(expires)}); err != nil {
 		return fmt.Errorf("auth: set password: %w", err)
 	}
 	return nil
@@ -186,7 +226,11 @@ func (s *Service) SetPassword(ctx context.Context, username, password string, ex
 // satisfy the rules, and the expiry is cleared. The session is updated so that the block of E77
 // ends at once.
 func (s *Service) ChangePassword(ctx context.Context, session Session, current, next string) error {
-	row, err := s.q.GetAccount(ctx, session.AccountID)
+	q, err := s.account(ctx, session.AccountID)
+	if err != nil {
+		return err
+	}
+	row, err := q.GetAccount(ctx, session.AccountID)
 	if err != nil {
 		return notFound(err)
 	}
@@ -208,7 +252,7 @@ func (s *Service) ChangePassword(ctx context.Context, session Session, current, 
 	if err != nil {
 		return err
 	}
-	if err := s.q.SetAccountPassword(ctx, queries.SetAccountPasswordParams{ID: row.ID, PasswordHash: hash, PasswordExpiresAt: ts(expires)}); err != nil {
+	if err := q.SetAccountPassword(ctx, queries.SetAccountPasswordParams{ID: row.ID, PasswordHash: hash, PasswordExpiresAt: ts(expires)}); err != nil {
 		return fmt.Errorf("auth: change password: %w", err)
 	}
 	if session.ID != "" && session.PasswordExpired {
@@ -223,7 +267,11 @@ func (s *Service) ChangePassword(ctx context.Context, session Session, current, 
 // SetDisabled blocks or unblocks an account; a blocked account cannot sign in, running sessions
 // end at their TTL.
 func (s *Service) SetDisabled(ctx context.Context, username string, disabled bool) error {
-	row, err := s.q.GetAccountByUsername(ctx, username)
+	q, err := s.user(ctx, username)
+	if err != nil {
+		return err
+	}
+	row, err := q.GetAccountByUsername(ctx, username)
 	if err != nil {
 		return notFound(err)
 	}
@@ -231,22 +279,30 @@ func (s *Service) SetDisabled(ctx context.Context, username string, disabled boo
 	if disabled {
 		at = pgtype.Timestamptz{Time: s.now().UTC(), Valid: true}
 	}
-	if err := s.q.SetAccountDisabled(ctx, queries.SetAccountDisabledParams{ID: row.ID, DisabledAt: at}); err != nil {
+	if err := q.SetAccountDisabled(ctx, queries.SetAccountDisabledParams{ID: row.ID, DisabledAt: at}); err != nil {
 		return fmt.Errorf("auth: set disabled: %w", err)
 	}
 	return nil
 }
 
-// ListAccounts returns all local accounts by name.
+// ListAccounts returns all local accounts by name, of every database (PL47b). An administrator
+// mirrored into a tenant's database (E141) is listed once, as the account of the installation.
 func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
-	rows, err := s.q.ListAccounts(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("auth: list accounts: %w", err)
+	seen := map[uuid.UUID]bool{}
+	var out []Account
+	for _, pool := range s.db.Pools() {
+		rows, err := queries.New(pool).ListAccounts(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("auth: list accounts: %w", err)
+		}
+		for _, r := range rows {
+			if !seen[r.ID] {
+				seen[r.ID] = true
+				out = append(out, fromRow(r))
+			}
+		}
 	}
-	out := make([]Account, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, fromRow(r))
-	}
+	slices.SortFunc(out, func(a, b Account) int { return strings.Compare(a.Username, b.Username) })
 	return out, nil
 }
 
@@ -271,7 +327,11 @@ func (s *Service) Login(ctx context.Context, username, password string, ip netip
 }
 
 func (s *Service) login(ctx context.Context, p Policy, username, password string) (Session, error) {
-	row, err := s.q.GetAccountByUsername(ctx, username)
+	q, err := s.user(ctx, username)
+	if err != nil {
+		return Session{}, fmt.Errorf("auth: login: %w", err)
+	}
+	row, err := q.GetAccountByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Info("login refused", "username", username, "reason", "unknown account")

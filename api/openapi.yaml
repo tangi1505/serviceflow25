@@ -219,6 +219,25 @@ paths:
                   - $ref: "#/components/schemas/Rows"
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/tenants:query:
+    post:
+      operationId: queryTenants
+      summary: "Evaluation across tenants (PL48, Hauptplan E137, E146): the JSON query of one type runs in each tenant with the rights the administrator has there, in the tenant's database; the rows come together with the tenant as a column. Groups and aggregates in full, lists at most 500 rows per tenant without paging. A tenant the administrator may not read is skipped and named. Only for an account of the installation with the right report_tenants on core.tenant named in a role at the root (every action of a role does not count); each tenant evaluated gets an entry in its security log. Read only"
+      tags: [records]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantQuery" }
+      responses:
+        "200":
+          description: the rows of every tenant, and the tenants skipped
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantRows" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
   /api/v1/records/{typeName}:bulk:
     post:
       operationId: bulkRecords
@@ -2669,6 +2688,19 @@ components:
           type: object
           additionalProperties: true
           description: presets of a new record
+        node: { type: string, description: "for a new record (PL46): the node it lands in without a choice (the context, the person's node, the one node with the right); empty when one has to be named" }
+        nodes:
+          type: array
+          description: for a new record, the nodes where the session may create it
+          items: { $ref: "#/components/schemas/NodeRef" }
+    NodeRef:
+      type: object
+      required: [path, label]
+      properties:
+        path: { type: string }
+        label:
+          type: object
+          additionalProperties: { type: string }
     TransitionInfo:
       type: object
       required: [name, label, to, allowed]
@@ -3165,6 +3197,34 @@ components:
           items:
             type: object
             additionalProperties: true
+    TenantQuery:
+      type: object
+      required: [type, query]
+      properties:
+        type: { type: string, description: "the type, e.g. probe.probe" }
+        tenants:
+          type: array
+          description: "the tenants by path; empty for every tenant the right reaches"
+          items: { type: string }
+        query: { $ref: "#/components/schemas/Query" }
+    TenantRows:
+      type: object
+      required: [rows, skipped]
+      properties:
+        rows:
+          type: array
+          description: "the rows of an aggregate, or the records of a list, each with the column tenant"
+          items:
+            type: object
+            additionalProperties: true
+        skipped:
+          type: array
+          items:
+            type: object
+            required: [tenant, reason]
+            properties:
+              tenant: { type: string }
+              reason: { type: string, description: "unknown (not a tenant the administrator may work in) or no_read (no right to read the type there)" }
     Page:
       type: object
       required: [items]

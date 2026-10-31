@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 )
 
@@ -30,20 +30,20 @@ func (EventRetentionArgs) Kind() string { return "event.retention" }
 
 type eventRetentionWorker struct {
 	river.WorkerDefaults[EventRetentionArgs]
-	pool   *pgxpool.Pool
+	dbs    *db.Router
 	keep   time.Duration
 	logger *slog.Logger
-	// db runs the delete; nil means the pool (a test passes its transaction).
+	// db runs the delete; nil means the database of the job (a test passes its transaction).
 	db queries.DBTX
 }
 
 func (w *eventRetentionWorker) Work(ctx context.Context, _ *river.Job[EventRetentionArgs]) error {
 	before := pgtype.Timestamptz{Time: time.Now().Add(-w.keep), Valid: true}
-	var db queries.DBTX = w.pool
-	if w.db != nil {
-		db = w.db
+	exec := w.db
+	if exec == nil {
+		exec = w.dbs.Tenant(ctx)
 	}
-	n, err := queries.New(db).DeleteEventsBefore(ctx, before)
+	n, err := queries.New(exec).DeleteEventsBefore(ctx, before)
 	if err != nil {
 		return fmt.Errorf("event retention: %w", err)
 	}
@@ -53,7 +53,7 @@ func (w *eventRetentionWorker) Work(ctx context.Context, _ *river.Job[EventReten
 
 // RegisterEventRetention adds the retention job: its worker and the nightly schedule.
 func RegisterEventRetention(s *Service, keep time.Duration) error {
-	AddWorker(s, &eventRetentionWorker{pool: s.pool, keep: keep, logger: s.o.Logger})
+	AddWorker(s, &eventRetentionWorker{dbs: s.db, keep: keep, logger: s.o.Logger})
 	return s.AddPeriodic(Periodic{
 		Name:     EventRetentionArgs{}.Kind(),
 		Label:    map[string]string{"de": "Alte Ereignisse entfernen", "en": "Expire old events"},

@@ -42,9 +42,11 @@ import (
 	"github.com/riverqueue/river/rivertype"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/jobs"
+	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
 )
 
@@ -116,8 +118,7 @@ type Rights func(ctx context.Context, account uuid.UUID) (*authz.Access, error)
 
 // Service keeps the subscriptions and delivers.
 type Service struct {
-	pool     *pgxpool.Pool
-	q        *queries.Queries
+	db       *db.Router
 	rec      *records.Service
 	jobs     *jobs.Service
 	settings Settings
@@ -133,11 +134,11 @@ type Service struct {
 }
 
 // New wires the service. settings may be nil (no http hosts allowed).
-func New(pool *pgxpool.Pool, rec *records.Service, js *jobs.Service, settings Settings, rights Rights, logger *slog.Logger) *Service {
+func New(rt *db.Router, rec *records.Service, js *jobs.Service, settings Settings, rights Rights, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Service{pool: pool, q: queries.New(pool), rec: rec, jobs: js, settings: settings, rights: rights, logger: logger,
+	return &Service{db: rt, rec: rec, jobs: js, settings: settings, rights: rights, logger: logger,
 		Backoff: Backoff, Queue: jobs.QueueBulk,
 		Client: &http.Client{
 			Timeout: 10 * time.Second,
@@ -145,6 +146,9 @@ func New(pool *pgxpool.Pool, rec *records.Service, js *jobs.Service, settings Se
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		}}
 }
+
+// tq is the query handle in the database of the request's tenant (PL47).
+func (s *Service) tq(ctx context.Context) *queries.Queries { return queries.New(s.db.Tenant(ctx)) }
 
 // --- subscriptions ---
 
@@ -168,11 +172,11 @@ func (s *Service) Create(ctx context.Context, in Input, owner uuid.UUID, actor *
 	if err != nil {
 		return Webhook{}, err
 	}
-	latest, err := s.q.LatestEventPosition(ctx)
+	latest, err := s.tq(ctx).LatestEventPosition(ctx)
 	if err != nil {
 		return Webhook{}, fmt.Errorf("webhooks: latest event: %w", err)
 	}
-	row, err := s.q.InsertWebhook(ctx, queries.InsertWebhookParams{ID: id, Name: w.Name, Url: w.URL, Secret: secret, Owner: owner,
+	row, err := s.tq(ctx).InsertWebhook(ctx, queries.InsertWebhookParams{ID: id, Name: w.Name, Url: w.URL, Secret: secret, Owner: owner,
 		Kinds: w.Kinds, Types: w.Types, Enabled: w.Enabled, Position: latest, CreatedBy: nullUUID(actor), Tenant: authz.From(ctx).CurrentTenant()})
 	if err != nil {
 		return Webhook{}, fmt.Errorf("webhooks: create: %w", err)
@@ -185,7 +189,7 @@ func (s *Service) Create(ctx context.Context, in Input, owner uuid.UUID, actor *
 // Get returns a subscription of the request's tenant without its secret; one of another
 // tenant is not there (PL45).
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (Webhook, error) {
-	row, err := s.q.GetWebhook(ctx, id)
+	row, err := s.tq(ctx).GetWebhook(ctx, id)
 	if err == nil && !authz.From(ctx).InTenant(row.Tenant) {
 		err = pgx.ErrNoRows
 	}
@@ -197,7 +201,7 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (Webhook, error) {
 
 // List returns the subscriptions of the request's tenant without secrets.
 func (s *Service) List(ctx context.Context) ([]Webhook, error) {
-	rows, err := s.q.ListWebhooks(ctx)
+	rows, err := s.tq(ctx).ListWebhooks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("webhooks: list: %w", err)
 	}
@@ -220,7 +224,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in Input, actor *uui
 	if err := s.apply(ctx, &w, in); err != nil {
 		return Webhook{}, err
 	}
-	row, err := s.q.UpdateWebhook(ctx, queries.UpdateWebhookParams{ID: id, Name: w.Name, Url: w.URL, Kinds: w.Kinds, Types: w.Types,
+	row, err := s.tq(ctx).UpdateWebhook(ctx, queries.UpdateWebhookParams{ID: id, Name: w.Name, Url: w.URL, Kinds: w.Kinds, Types: w.Types,
 		Enabled: w.Enabled, UpdatedBy: nullUUID(actor)})
 	if err != nil {
 		return Webhook{}, notFound(id, err)
@@ -237,7 +241,7 @@ func (s *Service) Rotate(ctx context.Context, id uuid.UUID, actor *uuid.UUID) (W
 	if err != nil {
 		return Webhook{}, err
 	}
-	row, err := s.q.SetWebhookSecret(ctx, queries.SetWebhookSecretParams{ID: id, Secret: secret, UpdatedBy: nullUUID(actor)})
+	row, err := s.tq(ctx).SetWebhookSecret(ctx, queries.SetWebhookSecretParams{ID: id, Secret: secret, UpdatedBy: nullUUID(actor)})
 	if err != nil {
 		return Webhook{}, notFound(id, err)
 	}
@@ -251,44 +255,69 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	if _, err := s.Get(ctx, id); err != nil {
 		return err
 	}
-	n, err := s.q.DeleteWebhook(ctx, id)
+	n, err := s.tq(ctx).DeleteWebhook(ctx, id)
 	if err != nil {
 		return fmt.Errorf("webhooks: delete: %w", err)
 	}
 	if n == 0 {
 		return fmt.Errorf("%w: webhook %s", ErrNotFound, id)
 	}
+	// Its positions in the tenants' databases go with it (PL47d).
+	if s.db.Separate() {
+		for _, d := range s.db.Databases()[1:] {
+			if err := queries.New(d.Pool()).DeleteWebhookPosition(ctx, id); err != nil {
+				return fmt.Errorf("webhooks: delete position in %s: %w", d.Name, err)
+			}
+		}
+	}
 	return nil
 }
 
 // Deliveries lists the newest delivery jobs of a subscription (at most limit, default 50).
 func (s *Service) Deliveries(ctx context.Context, id uuid.UUID, limit int) ([]Delivery, error) {
-	if _, err := s.Get(ctx, id); err != nil {
+	w, err := s.Get(ctx, id)
+	if err != nil {
 		return nil, err
 	}
 	if limit <= 0 || limit > 500 {
 		limit = 50
 	}
 	// river_job belongs to River; the delivery jobs carry the subscription in their arguments.
-	rows, err := s.pool.Query(ctx, `SELECT id, state, attempt, max_attempts, (args->>'position')::bigint, created_at,
+	// They lie where the dispatcher queued them (PL47c): in the database of the subscription,
+	// and for one of the installation with a database per tenant in every database (PL47d).
+	pools := []*pgxpool.Pool{s.db.Tenant(ctx)}
+	if s.db.Separate() && w.Tenant == org.Root {
+		pools = s.db.Pools()
+	}
+	out := []Delivery{}
+	for _, pool := range pools {
+		rows, err := pool.Query(ctx, `SELECT id, state, attempt, max_attempts, (args->>'position')::bigint, created_at,
 	       scheduled_at, finalized_at, coalesce(errors[array_length(errors, 1)]->>'error', '')
 	FROM river_job WHERE kind = $1 AND args->>'webhook' = $2 ORDER BY id DESC LIMIT $3`,
-		DeliverArgs{}.Kind(), id.String(), limit)
-	if err != nil {
-		return nil, fmt.Errorf("webhooks: deliveries: %w", err)
-	}
-	defer rows.Close()
-	out := []Delivery{}
-	for rows.Next() {
-		var d Delivery
-		var finalized *time.Time
-		if err := rows.Scan(&d.Job, &d.State, &d.Attempt, &d.MaxAttempts, &d.Position, &d.CreatedAt, &d.ScheduledAt, &finalized, &d.LastError); err != nil {
+			DeliverArgs{}.Kind(), id.String(), limit)
+		if err != nil {
+			return nil, fmt.Errorf("webhooks: deliveries: %w", err)
+		}
+		for rows.Next() {
+			var d Delivery
+			var finalized *time.Time
+			if err := rows.Scan(&d.Job, &d.State, &d.Attempt, &d.MaxAttempts, &d.Position, &d.CreatedAt, &d.ScheduledAt, &finalized, &d.LastError); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			d.FinalizedAt = finalized
+			out = append(out, d)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
 			return nil, err
 		}
-		d.FinalizedAt = finalized
-		out = append(out, d)
 	}
-	return out, rows.Err()
+	if len(pools) > 1 {
+		slices.SortStableFunc(out, func(a, b Delivery) int { return b.CreatedAt.Compare(a.CreatedAt) })
+		out = out[:min(len(out), limit)]
+	}
+	return out, nil
 }
 
 // apply checks and sets the given values.
@@ -380,27 +409,70 @@ func (s *Service) HandleBatch(ctx context.Context, tx pgx.Tx, batch []records.Ev
 	}
 	last := batch[len(batch)-1].Position
 	var params []river.InsertManyParams
-	for _, w := range subs {
-		if w.Position >= last {
-			continue
-		}
+	queue := func(w queries.Webhook, after int64, since time.Time) {
 		for _, e := range batch {
-			if e.Position <= w.Position || !matches(w, e) || !s.visible(ctx, w, e) {
+			if e.Position <= after || !matches(w, e) || (!since.IsZero() && !eventAfter(e, since)) || !s.visible(ctx, w, e) {
 				continue
 			}
 			params = append(params, river.InsertManyParams{Args: DeliverArgs{Webhook: w.ID, Position: e.Position, Tenant: w.Tenant},
 				InsertOpts: &river.InsertOpts{Queue: s.Queue, MaxAttempts: MaxAttempts}})
 		}
+	}
+	for _, w := range subs {
+		if w.Position >= last {
+			continue
+		}
+		queue(w, w.Position, time.Time{})
 		if _, err := q.AdvanceWebhook(ctx, queries.AdvanceWebhookParams{ID: w.ID, Position: last}); err != nil {
 			return fmt.Errorf("webhooks: advance %s: %w", w.ID, err)
+		}
+	}
+	// With a database per tenant the subscriptions of the installation lie in the control
+	// database; in a tenant's database they stand at a position of their own (PL47d). One
+	// that has no position here yet starts with the events after it was made.
+	if s.db.Separate() && s.db.Current(ctx).Name != "" {
+		central, err := queries.New(s.db.Control()).EnabledWebhooks(ctx)
+		if err != nil {
+			return fmt.Errorf("webhooks: subscriptions of the installation: %w", err)
+		}
+		rows, err := q.WebhookPositions(ctx)
+		if err != nil {
+			return fmt.Errorf("webhooks: positions: %w", err)
+		}
+		at := make(map[uuid.UUID]int64, len(rows))
+		for _, r := range rows {
+			at[r.WebhookID] = r.Position
+		}
+		for _, w := range central {
+			if w.Tenant != org.Root {
+				continue
+			}
+			after, known := at[w.ID]
+			if known && after >= last {
+				continue
+			}
+			var since time.Time
+			if !known {
+				since = w.CreatedAt.Time
+			}
+			queue(w, after, since)
+			if err := q.SetWebhookPosition(ctx, queries.SetWebhookPositionParams{WebhookID: w.ID, Position: last}); err != nil {
+				return fmt.Errorf("webhooks: advance %s: %w", w.ID, err)
+			}
 		}
 	}
 	return s.jobs.EnqueueManyTx(ctx, tx, params)
 }
 
+// eventAfter reports whether an event happened after a moment (its time is RFC 3339).
+func eventAfter(e records.Event, since time.Time) bool {
+	at, err := time.Parse(time.RFC3339Nano, e.At)
+	return err == nil && at.After(since)
+}
+
 // Handle runs one event as a batch of its own, in a transaction of its own (tests).
 func (s *Service) Handle(ctx context.Context, e records.Event) error {
-	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+	return pgx.BeginFunc(ctx, s.db.Tenant(ctx), func(tx pgx.Tx) error {
 		return s.HandleBatch(ctx, tx, []records.Event{e})
 	})
 }
@@ -459,10 +531,12 @@ func (w *deliverWorker) Work(ctx context.Context, job *river.Job[DeliverArgs]) e
 		pos, id := job.Args.Position, job.ID
 		f := events.Failure{Kind: events.FailureWebhook, Target: job.Args.Webhook.String(), EventPosition: &pos, JobID: &id,
 			Attempts: job.Attempt, Error: err.Error()}
-		if ev, evErr := w.s.q.GetEvent(ctx, pos); evErr == nil {
+		// The subscription, its events and failures are in the database of its tenant (PL47b).
+		home := w.s.db.For(job.Args.Tenant)
+		if ev, evErr := queries.New(home).GetEvent(ctx, pos); evErr == nil {
 			f.TypeName, f.RecordID = ev.TypeName, &ev.RecordID
 		}
-		if ferr := events.RecordFailure(ctx, w.s.pool, f); ferr != nil {
+		if ferr := events.RecordFailure(ctx, home, f); ferr != nil {
 			w.s.logger.Error("webhooks: failure not kept", "error", ferr.Error())
 		}
 	}
@@ -484,7 +558,11 @@ func RegisterDeliveryJob(js *jobs.Service, s *Service) {
 // gone by retention or no longer visible to the owner ends the job without sending; a URL
 // that is no longer allowed cancels it; anything but a 2xx answer is an error River repeats.
 func (s *Service) Deliver(ctx context.Context, a DeliverArgs) error {
-	row, err := s.q.GetWebhook(ctx, a.Webhook)
+	// The job runs without a session: the subscription names its tenant (PL47b); the event
+	// lies in the database the job runs in, which for a subscription of the installation with
+	// a database per tenant is a tenant's (PL47d).
+	q := queries.New(s.db.For(a.Tenant))
+	row, err := q.GetWebhook(ctx, a.Webhook)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -494,7 +572,7 @@ func (s *Service) Deliver(ctx context.Context, a DeliverArgs) error {
 	if !row.Enabled {
 		return nil
 	}
-	ev, err := s.q.GetEvent(ctx, a.Position)
+	ev, err := queries.New(s.db.Tenant(ctx)).GetEvent(ctx, a.Position)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Warn("webhooks: event gone before delivery", "webhook", a.Webhook, "position", a.Position)

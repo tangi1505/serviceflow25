@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/httpapi/gen"
 	"group24.de/itsm/internal/records"
 )
@@ -74,7 +75,48 @@ func (s *server) RecordFieldStates(w http.ResponseWriter, r *http.Request, typeN
 		writeError(w, r, s.o.Logger, err)
 		return
 	}
+	if id == nil {
+		writeJSON(w, http.StatusOK, s.withNodes(r, typeName, fs))
+		return
+	}
 	writeJSON(w, http.StatusOK, fs)
+}
+
+// draftStates are the field states of a new record with where it may go (PL46): the node it
+// lands in without a choice, empty when the person has to name one, and every node allowed.
+type draftStates struct {
+	records.FieldStates
+	Node  string    `json:"node"`
+	Nodes []nodeRef `json:"nodes"`
+}
+
+type nodeRef struct {
+	Path  string            `json:"path"`
+	Label map[string]string `json:"label"`
+}
+
+func (s *server) withNodes(r *http.Request, typeName string, fs records.FieldStates) draftStates {
+	a := authz.From(r.Context())
+	out := draftStates{FieldStates: fs, Nodes: []nodeRef{}}
+	out.Node, _ = a.CreateNode(typeName)
+	reach := a.CreateReach(typeName)
+	if len(reach) == 0 || s.o.Org == nil {
+		return out
+	}
+	nodes, err := s.o.Org.Nodes(r.Context())
+	if err != nil {
+		s.o.Logger.Warn("nodes for a new record", "err", err)
+		return out
+	}
+	for _, n := range nodes {
+		for _, rc := range reach {
+			if rc.Covers(n.Path) {
+				out.Nodes = append(out.Nodes, nodeRef{Path: n.Path, Label: n.Label})
+				break
+			}
+		}
+	}
+	return out
 }
 
 func (s *server) RecordTransitions(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id) {

@@ -155,8 +155,8 @@ func setup(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec := records.New(pool)
-	svc := New(pool, store, rec, nil, quiet)
+	rec := records.New(db.Single(pool))
+	svc := New(db.Single(pool), store, rec, nil, quiet)
 	svc.limits = func(context.Context) Limits {
 		return Limits{MaxSize: 1 << 20, Blocked: DefaultBlockedExtensions, TemporaryTTL: 24 * time.Hour}
 	}

@@ -86,13 +86,13 @@ func setup(t *testing.T, workers map[string]int) *fixture {
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	f := &fixture{ctx: ctx, pool: pool, rec: records.New(pool), owner: uuid.New(), blinded: uuid.New()}
+	f := &fixture{ctx: ctx, pool: pool, rec: records.New(db.Single(pool)), owner: uuid.New(), blinded: uuid.New()}
 	for name, id := range map[string]uuid.UUID{"webhooktest_owner": f.owner, "webhooktest_blind": f.blinded} {
 		if _, err := pool.Exec(ctx, "INSERT INTO account (id, username, display_name, password_hash) VALUES ($1, $2, $2, 'x')", id, name); err != nil {
 			t.Fatal(err)
 		}
 	}
-	f.js = jobs.New(pool, jobs.Options{Logger: quiet, Workers: workers})
+	f.js = jobs.New(db.Single(pool), jobs.Options{Logger: quiet, Workers: workers})
 	settings := func(_ context.Context, _, key string) (json.RawMessage, string, error) {
 		if key == SettingAllowedHTTPHosts {
 			return json.RawMessage(`["127.0.0.1"]`), "root", nil
@@ -105,7 +105,7 @@ func setup(t *testing.T, workers map[string]int) *fixture {
 		}
 		return nil, errors.New("no access")
 	}
-	f.s = New(pool, f.rec, f.js, settings, rights, quiet)
+	f.s = New(db.Single(pool), f.rec, f.js, settings, rights, quiet)
 	RegisterDeliveryJob(f.js, f.s)
 	if err := f.js.Start(ctx); err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func (rc *receiver) got() []call {
 // event creates a record and returns its create event.
 func (f *fixture) event(t *testing.T, title string) records.Event {
 	t.Helper()
-	before, err := f.s.q.LatestEventPosition(f.ctx)
+	before, err := f.s.tq(f.ctx).LatestEventPosition(f.ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,9 @@ func (f *fixture) event(t *testing.T, title string) records.Event {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+	// A bulk batch of another package's tests holds the horizon back (E87), on a busy machine
+	// with -race for longer than ten seconds (PL47d): wait a minute at most.
+	for deadline := time.Now().Add(time.Minute); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
 		list, err := f.rec.Events(f.ctx, before, 1000)
 		if err != nil {
 			t.Fatal(err)

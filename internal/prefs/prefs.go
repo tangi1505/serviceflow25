@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
@@ -75,14 +75,23 @@ type Settings func(ctx context.Context, path, key string) (json.RawMessage, stri
 
 // Service keeps the settings.
 type Service struct {
-	q        *queries.Queries
+	db       *db.Router
 	rec      *records.Service
 	settings Settings
 }
 
 // New returns the service.
-func New(pool *pgxpool.Pool, rec *records.Service, settings Settings) *Service {
-	return &Service{q: queries.New(pool), rec: rec, settings: settings}
+func New(rt *db.Router, rec *records.Service, settings Settings) *Service {
+	return &Service{db: rt, rec: rec, settings: settings}
+}
+
+// tq is the query handle in the database of the account (PL47b): its settings live with it.
+func (s *Service) tq(ctx context.Context, account uuid.UUID) *queries.Queries {
+	pool, _, err := s.db.Account(ctx, account)
+	if err != nil {
+		pool = s.db.Control()
+	}
+	return queries.New(pool)
 }
 
 func system(ctx context.Context) context.Context { return authz.WithAccess(ctx, authz.System()) }
@@ -117,7 +126,7 @@ func (s *Service) global(ctx context.Context, node, key string) (string, string)
 
 // Get returns the effective settings of the account.
 func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUID) (Prefs, error) {
-	rows, err := s.q.AccountSettings(ctx, account)
+	rows, err := s.tq(ctx, account).AccountSettings(ctx, account)
 	if err != nil {
 		return Prefs{}, fmt.Errorf("prefs: read: %w", err)
 	}
@@ -238,13 +247,13 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 			continue
 		}
 		if w.value == nil {
-			if err := s.q.DeleteAccountSetting(ctx, queries.DeleteAccountSettingParams{AccountID: account, Key: w.key}); err != nil {
+			if err := s.tq(ctx, account).DeleteAccountSetting(ctx, queries.DeleteAccountSettingParams{AccountID: account, Key: w.key}); err != nil {
 				return fmt.Errorf("prefs: remove %s: %w", w.key, err)
 			}
 			continue
 		}
 		raw, _ := json.Marshal(w.value)
-		if err := s.q.UpsertAccountSetting(ctx, queries.UpsertAccountSettingParams{AccountID: account, Key: w.key, Value: raw}); err != nil {
+		if err := s.tq(ctx, account).UpsertAccountSetting(ctx, queries.UpsertAccountSettingParams{AccountID: account, Key: w.key, Value: raw}); err != nil {
 			return fmt.Errorf("prefs: set %s: %w", w.key, err)
 		}
 	}
@@ -273,7 +282,7 @@ const keyTenant = "tenant"
 
 // LastTenant is the tenant the account chose last, or "".
 func (s *Service) LastTenant(ctx context.Context, account uuid.UUID) string {
-	rows, err := s.q.AccountSettings(ctx, account)
+	rows, err := s.tq(ctx, account).AccountSettings(ctx, account)
 	if err != nil {
 		return ""
 	}
@@ -289,5 +298,5 @@ func (s *Service) LastTenant(ctx context.Context, account uuid.UUID) string {
 // RememberTenant keeps the tenant the account switched to, for its next session.
 func (s *Service) RememberTenant(ctx context.Context, account uuid.UUID, tenant string) error {
 	raw, _ := json.Marshal(tenant)
-	return s.q.UpsertAccountSetting(ctx, queries.UpsertAccountSettingParams{AccountID: account, Key: keyTenant, Value: raw})
+	return s.tq(ctx, account).UpsertAccountSetting(ctx, queries.UpsertAccountSettingParams{AccountID: account, Key: keyTenant, Value: raw})
 }

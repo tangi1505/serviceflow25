@@ -136,7 +136,7 @@ func (s *Service) Events(ctx context.Context, after int64, limit int) ([]Event, 
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
-	rows, err := queries.New(s.pool).ListEvents(ctx, queries.ListEventsParams{Position: after, Limit: int32(limit)}) //nolint:gosec // limit is at most 1000
+	rows, err := queries.New(s.db.Tenant(ctx)).ListEvents(ctx, queries.ListEventsParams{Position: after, Limit: int32(limit)}) //nolint:gosec // limit is at most 1000
 	if err != nil {
 		return nil, err
 	}

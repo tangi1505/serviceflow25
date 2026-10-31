@@ -28,9 +28,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
@@ -49,7 +49,7 @@ var systemFields = []string{"id", "version", "state", "org_path", "source", "ext
 
 // Service performs record operations for the installed types.
 type Service struct {
-	pool  *pgxpool.Pool
+	db    *db.Router
 	types func(ctx context.Context) (map[string]meta.Type, error)
 	// nodeExists tells whether a path of the organisation tree exists (PL6).
 	nodeExists func(ctx context.Context, path string) (bool, error)
@@ -87,15 +87,14 @@ func (s *Service) written(ctx context.Context, typeName string, err error) error
 }
 
 // New creates a service that reads the type definitions through q (cached later, PL9).
-func New(pool *pgxpool.Pool) *Service {
-	q := queries.New(pool)
-	return &Service{pool: pool, nodeExists: func(ctx context.Context, path string) (bool, error) {
+func New(rt *db.Router) *Service {
+	return &Service{db: rt, nodeExists: func(ctx context.Context, path string) (bool, error) {
 		if !org.ValidPath(path) {
 			return false, nil
 		}
-		return q.OrgNodeExists(ctx, path)
+		return queries.New(rt.Tenant(ctx)).OrgNodeExists(ctx, path)
 	}, types: func(ctx context.Context) (map[string]meta.Type, error) {
-		ts, err := meta.Types(ctx, q)
+		ts, err := meta.Types(ctx, queries.New(rt.Control()))
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +125,7 @@ func (s *Service) Get(ctx context.Context, typeName string, id uuid.UUID) (Recor
 	if err != nil {
 		return nil, err
 	}
-	rec, err := s.read(ctx, s.pool, t, id, false, false)
+	rec, err := s.read(ctx, s.db.Tenant(ctx), t, id, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +142,7 @@ func (s *Service) Check(ctx context.Context, typeName string, id uuid.UUID, acti
 	if err != nil {
 		return nil, err
 	}
-	rec, err := s.read(ctx, s.pool, t, id, false, false)
+	rec, err := s.read(ctx, s.db.Tenant(ctx), t, id, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +342,7 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 	if o.Count && len(ps) == 0 {
 		var n int64
 		countSQL := fmt.Sprintf("SELECT count(*) FROM %s WHERE %s", table(t), strings.Join(where, " AND "))
-		if err := s.pool.QueryRow(ctx, countSQL, args...).Scan(&n); err != nil {
+		if err := s.db.Tenant(ctx).QueryRow(ctx, countSQL, args...).Scan(&n); err != nil {
 			return Page{}, fmt.Errorf("records: count %s: %w", t.QualifiedName(), err)
 		}
 		total = &n
@@ -386,7 +385,7 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s LIMIT %d",
 		strings.Join(selected(t, cols), ", "), table(t), strings.Join(where, " AND "), order, limit+1)
-	rows, err := s.pool.Query(ctx, sql, args...)
+	rows, err := s.db.Tenant(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return Page{}, fmt.Errorf("records: list %s: %w", typeName, err)
 	}
@@ -417,7 +416,7 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 
 // Traits returns the core traits and the installed traits of the packages (PL17).
 func (s *Service) Traits(ctx context.Context) ([]meta.Trait, error) {
-	return meta.Traits(ctx, queries.New(s.pool))
+	return meta.Traits(ctx, queries.New(s.db.Control()))
 }
 
 // Types returns the installed types in name order.
@@ -482,11 +481,9 @@ func (s *Service) create(ctx context.Context, t meta.Type, input map[string]any,
 	if err := checkFields(ctx, t, authz.ActionCreate, withActors(withTranslated(values, tr), nil, t, actors)); err != nil {
 		return nil, err
 	}
-	// Without a node of its own a record lands in the tenant of the request (PL44), not at the
-	// root; PL46 makes it the node of the context or the person.
-	node := authz.From(ctx).HomeNode()
-	if p, ok := values[orgPathField].(string); ok {
-		node = p
+	node, err := createNode(ctx, t, values)
+	if err != nil {
+		return nil, err
 	}
 	// Rules before the write (WF4) see the record as it will be.
 	planned := withActors(apiShape(t, Record{stateField: t.InitialState(), orgPathField: node}, values), nil, t, actors)
@@ -517,6 +514,10 @@ func (s *Service) create(ctx context.Context, t meta.Type, input map[string]any,
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
+	}
+	if fixed, ok := ctx.Value(fixedIDKey{}).(uuid.UUID); ok {
+		// A mirror keeps the id of its original (Mirror, PL47b).
+		id = fixed
 	}
 	var rec Record
 	err = s.tx(ctx, func(tx pgx.Tx) error {
@@ -990,7 +991,7 @@ func (s *Service) History(ctx context.Context, typeName string, id uuid.UUID) ([
 	if _, err := s.Get(ctx, typeName, id); err != nil {
 		return nil, err
 	}
-	rows, err := queries.New(s.pool).ListAudit(ctx, queries.ListAuditParams{TypeName: typeName, RecordID: id})
+	rows, err := queries.New(s.db.Tenant(ctx)).ListAudit(ctx, queries.ListAuditParams{TypeName: typeName, RecordID: id})
 	if err != nil {
 		return nil, fmt.Errorf("records: history: %w", err)
 	}
@@ -1156,7 +1157,7 @@ func (s *Service) exists(ctx context.Context, typeName string, id uuid.UUID) (bo
 		// A value outside the list is refused even when it is an entry of another list.
 		sql += " AND " + c
 	}
-	err = s.pool.QueryRow(ctx, sql, id).Scan(&n)
+	err = s.db.Tenant(ctx).QueryRow(ctx, sql, id).Scan(&n)
 	return n > 0, err
 }
 
@@ -1236,7 +1237,7 @@ func isSystem(name string) bool {
 }
 
 func (s *Service) tx(ctx context.Context, fn func(tx pgx.Tx) error) error {
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Tenant(ctx).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("records: begin: %w", err)
 	}

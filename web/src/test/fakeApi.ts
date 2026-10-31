@@ -312,6 +312,10 @@ export function fakeApi(state: FakeState) {
         read_only: locked ? fields : [],
         locked,
         defaults: {},
+        // A new record lands at the root; one node, no choice (PL46).
+        ...(rec
+          ? {}
+          : { node: "root", nodes: [{ path: "root", label: { de: "Wurzel", en: "Root" } }] }),
         ...(rec ? {} : state.newStates),
       });
     }

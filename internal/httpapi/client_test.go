@@ -59,7 +59,7 @@ func TestAPIClients(t *testing.T) {
 		t.Fatalf("get client must not show the secret: %d %s", r.code, r.raw)
 	}
 	// The client's person gets a role: read every probe record.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/apitest_reader", "", nil)
+	dropRole(t, admin, "apitest_reader")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "apitest_reader"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

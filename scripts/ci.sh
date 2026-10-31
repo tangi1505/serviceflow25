@@ -38,6 +38,17 @@ golangci-lint run ./...
 step "go: only records and query touch type tables (E34)"
 sh scripts/check-type-tables.sh
 
+step "go: the database of the CI"
+# The CI has a database of its own on the server of the dev instance (PL47e, Pascal's decision
+# 2026-10-30): the load stage and the tests left millions of jobs and events in the database of
+# the instance on 8092, which then worked them off. Tests migrate it themselves.
+ci_db=$(printf '%s' "$ITSM_TEST_DATABASE_URL" | sed -E 's#^.*/([^/?]+)([?].*)?$#\1#')
+server_db=$(printf '%s' "$ITSM_TEST_DATABASE_URL" | sed -E 's#/[^/?]+([?]|$)#/postgres\1#')
+if [ "$(psql "$server_db" -tAc "SELECT 1 FROM pg_database WHERE datname = '$ci_db'")" != 1 ]; then
+  psql "$server_db" -qc "CREATE DATABASE $ci_db"
+  echo "created $ci_db"
+fi
+
 step "go: test"
 go test -race -count=1 ./...
 

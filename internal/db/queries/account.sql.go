@@ -14,8 +14,9 @@ import (
 
 const createAccount = `-- name: CreateAccount :one
 
-INSERT INTO account (id, username, display_name, password_hash, password_expires_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO account (id, username, display_name, password_hash, password_expires_at, tenant)
+VALUES ($1, $2, $3, $4,
+        $5, $6::ltree)
 RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant
 `
 
@@ -25,6 +26,7 @@ type CreateAccountParams struct {
 	DisplayName       string
 	PasswordHash      string
 	PasswordExpiresAt pgtype.Timestamptz
+	Tenant            pgtype.Text
 }
 
 // Copyright (C) 2026 group24 AG
@@ -36,6 +38,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		arg.DisplayName,
 		arg.PasswordHash,
 		arg.PasswordExpiresAt,
+		arg.Tenant,
 	)
 	var i Account
 	err := row.Scan(
@@ -179,5 +182,34 @@ type SetAccountTenantParams struct {
 // Binds an account to a tenant (PL44); NULL makes it an account of the installation.
 func (q *Queries) SetAccountTenant(ctx context.Context, arg SetAccountTenantParams) error {
 	_, err := q.db.Exec(ctx, setAccountTenant, arg.Tenant, arg.ID)
+	return err
+}
+
+const upsertMirrorAccount = `-- name: UpsertMirrorAccount :exec
+INSERT INTO account (id, username, display_name, password_hash, disabled_at, person_id)
+VALUES ($1, $2, $3, '', $4, $5)
+ON CONFLICT (id) DO UPDATE
+    SET display_name = EXCLUDED.display_name, disabled_at = EXCLUDED.disabled_at,
+        person_id = EXCLUDED.person_id, updated_at = now()
+`
+
+type UpsertMirrorAccountParams struct {
+	ID          uuid.UUID
+	Username    string
+	DisplayName string
+	DisabledAt  pgtype.Timestamptz
+	PersonID    uuid.NullUUID
+}
+
+// The mirror of an account of the installation in a tenant's database (PL47b, E141): the same
+// id, name, display name, block and person, no password; signing in stays central.
+func (q *Queries) UpsertMirrorAccount(ctx context.Context, arg UpsertMirrorAccountParams) error {
+	_, err := q.db.Exec(ctx, upsertMirrorAccount,
+		arg.ID,
+		arg.Username,
+		arg.DisplayName,
+		arg.DisabledAt,
+		arg.PersonID,
+	)
 	return err
 }

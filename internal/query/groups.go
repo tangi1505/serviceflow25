@@ -16,7 +16,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+
+	"group24.de/itsm/internal/db"
 )
 
 // ErrNotFound says the group does not exist.
@@ -35,16 +36,16 @@ type Member struct {
 
 // Groups answers questions about core.group and core.group_member.
 type Groups struct {
-	pool *pgxpool.Pool
+	db *db.Router
 }
 
 // NewGroups returns the group queries on the pool.
-func NewGroups(pool *pgxpool.Pool) *Groups { return &Groups{pool: pool} }
+func NewGroups(rt *db.Router) *Groups { return &Groups{db: rt} }
 
 // GroupsOfPerson lists the groups a person is a member of (direct memberships, not trashed);
 // the rights of PL8 reach a person through them.
 func (g *Groups) GroupsOfPerson(ctx context.Context, personID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := g.pool.Query(ctx, `SELECT "group" FROM rec_core_group_member WHERE person = $1 AND deleted_at IS NULL`, personID)
+	rows, err := g.db.Tenant(ctx).Query(ctx, `SELECT "group" FROM rec_core_group_member WHERE person = $1 AND deleted_at IS NULL`, personID)
 	if err != nil {
 		return nil, fmt.Errorf("query: groups of person: %w", err)
 	}
@@ -54,6 +55,16 @@ func (g *Groups) GroupsOfPerson(ctx context.Context, personID uuid.UUID) ([]uuid
 		return nil, fmt.Errorf("query: groups of person: %w", err)
 	}
 	return ids, nil
+}
+
+// NodeOfPerson is the node of a person's record (PL46), empty when it is trashed or gone.
+func (g *Groups) NodeOfPerson(ctx context.Context, personID uuid.UUID) (string, error) {
+	var node string
+	err := g.db.Tenant(ctx).QueryRow(ctx, `SELECT org_path::text FROM rec_core_person WHERE id = $1 AND deleted_at IS NULL`, personID).Scan(&node)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("query: node of person: %w", err)
+	}
+	return node, nil
 }
 
 // AccountsOfGroupMates lists the accounts of every person who shares a group with the person
@@ -67,7 +78,7 @@ WHERE a.person_id = $1
         SELECT m2.person FROM rec_core_group_member m1
         JOIN rec_core_group_member m2 ON m2."group" = m1."group" AND m2.deleted_at IS NULL
         WHERE m1.person = $1 AND m1.deleted_at IS NULL)`
-	rows, err := g.pool.Query(ctx, sql, personID)
+	rows, err := g.db.Tenant(ctx).Query(ctx, sql, personID)
 	if err != nil {
 		return nil, fmt.Errorf("query: accounts of group mates: %w", err)
 	}
@@ -84,7 +95,7 @@ WHERE a.person_id = $1
 // first name.
 func (g *Groups) Members(ctx context.Context, groupID uuid.UUID, recursive bool) ([]Member, error) {
 	var exists bool
-	err := g.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM rec_core_group WHERE id = $1 AND deleted_at IS NULL)", groupID).Scan(&exists)
+	err := g.db.Tenant(ctx).QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM rec_core_group WHERE id = $1 AND deleted_at IS NULL)", groupID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("query: group: %w", err)
 	}
@@ -104,7 +115,7 @@ FROM tree
 JOIN rec_core_group_member m ON m."group" = tree.id AND m.deleted_at IS NULL
 JOIN rec_core_person p ON p.id = m.person AND p.deleted_at IS NULL
 ORDER BY tree.depth, tree.name, p.last_name, p.first_name`
-	rows, err := g.pool.Query(ctx, sql, groupID, recursive)
+	rows, err := g.db.Tenant(ctx).Query(ctx, sql, groupID, recursive)
 	if err != nil {
 		return nil, fmt.Errorf("query: members: %w", err)
 	}

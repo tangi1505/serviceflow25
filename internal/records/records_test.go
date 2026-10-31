@@ -81,7 +81,7 @@ fields:
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	return New(pool), ctx, pool
+	return New(db.Single(pool)), ctx, pool
 }
 
 func id(t *testing.T, rec Record) uuid.UUID {

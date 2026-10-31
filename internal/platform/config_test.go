@@ -63,6 +63,29 @@ func TestLoadConfigBulkQueue(t *testing.T) {
 	}
 }
 
+// ITSM_TENANT_MODE picks where the tenants' data live (PL47d); the URL of a tenant's database
+// comes from a variable of its name.
+func TestLoadConfigTenantMode(t *testing.T) {
+	m := required()
+	cfg, err := LoadConfig(env(m))
+	if err != nil || cfg.TenantMode != TenantModeShared || cfg.SeparateDatabases() {
+		t.Fatalf("default: %q %v", cfg.TenantMode, err)
+	}
+	m["ITSM_TENANT_MODE"] = "database"
+	m["ITSM_TENANT_NORD_DATABASE_URL"] = "postgres://itsm@db/nord"
+	cfg, err = LoadConfig(env(m))
+	if err != nil || !cfg.SeparateDatabases() || cfg.TenantURL("nord") != "postgres://itsm@db/nord" || cfg.TenantURL("sued") != "" {
+		t.Fatalf("database: %q %v", cfg.TenantMode, err)
+	}
+	if TenantDatabaseVar("big_city") != "ITSM_TENANT_BIG_CITY_DATABASE_URL" {
+		t.Fatal(TenantDatabaseVar("big_city"))
+	}
+	m["ITSM_TENANT_MODE"] = "separate"
+	if _, err := LoadConfig(env(m)); err == nil || !strings.Contains(err.Error(), "ITSM_TENANT_MODE") {
+		t.Fatalf("bad mode: %v", err)
+	}
+}
+
 func TestLoadConfigReadsWorkers(t *testing.T) {
 	m := required()
 	m["ITSM_WORKERS_BULK"] = "0"

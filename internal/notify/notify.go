@@ -31,11 +31,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/jobs"
@@ -62,8 +62,7 @@ type Rights func(ctx context.Context, account uuid.UUID) (*authz.Access, error)
 
 // Service finds recipients and sends.
 type Service struct {
-	pool   *pgxpool.Pool
-	q      *queries.Queries
+	db     *db.Router
 	rec    *records.Service
 	jobs   *jobs.Service
 	rights Rights
@@ -76,12 +75,18 @@ type Service struct {
 }
 
 // New wires the service.
-func New(pool *pgxpool.Pool, rec *records.Service, js *jobs.Service, rights Rights, mail *Mailer, logger *slog.Logger) *Service {
+func New(rt *db.Router, rec *records.Service, js *jobs.Service, rights Rights, mail *Mailer, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Service{pool: pool, q: queries.New(pool), rec: rec, jobs: js, rights: rights, mail: mail, logger: logger, Queue: jobs.QueueDefault}
+	return &Service{db: rt, rec: rec, jobs: js, rights: rights, mail: mail, logger: logger, Queue: jobs.QueueDefault}
 }
+
+// tq is the query handle in the database of the request's tenant (PL47).
+func (s *Service) tq(ctx context.Context) *queries.Queries { return queries.New(s.db.Tenant(ctx)) }
+
+// cq is the query handle in the control database: what belongs to the installation (PL47).
+func (s *Service) cq() *queries.Queries { return queries.New(s.db.Control()) }
 
 func system(ctx context.Context) context.Context {
 	return authz.WithAccess(ctx, authz.System())
@@ -250,7 +255,7 @@ func (s *Service) HandleBatch(ctx context.Context, tx pgx.Tx, batch []records.Ev
 	if err != nil {
 		return err
 	}
-	tenants, err := org.TenantPaths(ctx, s.q)
+	tenants, err := org.TenantPaths(ctx, s.cq())
 	if err != nil {
 		return err
 	}
@@ -296,7 +301,7 @@ func (w *fanoutWorker) Work(ctx context.Context, job *river.Job[FanoutArgs]) err
 			// A repeated fan-out (the job ran, its end was not recorded) queues no mail twice.
 			InsertOpts: &river.InsertOpts{Queue: w.s.Queue, MaxAttempts: MaxAttempts, UniqueOpts: river.UniqueOpts{ByArgs: true}}})
 	}
-	if err := pgx.BeginFunc(ctx, w.s.pool, func(tx pgx.Tx) error { return w.s.jobs.EnqueueManyTx(ctx, tx, params) }); err != nil {
+	if err := pgx.BeginFunc(ctx, w.s.db.Tenant(ctx), func(tx pgx.Tx) error { return w.s.jobs.EnqueueManyTx(ctx, tx, params) }); err != nil {
 		return err
 	}
 	return river.RecordOutput(ctx, map[string]any{"persons": len(persons)})
@@ -308,7 +313,7 @@ func (w *fanoutWorker) Work(ctx context.Context, job *river.Job[FanoutArgs]) err
 // condition does not hold, an event gone by retention or a record gone have none.
 func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, error) {
 	ctx = system(ctx)
-	ev, err := s.q.GetEvent(ctx, a.Position)
+	ev, err := s.tq(ctx).GetEvent(ctx, a.Position)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -420,7 +425,7 @@ func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, er
 
 // ofTenant keeps the persons in the tenant of the node (PL45).
 func (s *Service) ofTenant(ctx context.Context, persons []uuid.UUID, path string) ([]uuid.UUID, error) {
-	tenants, err := org.TenantPaths(ctx, s.q)
+	tenants, err := org.TenantPaths(ctx, s.cq())
 	if err != nil || len(tenants) == 0 {
 		return persons, err
 	}
@@ -447,7 +452,7 @@ func (s *Service) readsPrivate(ctx context.Context, person uuid.UUID, typeName s
 	if s.rights == nil {
 		return false, nil
 	}
-	accounts, err := s.q.AccountsOfPerson(ctx, uuid.NullUUID{UUID: person, Valid: true})
+	accounts, err := s.tq(ctx).AccountsOfPerson(ctx, uuid.NullUUID{UUID: person, Valid: true})
 	if err != nil {
 		return false, err
 	}
@@ -543,10 +548,10 @@ func (w *sendWorker) Work(ctx context.Context, job *river.Job[SendArgs]) error {
 			target = to
 		}
 		f := events.Failure{Kind: events.FailureMail, Target: target, EventPosition: &pos, JobID: &id, Attempts: job.Attempt, Error: err.Error()}
-		if ev, evErr := w.s.q.GetEvent(ctx, pos); evErr == nil {
+		if ev, evErr := w.s.tq(ctx).GetEvent(ctx, pos); evErr == nil {
 			f.TypeName, f.RecordID = ev.TypeName, &ev.RecordID
 		}
-		if ferr := events.RecordFailure(ctx, w.s.pool, f); ferr != nil {
+		if ferr := events.RecordFailure(ctx, w.s.db.Tenant(ctx), f); ferr != nil {
 			w.s.logger.Error("notify: failure not kept", "error", ferr.Error())
 		}
 	}
@@ -578,7 +583,7 @@ func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 		lang = "de"
 	}
 	ctx = records.WithLang(ctx, records.Lang{Read: lang})
-	ev, err := s.q.GetEvent(ctx, a.Position)
+	ev, err := s.tq(ctx).GetEvent(ctx, a.Position)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}

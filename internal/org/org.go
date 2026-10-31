@@ -17,13 +17,14 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 )
 
@@ -66,14 +67,23 @@ type Setting struct {
 
 // Service manages the tree.
 type Service struct {
-	pool *pgxpool.Pool
-	q    *queries.Queries
+	db *db.Router
 }
 
 // New returns a service on the pool.
-func New(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool, q: queries.New(pool)}
+func New(rt *db.Router) *Service {
+	return &Service{db: rt}
 }
+
+// tq is the query handle in the database of the request's tenant (PL47).
+func (s *Service) tq(ctx context.Context) *queries.Queries { return queries.New(s.db.Tenant(ctx)) }
+
+// at is the query handle in the database of a node (PL47b): the root and the tenants themselves
+// are central, a node below a tenant with a database of its own lives there.
+func (s *Service) at(path string) *queries.Queries { return queries.New(s.db.For(path)) }
+
+// cq is the query handle in the control database: what belongs to the installation (PL47).
+func (s *Service) cq() *queries.Queries { return queries.New(s.db.Control()) }
 
 // ValidPath reports whether a string is a path of this tree: labels of snake_case joined by
 // dots, starting at root.
@@ -98,7 +108,7 @@ func (s *Service) Exists(ctx context.Context, path string) (bool, error) {
 	if !ValidPath(path) {
 		return false, nil
 	}
-	ok, err := s.q.OrgNodeExists(ctx, path)
+	ok, err := s.at(path).OrgNodeExists(ctx, path)
 	if err != nil {
 		return false, fmt.Errorf("org: exists: %w", err)
 	}
@@ -107,7 +117,7 @@ func (s *Service) Exists(ctx context.Context, path string) (bool, error) {
 
 // Nodes lists the whole tree in path order.
 func (s *Service) Nodes(ctx context.Context) ([]Node, error) {
-	rows, err := s.q.ListOrgNodes(ctx)
+	rows, err := s.tq(ctx).ListOrgNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("org: list: %w", err)
 	}
@@ -120,7 +130,7 @@ func (s *Service) Nodes(ctx context.Context) ([]Node, error) {
 
 // Tenants lists the tenants in path order; none means the root is the only one (PL44).
 func (s *Service) Tenants(ctx context.Context) ([]Node, error) {
-	rows, err := s.q.ListTenants(ctx)
+	rows, err := s.cq().ListTenants(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("org: tenants: %w", err)
 	}
@@ -143,7 +153,7 @@ func TenantOf(tenants []string, path string) string {
 
 // TenantPaths lists the paths of the tenants; none means the root is the only one.
 func (s *Service) TenantPaths(ctx context.Context) ([]string, error) {
-	return TenantPaths(ctx, s.q)
+	return TenantPaths(ctx, s.cq())
 }
 
 // TenantPaths lists the paths of the tenants through the queries of any pool or transaction.
@@ -164,7 +174,7 @@ func (s *Service) Node(ctx context.Context, path string) (Node, error) {
 	if !ValidPath(path) {
 		return Node{}, ErrNotFound
 	}
-	r, err := s.q.GetOrgNode(ctx, path)
+	r, err := s.at(path).GetOrgNode(ctx, path)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Node{}, ErrNotFound
@@ -216,7 +226,7 @@ func (s *Service) insert(ctx context.Context, parent, name string, label map[str
 		label = map[string]string{}
 	}
 	raw, _ := json.Marshal(label)
-	r, err := s.q.InsertOrgNode(ctx, queries.InsertOrgNodeParams{Path: parent + "." + name, Name: name, Label: raw, Tenant: tenant})
+	r, err := s.at(parent+"."+name).InsertOrgNode(ctx, queries.InsertOrgNodeParams{Path: parent + "." + name, Name: name, Label: raw, Tenant: tenant})
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -233,7 +243,7 @@ func (s *Service) Delete(ctx context.Context, path string) error {
 	if path == Root || !ValidPath(path) {
 		return ErrNotFound
 	}
-	n, err := s.q.CountOrgChildren(ctx, path)
+	n, err := s.at(path).CountOrgChildren(ctx, path)
 	if err != nil {
 		return fmt.Errorf("org: children: %w", err)
 	}
@@ -245,7 +255,7 @@ func (s *Service) Delete(ctx context.Context, path string) error {
 	} else if !ok {
 		return ErrNotFound
 	}
-	if err := s.q.DeleteOrgNode(ctx, path); err != nil {
+	if err := s.at(path).DeleteOrgNode(ctx, path); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
 			return fmt.Errorf("%w: accounts still belong to the tenant %s", ErrNotEmpty, path)
@@ -272,7 +282,7 @@ func (s *Service) SetSetting(ctx context.Context, path, key string, value json.R
 	if actor != nil {
 		by = uuid.NullUUID{UUID: *actor, Valid: true}
 	}
-	if err := s.q.UpsertOrgSetting(ctx, queries.UpsertOrgSettingParams{Path: path, Key: key, Value: value, UpdatedBy: by}); err != nil {
+	if err := s.at(path).UpsertOrgSetting(ctx, queries.UpsertOrgSettingParams{Path: path, Key: key, Value: value, UpdatedBy: by}); err != nil {
 		return fmt.Errorf("org: set: %w", err)
 	}
 	return nil
@@ -283,7 +293,7 @@ func (s *Service) UnsetSetting(ctx context.Context, path, key string) error {
 	if !ValidPath(path) {
 		return ErrNotFound
 	}
-	n, err := s.q.DeleteOrgSetting(ctx, queries.DeleteOrgSettingParams{Path: path, Key: key})
+	n, err := s.at(path).DeleteOrgSetting(ctx, queries.DeleteOrgSettingParams{Path: path, Key: key})
 	if err != nil {
 		return fmt.Errorf("org: unset: %w", err)
 	}
@@ -301,9 +311,26 @@ func (s *Service) Settings(ctx context.Context, path string) ([]Setting, error) 
 	} else if !ok {
 		return nil, ErrNotFound
 	}
-	rows, err := s.q.EffectiveOrgSettings(ctx, path)
+	rows, err := s.at(path).EffectiveOrgSettings(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("org: settings: %w", err)
+	}
+	if s.db.For(path) != s.db.Control() {
+		// The settings of the root are central (PL47b): they count where the tenant sets none.
+		set := map[string]bool{}
+		for _, r := range rows {
+			set[r.Key] = true
+		}
+		central, err := s.cq().EffectiveOrgSettings(ctx, Root)
+		if err != nil {
+			return nil, fmt.Errorf("org: settings of the root: %w", err)
+		}
+		for _, r := range central {
+			if !set[r.Key] {
+				rows = append(rows, r)
+			}
+		}
+		slices.SortFunc(rows, func(a, b queries.EffectiveOrgSettingsRow) int { return strings.Compare(a.Key, b.Key) })
 	}
 	out := make([]Setting, 0, len(rows))
 	for _, r := range rows {

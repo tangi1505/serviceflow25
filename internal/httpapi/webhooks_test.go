@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/records"
 )
 
@@ -53,7 +54,7 @@ func TestWebhooksOverHTTP(t *testing.T) {
 	id := uuid.MustParse(rec.body["id"].(string))
 	var e records.Event
 	for deadline := time.Now().Add(10 * time.Second); e.Position == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
-		list, err := records.New(admin.pool).Events(ctx, int64(created.body["position"].(float64)), 1000)
+		list, err := records.New(db.Single(admin.pool)).Events(ctx, int64(created.body["position"].(float64)), 1000)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -25,6 +25,13 @@ type Account struct {
 	Tenant            pgtype.Text
 }
 
+type AccountHome struct {
+	AccountID uuid.UUID
+	Username  string
+	Tenant    pgtype.Text
+	CreatedAt pgtype.Timestamptz
+}
+
 type AccountSetting struct {
 	AccountID uuid.UUID
 	Key       string
@@ -218,6 +225,7 @@ type Identity struct {
 	Claims       []byte
 	FirstLoginAt pgtype.Timestamptz
 	LastLoginAt  pgtype.Timestamptz
+	Tenant       pgtype.Text
 }
 
 type JobSchedule struct {
@@ -274,6 +282,7 @@ type ListEntry struct {
 	Lat         pgtype.Numeric
 	Lon         pgtype.Numeric
 	Alt         pgtype.Numeric
+	Tenant      string
 }
 
 type LoginRule struct {
@@ -406,6 +415,11 @@ type SecurityEvent struct {
 	Tenant    pgtype.Text
 }
 
+type SecurityEventLast struct {
+	One bool
+	ID  int64
+}
+
 type Translation struct {
 	TypeName string
 	RecordID uuid.UUID
@@ -429,4 +443,9 @@ type Webhook struct {
 	UpdatedAt pgtype.Timestamptz
 	UpdatedBy uuid.NullUUID
 	Tenant    string
+}
+
+type WebhookPosition struct {
+	WebhookID uuid.UUID
+	Position  int64
 }

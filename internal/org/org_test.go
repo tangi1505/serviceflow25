@@ -67,7 +67,7 @@ func TestValidPath(t *testing.T) {
 // grandchild from the child; removing the override makes the grandchild inherit from the root.
 func TestSettingsInherit(t *testing.T) {
 	pool := testPool(t)
-	svc := New(pool)
+	svc := New(db.Single(pool))
 	ctx := t.Context()
 
 	if _, err := svc.Create(ctx, Root, "Orgtest", nil); !errors.Is(err, ErrInvalid) {

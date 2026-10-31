@@ -48,7 +48,8 @@ func (s *Service) Sync(ctx context.Context, typeName string, key SyncKey, fields
 	if err != nil {
 		return uuid.Nil, 0, "", err
 	}
-	where := "source = $1 AND external_key = $2"
+	// The key is unique per tenant (PL46): the search stays in the tenant of the row's node.
+	where := "source = $1 AND external_key = $2 AND tenant = tenant_of($3::ltree)"
 	if scope := listScope(t, ""); scope != "" {
 		where += " AND " + scope
 	}
@@ -59,7 +60,7 @@ func (s *Service) Sync(ctx context.Context, typeName string, key SyncKey, fields
 		trashed bool
 	)
 	sql := fmt.Sprintf("SELECT id, version, row_hash, deleted_at IS NOT NULL FROM %s WHERE %s", table(t), where)
-	err = s.pool.QueryRow(ctx, sql, key.Source, key.Key).Scan(&id, &version, &hash, &trashed)
+	err = s.db.Tenant(ctx).QueryRow(ctx, sql, key.Source, key.Key, syncNode(ctx, fields)).Scan(&id, &version, &hash, &trashed)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		rec, err := s.create(ctx, t, fields, actor, &key, nil)
@@ -75,7 +76,7 @@ func (s *Service) Sync(ctx context.Context, typeName string, key SyncKey, fields
 	case bytes.Equal(hash, key.Hash):
 		// Nothing to write, but the caller may only hear of the record with the right to
 		// change it, like for an update.
-		rec, err := s.read(ctx, s.pool, t, id, false, false)
+		rec, err := s.read(ctx, s.db.Tenant(ctx), t, id, false, false)
 		if err != nil {
 			return uuid.Nil, 0, "", err
 		}

@@ -529,7 +529,7 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 	if q.Count && len(b.problems) == 0 {
 		var n int64
 		countSQL := fmt.Sprintf("SELECT count(*) FROM %s WHERE %s", table(t), strings.Join(where, " AND "))
-		if err := s.pool.QueryRow(b.ctx, countSQL, b.args...).Scan(&n); err != nil {
+		if err := s.db.Tenant(b.ctx).QueryRow(b.ctx, countSQL, b.args...).Scan(&n); err != nil {
 			return Page{}, nil, fmt.Errorf("records: count %s: %w", t.QualifiedName(), err)
 		}
 		total = &n
@@ -579,7 +579,7 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 		order = "id " + dir
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s LIMIT %d", strings.Join(selects, ", "), table(t), strings.Join(where, " AND "), order, limit+1)
-	rows, err := s.pool.Query(b.ctx, sql, b.args...)
+	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, b.args...)
 	if err != nil {
 		return Page{}, nil, fmt.Errorf("records: query %s: %w", t.QualifiedName(), err)
 	}
@@ -703,7 +703,7 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 		sql += " GROUP BY " + strings.Join(groups, ", ") + " ORDER BY " + strings.Join(groups, ", ") + " NULLS LAST"
 	}
 	sql += " LIMIT 1000"
-	rows, err := s.pool.Query(b.ctx, sql, b.args...)
+	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, b.args...)
 	if err != nil {
 		return nil, fmt.Errorf("records: aggregate %s: %w", t.QualifiedName(), err)
 	}

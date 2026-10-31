@@ -40,6 +40,15 @@ func (q *Queries) DeleteWebhook(ctx context.Context, id uuid.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const deleteWebhookPosition = `-- name: DeleteWebhookPosition :exec
+DELETE FROM webhook_position WHERE webhook_id = $1
+`
+
+func (q *Queries) DeleteWebhookPosition(ctx context.Context, webhookID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWebhookPosition, webhookID)
+	return err
+}
+
 const dueWebhooks = `-- name: DueWebhooks :many
 SELECT id, name, url, secret, owner, kinds, types, enabled, position, created_at, created_by, updated_at, updated_by, tenant FROM webhook
 WHERE enabled AND position < $1
@@ -272,6 +281,21 @@ func (q *Queries) ListWebhooks(ctx context.Context) ([]Webhook, error) {
 	return items, nil
 }
 
+const setWebhookPosition = `-- name: SetWebhookPosition :exec
+INSERT INTO webhook_position (webhook_id, position) VALUES ($1, $2)
+ON CONFLICT (webhook_id) DO UPDATE SET position = excluded.position WHERE webhook_position.position < excluded.position
+`
+
+type SetWebhookPositionParams struct {
+	WebhookID uuid.UUID
+	Position  int64
+}
+
+func (q *Queries) SetWebhookPosition(ctx context.Context, arg SetWebhookPositionParams) error {
+	_, err := q.db.Exec(ctx, setWebhookPosition, arg.WebhookID, arg.Position)
+	return err
+}
+
 const setWebhookSecret = `-- name: SetWebhookSecret :one
 UPDATE webhook SET secret = $1, updated_at = now(), updated_by = $2
 WHERE id = $3
@@ -352,4 +376,29 @@ func (q *Queries) UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) (W
 		&i.Tenant,
 	)
 	return i, err
+}
+
+const webhookPositions = `-- name: WebhookPositions :many
+SELECT webhook_id, position FROM webhook_position
+`
+
+// Where the subscriptions of the installation stand in this tenant's database (PL47d).
+func (q *Queries) WebhookPositions(ctx context.Context) ([]WebhookPosition, error) {
+	rows, err := q.db.Query(ctx, webhookPositions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WebhookPosition
+	for rows.Next() {
+		var i WebhookPosition
+		if err := rows.Scan(&i.WebhookID, &i.Position); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

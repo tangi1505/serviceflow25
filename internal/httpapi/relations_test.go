@@ -169,7 +169,7 @@ func TestRelations(t *testing.T) {
 	}
 
 	// A person who reads only own records sees nothing of the chain, and cannot link it.
-	call(t, admin, http.MethodDelete, "/api/v1/roles/rel_own", "", nil)
+	dropRole(t, admin, "rel_own")
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "rel_own"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}

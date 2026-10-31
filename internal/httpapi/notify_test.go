@@ -144,8 +144,11 @@ func waitForMail(t *testing.T, api *testAPI, want int, match func(smtptest.Mail)
 	}
 	deadline := time.Now().Add(20 * time.Second)
 	for len(got()) < want {
-		if err := api.notifyEvents.Dispatch(ctx); err != nil {
-			t.Fatal(err)
+		// The dispatcher of every database (PL47c), as the worker runs them.
+		for _, d := range api.rt.Databases() {
+			if err := api.notifyEvents.Dispatch(d.Bind(ctx)); err != nil {
+				t.Fatal(err)
+			}
 		}
 		if time.Now().After(deadline) {
 			t.Fatalf("%d of %d mails: %+v", len(got()), want, api.smtp.Mail())

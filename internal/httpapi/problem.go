@@ -77,7 +77,7 @@ func writeError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err
 		writeProblem(w, r, http.StatusConflict, "conflict", err.Error(), nil)
 	case errors.Is(err, records.ErrForbidden):
 		writeProblem(w, r, http.StatusForbidden, "forbidden", err.Error(), nil)
-	case errors.Is(err, authz.ErrExists):
+	case errors.Is(err, authz.ErrExists), errors.Is(err, authz.ErrInUse):
 		writeProblem(w, r, http.StatusConflict, "conflict", err.Error(), nil)
 	case errors.Is(err, authz.ErrInvalid), errors.Is(err, authz.ErrNoPerson):
 		writeProblem(w, r, http.StatusUnprocessableEntity, "validation", err.Error(), nil)

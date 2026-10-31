@@ -206,6 +206,27 @@ describe("Form", () => {
     expect(state.records[2]).not.toHaveProperty("seen_at", "");
   });
 
+  it("lets the person choose the node of a new record when several are allowed (PL46)", async () => {
+    const user = userEvent.setup();
+    state.newStates = {
+      node: "",
+      nodes: [
+        { path: "root.nord", label: { de: "Polizei Nord" } },
+        { path: "root.sued", label: { de: "Polizei Süd" } },
+      ],
+    };
+    const { container } = renderAt("/types/probe.probe/new");
+    await screen.findByRole("heading", { name: "Neuer Datensatz" });
+    const node = screen.getByLabelText(/Ablegen in/);
+    expect(node).toHaveValue("");
+    await expectAccessible(container);
+    await user.type(screen.getByLabelText(/Titel/), "Wo");
+    await user.selectOptions(node, "root.sued");
+    await user.click(screen.getByRole("button", { name: "Anlegen" }));
+    await waitFor(() => expect(state.records).toHaveLength(3));
+    expect(state.records[2]).toMatchObject({ org_path: "root.sued" });
+  });
+
   it("shows a closed record read-only, without saving (WF2)", async () => {
     const closed = state.records[1]!;
     closed["state"] = "closed";

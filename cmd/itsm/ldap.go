@@ -20,7 +20,6 @@ import (
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authn"
 	"group24.de/itsm/internal/authz"
-	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/platform"
 	"group24.de/itsm/internal/records"
@@ -37,14 +36,14 @@ func ldapCmd(args []string, getenv func(string) string, stdout, stderr io.Writer
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	rt, closeDBs, err := openDatabases(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer closeDBs()
 	logger := platform.NewLogger(stderr, cfg.LogLevel)
-	az := authz.New(pool, nil, logger)
-	an := authn.New(pool, nil, auth.New(pool, nil, logger), az, records.New(pool), org.New(pool), logger, authn.Options{})
+	az := authz.New(rt, nil, logger)
+	an := authn.New(rt, nil, auth.New(rt, nil, logger), az, records.New(rt), org.New(rt), logger, authn.Options{})
 
 	switch args[0] {
 	case "list":

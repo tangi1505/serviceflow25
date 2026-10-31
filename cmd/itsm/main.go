@@ -139,11 +139,13 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	// One database, or with ITSM_TENANT_MODE=database one per tenant (PL47d, E141, E144).
+	rt, closeDBs, err := openDatabases(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer closeDBs()
+	logger.Info("databases opened", "mode", cfg.TenantMode, "databases", len(rt.Databases()))
 
 	kv, err := cache.Open(ctx, cfg.ValkeyAddr)
 	if err != nil {
@@ -151,8 +153,8 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	}
 	defer kv.Close()
 
-	az := authz.New(pool, kv, logger)
-	rec := records.New(pool)
+	az := authz.New(rt, kv, logger)
+	rec := records.New(rt)
 	rec.AfterWrite = func(ctx context.Context, typeName string) {
 		if typeName == "core.group_member" {
 			az.Invalidate(ctx)
@@ -163,13 +165,13 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	if cfg.Role.RunsWorker() {
 		workers = cfg.Workers
 	}
-	js := jobs.New(pool, jobs.Options{Logger: logger, Workers: workers, Cache: kv})
+	js := jobs.New(rt, jobs.Options{Logger: logger, Workers: workers, Cache: kv})
 	if err := jobs.RegisterEventRetention(js, cfg.EventRetention); err != nil {
 		return err
 	}
-	ev := events.New(pool, rec, kv, logger)
-	authSvc := auth.New(pool, kv, logger)
-	orgSvc := org.New(pool)
+	ev := events.New(rt, rec, kv, logger)
+	authSvc := auth.New(rt, kv, logger)
+	orgSvc := org.New(rt)
 	// Security settings of local accounts (PL28): rules, sessions, lockout, local sign-in.
 	authSvc.Settings = orgSvc.Setting
 	authSvc.AllowLocal = func(ctx context.Context, account uuid.UUID) (bool, error) {
@@ -181,7 +183,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	}
 	// The costs read their currency and hourly rate from the settings of the tree (PL20).
 	rec.Settings = orgSvc.Setting
-	an := authn.New(pool, kv, authSvc, az, rec, orgSvc, logger, authn.Options{
+	an := authn.New(rt, kv, authSvc, az, rec, orgSvc, logger, authn.Options{
 		Issuer: cfg.OIDC.Issuer, ClientID: cfg.OIDC.ClientID, ClientSecret: cfg.OIDC.ClientSecret, Name: cfg.OIDC.Name,
 		PublicURL: cfg.PublicURL, InternalURL: cfg.OIDC.InternalURL, Scopes: cfg.OIDC.Scopes, GroupsClaim: cfg.OIDC.GroupsClaim,
 	})
@@ -191,17 +193,17 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	// Calculated fields of all records of a type after a new or changed formula (PL22).
 	records.RegisterRecomputeJob(js, rec, logger)
 	// Security event log (PL27) with its nightly retention.
-	secLog := seclog.New(pool, orgSvc.Setting, logger)
+	secLog := seclog.New(rt, orgSvc.Setting, logger)
 	if err := seclog.RegisterRetentionJob(js, secLog); err != nil {
 		return err
 	}
 	// Webhooks (PL25): the dispatcher queues the deliveries, the worker sends them.
-	hooks := webhooks.New(pool, rec, js, orgSvc.Setting, az.Load, logger)
+	hooks := webhooks.New(rt, rec, js, orgSvc.Setting, az.Load, logger)
 	webhooks.RegisterDeliveryJob(js, hooks)
 	ev.Consume(events.ConsumerWebhooks, hooks.HandleBatch)
 	// Rules "if, then" (WF4): before a write through the hook of records, after it as jobs
 	// the dispatcher queues, on a schedule through a job every minute.
-	ruleEngine := engine.New(pool, rec, js, kv, logger)
+	ruleEngine := engine.New(rt, rec, js, kv, logger)
 	rec.Before = ruleEngine.Before
 	if err := ruleEngine.Register(js); err != nil {
 		return err
@@ -210,7 +212,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	// SLA clocks (WF9): they move in the transaction of the write, a job waits for each
 	// deadline; working time comes from the calendars (WF8).
 	calendars := calendar.New(rec, orgSvc.Setting)
-	slaSvc := sla.New(pool, rec, calendars, js, kv, logger)
+	slaSvc := sla.New(rt, rec, calendars, js, kv, logger)
 	slaSvc.Register(js)
 	// Escalation levels are rules with the trigger clock (WF10).
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {
@@ -228,7 +230,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	}
 	// Notifications (WF15): a consumer of the dispatcher and the jobs that find the persons and
 	// send; without a mail server no consumer, the settings can still be kept.
-	notifySvc := notify.New(pool, rec, js, az.Load, notify.NewMailer(notify.SMTP(cfg.SMTP)), logger)
+	notifySvc := notify.New(rt, rec, js, az.Load, notify.NewMailer(notify.SMTP(cfg.SMTP)), logger)
 	notifySvc.PublicURL = cfg.PublicURL
 	if cfg.SMTP.Host != "" {
 		notifySvc.Register(js)
@@ -251,7 +253,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fileSvc = files.New(pool, store, rec, orgSvc.Setting, logger)
+		fileSvc = files.New(rt, store, rec, orgSvc.Setting, logger)
 		if err := files.RegisterCleanupJob(js, fileSvc); err != nil {
 			return err
 		}
@@ -267,7 +269,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	if fileSvc != nil {
 		exportSvc.Register()
 	}
-	q := queries.New(pool)
+	q := queries.New(rt.Control())
 	checks := []httpapi.Check{
 		{Name: "database", Fn: func(ctx context.Context) error {
 			_, err := q.DatabaseNow(ctx)
@@ -283,22 +285,22 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Records:    rec,
 		Auth:       authSvc,
 		Org:        orgSvc,
-		Groups:     query.NewGroups(pool),
+		Groups:     query.NewGroups(rt),
 		Authz:      az,
 		Jobs:       js,
 		Events:     ev,
 		Authn:      an,
 		TrustProxy: cfg.TrustProxy,
-		Relations:  relations.New(pool, rec),
+		Relations:  relations.New(rt, rec),
 		Files:      fileSvc,
 		Webhooks:   hooks,
 		Search:     search.NewPostgres(rec),
 		SecLog:     secLog,
 		KV:         kv,
 		Presence:   presence.New(kv),
-		Prefs:      prefs.New(pool, rec, orgSvc.Setting),
+		Prefs:      prefs.New(rt, rec, orgSvc.Setting),
 		Forms:      forms.New(rec),
-		Customer:   customer.New(pool, rec, logger),
+		Customer:   customer.New(rt, rec, logger),
 		Bulk:       bulkAsync,
 		Export:     exportSvc,
 		Rules:      ruleEngine,
@@ -358,7 +360,19 @@ func migrate(getenv func(string) string, stdout io.Writer) error {
 	logger := platform.NewLogger(stdout, cfg.LogLevel)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return db.Migrate(ctx, cfg.DatabaseURL, logger)
+	if err := db.Migrate(ctx, cfg.DatabaseURL, logger); err != nil {
+		return err
+	}
+	if !cfg.SeparateDatabases() {
+		return nil
+	}
+	// With a database per tenant every tenant of the directory is migrated too (PL47d).
+	control, err := db.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer control.Close()
+	return db.MigrateTenants(ctx, control, cfg.TenantURL, logger)
 }
 
 func healthcheck(getenv func(string) string) error {

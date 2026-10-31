@@ -144,7 +144,8 @@ services:
     build: tools
     working_dir: /src
     environment:
-      ITSM_TEST_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm?sslmode=disable
+      # the CI and the tests have a database of their own (PL47e); scripts/ci.sh creates it
+      ITSM_TEST_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm_ci?sslmode=disable
       ITSM_TEST_VALKEY_ADDR: valkey:6379
       # the same services for the binary's commands run from the tool container
       # (go run ./cmd/itsm package install …, user create …)

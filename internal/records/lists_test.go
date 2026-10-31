@@ -79,7 +79,7 @@ fields:
 	if _, err := schema.Apply(ctx, pool, p.Types, quiet); err != nil {
 		t.Fatal(err)
 	}
-	s := New(pool)
+	s := New(db.Single(pool))
 	n, err := s.SeedLists(ctx, p)
 	if err != nil || n != 6 {
 		t.Fatalf("seed: %d %v", n, err)

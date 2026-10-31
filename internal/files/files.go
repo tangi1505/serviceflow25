@@ -33,9 +33,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
@@ -103,8 +103,7 @@ type Settings func(ctx context.Context, path, key string) (json.RawMessage, stri
 
 // Service uploads, attaches, reads and cleans up files.
 type Service struct {
-	pool    *pgxpool.Pool
-	q       *queries.Queries
+	db      *db.Router
 	store   Store
 	rec     *records.Service
 	logger  *slog.Logger
@@ -114,14 +113,17 @@ type Service struct {
 }
 
 // New returns the service. settings may be nil (then the defaults apply).
-func New(pool *pgxpool.Pool, store Store, rec *records.Service, settings Settings, logger *slog.Logger) *Service {
+func New(rt *db.Router, store Store, rec *records.Service, settings Settings, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	s := &Service{pool: pool, q: queries.New(pool), store: store, rec: rec, logger: logger, Scanner: NoScan{}}
+	s := &Service{db: rt, store: store, rec: rec, logger: logger, Scanner: NoScan{}}
 	s.limits = func(ctx context.Context) Limits { return readLimits(ctx, settings) }
 	return s
 }
+
+// tq is the query handle in the database of the request's tenant (PL47).
+func (s *Service) tq(ctx context.Context) *queries.Queries { return queries.New(s.db.Tenant(ctx)) }
 
 // Limits returns the settings that apply now.
 func (s *Service) Limits(ctx context.Context) Limits { return s.limits(ctx) }
@@ -234,7 +236,7 @@ func (s *Service) Upload(ctx context.Context, name string, body io.Reader, actor
 		return File{}, err
 	}
 	key := storageKey(id)
-	if err := s.q.InsertFile(ctx, queries.InsertFileParams{ID: id, Name: name, StorageKey: key, CreatedBy: nullUUID(actor)}); err != nil {
+	if err := s.tq(ctx).InsertFile(ctx, queries.InsertFileParams{ID: id, Name: name, StorageKey: key, CreatedBy: nullUUID(actor)}); err != nil {
 		return File{}, fmt.Errorf("files: insert: %w", err)
 	}
 	// From here on every failure removes row and content again (with a fresh context: the
@@ -243,7 +245,7 @@ func (s *Service) Upload(ctx context.Context, name string, body io.Reader, actor
 		cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 		_ = s.store.Delete(cctx, key)
-		_ = s.q.DeleteFile(cctx, id)
+		_ = s.tq(cctx).DeleteFile(cctx, id)
 		return File{}, err
 	}
 	br := bufio.NewReaderSize(body, 4096)
@@ -273,7 +275,7 @@ func (s *Service) Upload(ctx context.Context, name string, body io.Reader, actor
 			return fail(invalid("rejected", "the scanner rejected the file: "+err.Error()))
 		}
 	}
-	row, err := s.q.FinishFile(ctx, queries.FinishFileParams{
+	row, err := s.tq(ctx).FinishFile(ctx, queries.FinishFileParams{
 		ID: id, Size: pgtype.Int8{Int64: n, Valid: true},
 		Sha256:      pgtype.Text{String: hex.EncodeToString(h.Sum(nil)), Valid: true},
 		ContentType: pgtype.Text{String: ctype, Valid: true},
@@ -305,7 +307,7 @@ func nullUUID(a records.Actor) uuid.NullUUID {
 // whoever may read one of the records it is attached to. Anything else is not found.
 func (s *Service) get(ctx context.Context, id uuid.UUID) (queries.File, error) {
 	notFound := fmt.Errorf("file %s: %w", id, records.ErrNotFound)
-	row, err := s.q.GetFile(ctx, id)
+	row, err := s.tq(ctx).GetFile(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) || err == nil && row.State == "uploading" {
 		return queries.File{}, notFound
 	}
@@ -319,7 +321,7 @@ func (s *Service) get(ctx context.Context, id uuid.UUID) (queries.File, error) {
 	if row.CreatedBy.Valid && row.CreatedBy.UUID == a.AccountID && row.State == "temporary" {
 		return row, nil
 	}
-	links, err := s.q.AttachmentsOfFile(ctx, id)
+	links, err := s.tq(ctx).AttachmentsOfFile(ctx, id)
 	if err != nil {
 		return queries.File{}, fmt.Errorf("files: links: %w", err)
 	}
@@ -382,7 +384,7 @@ func (s *Service) List(ctx context.Context, typeName string, recordID uuid.UUID)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.FilesOfRecord(ctx, queries.FilesOfRecordParams{TypeName: typeName, RecordID: recordID})
+	rows, err := s.tq(ctx).FilesOfRecord(ctx, queries.FilesOfRecordParams{TypeName: typeName, RecordID: recordID})
 	if err != nil {
 		return nil, fmt.Errorf("files: list: %w", err)
 	}
@@ -423,12 +425,12 @@ func (s *Service) Attach(ctx context.Context, typeName string, recordID, fileID 
 	if err != nil {
 		return File{}, err
 	}
-	n, err := s.q.InsertAttachment(ctx, queries.InsertAttachmentParams{ID: aid, FileID: fileID, TypeName: typeName, RecordID: recordID, CreatedBy: nullUUID(actor)})
+	n, err := s.tq(ctx).InsertAttachment(ctx, queries.InsertAttachmentParams{ID: aid, FileID: fileID, TypeName: typeName, RecordID: recordID, CreatedBy: nullUUID(actor)})
 	if err != nil {
 		return File{}, fmt.Errorf("files: attach: %w", err)
 	}
 	if n == 1 {
-		if err := s.q.MarkFileStored(ctx, fileID); err != nil {
+		if err := s.tq(ctx).MarkFileStored(ctx, fileID); err != nil {
 			return File{}, fmt.Errorf("files: attach: %w", err)
 		}
 		row.State = "stored"
@@ -457,13 +459,13 @@ func (s *Service) AttachEntry(ctx context.Context, typeName string, recordID uui
 	if err != nil {
 		return File{}, err
 	}
-	n, err := s.q.InsertAttachment(ctx, queries.InsertAttachmentParams{ID: aid, FileID: fileID, TypeName: typeName, RecordID: recordID,
+	n, err := s.tq(ctx).InsertAttachment(ctx, queries.InsertAttachmentParams{ID: aid, FileID: fileID, TypeName: typeName, RecordID: recordID,
 		CreatedBy: nullUUID(actor), EntryID: uuid.NullUUID{UUID: entryID, Valid: true}})
 	if err != nil {
 		return File{}, fmt.Errorf("files: attach to entry: %w", err)
 	}
 	if n == 1 {
-		if err := s.q.MarkFileStored(ctx, fileID); err != nil {
+		if err := s.tq(ctx).MarkFileStored(ctx, fileID); err != nil {
 			return File{}, fmt.Errorf("files: attach to entry: %w", err)
 		}
 		row.State = "stored"
@@ -491,11 +493,11 @@ func (s *Service) Detach(ctx context.Context, typeName string, recordID, fileID 
 	if _, err := s.rec.Check(ctx, typeName, recordID, authz.ActionUpdate); err != nil {
 		return err
 	}
-	row, err := s.q.GetFile(ctx, fileID)
+	row, err := s.tq(ctx).GetFile(ctx, fileID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("files: detach: %w", err)
 	}
-	n, err := s.q.DeleteAttachment(ctx, queries.DeleteAttachmentParams{FileID: fileID, TypeName: typeName, RecordID: recordID})
+	n, err := s.tq(ctx).DeleteAttachment(ctx, queries.DeleteAttachmentParams{FileID: fileID, TypeName: typeName, RecordID: recordID})
 	if err != nil {
 		return fmt.Errorf("files: detach: %w", err)
 	}
@@ -512,7 +514,7 @@ func (s *Service) Cleanup(ctx context.Context) (int, error) {
 	now := time.Now()
 	removed := 0
 	for {
-		rows, err := s.q.StaleFiles(ctx, queries.StaleFilesParams{
+		rows, err := s.tq(ctx).StaleFiles(ctx, queries.StaleFilesParams{
 			UploadingBefore: pgtype.Timestamptz{Time: now.Add(-uploadGrace), Valid: true},
 			TemporaryBefore: pgtype.Timestamptz{Time: now.Add(-lim.TemporaryTTL), Valid: true},
 		})
@@ -523,7 +525,7 @@ func (s *Service) Cleanup(ctx context.Context) (int, error) {
 			if err := s.store.Delete(ctx, r.StorageKey); err != nil {
 				return removed, err
 			}
-			if err := s.q.DeleteFile(ctx, r.ID); err != nil {
+			if err := s.tq(ctx).DeleteFile(ctx, r.ID); err != nil {
 				return removed, fmt.Errorf("files: cleanup: %w", err)
 			}
 			removed++

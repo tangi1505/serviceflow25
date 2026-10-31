@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/cache"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
@@ -79,6 +81,8 @@ var (
 	ErrInvalid = errors.New("authz: invalid")
 	// ErrNoPerson says the account is not linked to a person, so it cannot hold roles.
 	ErrNoPerson = errors.New("authz: account has no person")
+	// ErrInUse says a role is still assigned somewhere and cannot be deleted (PL47b).
+	ErrInUse = errors.New("authz: role in use")
 )
 
 var (
@@ -128,6 +132,9 @@ type Access struct {
 	// Home is the tenant the account is bound to (PL44); empty for an account of the
 	// installation.
 	Home string `json:"home,omitempty"`
+	// PersonNode is the node of the person's record: where a new record lands that names no
+	// node, if the access may create there (PL46). Empty without a person.
+	PersonNode string `json:"person_node,omitempty"`
 	// Tenants are the tenants the account may work in: its own, or for an account of the
 	// installation those where it holds a role (a role at the root reaches all); NoTenant for
 	// none. Just the root while the installation has no tenants.
@@ -213,6 +220,30 @@ func (a *Access) Installation(typeName, action string) bool {
 	}
 	for _, g := range a.grantsFor(typeName, action) {
 		if g.OrgPath == org.Root && (g.Scope == ScopeAll || g.Scope == ScopeSubtree) {
+			return true
+		}
+	}
+	return false
+}
+
+// The right to evaluate across tenants (PL48, Hauptplan E137, E146): the action report_tenants
+// on the pseudo type core.tenant.
+const (
+	TenantType          = "core.tenant"
+	ActionReportTenants = "report_tenants"
+)
+
+// ReportsAcrossTenants reports whether the access may run evaluations across tenants (PL48,
+// your decision of 2026-10-30): an account of the installation that holds the right named in a
+// role at the root. Every action of a role (the built-in admin) does not count, and an account
+// of a tenant never has it, so that an administrator of one tenant cannot look past its border.
+func (a *Access) ReportsAcrossTenants() bool {
+	if a == nil || a.system || a.Home != "" {
+		return false
+	}
+	for _, g := range a.Grants {
+		if g.TypeName == TenantType && g.Action == ActionReportTenants && g.OrgPath == org.Root &&
+			(g.Scope == ScopeAll || g.Scope == ScopeSubtree) && (a.ActiveRole == "" || g.Role == a.ActiveRole) {
 			return true
 		}
 	}
@@ -326,6 +357,91 @@ func (a *Access) Nodes() []string {
 		}
 	}
 	return out
+}
+
+// Reach is a node where an action is granted: with the nodes below it, or that node alone
+// (the scope unit).
+type Reach struct {
+	Path  string
+	Below bool
+}
+
+// Covers reports whether the reach includes the node.
+func (r Reach) Covers(path string) bool {
+	if r.Below {
+		return within(path, r.Path)
+	}
+	return path == r.Path
+}
+
+// CreateReach lists where the access may create records of the type (PL46), narrowed to the
+// tenant and the node of the session's context: a role above the tenant yields the tenant. A
+// reach inside another one is left out. Conditions of grants are not weighed.
+func (a *Access) CreateReach(typeName string) []Reach {
+	b := a.boundary()
+	if b == NoTenant {
+		return nil
+	}
+	var all []Reach
+	for _, g := range a.grantsFor(typeName, ActionCreate) {
+		r := Reach{Path: g.OrgPath, Below: g.Scope != ScopeUnit}
+		for _, narrow := range []string{b, a.ActiveOrg} {
+			if narrow == "" || within(r.Path, narrow) {
+				continue
+			}
+			if !r.Below || !within(narrow, r.Path) {
+				r.Path = ""
+				break
+			}
+			r.Path = narrow
+		}
+		if r.Path != "" {
+			all = append(all, r)
+		}
+	}
+	var out []Reach
+	for i, r := range all {
+		inner := false
+		for j, o := range all {
+			// o swallows r: a larger reach, or the same one listed earlier.
+			if i != j && o.Below && o.Covers(r.Path) && (o != r || j < i) {
+				inner = true
+				break
+			}
+		}
+		if !inner {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// CreateNode is where a new record of the type lands that names no node (PL46, E136): the node
+// of the session's context; else the person's node if the access may create there; else the
+// one node it may create in. ok is false when that leaves a choice. Without any right it is
+// the tenant, and the check of the write refuses.
+func (a *Access) CreateNode(typeName string) (node string, ok bool) {
+	if a.IsSystem() {
+		return a.HomeNode(), true
+	}
+	if a.ActiveOrg != "" {
+		return a.ActiveOrg, true
+	}
+	reach := a.CreateReach(typeName)
+	if a.PersonNode != "" {
+		for _, r := range reach {
+			if r.Covers(a.PersonNode) {
+				return a.PersonNode, true
+			}
+		}
+	}
+	switch len(reach) {
+	case 0:
+		return a.HomeNode(), true
+	case 1:
+		return reach[0].Path, true
+	}
+	return "", false
 }
 
 // Filter returns the SQL condition that keeps the records the access may read (or act on
@@ -556,7 +672,7 @@ const (
 
 // Service loads access and manages roles and assignments.
 type Service struct {
-	q      *queries.Queries
+	db     *db.Router
 	groups *query.Groups
 	org    *org.Service
 	kv     *cache.Client
@@ -575,13 +691,16 @@ type localEntry struct {
 }
 
 // New returns a service on the pool; kv may be nil (then nothing is cached or shared).
-func New(pool *pgxpool.Pool, kv *cache.Client, logger *slog.Logger) *Service {
+func New(rt *db.Router, kv *cache.Client, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Service{q: queries.New(pool), groups: query.NewGroups(pool), org: org.New(pool), kv: kv, logger: logger,
+	return &Service{db: rt, groups: query.NewGroups(rt), org: org.New(rt), kv: kv, logger: logger,
 		local: map[uuid.UUID]localEntry{}}
 }
+
+// cq is the query handle in the control database: what belongs to the installation (PL47).
+func (s *Service) cq() *queries.Queries { return queries.New(s.db.Control()) }
 
 // Run keeps the generation in step with the other instances: it subscribes to the channel
 // and reads the counter at the start. It blocks until the context ends.
@@ -687,7 +806,15 @@ func (s *Service) remember(accountID uuid.UUID, gen int64, a *Access) {
 }
 
 func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error) {
-	acc, err := s.q.GetAccount(ctx, accountID)
+	// The account, its person and its assignments live in its home database (PL47b): the
+	// tenant's, or the control database for an account of the installation, whose assignments
+	// are all central (E141). The permissions of the roles are central.
+	home, _, err := s.db.Account(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	hq := queries.New(home)
+	acc, err := hq.GetAccount(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return &Access{AccountID: accountID}, nil
@@ -698,14 +825,14 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 	if acc.Tenant.Valid {
 		a.Home = acc.Tenant.String
 	}
-	tenants, err := s.q.ListTenants(ctx)
+	tenants, err := s.cq().ListTenants(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("authz: tenants: %w", err)
 	}
 	// The tenants follow from the grants, which come below; every return passes here.
 	defer func() { a.Tenants = enterable(a, tenants) }()
 	// Select lists are readable by everyone who is signed in (PL16, E93).
-	types, err := meta.Types(ctx, s.q)
+	types, err := meta.Types(ctx, s.cq())
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +846,8 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 	}
 	person := acc.PersonID.UUID
 	a.PersonID = &person
-	groups, err := s.groups.GroupsOfPerson(ctx, person)
+	persons := query.NewGroups(db.Single(home))
+	groups, err := persons.GroupsOfPerson(ctx, person)
 	if err != nil {
 		return nil, err
 	}
@@ -727,9 +855,12 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 		groups = []uuid.UUID{}
 	}
 	a.Groups = groups
-	rows, err := s.q.GrantsForPerson(ctx, queries.GrantsForPersonParams{PersonID: uuid.NullUUID{UUID: person, Valid: true}, GroupIds: groups})
+	if a.PersonNode, err = persons.NodeOfPerson(ctx, person); err != nil {
+		return nil, err
+	}
+	rows, err := s.grants(ctx, hq, person, groups)
 	if err != nil {
-		return nil, fmt.Errorf("authz: grants: %w", err)
+		return nil, err
 	}
 	needMates := false
 	for _, r := range rows {
@@ -746,11 +877,55 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 		a.Grants = append(a.Grants, g)
 	}
 	if needMates {
-		if a.Mates, err = s.groups.AccountsOfGroupMates(ctx, person); err != nil {
+		if a.Mates, err = persons.AccountsOfGroupMates(ctx, person); err != nil {
 			return nil, err
 		}
 	}
 	return a, nil
+}
+
+// grant is one permission reaching a person through one assignment.
+type grant struct {
+	TypeName  string
+	Action    string
+	Scope     string
+	Condition string
+	Fields    []byte
+	OrgPath   string
+	RoleName  string
+}
+
+// grants joins the assignments of a person and the person's groups (in the home database) with
+// the permissions of their roles (in the control database), in the order of the roles' names,
+// type names and actions, like the single query before PL47b.
+func (s *Service) grants(ctx context.Context, hq *queries.Queries, person uuid.UUID, groups []uuid.UUID) ([]grant, error) {
+	as, err := hq.AssignmentsOfHolders(ctx, queries.AssignmentsOfHoldersParams{PersonID: uuid.NullUUID{UUID: person, Valid: true}, GroupIds: groups})
+	if err != nil {
+		return nil, fmt.Errorf("authz: assignments: %w", err)
+	}
+	if len(as) == 0 {
+		return nil, nil
+	}
+	byRole := map[uuid.UUID][]string{}
+	var ids []uuid.UUID
+	for _, x := range as {
+		if _, ok := byRole[x.RoleID]; !ok {
+			ids = append(ids, x.RoleID)
+		}
+		byRole[x.RoleID] = append(byRole[x.RoleID], x.OrgPath)
+	}
+	ps, err := s.cq().PermissionsOfRoles(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("authz: permissions: %w", err)
+	}
+	var out []grant
+	for _, p := range ps {
+		for _, path := range byRole[p.RoleID] {
+			out = append(out, grant{TypeName: p.TypeName, Action: p.Action, Scope: p.Scope, Condition: p.Condition,
+				Fields: p.Fields, OrgPath: path, RoleName: p.RoleName})
+		}
+	}
+	return out, nil
 }
 
 // enterable lists the tenants an access may work in (PL44): just the root while there are
@@ -809,7 +984,7 @@ type Assignment struct {
 
 // Roles lists every role with its permissions.
 func (s *Service) Roles(ctx context.Context) ([]Role, error) {
-	rows, err := s.q.ListRoles(ctx)
+	rows, err := s.cq().ListRoles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("authz: roles: %w", err)
 	}
@@ -826,7 +1001,7 @@ func (s *Service) Roles(ctx context.Context) ([]Role, error) {
 
 // Role returns one role by name.
 func (s *Service) Role(ctx context.Context, name string) (Role, error) {
-	r, err := s.q.GetRoleByName(ctx, name)
+	r, err := s.cq().GetRoleByName(ctx, name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Role{}, ErrNotFound
@@ -840,7 +1015,7 @@ func (s *Service) role(ctx context.Context, r queries.Role) (Role, error) {
 	role := Role{ID: r.ID, Name: r.Name, Label: map[string]string{}, Description: map[string]string{}, Permissions: []Permission{}}
 	_ = json.Unmarshal(r.Label, &role.Label)
 	_ = json.Unmarshal(r.Description, &role.Description)
-	ps, err := s.q.ListPermissions(ctx, r.ID)
+	ps, err := s.cq().ListPermissions(ctx, r.ID)
 	if err != nil {
 		return Role{}, fmt.Errorf("authz: permissions: %w", err)
 	}
@@ -874,7 +1049,7 @@ func (s *Service) CreateRole(ctx context.Context, name string, label, descriptio
 	}
 	lb, _ := json.Marshal(label)
 	db, _ := json.Marshal(description)
-	r, err := s.q.InsertRole(ctx, queries.InsertRoleParams{ID: id, Name: name, Label: lb, Description: db})
+	r, err := s.cq().InsertRole(ctx, queries.InsertRoleParams{ID: id, Name: name, Label: lb, Description: db})
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -887,14 +1062,28 @@ func (s *Service) CreateRole(ctx context.Context, name string, label, descriptio
 
 // DeleteRole removes a role with its permissions and assignments; "admin" stays.
 func (s *Service) DeleteRole(ctx context.Context, name string) error {
-	r, err := s.q.GetRoleByName(ctx, name)
+	r, err := s.cq().GetRoleByName(ctx, name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		return fmt.Errorf("authz: role: %w", err)
 	}
-	n, err := s.q.DeleteRole(ctx, r.ID)
+	if r.Name == "admin" {
+		return fmt.Errorf("%w: the role admin is built in", ErrInvalid)
+	}
+	// A role in use is not deleted (PL47b): its assignments lie in every database, and no
+	// transaction spans them. The caller removes the assignments first.
+	for _, pool := range s.db.Pools() {
+		n, err := queries.New(pool).CountAssignmentsOfRole(ctx, r.ID)
+		if err != nil {
+			return fmt.Errorf("authz: assignments of role: %w", err)
+		}
+		if n > 0 {
+			return fmt.Errorf("%w: %s has %d assignments; remove them first", ErrInUse, name, n)
+		}
+	}
+	n, err := s.cq().DeleteRole(ctx, r.ID)
 	if err != nil {
 		return fmt.Errorf("authz: delete role: %w", err)
 	}
@@ -930,7 +1119,7 @@ func (s *Service) SetPermission(ctx context.Context, roleName string, p Permissi
 		}
 		fields, _ = json.Marshal(p.Fields)
 	}
-	r, err := s.q.GetRoleByName(ctx, roleName)
+	r, err := s.cq().GetRoleByName(ctx, roleName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -941,7 +1130,7 @@ func (s *Service) SetPermission(ctx context.Context, roleName string, p Permissi
 	if err != nil {
 		return err
 	}
-	_, err = s.q.UpsertPermission(ctx, queries.UpsertPermissionParams{
+	_, err = s.cq().UpsertPermission(ctx, queries.UpsertPermissionParams{
 		ID: id, RoleID: r.ID, TypeName: p.TypeName, Action: p.Action, Scope: string(p.Scope), Condition: p.Condition, Fields: fields,
 	})
 	if err != nil {
@@ -954,7 +1143,7 @@ func (s *Service) SetPermission(ctx context.Context, roleName string, p Permissi
 // UnsetPermission removes the line of a role with that scope, or with scope "" every line of
 // the type and action.
 func (s *Service) UnsetPermission(ctx context.Context, roleName, typeName, action string, scope Scope) error {
-	r, err := s.q.GetRoleByName(ctx, roleName)
+	r, err := s.cq().GetRoleByName(ctx, roleName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -965,7 +1154,7 @@ func (s *Service) UnsetPermission(ctx context.Context, roleName, typeName, actio
 	if scope != "" {
 		p.Scope = pgtype.Text{String: string(scope), Valid: true}
 	}
-	n, err := s.q.DeletePermission(ctx, p)
+	n, err := s.cq().DeletePermission(ctx, p)
 	if err != nil {
 		return fmt.Errorf("authz: unset permission: %w", err)
 	}
@@ -989,7 +1178,7 @@ func (s *Service) Assign(ctx context.Context, roleName string, personID, groupID
 	} else if !ok {
 		return Assignment{}, fmt.Errorf("%w: node %q", ErrNotFound, orgPath)
 	}
-	r, err := s.q.GetRoleByName(ctx, roleName)
+	r, err := s.cq().GetRoleByName(ctx, roleName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Assignment{}, fmt.Errorf("%w: role %q", ErrNotFound, roleName)
@@ -1000,7 +1189,11 @@ func (s *Service) Assign(ctx context.Context, roleName string, personID, groupID
 	if err != nil {
 		return Assignment{}, err
 	}
-	row, err := s.q.InsertAssignment(ctx, queries.InsertAssignmentParams{
+	target, err := s.assignDB(ctx, personID)
+	if err != nil {
+		return Assignment{}, err
+	}
+	row, err := queries.New(target).InsertAssignment(ctx, queries.InsertAssignmentParams{
 		ID: id, RoleID: r.ID, PersonID: nullUUID(personID), GroupID: nullUUID(groupID), OrgPath: orgPath, CreatedBy: nullUUID(by),
 	})
 	if err != nil {
@@ -1011,10 +1204,56 @@ func (s *Service) Assign(ctx context.Context, roleName string, personID, groupID
 }
 
 // Unassign removes an assignment.
-func (s *Service) Unassign(ctx context.Context, id uuid.UUID) error {
-	n, err := s.q.DeleteAssignment(ctx, id)
+// assignDB is where an assignment lives (PL47b): with the person of an account of the
+// installation in the control database, else in the tenant's.
+func (s *Service) assignDB(ctx context.Context, personID *uuid.UUID) (*pgxpool.Pool, error) {
+	if !s.db.Separate() || personID == nil {
+		return s.db.Tenant(ctx), nil
+	}
+	accs, err := s.cq().AccountsOfPerson(ctx, uuid.NullUUID{UUID: *personID, Valid: true})
 	if err != nil {
-		return fmt.Errorf("authz: unassign: %w", err)
+		return nil, fmt.Errorf("authz: account of person: %w", err)
+	}
+	if len(accs) > 0 {
+		return s.db.Control(), nil
+	}
+	return s.db.Tenant(ctx), nil
+}
+
+// InstallationPerson reports whether a person is the person of an account of the installation
+// (PL48): such a person lives at the root, outside every tenant, and its assignments lie
+// centrally (PL47b, E142).
+func (s *Service) InstallationPerson(ctx context.Context, personID uuid.UUID) (bool, error) {
+	accs, err := s.cq().AccountsOfPerson(ctx, uuid.NullUUID{UUID: personID, Valid: true})
+	if err != nil {
+		return false, fmt.Errorf("authz: account of person: %w", err)
+	}
+	for _, a := range accs {
+		if !a.Tenant.Valid {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// assignmentPools are the databases with assignments the session may see: the tenant's, and
+// with a database per tenant the central ones of the accounts of the installation.
+func (s *Service) assignmentPools(ctx context.Context) []*pgxpool.Pool {
+	pools := []*pgxpool.Pool{s.db.Tenant(ctx)}
+	if s.db.Separate() && s.db.Tenant(ctx) != s.db.Control() {
+		pools = append(pools, s.db.Control())
+	}
+	return pools
+}
+
+func (s *Service) Unassign(ctx context.Context, id uuid.UUID) error {
+	var n int64
+	for _, pool := range s.assignmentPools(ctx) {
+		m, err := queries.New(pool).DeleteAssignment(ctx, id)
+		if err != nil {
+			return fmt.Errorf("authz: unassign: %w", err)
+		}
+		n += m
 	}
 	if n == 0 {
 		return ErrNotFound
@@ -1025,13 +1264,25 @@ func (s *Service) Unassign(ctx context.Context, id uuid.UUID) error {
 
 // Assignments lists every assignment.
 func (s *Service) Assignments(ctx context.Context) ([]Assignment, error) {
-	rows, err := s.q.ListAssignments(ctx)
+	roles, err := s.cq().ListRoles(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("authz: assignments: %w", err)
+		return nil, fmt.Errorf("authz: roles: %w", err)
+	}
+	names := make(map[uuid.UUID]string, len(roles))
+	for _, r := range roles {
+		names[r.ID] = r.Name
+	}
+	var rows []queries.ListAssignmentsRow
+	for _, pool := range s.assignmentPools(ctx) {
+		rs, err := queries.New(pool).ListAssignments(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("authz: assignments: %w", err)
+		}
+		rows = append(rows, rs...)
 	}
 	out := make([]Assignment, 0, len(rows))
 	for _, r := range rows {
-		a := Assignment{ID: r.ID, Role: r.RoleName, OrgPath: r.OrgPath}
+		a := Assignment{ID: r.ID, Role: names[r.RoleID], OrgPath: r.OrgPath}
 		if r.PersonID.Valid {
 			p := r.PersonID.UUID
 			a.PersonID = &p
@@ -1042,12 +1293,23 @@ func (s *Service) Assignments(ctx context.Context) ([]Assignment, error) {
 		}
 		out = append(out, a)
 	}
+	// By role, then node, as before PL47b.
+	slices.SortStableFunc(out, func(a, b Assignment) int {
+		if c := strings.Compare(a.Role, b.Role); c != 0 {
+			return c
+		}
+		return strings.Compare(a.OrgPath, b.OrgPath)
+	})
 	return out, nil
 }
 
 // LinkPerson ties an account to a person; nil removes the link.
 func (s *Service) LinkPerson(ctx context.Context, accountID uuid.UUID, personID *uuid.UUID) error {
-	if err := s.q.SetAccountPerson(ctx, queries.SetAccountPersonParams{ID: accountID, PersonID: nullUUID(personID)}); err != nil {
+	home, _, err := s.db.Account(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	if err := queries.New(home).SetAccountPerson(ctx, queries.SetAccountPersonParams{ID: accountID, PersonID: nullUUID(personID)}); err != nil {
 		return fmt.Errorf("authz: link person: %w", err)
 	}
 	s.Invalidate(ctx)
