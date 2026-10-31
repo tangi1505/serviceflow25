@@ -11,8 +11,7 @@ Unten folgt der Planungsstandard §1 bis §10, übernommen aus
 Kurz das Wichtigste für die Umsetzung:
 
 - Bei jeder Unsicherheit fragen, nichts annehmen; Fragen immer mit Empfehlung.
-- Eine Aufgabe nach der anderen, je Spur (Hauptplan E147); vor dem Code die Doku, nach dem Test
-  die Doku; Stand sofort im Plan eintragen; sagen, wie die Abnahme prüft.
+- Eine Aufgabe nach der anderen; Stand sofort im Plan eintragen; sagen, wie die Abnahme prüft.
 - Nur in der Windows-Kopie schreiben; die Abnahme überträgt nach `~/police/itsm` in WSL.
 - Werkzeuge nur im Werkzeug-Container: `docker compose run --rm tools scripts/ci.sh`.
 - Lizenzkopf AGPL-3.0-only von Hand in jeder neuen Quelldatei; Dateien mit LF und UTF-8.
@@ -414,8 +413,7 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
 - Lizenzköpfe von Hand setzen: AGPL, Rechteinhaber ist die group24 AG (Hauptplan E15).
 - Keine eingestuften Inhalte nach Jira oder Confluence, keine Cloud-KI auf Kundendaten.
 - Die Umsetzung schreibt nur in die Windows-Arbeitskopie `C:\Users\PascalFrechen\Polizei\itsm`,
-  die Abnahme überträgt nach `~/police/itsm` in WSL (Hauptplan E52). Spur O schreibt in ihren
-  Worktree `C:\Users\PascalFrechen\Polizei\itsm-o`, WSL-Kopie `~/police/itsm-o` (Hauptplan E148).
+  die Abnahme überträgt nach `~/police/itsm` in WSL (Hauptplan E52).
 - Gelöschte oder umbenannte Dateien müssen auch in WSL gelöscht werden, sonst kommen sie über den
   Abgleich zurück.
 - Befehle für die Abnahme laufen in WSL im Verzeichnis `~/police/itsm`, Werkzeuge im
@@ -423,12 +421,6 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
 - Das Repository liegt vorerst nur lokal; ein Remote kommt vor Meilenstein 1 (E48).
 - Eine Aufgabe, die Code ändert, ist erst fertig, wenn die Leistungsmessung aus Hauptplan H11 grün
   ist (E32), sobald H11 steht.
-- **Zwei Spuren statt einer Aufgabe zur Zeit** (Hauptplan E147, ab 2026-10-31; Ausnahme zu §6,
-  Schritt 1): Spur K und Spur O haben je höchstens eine Aufgabe 🔨. Vor der ersten
-  Code-Änderung einer Aufgabe steht ihr Status „🔨 Spur K“ oder „🔨 Spur O“ im Nebenplan und die
-  eigene Zeile in der Tabelle „Spuren“ im Hauptplan; nach dem grünen Test folgen Status 🟢,
-  Umsetzungsstand und die geleerte Zeile. Nie zwei CIs gleichzeitig; „CI läuft“ steht in der
-  Tabelle.
 - **Kurzzeichen und Dateien der Pläne:**
 
 | Kurzzeichen | Plan | Datei |
