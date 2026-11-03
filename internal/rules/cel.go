@@ -33,6 +33,19 @@ var (
 		}
 		return e
 	}()
+	// notifyEnv is the one of the notifications (SD10): the record and the roles at it that
+	// the one who caused the event holds (by), e.g. `"requester" in by` for an answer of the
+	// requester.
+	notifyEnv = func() *cel.Env {
+		e, err := cel.NewEnv(
+			cel.Variable("record", cel.MapType(cel.StringType, cel.DynType)),
+			cel.Variable("by", cel.ListType(cel.StringType)),
+		)
+		if err != nil {
+			panic(err)
+		}
+		return e
+	}()
 )
 
 func mustEnv(variable string) *cel.Env {
@@ -68,6 +81,32 @@ func CompileClaims(expr string) (*Condition, error) {
 // names of the fields the write changes, e.g. `"kind" in changed && record.kind == "fault"`.
 func CompileRule(expr string) (*Condition, error) {
 	return compile(ruleEnv, "record", expr)
+}
+
+// CompileNotify compiles the condition of a notification (SD10): over `record` and `by`, the
+// roles at the record of the one who caused the event.
+func CompileNotify(expr string) (*Condition, error) {
+	return compile(notifyEnv, "record", expr)
+}
+
+// EvalNotify applies the condition of a notification to a record and the roles of the one who
+// caused the event.
+func (c *Condition) EvalNotify(record map[string]any, by []string) (bool, error) {
+	if c == nil {
+		return true, nil
+	}
+	if by == nil {
+		by = []string{}
+	}
+	out, _, err := c.program.Eval(map[string]any{"record": record, "by": by})
+	if err != nil {
+		return false, fmt.Errorf("rules: %q: %w", c.Expr, err)
+	}
+	b, ok := out.Value().(bool)
+	if !ok {
+		return false, errors.New("rules: " + c.Expr + " did not yield true or false")
+	}
+	return b, nil
 }
 
 func compile(e *cel.Env, variable, expr string) (*Condition, error) {

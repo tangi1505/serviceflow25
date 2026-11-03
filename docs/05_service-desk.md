@@ -44,7 +44,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD7** | Warteschlangen: mitgelieferte geteilte Suchen „Meine“, „Mein Team“, „Nicht zugewiesen“, „SLA-Risiko“; Zuweisung per Regel nach Kategorie an eine Gruppe (IP28; KF7) | 🟢 | 1 d | Nach der Installation stehen die vier Suchen in der Navigation; Störung mit Kategorie „Netzwerk › VPN“ → Gruppe Netzwerk per Regel, der Verlauf nennt die Regel; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD8** | Textbausteine für Antworten, Aufgaben und Lösungen mit Platzhaltern wie in den Benachrichtigungen (Hauptplan E120), Auswahl über „Textbaustein“ im Editor, sichtbar je Gruppe (Inventar G56) | ⬜ | 1,5 d | Baustein „Protokoll anfordern“ mit `{{record.title}}` wählen → der Text steht mit eingesetztem Titel im Editor, nur mit Tastatur bedienbar; ein Baustein einer Gruppe erscheint nur bei ihren Mitgliedern; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD9** | Telefonnotiz: Störung in einem Schritt anlegen mit Quelle „Telefon“, Anforderer per Suche, Rückruf als Aufgabe (IP28) | ⬜ | 0,5 d | „Telefonnotiz“ im Arbeitsplatz → Formular; mit Anforderer und Text anlegen → Störung mit Quelle „Telefon“ und Aufgabe „Rückruf“; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD10** | Mail hinaus: Vorlagen der Benachrichtigungen für Störung und Anfrage (angelegt, Antwort, Bitte um Bestätigung, gelöst, geschlossen) mit Kennung im Betreff; baut auf WF15 (Inventar G163; KF14) | ⬜ | 1 d | Antwort an den Anforderer → Mail in Mailpit mit der Kennung im Betreff (bis PL49 die Kurzkennung); interne Notiz → keine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD10** | Mail hinaus: Vorlagen der Benachrichtigungen für Störung und Anfrage (angelegt, Antwort, Bitte um Bestätigung, gelöst, geschlossen) mit Kennung im Betreff; baut auf WF15 (Inventar G163; KF14) | 🟢 | 1 d | Antwort an den Anforderer → Mail in Mailpit mit der Kennung im Betreff (bis PL49 die Kurzkennung); interne Notiz → keine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD11** | Mail hinein, Abholen: Postfächer per IMAP als Job abholen, Zugangsdaten nur in der Konfiguration; neue Mail → Störung; Antwort mit Kennung → Eintrag am Vorgang; Anhänge und eingebettete Bilder als Dateien; Absender → Person über `core.person_email`; IMAP-Server zum Testen im Compose-Profil `mail` (N4; Inventar G188; trägt KF14) | 🔒 Hauptplan V9, V29 | 2 d | Testmail an das Postfach im Profil `mail` → Störung mit Anhang und Anforderer; Antwort auf die Mail aus SD10 → Eintrag am selben Vorgang; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD12** | Mail hinein, Regeln und Schutz: Regeln für eingehende Mail, Sperrliste für Inhalte wie Signaturen, keine Schleifen bei Abwesenheitsnotizen (`Auto-Submitted`), unverarbeitbare Mails im Protokoll des Postfachs und als Benachrichtigung (Inventar G189, G190, G191) | 🔒 SD11 | 1,5 d | Regel „Absender endet auf @extern.example → Gruppe Netzwerk“ greift; eine Abwesenheitsnotiz erzeugt weder Störung noch Antwort; eine kaputte Mail steht im Protokoll, die Verwaltung bekommt eine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
 
@@ -193,6 +193,45 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD10 — Mail hinaus, 2026-11-03
+
+- **Grundlage:** Inventar G163, KF14; Hauptplan E165; deine Entscheidungen vom 2026-11-03:
+  fünf Mails in beide Richtungen, die Kennung vorne in Klammern, der Link führt Anforderer zum
+  Vorgang im Portal. Die Anfrage bekommt ihre Mails mit SD6.
+- **Gebaut:**
+  - Kern, Benachrichtigungen: die Bedingung sieht neben `record` die Rollen am Datensatz
+    dessen, der das Ereignis ausgelöst hat (`by`, etwa `"requester" in by`); formatierter Text
+    eines Felds (`{{record.solution}}`) kommt ohne Auszeichnung in die Mail, wie schon ein
+    Eintrag.
+  - Paket `incident` 0.5.0, Startdaten `data/mails.yaml`, jeder Betreff mit `[INC-…]` vorne:
+    „Störung eingegangen“ an den Anforderer (auch wenn er selbst meldet), „Antwort an den
+    Anforderer“, „Anforderer hat geantwortet“ an den Bearbeiter, ohne Bearbeiter an die Gruppe,
+    „Störung gelöst“ mit der Lösung und der Bitte um Bestätigung (Schlüssel aus SD5, damit
+    kein Mandant sie doppelt bekommt), „Störung geschlossen“. Wer schreibt, bekommt keine Mail
+    davon; ein privater Eintrag geht nie an den Anforderer (PL42).
+  - Oberfläche: wer keinen Arbeitsplatz hat und den Link eines Datensatzes öffnet
+    (`/types/<typ>/<id>`, wie in jeder Mail), landet auf dem Datensatz im Portal.
+- **Belegt:**
+  - Go `TestIncidentMailsOverHTTP` (eigene Datenbank): Anna meldet mit eigenem Konto und bekommt
+    „[INC-1] Ihre Störung ist eingegangen: …“; ihre Antwort ohne Bearbeiter geht an Gerd aus der
+    Gruppe; die Antwort des Service Desk an sie, die interne Notiz nicht; ihre nächste Antwort
+    an Ben als Bearbeiter, nicht an die Gruppe, nicht an sie selbst; „gelöst“ mit „Toner
+    getauscht“ ohne HTML und der Bitte um Bestätigung; „geschlossen“.
+  - Vitest `Portal.test.tsx`: der Link eines Datensatzes führt einen Nutzer ohne Arbeitsplatz
+    zum Datensatz im Portal.
+  - Angepasst: `TestMajorIncidentOverHTTP` erwartet den neuen Betreff „[INC-…] Ihre Störung ist
+    gelöst“; die Tests von SD3, SD5 und SD7 zählen 34 statt 29 Startdaten von `incident`, ein
+    neuer Mandant 62 statt 57.
+  - Ganze CI am 2026-11-03 grün im ersten Lauf (11:48 min): alle 19 Schritte, 96 Vitest-Fälle,
+    18 Browser-Tests, LZ1 p95 3,67 ms gegen 3,65 ms der Basislinie, LZ13 7.541 gegen 7.171
+    Zeilen/s.
+- **Nicht geprüft:** Mailpit im Profil `mail` habe ich nicht von Hand angesehen; die Mails
+  belegt der SMTP-Testserver des Go-Tests. Bestätigt der Anforderer die Lösung selbst, bekommt
+  er keine Mail „geschlossen“ (er hat es selbst ausgelöst); beim automatischen Schließen schon.
+  Die Mails sind reiner Text, Deutsch; englische Texte trägt der Kunde als Übersetzung der
+  Benachrichtigung nach. Die Bitte um Bestätigung nennt fünf Arbeitstage, wie die Startdaten von
+  SD3; ändert ein Mandant die Frist, muss er den Text mit ändern.
 
 ### SD7 — Warteschlangen und Zuweisung nach Kategorie, 2026-11-03
 

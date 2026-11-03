@@ -33,7 +33,7 @@ fields:
   - name: condition
     type: text
     label: {de: Bedingung, en: Condition}
-    description: {de: "CEL über record, leer für immer", en: "CEL over record, empty for always"}
+    description: {de: "CEL über record und by (die Rollen am Datensatz dessen, der es ausgelöst hat, etwa \"requester\" in by), leer für immer", en: "CEL over record and by (the roles at the record of who caused it, e.g. \"requester\" in by), empty for always"}
     max_length: 2000
   - name: recipients
     type: text

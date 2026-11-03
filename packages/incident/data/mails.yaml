@@ -1,0 +1,72 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The mails of an incident (SD10; Inventar G163, KF14) as start data each tenant changes, all
+# with the running number in front of the subject, so that a reply by mail finds its incident
+# (SD11). Who writes gets no mail of it; a private entry never goes to the requester (PL42).
+# The request brings its own with SD6.
+
+# Received: also when the requester reports it in the portal.
+- key: received_mail
+  type: core.notification
+  values:
+    name: Störung eingegangen
+    target_type: incident.incident
+    events: create
+    recipients: actors.requester
+    notify_actor: true
+    subject: "[{{record.number}}] Ihre Störung ist eingegangen: {{title}}"
+    body: "Ihre Störung „{{title}}“ ist bei uns eingegangen und hat die Nummer {{record.number}}. Den Stand sehen Sie hier: {{link}}"
+# An answer at the incident for the requester.
+- key: answer_mail
+  type: core.notification
+  values:
+    name: Antwort an den Anforderer
+    target_type: incident.incident
+    events: comment
+    recipients: actors.requester
+    subject: "[{{record.number}}] Neue Antwort zu Ihrer Störung: {{title}}"
+    body: "{{actor}} schreibt:\n\n{{entry}}\n\nAntworten Sie im Portal: {{link}}"
+# The requester answered: to the assignee, without one to the group.
+- key: requester_answer_mail
+  type: core.notification
+  values:
+    name: Anforderer hat geantwortet
+    target_type: incident.incident
+    events: comment
+    condition: '"requester" in by && has(record.actors) && has(record.actors.assignee) && size(record.actors.assignee) > 0'
+    recipients: actors.assignee
+    subject: "[{{record.number}}] Antwort des Anforderers: {{title}}"
+    body: "{{actor}} schreibt:\n\n{{entry}}\n\n{{link}}"
+- key: requester_answer_group_mail
+  type: core.notification
+  values:
+    name: Anforderer hat geantwortet, ohne Bearbeiter
+    target_type: incident.incident
+    events: comment
+    condition: '"requester" in by && (!has(record.actors) || !has(record.actors.assignee) || size(record.actors.assignee) == 0)'
+    recipients: actors.group
+    subject: "[{{record.number}}] Antwort des Anforderers: {{title}}"
+    body: "{{actor}} schreibt:\n\n{{entry}}\n\nDie Störung hat noch keinen Bearbeiter: {{link}}"
+# Resolved, with the request to confirm or refuse the solution (the key from SD5 stays, so a
+# tenant does not get it twice); also for an incident resolved with its major incident.
+- key: solved_mail
+  type: core.notification
+  values:
+    name: Störung gelöst
+    target_type: incident.incident
+    events: transition
+    condition: record.state == "resolved"
+    recipients: actors.requester
+    subject: "[{{record.number}}] Ihre Störung ist gelöst: {{title}}"
+    body: "Ihre Störung „{{title}}“ ist gelöst:\n\n{{record.solution}}\n\nBitte bestätigen Sie die Lösung oder lehnen Sie sie mit einem Grund ab: {{link}}\nOhne Antwort schließen wir die Störung nach fünf Arbeitstagen."
+- key: closed_mail
+  type: core.notification
+  values:
+    name: Störung geschlossen
+    target_type: incident.incident
+    events: transition
+    condition: record.state == "closed"
+    recipients: actors.requester
+    subject: "[{{record.number}}] Ihre Störung ist geschlossen: {{title}}"
+    body: "Ihre Störung „{{title}}“ ist geschlossen. Tritt sie wieder auf, melden Sie bitte eine neue im Portal: {{link}}"

@@ -14,6 +14,7 @@ import (
 
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
+	"group24.de/itsm/internal/richtext"
 )
 
 // Placeholders without logic (WF15): {{record.<field>}} for a field or system field of the
@@ -90,6 +91,10 @@ func Render(text string, d Data) string {
 // valueText is a value as a mail shows it: the label of a choice in the language, empty for
 // nothing.
 func valueText(t meta.Type, field string, v any, lang string) string {
+	if f, ok := t.Field(field); ok && f.Type == meta.FieldText && f.Format == meta.FormatRich && v != nil {
+		// Mails are plain text: formatted text without its markup, like an entry (UI7, SD10).
+		return richtext.Text(str(v))
+	}
 	if f, ok := t.Field(field); ok && f.Type == meta.FieldSequence && v != nil {
 		// The running number with its prefix (PL49), as in the subject "INC-24817".
 		return f.Prefix + str(v)

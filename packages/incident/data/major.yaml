@@ -3,7 +3,7 @@
 #
 # The major incident (SD5, SD-Plan N3; IP19) as start data each tenant changes: whom declaring
 # tells, when one is declared by itself, that the incidents belonging to it are resolved with
-# it, the mail to the requesters on a solution and the notice in the portal.
+# it and the notice in the portal; the mail to the requester on a solution is in mails.yaml.
 
 # The distribution list: the administration keeps its members; each gets the mail.
 - key: verteiler
@@ -45,17 +45,6 @@
     condition: record.major == true && record.state == "resolved" && "state" in changed
     actions:
       - related: {kind: incident.part_of, direction: in, transition: resolve, copy: [solution, solution_kind]}
-# The requester hears of the solution, also of one that came with the major incident.
-- key: solved_mail
-  type: core.notification
-  values:
-    name: Störung gelöst
-    target_type: incident.incident
-    events: transition
-    condition: record.state == "resolved"
-    recipients: actors.requester
-    subject: "Ihre Störung {{record.number}} ist gelöst"
-    body: "„{{title}}“ ist gelöst. Die Lösung steht in der Störung; bitte bestätigen Sie sie oder lehnen Sie sie ab: {{link}}"
 # Under "Aktuell" in the portal: the open major incidents with their message.
 - key: aktuell
   type: core.portal_notice

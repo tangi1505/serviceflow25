@@ -41,7 +41,7 @@ func TestMajorIncidentOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/incident", 29}} {
+	}{{"../../packages/sd", 28}, {"../../packages/incident", 34}} {
 		p := installPackage(t, ctx, api.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -185,7 +185,8 @@ func TestMajorIncidentOverHTTP(t *testing.T) {
 		if b["solution"] != "Datenbankserver neu gestartet" || fmt.Sprint(b["solution_kind"]) != fixed {
 			t.Fatalf("part %d: %v", i+1, b)
 		}
-		waitFor(fmt.Sprintf("the mail to requester %d", i+1), mailTo(fmt.Sprintf("sd5-%d@example.org", i+1), fmt.Sprint(b["number"])+" ist gelöst"))
+		// The subject carries the number in front since SD10.
+		waitFor(fmt.Sprintf("the mail to requester %d", i+1), mailTo(fmt.Sprintf("sd5-%d@example.org", i+1), fmt.Sprintf("[INC-%v] Ihre Störung ist gelöst", b["number"])))
 	}
 	if list := notices(); len(list) != 0 {
 		t.Fatalf("notices after the solution: %v", list)

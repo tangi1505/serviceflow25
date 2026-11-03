@@ -68,8 +68,16 @@ const shellRoute = createRoute({
     if (me.password_expired && location.pathname !== "/password") {
       throw redirect({ to: "/password" });
     }
-    // The workplace is for agents (UI10); everyone else goes to the portal, also by address.
+    // The workplace is for agents (UI10); everyone else goes to the portal, also by address. The
+    // link of a record, as in a mail (SD10), leads to the record in the portal.
     if (me.workplace === false && location.pathname !== "/password") {
+      const [, typeName, id] = location.pathname.match(/^\/types\/([^/]+)\/([^/]+)$/) ?? [];
+      if (typeName && id && !["new", "customize", "workflow"].includes(id)) {
+        throw redirect({
+          to: "/portal/$typeName/$id",
+          params: { typeName: decodeURIComponent(typeName), id: decodeURIComponent(id) },
+        });
+      }
       throw redirect({ to: "/portal" });
     }
   },

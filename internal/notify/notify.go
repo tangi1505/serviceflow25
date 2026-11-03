@@ -129,7 +129,7 @@ func (s *Service) Check(ctx context.Context, t meta.Type, rec map[string]any) []
 		}
 	}
 	if c, _ := rec["condition"].(string); c != "" {
-		if _, err := rules.Compile(c); err != nil {
+		if _, err := rules.CompileNotify(c); err != nil {
 			add("condition", "type", err.Error())
 		}
 	}
@@ -343,7 +343,7 @@ func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, er
 		if err != nil || !ok {
 			return nil, err
 		}
-		if !s.holds(n, rec) {
+		if !s.holds(n, rec, s.rolesOf(ctx, ev.TypeName, ev.Actor, rec)) {
 			return nil, nil
 		}
 		targets, notifyActor = n.Recipients, n.NotifyActor
@@ -477,21 +477,44 @@ func (s *Service) readsPrivate(ctx context.Context, person uuid.UUID, typeName s
 	return false, nil
 }
 
-// holds evaluates the condition of a notification; one that cannot decide (a missing field)
-// sends nothing and is logged.
-func (s *Service) holds(n notification, rec records.Record) bool {
+// holds evaluates the condition of a notification with the roles of the one who caused the
+// event (by, SD10); one that cannot decide (a missing field) sends nothing and is logged.
+func (s *Service) holds(n notification, rec records.Record, by []string) bool {
 	if n.Condition == "" {
 		return true
 	}
-	c, err := rules.Compile(n.Condition)
+	c, err := rules.CompileNotify(n.Condition)
 	if err == nil {
 		var ok bool
-		if ok, err = c.Eval(rec); err == nil {
+		if ok, err = c.EvalNotify(rec, by); err == nil {
 			return ok
 		}
 	}
 	s.logger.Warn("notify: condition failed", "notification", n.Name, "error", err.Error())
 	return false
+}
+
+// rolesOf are the roles at the record that the one who caused the event holds, as a person or
+// through a group (SD10); none for the system or an account without a person.
+func (s *Service) rolesOf(ctx context.Context, typeName string, actor uuid.NullUUID, rec records.Record) []string {
+	if !actor.Valid || s.rights == nil {
+		return nil
+	}
+	acc, err := s.rights(ctx, actor.UUID)
+	if err != nil || acc == nil {
+		return nil
+	}
+	t, err := s.rec.Type(ctx, typeName)
+	if err != nil {
+		return nil
+	}
+	var by []string
+	for _, role := range t.Actors {
+		if acc.HoldsAnyRole(rec, []string{role.Name}) {
+			by = append(by, role.Name)
+		}
+	}
+	return by
 }
 
 // notification reads one setting; a removed or inactive one is none.

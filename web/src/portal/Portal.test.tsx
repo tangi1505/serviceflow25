@@ -53,6 +53,14 @@ describe("Portal", () => {
     home.unmount();
     const list = renderAt("/types/probe.probe");
     await waitFor(() => expect(list.router.state.location.pathname).toBe("/portal"));
+    list.unmount();
+    // The link of a record in a mail leads to the record in the portal (SD10).
+    const record = renderAt(`/types/probe.probe/${state.records[0]!.id}`);
+    await waitFor(() =>
+      expect(record.router.state.location.pathname).toBe(
+        `/portal/probe.probe/${state.records[0]!.id}`,
+      ),
+    );
   });
 
   // SD5: the band "Aktuell" under the head, on every page of the portal, its message cut to
