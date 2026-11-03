@@ -46,8 +46,8 @@ Verfeinern (dort §11) werden in `glpi` geklärt und dann hierher übernommen.
 
 | Rolle | Heute | Tut |
 | --- | --- | --- |
-| **Umsetzung** | Claude | analysiert, baut, dokumentiert, prüft selbst vor, trägt den Stand ein |
-| **Abnahme** | Pascal | prüft und nimmt ab, entscheidet, überträgt, committet und pusht |
+| **Umsetzung** | Claude | analysiert, baut, dokumentiert, prüft selbst vor, trägt den Stand ein, committet |
+| **Abnahme** | Pascal | prüft und nimmt ab, entscheidet, überträgt, committet und pusht als Einzige |
 | **Fachseite** | der Kunde | entscheidet fachlich, beantwortet Fragen |
 | **Betrieb** | die Kollegen | spielt auf der Prod ein |
 
@@ -414,7 +414,7 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
 
 - **Neues Projekt:** Der Standard gilt hier ganz, im Aufbau der Pläne wie im Code (§1,
   „Bestehende Vorhaben" betrifft dieses Verzeichnis nicht).
-- Committen und Pushen macht nur die Abnahme.
+- Committen nach jeder fertigen Aufgabe mit kurzer Nachricht; Pushen macht nur die Abnahme.
 - Dateien mit LF und UTF-8; mehrzeilige Ersetzungen nie mit `perl -0777`; danach Zeilenenden und
   Umlaute prüfen.
 - Lizenzköpfe von Hand setzen: AGPL, Rechteinhaber ist die group24 AG (Hauptplan E15).
