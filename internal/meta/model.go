@@ -54,6 +54,9 @@ const (
 	FieldDateTime  FieldType = "datetime"  // timestamptz
 	FieldChoice    FieldType = "choice"    // text, restricted to Options
 	FieldReference FieldType = "reference" // uuid, points to a record of type To
+	// FieldSequence is a running number the core gives every new record, per type and tenant
+	// (PL49, Kern-Plan E63): stored as a number, shown with the Prefix (INC-24817).
+	FieldSequence FieldType = "sequence" // bigint
 )
 
 // Portal says how a type appears in the portal (UI10): the fields a user fills when creating
@@ -65,8 +68,12 @@ type Portal struct {
 // FormatRich marks a text field as formatted text (UI7).
 const FormatRich = "rich"
 
+// FormatPriority marks a number field as a priority (UI29): the interface shows it as a mark
+// P1, P2, … instead of a plain number.
+const FormatPriority = "priority"
+
 // FieldTypes lists the supported kinds in a stable order (for messages).
-var FieldTypes = []FieldType{FieldText, FieldNumber, FieldBoolean, FieldDate, FieldDateTime, FieldChoice, FieldReference}
+var FieldTypes = []FieldType{FieldText, FieldNumber, FieldBoolean, FieldDate, FieldDateTime, FieldChoice, FieldReference, FieldSequence}
 
 // Option is one allowed value of a choice field.
 type Option struct {
@@ -92,6 +99,9 @@ type Field struct {
 	Options []Option `json:"options,omitempty" yaml:"options"`
 	// To is the target of a reference field as "package.type".
 	To string `json:"to,omitempty" yaml:"to"`
+	// Prefix comes before the number of a sequence field (PL49): "INC-" shows 24817 as
+	// INC-24817. Changing it changes how every record shows.
+	Prefix string `json:"prefix,omitempty" yaml:"prefix"`
 	// Default is the initial value, as the field's JSON representation.
 	Default any `json:"default,omitempty" yaml:"default"`
 	// Translatable text fields keep a value per language (PL21, E98): the column holds the
@@ -136,11 +146,28 @@ type Rollup struct {
 
 // State is one status of the state model of a type (WF1). Exactly one state is the initial
 // one; a new record starts there.
+// Point is a position in the workflow graph (UI26.2), in pixels of its canvas.
+type Point struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
 type State struct {
 	Name    string `json:"name" yaml:"name"`
 	Label   Label  `json:"label" yaml:"label"`
 	Initial bool   `json:"initial,omitempty" yaml:"initial"`
+	// Category says what kind of state it is, for the colour of its mark in the interface
+	// (UI29): open, active, waiting or done. Empty: open for the initial state, else active.
+	Category string `json:"category,omitempty" yaml:"category"`
 }
+
+// The categories of a state (UI29).
+const (
+	CategoryOpen    = "open"
+	CategoryActive  = "active"
+	CategoryWaiting = "waiting"
+	CategoryDone    = "done"
+)
 
 // Transition moves a record from one of the From states to the To state. When is a CEL
 // condition over the record (Hauptplan E16); empty means always.
@@ -150,7 +177,23 @@ type Transition struct {
 	From  []string `json:"from" yaml:"from"`
 	To    string   `json:"to" yaml:"to"`
 	When  string   `json:"when,omitempty" yaml:"when"`
+	// By names the roles at the record that alone may take the transition (SD-Plan N8): the
+	// person or one of their groups holds one of them, such as the requester confirming a
+	// solution in the portal. Taking it needs no other right on the type.
+	By []string `json:"by,omitempty" yaml:"by"`
+	// Comment "required" makes the transition take a text, kept as an entry at the record in
+	// the same write (SD-Plan N8; the reason of a refused solution); "optional" offers it.
+	Comment string `json:"comment,omitempty" yaml:"comment"`
+	// Disabled is set by the customer layer (UI26.1): the transition stays in the definition
+	// but is neither offered nor executed.
+	Disabled bool `json:"disabled,omitempty" yaml:"-"`
 }
+
+// Transition comments (SD-Plan N8).
+const (
+	CommentRequired = "required"
+	CommentOptional = "optional"
+)
 
 // Type is an entity type: the definition behind one table (E33).
 type Type struct {
@@ -167,6 +210,13 @@ type Type struct {
 	// States and Transitions form the state model (WF1); a type without states has no status.
 	States      []State      `json:"states,omitempty" yaml:"states"`
 	Transitions []Transition `json:"transitions,omitempty" yaml:"transitions"`
+	// Layout is where the workflow editor draws each state in its graph (UI26.2, UI-Plan
+	// E27): set by the customer layer, read by the interface alone, never by the engine. A
+	// state without a position is arranged by the editor.
+	Layout map[string]Point `json:"layout,omitempty" yaml:"-"`
+	// Timed tells that SLA clocks run on the records of the type; the API sets it, so that the
+	// list shows the deadline (UI34). No part of a package.
+	Timed bool `json:"timed,omitempty" yaml:"-"`
 	// Traits are the definition building blocks the type pulls in by name (architektur.md B2;
 	// PL16 knows "list", PL17 adds the rest).
 	Traits []string `json:"traits,omitempty" yaml:"traits"`

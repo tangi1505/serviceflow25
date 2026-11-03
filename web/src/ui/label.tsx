@@ -13,7 +13,7 @@ import { cn } from "@/ui/utils";
 export function Label({ className, ...props }: ComponentProps<typeof LabelPrimitive.Root>) {
   return (
     <LabelPrimitive.Root
-      className={cn("text-sm font-medium leading-none peer-disabled:opacity-50", className)}
+      className={cn("text-[13px] font-medium leading-tight peer-disabled:opacity-50", className)}
       {...props}
     />
   );

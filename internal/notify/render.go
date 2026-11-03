@@ -90,6 +90,10 @@ func Render(text string, d Data) string {
 // valueText is a value as a mail shows it: the label of a choice in the language, empty for
 // nothing.
 func valueText(t meta.Type, field string, v any, lang string) string {
+	if f, ok := t.Field(field); ok && f.Type == meta.FieldSequence && v != nil {
+		// The running number with its prefix (PL49), as in the subject "INC-24817".
+		return f.Prefix + str(v)
+	}
 	if f, ok := t.Field(field); ok && f.Type == meta.FieldChoice {
 		for _, o := range f.Options {
 			if o.Value == fmt.Sprint(v) {

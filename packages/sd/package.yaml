@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The base package of the service desk (SD1; SD-Plan E1, E4): the select lists category,
+# channel and kind of solution, and the trait ticket with the fields and roles that incident
+# (SD2) and request (SD6) share. The values are provisional (SD-Plan E3, E4) until the business
+# side answers Hauptplan V32; they can be changed in operation.
+name: sd
+version: 0.1.0
+label:
+  de: Service Desk
+  en: Service desk
+# The roles of the trait ticket name persons and groups.
+depends: [core]

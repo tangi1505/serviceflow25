@@ -13,11 +13,19 @@ import { vi } from "vitest";
 import { hiddenOf } from "@/portal/conditions";
 
 import type {
+  Assignment,
   Clock,
+  CustomerChange,
+  CustomerLayer,
   Field,
+  Label,
+  State,
+  Transition,
   FieldStates,
   FormOffer,
+  Permission,
   RecordData,
+  Role,
   TimelineItem,
   TypeDefinition,
 } from "@/api/client";
@@ -114,6 +122,106 @@ export const probeType: TypeDefinition = {
   ],
 };
 
+// customized applies a customer layer to a type the way the server does (PL43), for the
+// operations the editor sends (UI25); refusals the tests need are answered before.
+export function customized(base: TypeDefinition, layer?: CustomerLayer): TypeDefinition {
+  let fields = base.fields.map((f) => ({ ...f }));
+  let states = (base.states ?? []).map((s) => ({ ...s }));
+  let transitions = (base.transitions ?? []).map((tr) => ({ ...tr }));
+  let layout = base.layout;
+  for (const c of layer?.changes ?? []) {
+    const i = fields.findIndex((f) => f.name === c.field);
+    const f = fields[i];
+    switch (c.op) {
+      case "add_field":
+        fields.push(c.new as unknown as Field);
+        break;
+      case "change_field": {
+        const set = (c.set ?? {}) as Partial<Field>;
+        if (f) {
+          fields[i] = {
+            ...f,
+            ...set,
+            label: { ...f.label, ...set.label },
+            description: { ...f.description, ...set.description },
+          };
+        }
+        break;
+      }
+      case "add_options":
+        if (f) {
+          fields[i] = {
+            ...f,
+            options: [...(f.options ?? []), ...((c.options ?? []) as Field["options"] & object)],
+          };
+        }
+        break;
+      case "hide_field":
+      case "show_field":
+        if (f) {
+          fields[i] = { ...f, hidden: c.op === "hide_field" };
+        }
+        break;
+      case "remove_field":
+        fields = fields.filter((x) => x.name !== c.field);
+        break;
+      case "move_field":
+        if (f) {
+          const rest = fields.filter((x) => x.name !== c.field);
+          const at = c.after ? rest.findIndex((x) => x.name === c.after) + 1 : 0;
+          rest.splice(at, 0, f);
+          fields = rest;
+        }
+        break;
+      // The state model (UI26.1), as far as the editor's tests need it.
+      case "add_state":
+        states.push(c.state as unknown as State);
+        if ((c.state as { initial?: boolean })["initial"]) {
+          states = states.map((s) => ({ ...s, initial: s.name === c.field }));
+        }
+        break;
+      case "change_state": {
+        const set = (c.set ?? {}) as { label?: Label; initial?: boolean };
+        states = states.map((s) =>
+          s.name === c.field
+            ? { ...s, label: { ...s.label, ...set.label }, initial: set.initial ?? s.initial }
+            : set.initial
+              ? { ...s, initial: false }
+              : s,
+        );
+        break;
+      }
+      case "remove_state":
+        states = states.filter((s) => s.name !== c.field);
+        break;
+      case "add_transition":
+        transitions.push(c.transition as unknown as Transition);
+        break;
+      case "change_transition": {
+        const set = (c.set ?? {}) as Partial<Transition>;
+        transitions = transitions.map((tr) =>
+          tr.name === c.field ? { ...tr, ...set, label: { ...tr.label, ...set.label } } : tr,
+        );
+        break;
+      }
+      case "remove_transition":
+        transitions = transitions.filter((tr) => tr.name !== c.field);
+        break;
+      case "disable_transition":
+      case "enable_transition":
+        transitions = transitions.map((tr) =>
+          tr.name === c.field ? { ...tr, disabled: c.op === "disable_transition" } : tr,
+        );
+        break;
+      // The layout of the graph (UI26.2) replaces the whole one.
+      case "set_layout":
+        layout = c.layout as TypeDefinition["layout"];
+        break;
+    }
+  }
+  return { ...base, fields, states, transitions, layout };
+}
+
 // matches mirrors the where of the JSON query for the operators the filters write (UI4).
 function matches(rec: RecordData, where: unknown): boolean {
   if (!where || typeof where !== "object") {
@@ -127,7 +235,9 @@ function matches(rec: RecordData, where: unknown): boolean {
     return (node["or"] as unknown[]).some((w) => matches(rec, w));
   }
   const v = rec[String(node["field"])];
-  const [op, want] = Object.entries(node).find(([k]) => k !== "field") ?? ["", undefined];
+  const [op, given] = Object.entries(node).find(([k]) => k !== "field") ?? ["", undefined];
+  // "@now" is the moment of the query on a system time (UI34).
+  const want = given === "@now" ? new Date().toISOString() : given;
   switch (op) {
     case "eq":
       return v === want;
@@ -145,6 +255,8 @@ function matches(rec: RecordData, where: unknown): boolean {
       return v !== null && v !== undefined && String(v) >= String(want);
     case "lte":
       return v !== null && v !== undefined && String(v) <= String(want);
+    case "gt":
+      return v !== null && v !== undefined && String(v) > String(want);
     case "null":
       return v === null || v === undefined || v === "";
   }
@@ -165,6 +277,12 @@ function applies(name: string, rec: RecordData): { allowed: boolean; reason?: st
 
 export type FakeState = {
   signedIn: boolean;
+  // roleTransitions are transitions only a role may take (SD-Plan N8), added to the probe
+  // type; holder says whether the signed-in person holds the role. comments keeps their texts.
+  roleTransitions?: (Transition & { holder: boolean })[];
+  comments?: string[];
+  // timed marks the probe type as one with SLA clocks (UI34).
+  timed?: boolean;
   records: RecordData[];
   // newStates are the field states of a new record (WF2); a record in state "closed" is locked.
   newStates?: Partial<FieldStates>;
@@ -194,6 +312,13 @@ export type FakeState = {
   // tenants are the tenants the session may switch between (PL44); tenant the one it is in.
   tenants?: { path: string; label: Record<string, string> }[];
   tenant?: string;
+  // customize lets the session change types (UI25); customer are the customer layers by type.
+  customize?: boolean;
+  customer?: Record<string, CustomerLayer>;
+  // manageRights offers the role editor (UI27); roles and assignments are what it edits.
+  manageRights?: boolean;
+  roles?: Role[];
+  assignments?: Assignment[];
   // exportJob makes an export a job (UI5, more than 100,000 rows); jobState is its state.
   exportJob?: boolean;
   jobState?: string;
@@ -264,6 +389,8 @@ export function fakeApi(state: FakeState) {
     const session = () => ({
       ...me,
       workplace: state.workplace ?? true,
+      customize: state.customize ?? false,
+      manage_rights: state.manageRights ?? false,
       person_id: state.personId,
       tenant: state.tenant ?? "root",
       tenants: state.tenants,
@@ -284,7 +411,126 @@ export function fakeApi(state: FakeState) {
       return new Response(null, { status: 204 });
     }
     if (url.pathname === "/api/v1/types") {
-      return json(200, [probeType, ...(state.extraTypes ?? [])]);
+      return json(200, [
+        {
+          ...customized(probeType, state.customer?.["probe.probe"]),
+          ...(state.timed ? { timed: true } : {}),
+          ...(state.roleTransitions
+            ? { transitions: [...probeType.transitions!, ...state.roleTransitions] }
+            : {}),
+        },
+        ...(state.extraTypes ?? []),
+      ]);
+    }
+    // The condition check of the workflow editor (UI26.1): a condition with a dangling
+    // operator is the one the tests use as invalid.
+    if (url.pathname.endsWith(":check-condition") && method === "POST") {
+      if (!state.customize) {
+        return problem(403, "forbidden");
+      }
+      const when = (JSON.parse(bodyText) as { when: string }).when;
+      return /[<>=!]\s*$/.test(when)
+        ? json(200, { ok: false, error: "Syntax error: mismatched input '<EOF>'" })
+        : json(200, { ok: true });
+    }
+    // The customer layer (PL43) as the editor uses it (UI25).
+    const layerPath = /^\/api\/v1\/types\/([^/]+)\/customer(?:\/([^/]+))?$/.exec(url.pathname);
+    if (layerPath || url.pathname === "/api/v1/customer") {
+      if (!state.customize) {
+        return problem(403, "forbidden");
+      }
+      state.customer ??= {};
+      if (!layerPath) {
+        return json(
+          200,
+          Object.values(state.customer).filter((l) => l.changes.length > 0),
+        );
+      }
+      const typeName = decodeURIComponent(layerPath[1]!);
+      const layer = (state.customer[typeName] ??= { type: typeName, version: 0, changes: [] });
+      if (method === "GET") {
+        return json(200, layer);
+      }
+      const seen =
+        method === "DELETE"
+          ? Number(url.searchParams.get("version"))
+          : (JSON.parse(bodyText) as { version: number }).version;
+      if (seen !== layer.version) {
+        return problem(409, "conflict");
+      }
+      if (method === "DELETE") {
+        layer.changes = layer.changes.filter((c) => c.id !== layerPath[2]);
+      } else {
+        const c = (JSON.parse(bodyText) as { change: CustomerChange }).change;
+        if (c.op === "add_field" && !c.field.startsWith("k_")) {
+          return problem(422, "validation", {
+            errors: [
+              {
+                field: c.field,
+                code: "invalid",
+                message: "a field of the customer layer is named k_…",
+              },
+            ],
+          });
+        }
+        if (c.op === "hide_field" && c.field === "title") {
+          return problem(422, "validation", {
+            errors: [
+              {
+                field: c.field,
+                code: "invalid",
+                message: "title is the title of probe.probe and stays visible",
+              },
+            ],
+          });
+        }
+        if (
+          (c.op === "remove_state" || c.op === "remove_transition") &&
+          !c.field.startsWith("k_")
+        ) {
+          return problem(422, "validation", {
+            errors: [
+              { field: c.field, code: "invalid", message: `${c.field} belongs to the package` },
+            ],
+          });
+        }
+        if (c.op === "set_layout") {
+          const names = new Set((customized(probeType, layer).states ?? []).map((s) => s.name));
+          const bad = Object.keys(c.layout ?? {}).find((n) => !names.has(n));
+          if (bad) {
+            return problem(422, "validation", {
+              errors: [
+                {
+                  field: "layout",
+                  code: "invalid",
+                  message: `layout names ${bad}, which is not a state of probe.probe`,
+                },
+              ],
+            });
+          }
+        }
+        if (c.op === "remove_field" && !c.field.startsWith("k_")) {
+          return problem(422, "validation", {
+            errors: [
+              {
+                field: c.field,
+                code: "invalid",
+                message: `${c.field} belongs to the package: hide it instead`,
+              },
+            ],
+          });
+        }
+        layer.changes.push({
+          ...c,
+          id: `c${layer.version + 1}`,
+          at: "2026-11-02T09:00:00Z",
+          by: me.id,
+          by_name: me.display_name,
+          status: "active",
+        });
+      }
+      layer.version++;
+      return json(200, layer);
     }
     if (url.pathname.endsWith(":field-states") && !url.pathname.includes("probe.probe")) {
       // Other types have no field states here.
@@ -366,8 +612,101 @@ export function fakeApi(state: FakeState) {
         language: val("language", "de"),
         time_zone: val("time_zone", "Europe/Berlin"),
         theme: val("theme", "neutral"),
+        color_scheme: val("color_scheme", "system"),
+        density: val("density", "normal"),
         defaults: state.settings["defaults"] ?? {},
       });
+    }
+    // Roles and assignments (PL8) as the role editor uses them (UI27).
+    if (
+      url.pathname.startsWith("/api/v1/roles") ||
+      url.pathname.startsWith("/api/v1/assignments")
+    ) {
+      if (!state.manageRights) {
+        return problem(403, "forbidden");
+      }
+      state.roles ??= [];
+      state.assignments ??= [];
+      const roles = state.roles;
+      if (url.pathname === "/api/v1/roles") {
+        if (method === "POST") {
+          const body = JSON.parse(bodyText) as { name: string; label?: Record<string, string> };
+          if (roles.some((r) => r.name === body.name)) {
+            return problem(409, "conflict");
+          }
+          const role: Role = {
+            id: `role-${body.name}`,
+            name: body.name,
+            label: body.label ?? {},
+            description: {},
+            permissions: [],
+          };
+          roles.push(role);
+          return json(201, role);
+        }
+        return json(200, roles);
+      }
+      const rolePath = /^\/api\/v1\/roles\/([^/]+)(\/permissions(?:\/([^/]+)\/([^/]+))?)?$/.exec(
+        url.pathname,
+      );
+      if (rolePath) {
+        const role = roles.find((r) => r.name === decodeURIComponent(rolePath[1]!));
+        if (!role) {
+          return problem(404, "not_found");
+        }
+        if (!rolePath[2]) {
+          if (method === "DELETE") {
+            state.roles = roles.filter((r) => r !== role);
+            state.assignments = state.assignments.filter((a) => a.role !== role.name);
+            return new Response(null, { status: 204 });
+          }
+          return json(200, role);
+        }
+        if (method === "PUT") {
+          const p = JSON.parse(bodyText) as Permission;
+          if (p.condition && /[<>=!]\s*$/.test(p.condition)) {
+            return problem(422, "validation", {
+              errors: [{ field: "condition", code: "invalid", message: "Syntax error" }],
+            });
+          }
+          role.permissions = [
+            ...role.permissions.filter(
+              (x) => !(x.type_name === p.type_name && x.action === p.action && x.scope === p.scope),
+            ),
+            p,
+          ];
+          return new Response(null, { status: 204 });
+        }
+        if (method === "DELETE") {
+          const typeName = decodeURIComponent(rolePath[3]!);
+          const action = decodeURIComponent(rolePath[4]!);
+          const scope = url.searchParams.get("scope");
+          role.permissions = role.permissions.filter(
+            (x) =>
+              !(x.type_name === typeName && x.action === action && (!scope || x.scope === scope)),
+          );
+          return new Response(null, { status: 204 });
+        }
+      }
+      if (url.pathname === "/api/v1/assignments") {
+        if (method === "POST") {
+          const body = JSON.parse(bodyText) as Omit<Assignment, "id">;
+          const a: Assignment = {
+            id: `assign-${state.assignments.length + 1}`,
+            ...body,
+            org_path: body.org_path ?? "root",
+          };
+          state.assignments.push(a);
+          return json(201, a);
+        }
+        return json(200, state.assignments);
+      }
+      const assignPath = /^\/api\/v1\/assignments\/([^/]+)$/.exec(url.pathname);
+      if (assignPath && method === "DELETE") {
+        state.assignments = state.assignments.filter((a) => a.id !== assignPath[1]);
+        return new Response(null, { status: 204 });
+      }
+      return problem(404, "not_found");
     }
     if (url.pathname === "/api/v1/org/nodes" && method === "GET") {
       return json(200, [
@@ -670,21 +1009,45 @@ export function fakeApi(state: FakeState) {
       if (!rec) {
         return problem(404, "not_found");
       }
-      return json(
-        200,
-        probeType.transitions!.map((t) => ({
+      return json(200, [
+        ...probeType.transitions!.map((t) => ({
           name: t.name,
           label: t.label,
           ...applies(t.name, rec),
         })),
-      );
+        ...(state.roleTransitions ?? []).map((t) => {
+          const from = t.from.includes(String(rec["state"]));
+          return {
+            name: t.name,
+            label: t.label,
+            to: t.to,
+            by: t.by,
+            comment: t.comment,
+            allowed: from && t.holder,
+            ...(from ? (t.holder ? {} : { reason: "role" }) : { reason: "state" }),
+          };
+        }),
+      ]);
     }
     if (transition && method === "POST") {
       const rec = state.records.find((r) => r["id"] === transition[1]);
       if (!rec) {
         return problem(404, "not_found");
       }
-      const body = JSON.parse(bodyText) as { transition: string };
+      const body = JSON.parse(bodyText) as { transition: string; comment?: string };
+      const byRole = state.roleTransitions?.find((t) => t.name === body.transition);
+      if (byRole) {
+        if (byRole.comment === "required" && !body.comment) {
+          return problem(422, "validation", {
+            errors: [{ field: "comment", code: "required", message: "is required" }],
+          });
+        }
+        if (body.comment) {
+          (state.comments ??= []).push(body.comment);
+        }
+        Object.assign(rec, { state: byRole.to, version: Number(rec["version"]) + 1 });
+        return json(200, rec, { ETag: `"${rec["version"]}"` });
+      }
       const result = applies(body.transition, rec);
       if (!result.allowed) {
         return problem(409, "conflict", { detail: `${body.transition}: ${result.reason}` });

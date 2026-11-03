@@ -26,7 +26,7 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
-import { cn } from "@/ui/utils";
+import { Deadline, type DeadlineState } from "@/ui/marks";
 
 import { fieldLabel, formatMoment, formatValue } from "./fields";
 import { RefName, titleOf } from "./RefName";
@@ -34,7 +34,7 @@ import { RefName, titleOf } from "./RefName";
 function Box({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="rounded-md border bg-card p-4">
-      <h2 id={id} className="text-sm font-semibold uppercase text-muted-foreground">
+      <h2 id={id} className="text-sm font-semibold uppercase text-foreground-2">
         {title}
       </h2>
       <div className="mt-2 text-sm">{children}</div>
@@ -75,7 +75,8 @@ function Roles({ type, record }: { type: TypeDefinition; record: RecordData }) {
   );
 }
 
-// light is the traffic light of a clock: breached, close (under a fifth left), in time; a
+// light is the traffic light of a clock: breached, close (more than 75 % of the time used,
+// UI30), in time; a
 // clock that no longer runs says why.
 export function light(c: Clock): "breached" | "close" | "inTime" | "met" | "paused" | "cancelled" {
   if (c.breached) {
@@ -89,16 +90,18 @@ export function light(c: Clock): "breached" | "close" | "inTime" | "met" | "paus
     case "cancelled":
       return "cancelled";
   }
-  return c.target_minutes > 0 && c.remaining_minutes < c.target_minutes / 5 ? "close" : "inTime";
+  return c.target_minutes > 0 && c.remaining_minutes < c.target_minutes / 4 ? "close" : "inTime";
 }
 
-const lightColour: Record<ReturnType<typeof light>, string> = {
-  breached: "bg-destructive",
-  close: "bg-warning",
-  inTime: "bg-success",
-  met: "bg-success",
-  paused: "bg-muted-foreground",
-  cancelled: "bg-muted-foreground",
+// The bar of the deadline mark (UI29): grey while it runs, yellow when close, red when
+// breached; met is green, paused and cancelled light grey.
+const barOf: Record<ReturnType<typeof light>, DeadlineState> = {
+  breached: "breached",
+  close: "close",
+  inTime: "running",
+  met: "done",
+  paused: "paused",
+  cancelled: "paused",
 };
 
 // duration writes minutes as hours and minutes, always positive.
@@ -108,7 +111,8 @@ export function duration(minutes: number): string {
   return h > 0 ? `${h} h ${m % 60} min` : `${m} min`;
 }
 
-function Clocks({ typeName, id }: { typeName: string; id: string }) {
+// SlaClocks are the clocks of a record; the preview beside the list shows them too (UI30).
+export function SlaClocks({ typeName, id }: { typeName: string; id: string }) {
   const { t, i18n } = useTranslation();
   const clocks = useQuery(clocksQuery(typeName, id));
   // No SLA configured (503) or none holds: no section.
@@ -122,11 +126,14 @@ function Clocks({ typeName, id }: { typeName: string; id: string }) {
           const l = light(c);
           return (
             <li key={c.id}>
-              <p className="flex items-center gap-2 font-medium">
-                <span aria-hidden="true" className={cn("h-3 w-3 rounded-full", lightColour[l])} />
-                {c.sla_name}
-              </p>
-              <p>{t(`sidebar.light.${l}`)}</p>
+              <p className="font-medium">{c.sla_name}</p>
+              <Deadline
+                text={t(`sidebar.light.${l}`)}
+                share={
+                  c.target_minutes > 0 ? 1 - Math.max(0, c.remaining_minutes) / c.target_minutes : 1
+                }
+                state={barOf[l]}
+              />
               {(c.state === "running" || c.state === "paused") && (
                 <p className="text-muted-foreground">
                   {c.remaining_minutes >= 0
@@ -220,7 +227,7 @@ export function Sidebar({ type, record }: { type: TypeDefinition; record: Record
   return (
     <aside className="flex flex-col gap-4">
       <Roles type={type} record={record} />
-      <Clocks typeName={typeName} id={String(record["id"])} />
+      <SlaClocks typeName={typeName} id={String(record["id"])} />
       {[...groups.values()].map((g) => (
         <Children key={`${g.from}|${g.via}`} record={record} {...g} />
       ))}

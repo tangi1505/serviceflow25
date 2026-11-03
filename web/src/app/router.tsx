@@ -33,6 +33,10 @@ import {
   PortalShell,
 } from "@/portal/Portal";
 import { NewRecordPage, RecordPage } from "@/render/RecordPage";
+import { CustomizeOverview, CustomizePage } from "@/render/CustomizePage";
+import { RolePage, RolesOverview } from "@/render/RolePage";
+import { SearchPage } from "@/render/SearchPage";
+import { WorkflowPage } from "@/render/WorkflowPage";
 import { TypePage } from "@/render/TypePage";
 
 type RouterContext = { queryClient: QueryClient };
@@ -151,6 +155,48 @@ const recordRoute = createRoute({
   component: RecordPage,
 });
 
+// The type and field editor and its overview (UI25); the static segment wins over $id.
+const customizeRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/types/$typeName/customize",
+  component: CustomizePage,
+});
+
+// The workflow editor of a type (UI26.1).
+const workflowRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/types/$typeName/workflow",
+  component: WorkflowPage,
+});
+
+// The results of the search field in the head (UI30).
+const searchRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/search",
+  validateSearch: (search: Record<string, unknown>): { q?: string } =>
+    typeof search["q"] === "string" ? { q: search["q"] } : {},
+  component: SearchPage,
+});
+
+// The role editor (UI27): the roles and one role with its permissions and assignments.
+const rolesRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/roles",
+  component: RolesOverview,
+});
+
+const roleRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/roles/$name",
+  component: RolePage,
+});
+
+const customizeOverviewRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/customize",
+  component: CustomizeOverview,
+});
+
 const passwordRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/password",
@@ -183,7 +229,13 @@ const routeTree = rootRoute.addChildren([
     indexRoute,
     typeRoute,
     newRecordRoute,
+    customizeRoute,
+    workflowRoute,
     recordRoute,
+    customizeOverviewRoute,
+    rolesRoute,
+    roleRoute,
+    searchRoute,
     passwordRoute,
     settingsRoute,
     globalSettingsRoute,

@@ -45,7 +45,12 @@ func (s *server) TransitionRecord(w http.ResponseWriter, r *http.Request, typeNa
 	if body.Fields != nil {
 		fields = *body.Fields
 	}
-	rec, err := s.o.Records.Transition(r.Context(), typeName, id, body.Transition, fields, version, actor(r))
+	ctx := r.Context()
+	if body.Comment != nil {
+		// The text of the transition, an entry of the same write (SD-Plan N8).
+		ctx = records.WithComment(ctx, *body.Comment)
+	}
+	rec, err := s.o.Records.Transition(ctx, typeName, id, body.Transition, fields, version, actor(r))
 	if err != nil {
 		writeError(w, r, s.o.Logger, err)
 		return

@@ -13,7 +13,9 @@ export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={cn(
-        "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive",
+        // Fields of the kit (UI29, §2.1): 36 px, corner 6 px, border --input (3:1, E28); an error
+        // has a 1.5 px red border; read-only fields stand on the ground with a quiet border.
+        "flex h-9 w-full rounded-sm border border-input bg-card px-2.5 py-1 text-sm text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 read-only:border-border read-only:bg-background aria-invalid:border-[1.5px] aria-invalid:border-destructive",
         className,
       )}
       {...props}

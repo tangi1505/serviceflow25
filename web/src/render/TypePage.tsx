@@ -33,6 +33,7 @@ import { Label } from "@/ui/label";
 
 import { Filters, fromWhere, toWhere, type Condition } from "./Filters";
 import { List, type ListView } from "./List";
+import { Preview } from "./Preview";
 
 const searchType = "core.saved_search";
 
@@ -213,6 +214,8 @@ function TypeView({ type, saved }: { type: TypeDefinition; saved?: RecordData })
   const [conditions, setConditions] = useState<Condition[]>(parsed ?? []);
   const [view, setView] = useState<ListView>();
   const onView = useCallback((v: ListView) => setView(v), []);
+  // The record in the preview beside the list (UI30).
+  const [picked, setPicked] = useState<string>();
   const where = raw ?? toWhere(type, conditions);
   const columns = String(saved?.["columns"] ?? "")
     .split(",")
@@ -226,12 +229,21 @@ function TypeView({ type, saved }: { type: TypeDefinition; saved?: RecordData })
       ) : (
         <Filters type={type} conditions={conditions} onChange={setConditions} />
       )}
-      <List
-        type={type}
-        where={where}
-        view={saved ? { columns, sort: String(saved["sort"] ?? "") || undefined } : undefined}
-        onView={onView}
-      />
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="min-w-0 flex-1">
+          <List
+            type={type}
+            where={where}
+            view={saved ? { columns, sort: String(saved["sort"] ?? "") || undefined } : undefined}
+            onView={onView}
+            picked={picked}
+            onPick={setPicked}
+          />
+        </div>
+        {picked && (
+          <Preview key={picked} type={type} id={picked} onClose={() => setPicked(undefined)} />
+        )}
+      </div>
     </div>
   );
 }
@@ -241,6 +253,7 @@ export function TypePage() {
   const { typeName } = useParams({ from: "/shell/types/$typeName" });
   const { search } = useSearch({ from: "/shell/types/$typeName" });
   const types = useQuery(typesQuery);
+  const me = useQuery(meQuery);
   const saved = useQuery({ ...recordQuery(searchType, search ?? ""), enabled: Boolean(search) });
   const type = types.data?.find((candidate) => qualifiedName(candidate) === typeName);
   if (types.isPending || (search && saved.isPending)) {
@@ -251,12 +264,33 @@ export function TypePage() {
   }
   return (
     <>
-      <h1 className="mb-4 text-2xl font-semibold">
-        {labelOf(type.label, i18n.language, typeName)}
-        {saved.data && (
-          <span className="text-muted-foreground"> · {String(saved.data["name"])}</span>
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-2xl font-semibold">
+          {labelOf(type.label, i18n.language, typeName)}
+          {saved.data && (
+            <span className="text-muted-foreground"> · {String(saved.data["name"])}</span>
+          )}
+        </h1>
+        {/* The editor of the type (UI25) for those who may change types. */}
+        {me.data?.customize === true && (
+          <div className="flex gap-4">
+            <Link
+              to="/types/$typeName/customize"
+              params={{ typeName }}
+              className="text-sm underline"
+            >
+              {t("customize.open")}
+            </Link>
+            <Link
+              to="/types/$typeName/workflow"
+              params={{ typeName }}
+              className="text-sm underline"
+            >
+              {t("workflow.open")}
+            </Link>
+          </div>
         )}
-      </h1>
+      </div>
       {search && saved.isError && <Alert variant="destructive">{t("search.notFound")}</Alert>}
       <TypeView
         key={`${typeName}-${search ?? ""}-${String(saved.data?.["version"] ?? "")}`}

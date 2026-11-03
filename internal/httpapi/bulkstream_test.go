@@ -118,8 +118,9 @@ func TestBulkStreamOverHTTP(t *testing.T) {
 		}
 	}
 	counts()
-	// create plus title, priority and the defaults active and kind per record.
-	if rows != n || events != n || audits != 5*n {
+	// create plus title, priority, the running number (PL49) and the defaults active and kind
+	// per record.
+	if rows != n || events != n || audits != 6*n {
 		t.Fatalf("written: %d rows, %d events, %d audit rows", rows, events, audits)
 	}
 	// The record is like one created over the API: values, state, search, history.

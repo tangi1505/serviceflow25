@@ -27,7 +27,7 @@ import (
 const TypeSavedSearch = "core.saved_search"
 
 // systemColumns are the columns every record has besides its fields.
-var systemColumns = map[string]bool{"id": true, "version": true, "state": true, "org_path": true, "created_at": true, "updated_at": true}
+var systemColumns = map[string]bool{"id": true, "version": true, "state": true, "org_path": true, "created_at": true, "updated_at": true, "sla_due_at": true}
 
 // Check is the RecordCheck of the saved searches; rec runs the condition once (one row) with
 // the rights of the writer, so that a wrong field or operator is refused when saving.

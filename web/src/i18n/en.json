@@ -13,7 +13,7 @@
   },
   "theme": {
     "neutral": "Neutral",
-    "probe": "Probe (green)"
+    "probe": "Probe (blue)"
   },
   "login": {
     "title": "Sign in",
@@ -39,7 +39,12 @@
     "logout": "Sign out",
     "language": "Language",
     "theme": "Theme",
-    "tenant": "Tenant"
+    "tenant": "Tenant",
+    "admin": "Administration",
+    "customize": "Customize types",
+    "roles": "Roles and rights",
+    "areas": "Areas",
+    "saved": "Saved searches"
   },
   "home": {
     "welcome": "Welcome, {{name}}",
@@ -53,7 +58,8 @@
     "version": "Version",
     "state": "State",
     "created_at": "Created",
-    "updated_at": "Updated"
+    "updated_at": "Updated",
+    "sla_due_at": "Deadline"
   },
   "list": {
     "new": "New",
@@ -62,7 +68,12 @@
     "loaded": "{{count}}{{more}} records",
     "error": "The list could not be loaded.",
     "select": "Choose: {{title}}",
-    "selectAll": "Choose all loaded"
+    "selectAll": "Choose all loaded",
+    "density": "Row height",
+    "densities": {
+      "compact": "Compact",
+      "normal": "Normal"
+    }
   },
   "form": {
     "newTitle": "New record",
@@ -116,9 +127,13 @@
     "title": "State",
     "refused": "Transition refused: {{detail}}",
     "error": "Transition failed: {{detail}}",
+    "yours": "Your response",
+    "comment": "Text (optional)",
+    "commentRequired": "Reason",
     "reason": {
       "state": "Not possible from the current state.",
-      "condition": "The condition is not met."
+      "condition": "The condition is not met.",
+      "role": "Only for a role at the ticket."
     }
   },
   "timeline": {
@@ -202,7 +217,10 @@
       "starts": "starts with",
       "gte": "from",
       "lte": "until",
-      "null": "is empty"
+      "null": "is empty",
+      "breached": "is breached",
+      "close": "is close (from 75 %)",
+      "dueBy": "due by"
     }
   },
   "search": {
@@ -316,7 +334,9 @@
     "removed": "Removed.",
     "forbidden": "You lack the right manage_settings for this node.",
     "error": "Could not save: {{detail}}",
-    "loadError": "The settings could not be loaded."
+    "loadError": "The settings could not be loaded.",
+    "color_scheme": "Appearance",
+    "density": "Row height of lists"
   },
   "portal": {
     "title": "itsm portal",
@@ -394,5 +414,332 @@
         "empty": "is empty"
       }
     }
+  },
+  "customize": {
+    "open": "Customize type",
+    "title": "Customize type: {{type}}",
+    "toList": "To the list",
+    "intro": "Every action is saved at once and applies to list and form right away, for all tenants. Fields of your own are named k_…; fields of the package can be renamed, hidden and moved, but not removed.",
+    "fields": "Fields",
+    "newField": "New field",
+    "changes": "Changes",
+    "noChanges": "No changes to this type yet.",
+    "export": "Export customer layer",
+    "overview": "Customize types",
+    "overviewIntro": "The types with the number of their changes in the customer layer. A click opens the editor.",
+    "edit": "Edit “{{name}}”",
+    "editShort": "Edit",
+    "hide": "Hide “{{name}}”",
+    "hideShort": "Hide",
+    "show": "Show “{{name}}”",
+    "showShort": "Show",
+    "remove": "Remove “{{name}}”",
+    "removeShort": "Remove",
+    "takeBack": "Take back: {{change}}",
+    "takeBackShort": "Take back",
+    "labelDe": "Label",
+    "labelEn": "Label in English",
+    "descDe": "Description",
+    "descEn": "Description in English",
+    "default": "Default",
+    "noDefault": "– none –",
+    "maxLength": "Maximum length in characters",
+    "required": "Required",
+    "moreOptions": "More values, one per line",
+    "addOptions": "Add values",
+    "options": "Values, one per line",
+    "technical": "Technical name",
+    "technicalHelp": "Starts with k_, then lower-case letters, digits and _. Cannot be changed later.",
+    "kindLabel": "Field type",
+    "to": "Points to",
+    "add": "Add field to {{type}}",
+    "save": "Save",
+    "conflict": "Someone else just changed the type. The editor now shows the new state; please repeat the action.",
+    "forbidden": "Customizing types needs the right customize on core.type at the root.",
+    "refused": "Not taken: {{detail}}",
+    "error": "That did not work: {{detail}}",
+    "kind": {
+      "text": "Text",
+      "rich": "Formatted text",
+      "number": "Number",
+      "boolean": "Yes/No",
+      "date": "Date",
+      "datetime": "Date and time",
+      "choice": "Choice",
+      "reference": "Reference",
+      "sequence": "Running number"
+    },
+    "flag": {
+      "own": "own field",
+      "package": "from the package",
+      "required": "required",
+      "hidden": "hidden",
+      "calculated": "calculated",
+      "title": "title"
+    },
+    "col": {
+      "change": "Change",
+      "by": "By",
+      "at": "At",
+      "status": "Status",
+      "action": "Action",
+      "type": "Type",
+      "count": "Changes"
+    },
+    "status": {
+      "active": "applies",
+      "inactive": "stilled",
+      "conflict": "conflict"
+    },
+    "attr": {
+      "label": "label",
+      "description": "description",
+      "required": "required",
+      "default": "default",
+      "max_length": "maximum length",
+      "initial": "initial",
+      "from": "from",
+      "to": "to",
+      "when": "condition"
+    },
+    "op": {
+      "add_field": "Field “{{name}}” ({{field}}) added",
+      "change_field": "“{{name}}” changed: {{what}}",
+      "add_options": "Values added to “{{name}}”: {{options}}",
+      "hide_field": "“{{name}}” hidden",
+      "show_field": "“{{name}}” shown",
+      "remove_field": "“{{name}}” removed",
+      "move_field": "“{{name}}” moved behind “{{after}}”",
+      "move_first": "“{{name}}” moved to the start",
+      "add_state": "State “{{name}}” ({{field}}) added",
+      "change_state": "State “{{name}}” changed: {{what}}",
+      "remove_state": "State “{{name}}” removed",
+      "add_transition": "Transition “{{name}}” ({{field}}) added",
+      "change_transition": "Transition “{{name}}” changed: {{what}}",
+      "remove_transition": "Transition “{{name}}” removed",
+      "disable_transition": "Transition “{{name}}” disabled",
+      "enable_transition": "Transition “{{name}}” enabled",
+      "set_layout": "Layout of the graph saved"
+    },
+    "done": {
+      "added": "Field “{{name}}” added.",
+      "changed": "“{{name}}” changed.",
+      "options": "Values added to “{{name}}”: {{options}}.",
+      "hidden": "“{{name}}” hidden.",
+      "shown": "“{{name}}” shown.",
+      "removed": "“{{name}}” removed.",
+      "moved": "“{{name}}” now stands behind “{{after}}”.",
+      "movedFirst": "“{{name}}” now stands at the start.",
+      "takenBack": "Taken back: {{change}}."
+    }
+  },
+  "workflow": {
+    "open": "Workflow",
+    "title": "Workflow: {{type}}",
+    "toFields": "To the type editor",
+    "intro": "States and transitions of the type. Every row is saved at once with “Save” as a change of the customer layer. Own states and transitions are named k_…; states of the package can be renamed, transitions of the package renamed, rerouted and disabled.",
+    "noStates": "This type has no state model yet. The first state becomes the initial one.",
+    "states": "States",
+    "transitions": "Transitions",
+    "newState": "New state",
+    "newTransition": "New transition",
+    "addState": "Add state",
+    "addTransition": "Add transition",
+    "makeInitial": "Initial state (new records start here)",
+    "initialOf": "Initial state: {{name}}",
+    "disable": "Disable “{{name}}”",
+    "disableShort": "Disable",
+    "enable": "Enable “{{name}}”",
+    "enableShort": "Enable",
+    "conditionHelp": "CEL over record, for example record.priority <= 2. Empty means always.",
+    "conditionChecking": "Checking the condition …",
+    "conditionOk": "The condition is valid.",
+    "conditionError": "Invalid condition: {{detail}}",
+    "col": {
+      "label": "Label",
+      "name": "Technical name",
+      "initial": "Initial",
+      "from": "From",
+      "to": "To",
+      "when": "Condition"
+    },
+    "flag": {
+      "disabled": "disabled"
+    },
+    "hint": {
+      "unreachable": "No transition leads to “{{name}}”.",
+      "disabled": "The transition “{{name}}” is disabled."
+    },
+    "done": {
+      "stateAdded": "State “{{name}}” added.",
+      "stateChanged": "State “{{name}}” changed.",
+      "stateRemoved": "State “{{name}}” removed.",
+      "initial": "“{{name}}” is the initial state now.",
+      "transitionAdded": "Transition “{{name}}” added.",
+      "transitionChanged": "Transition “{{name}}” changed.",
+      "transitionRemoved": "Transition “{{name}}” removed.",
+      "disabled": "Transition “{{name}}” disabled.",
+      "enabled": "Transition “{{name}}” enabled."
+    },
+    "graph": {
+      "title": "Graph",
+      "arrange": "Arrange",
+      "save": "Save layout",
+      "saved": "Layout of the graph saved.",
+      "unsaved": "Layout changed, not saved yet.",
+      "collapse": "Collapse graph",
+      "expand": "Expand graph",
+      "initial": "initial",
+      "nodeLabel": "State “{{name}}”",
+      "edgeLabel": "Transition “{{name}}” from “{{from}}” to “{{to}}”",
+      "legend": "Strong border: initial state. Dashed border: own state. Dashed edge: disabled transition. Clicking an edge marks the transition here and in the table; dragging a connection from one state to another prefills the form “New transition”. Move nodes with the mouse or with Enter and the arrow keys, then “Save layout”.",
+      "connected": "Dragged in the graph: {{from}} → {{to}}. Give it a label, then add it.",
+      "marked": "marked in the graph",
+      "a11y": {
+        "node": "Enter or space selects, the arrow keys move, Escape deselects.",
+        "live": "Moved, new position x: {{x}}, y: {{y}}",
+        "edge": "Enter or space selects the transition, Escape deselects.",
+        "controls": "View",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "fitView": "Fit view"
+      }
+    }
+  },
+  "roles": {
+    "title": "Roles",
+    "intro": "Every change holds at once for everyone with the role and stands in the security log.",
+    "forbidden": "Managing roles needs the right manage_rights.",
+    "unknown": "This role does not exist.",
+    "roleTitle": "Role: {{name}}",
+    "toAll": "All roles",
+    "new": "New role",
+    "create": "Add role",
+    "confirmRemove": "Remove “{{name}}” with all rights and assignments?",
+    "removeYes": "Yes, remove",
+    "permissions": "Permissions",
+    "onlyGranted": "Only types with rights",
+    "matrixHelp": "The scope in every cell; “–” means no right. “…” opens condition, field rights and further scopes of the cell.",
+    "none": "–",
+    "details": "Details: {{where}}",
+    "detailsTitle": "{{where}}",
+    "narrowed": "narrowed",
+    "close": "Close",
+    "noLine": "No right in this cell yet.",
+    "addLine": "Add right",
+    "addLineShort": "Add",
+    "addScope": "Further scope",
+    "removeLine": "Remove scope",
+    "lineOf": "{{where}}, {{scope}}",
+    "condition": "Condition",
+    "conditionHelp": "CEL over record, for example record.priority > 1. Empty means no condition.",
+    "fieldsRead": "Fields that may be read",
+    "fieldsWrite": "Fields that may be written",
+    "allFields": "All fields",
+    "systemFields": "System fields (number, state, version, times) are always readable and never writable here.",
+    "specials": "Special rights",
+    "special": {
+      "ui_workplace": "Workplace for agents (else the portal)",
+      "type_customize": "Customize types and workflows",
+      "role_manage_rights": "Manage roles and rights",
+      "org_manage_org": "Maintain the organisation tree",
+      "org_manage_settings": "Maintain settings in the tree",
+      "rule_manage_rules": "Maintain rules",
+      "webhook_manage_webhooks": "Maintain webhooks",
+      "job_manage_jobs": "Control background jobs",
+      "security_event_read": "Read the security log",
+      "tenant_report_tenants": "Reports across tenants"
+    },
+    "others": "Further rights",
+    "othersHelp": "Rights neither the matrix nor the special rights show, such as reading private entries (read_private) or every action (*).",
+    "newOther": "Further right",
+    "addOther": "Add right",
+    "assignments": "Assignments",
+    "noAssignments": "Nobody holds this role.",
+    "newAssignment": "New assignment",
+    "assign": "Assign",
+    "unassign": "Remove the assignment at {{node}}",
+    "anyType": "All types",
+    "anyAction": "every action",
+    "action": {
+      "read": "read",
+      "create": "create",
+      "update": "update",
+      "delete": "delete"
+    },
+    "scope": {
+      "own": "own",
+      "group": "group",
+      "involved": "involved",
+      "unit": "unit",
+      "subtree": "subtree",
+      "all": "all"
+    },
+    "col": {
+      "role": "Role",
+      "name": "Technical name",
+      "permissions": "Rights",
+      "assignments": "Assignments",
+      "type": "Type",
+      "action": "Action",
+      "scope": "Scope",
+      "holder": "Person or group",
+      "node": "Node"
+    },
+    "done": {
+      "created": "Role “{{name}}” added.",
+      "removed": "Role “{{name}}” removed.",
+      "set": "{{where}}: {{scope}}.",
+      "unset": "{{where}}: no right any more.",
+      "saved": "{{where}}, {{scope}} saved.",
+      "lineRemoved": "{{where}}: scope {{scope}} removed.",
+      "specialOn": "“{{name}}” granted.",
+      "specialOff": "“{{name}}” withdrawn.",
+      "assigned": "Role assigned at {{node}}.",
+      "unassigned": "Assignment at {{node}} removed."
+    }
+  },
+  "colorScheme": {
+    "system": "Like the system",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "preview": {
+    "label": "Preview",
+    "close": "Close the preview",
+    "open": "Open"
+  },
+  "find": {
+    "title": "Search: {{q}}",
+    "empty": "Enter a term in the command line (Ctrl K).",
+    "none": "Nothing found."
+  },
+  "command": {
+    "open": "Search or command …",
+    "shortcut": "Ctrl K",
+    "title": "Command line",
+    "input": "Command or search",
+    "placeholder": "Record, command or page …",
+    "options": "Results and commands",
+    "new": "New: {{type}}",
+    "colorScheme": "Appearance: {{value}}",
+    "density": "Row height: {{value}}",
+    "searchAll": "All results for “{{q}}” in search",
+    "none": "Nothing found.",
+    "groups": {
+      "recent": "Recently opened",
+      "records": "Records",
+      "commands": "Commands",
+      "goto": "Go to"
+    },
+    "keys": {
+      "choose": "↑ ↓ choose",
+      "run": "Enter run",
+      "close": "Esc close"
+    }
+  },
+  "area": {
+    "core": "Master data",
+    "probe": "Probe package"
   }
 }

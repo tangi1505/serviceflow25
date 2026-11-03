@@ -2,68 +2,164 @@
   Copyright (C) 2026 group24 AG
   SPDX-License-Identifier: AGPL-3.0-only
 
-  Design tokens (Hauptplan E62, UI1): every colour, radius and font of the interface is a
-  variable here, and a theme is a set of values for them. The default is neutral; a customer's
-  theme package overrides the variables (later per instance, see UI plan). The theme "probe"
-  exists to prove that one changed primary colour reaches every component.
+  Design tokens (Hauptplan E62, UI1) with the values of the design kit "Klartext" (UI29, UI plan
+  E22, E24, E25, E28, §2.1): every colour, radius and font of the interface is a variable here.
+  Light is the default; dark is a second set of values for the same variables under
+  data-color-scheme="dark" on <html>, chosen in the settings (light, dark, like the system).
+  A theme package sets --accent and, if it wants, --primary for both modes (E25); ground,
+  lines and the deadline colours stay, so that their meaning is the same everywhere. The theme
+  "probe" proves that one changed colour reaches every component.
 */
 @import "tailwindcss";
 
+/* Dark mode follows the attribute, not the media query: the setting decides (E24). */
+@custom-variant dark (&:where([data-color-scheme="dark"], [data-color-scheme="dark"] *));
+
 :root {
-  --background: oklch(0.995 0.002 260);
-  --foreground: oklch(0.22 0.02 260);
-  --card: oklch(1 0 0);
+  color-scheme: light;
+  --background: #f6f6f3;
+  --card: #ffffff;
   --card-foreground: var(--foreground);
-  --muted: oklch(0.955 0.006 260);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --border: oklch(0.89 0.01 260);
-  --input: var(--border);
-  --primary: oklch(0.45 0.14 262);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.94 0.01 260);
+  --foreground: #15171a;
+  --foreground-2: #4a4f57;
+  --muted-foreground: #6b7079;
+  --muted: #ecece7;
+  --border: #e4e4df;
+  --border-soft: #efefea;
+  --border-strong: #15171a;
+  --input: #8a8f98;
+  --primary: #15171a;
+  --primary-foreground: #ffffff;
+  --kbd-on-primary: #3a3d44;
+  --secondary: var(--card);
   --secondary-foreground: var(--foreground);
-  --destructive: oklch(0.55 0.2 25);
-  --destructive-foreground: oklch(0.985 0 0);
-  /* The traffic light of the SLA clocks (UI3): in time, close, breached is destructive. */
-  --success: oklch(0.55 0.15 150);
-  --warning: oklch(0.72 0.16 75);
-  --ring: var(--primary);
+  --accent: #0b6e80;
+  --accent-soft: #e7f1f2;
+  --ring: var(--accent);
+  --success: #2e7d4f;
+  --warning: #c77a00;
+  --warning-foreground: #8a5200;
+  --warning-background: #fff4de;
+  --warning-border: #f0d9a8;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --destructive-background: #fdecea;
+  --surface-subtle: #fbfbf9;
+  --surface-active: #e9e9e4;
+  --row-checked: #fafaf7;
+  --segment-active: #ffffff;
+  --clock-running: #8a8f98;
+  --clock-paused: #cfcfc8;
+  --clock-track: #ecece7;
+  --step-done: #15171a;
+  --batch-background: #15171a;
+  --batch-foreground: #ffffff;
+  --batch-border: #4a4f57;
+  --shadow-segment: 0 1px 2px rgba(21, 23, 26, 0.12);
+  --shadow-popover: 0 6px 20px rgba(21, 23, 26, 0.08);
+  /* Corners: 6 px fields and options, 8 px buttons, 10 px surfaces (radius-sm/md/lg). */
   --radius: 0.5rem;
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
-/* A second theme with another primary colour (UI1 Prüfweg); dark enough for text in
-   primary-foreground on it (WCAG AA, 4.5:1; found 2026-10-30 at 0.52). */
+:root[data-color-scheme="dark"] {
+  color-scheme: dark;
+  --background: #111315;
+  --card: #181a1d;
+  --foreground: #ecedea;
+  --foreground-2: #b4b8be;
+  --muted-foreground: #8f949b;
+  --muted: #24272b;
+  --border: #2c3035;
+  --border-soft: #23262a;
+  --border-strong: #6e737a;
+  --input: #6e737a;
+  --primary: #a9adb2;
+  --primary-foreground: #111315;
+  --kbd-on-primary: #8c9096;
+  --accent: #71abb5;
+  --accent-soft: #2a373b;
+  --success: #5bc48a;
+  --warning: #e0a030;
+  --warning-foreground: #f2c36b;
+  --warning-background: #3a2a10;
+  --warning-border: #5a4317;
+  --destructive: #ff8a80;
+  --destructive-foreground: #111315;
+  --destructive-background: #3d1715;
+  --surface-subtle: #1c1f22;
+  --surface-active: #262a2e;
+  --row-checked: #1c1f22;
+  --segment-active: #3a3f45;
+  --clock-running: #6e737a;
+  --clock-paused: #3a3f45;
+  --clock-track: #2a2e33;
+  --step-done: #8f949b;
+  --batch-background: #2a2e33;
+  --batch-foreground: #ecedea;
+  --batch-border: #4a4f57;
+  --shadow-segment: none;
+  --shadow-popover: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* The theme "probe" (UI1 Prüfweg): accent and main action in one other colour, both modes.
+   Dark is the light colour mixed 58 % with 42 % white; the soft accent 10 % on white, dark
+   20 % on --card (§2.1). */
 :root[data-theme="probe"] {
-  --primary: oklch(0.45 0.14 150);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: var(--primary);
+  --primary: #3f4bb8;
+  --primary-foreground: #ffffff;
+  --accent: #3f4bb8;
+  --accent-soft: #ecedf8;
   --radius: 0.25rem;
+}
+:root[data-theme="probe"][data-color-scheme="dark"] {
+  --primary: #9097d6;
+  --primary-foreground: #111315;
+  --accent: #9097d6;
+  --accent-soft: #303342;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-2: var(--foreground-2);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-background: var(--destructive-background);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-background: var(--warning-background);
+  --color-warning-border: var(--warning-border);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-active: var(--surface-active);
+  --color-row-checked: var(--row-checked);
+  --color-segment-active: var(--segment-active);
+  --color-clock-running: var(--clock-running);
+  --color-clock-paused: var(--clock-paused);
+  --color-clock-track: var(--clock-track);
   --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 0.125rem);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 0.25rem);
+  --radius-lg: calc(var(--radius) + 0.125rem);
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 @layer base {
@@ -74,6 +170,23 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  a {
+    text-underline-offset: 2px;
+  }
+  /* Boxes and radios in the accent, 16 px (§2.1, Felder). */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--accent);
+    width: 1rem;
+    height: 1rem;
+  }
+  /* The focus ring: 2 px accent with 2 px distance, always visible (§2.1). */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 

@@ -98,7 +98,10 @@ func (s *Service) Due(ctx context.Context, a DueArgs) (bool, error) {
 			// The SLA was switched off since; what the clock reached still counts.
 			sla = &SLA{ID: c.SLA, Name: "?"}
 		}
-		return s.settle(ctx, tx, q, sla, c, true, n, elapsed, breached)
+		if err := s.settle(ctx, tx, q, sla, c, true, n, elapsed, breached); err != nil {
+			return err
+		}
+		return s.setDeadline(ctx, tx, q, c.TypeName, c.RecordID)
 	})
 	if err == nil && c != nil {
 		s.rec.Touched(ctx, c.TypeName)

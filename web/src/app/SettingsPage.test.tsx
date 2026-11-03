@@ -10,7 +10,7 @@
 // page sets a default at a node, and says when the right is missing.
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,6 +64,26 @@ describe("Settings", () => {
     renderAt("/");
     expect(await screen.findByRole("navigation", { name: "Types" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("chooses dark, and the page turns dark at once and on the next start", async () => {
+    const user = userEvent.setup();
+    const first = renderAt("/settings");
+    await screen.findByRole("heading", { name: "Meine Einstellungen" });
+    const scheme = screen.getByLabelText("Darstellung");
+    expect(scheme).toHaveValue("");
+    expect(screen.getByText("Gilt jetzt: system (Vorgabe)")).toBeInTheDocument();
+    await user.selectOptions(scheme, "dark");
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(await screen.findByText("Gespeichert.")).toBeInTheDocument();
+    expect(state.settings).toMatchObject({ color_scheme: "dark" });
+    expect(document.documentElement.dataset.colorScheme).toBe("dark");
+    first.unmount();
+    // A new start begins light (the browser of the test), the person's setting turns it dark.
+    document.documentElement.dataset.colorScheme = "light";
+    renderAt("/");
+    await screen.findByRole("navigation", { name: "Typen" });
+    await waitFor(() => expect(document.documentElement.dataset.colorScheme).toBe("dark"));
   });
 
   it("fills a new record with the presets of its type", async () => {

@@ -79,7 +79,7 @@ func (s *server) ListTypes(w http.ResponseWriter, r *http.Request) {
 	visible := make([]meta.Type, 0, len(types))
 	for _, t := range types {
 		if a.IsSystem() || a.Allowed(t.QualifiedName(), authz.ActionRead) {
-			visible = append(visible, records.VisibleType(r.Context(), t))
+			visible = append(visible, s.o.Records.Timed(r.Context(), records.VisibleType(r.Context(), t)))
 		}
 	}
 	writeJSON(w, http.StatusOK, visible)
@@ -91,7 +91,7 @@ func (s *server) GetType(w http.ResponseWriter, r *http.Request, typeName gen.Ty
 		writeError(w, r, s.o.Logger, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, records.VisibleType(r.Context(), t))
+	writeJSON(w, http.StatusOK, s.o.Records.Timed(r.Context(), records.VisibleType(r.Context(), t)))
 }
 
 // --- records ---
@@ -347,6 +347,16 @@ func typeSchema(t meta.Type) *openapi3.Schema {
 	add("updated_at", openapi3.NewDateTimeSchema(), true)
 	add("updated_by", openapi3.NewUUIDSchema().WithNullable(), true)
 	add("deleted_at", openapi3.NewDateTimeSchema().WithNullable(), true)
+	// The deadline the SLA clocks leave for the list (UI34).
+	due := openapi3.NewDateTimeSchema().WithNullable()
+	due.Description = "the next deadline of a running SLA clock"
+	add("sla_due_at", due, true)
+	warn := openapi3.NewDateTimeSchema().WithNullable()
+	warn.Description = "when that clock has used three quarters of its target"
+	add("sla_warn_at", warn, true)
+	paused := openapi3.NewBoolSchema()
+	paused.Description = "no clock runs, but one is paused"
+	add("sla_paused", paused, true)
 	if t.IsTree() {
 		// Derived by the core next to the fields of a tree list (PL16; records.fullNameColumn).
 		full := openapi3.NewStringSchema()
@@ -385,6 +395,10 @@ func typeSchema(t meta.Type) *openapi3.Schema {
 		case meta.FieldReference:
 			sch = openapi3.NewUUIDSchema()
 			sch.Description = "id of a " + f.To
+		case meta.FieldSequence:
+			// The running number the core gives (PL49), shown with its prefix.
+			sch = openapi3.NewInt64Schema().WithNullable()
+			sch.Description = "running number, shown as " + f.Prefix + "<number>"
 		default:
 			sch = openapi3.NewSchema()
 		}

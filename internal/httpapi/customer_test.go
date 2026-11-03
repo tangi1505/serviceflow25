@@ -8,6 +8,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -84,6 +85,15 @@ func TestCustomerLayerOverHTTP(t *testing.T) {
 	if r := call(t, reader.api, http.MethodGet, base, "", nil); r.code != 403 {
 		t.Fatalf("without customize: %d %s", r.code, r.raw)
 	}
+	// auth/me tells the interface whether to offer the editor (UI25).
+	if r := call(t, reader.api, http.MethodGet, "/api/v1/auth/me", "", nil); r.code != 200 || r.body["customize"] != false || r.body["manage_rights"] != false {
+		t.Fatalf("me without customize: %d %s", r.code, r.raw)
+	}
+	// manage_rights offers the role editor (UI27).
+	self := call(t, admin, http.MethodGet, "/api/v1/auth/me", "", nil)
+	if self.code != 200 || self.body["customize"] != true || self.body["manage_rights"] != true {
+		t.Fatalf("me with customize: %d %s", self.code, self.raw)
+	}
 
 	version := 0.0
 	add := func(change string, want int) resp {
@@ -120,8 +130,8 @@ func TestCustomerLayerOverHTTP(t *testing.T) {
 
 	// A field of its own: in the type, in the table, readable and writable at once.
 	r := add(`{"op": "add_field", "field": "k_dienststelle", "new": {"name": "k_dienststelle", "type": "text", "label": {"de": "Dienststelle"}, "max_length": 80}}`, 200)
-	if r.body["changes"].([]any)[0].(map[string]any)["status"] != "active" {
-		t.Fatalf("status: %s", r.raw)
+	if first := r.body["changes"].([]any)[0].(map[string]any); first["status"] != "active" || first["by_name"] != self.body["display_name"] {
+		t.Fatalf("status and author: %s", r.raw)
 	}
 	typ := typeOf()
 	if field(typ, "k_dienststelle") == nil || typ["revision"] == rev {
@@ -241,5 +251,129 @@ func TestCustomerLayerOverHTTP(t *testing.T) {
 	}
 	if err := meta.Store(ctx, admin.pool, p); err == nil || !strings.Contains(err.Error(), "customer layer") {
 		t.Fatalf("package with k_: %v", err)
+	}
+}
+
+// A type with traits and rollups of its package takes a field of the customer layer: the
+// change is checked inside its package (found with UI25 on probe.probe, whose trait tagged and
+// rollups from probe.task belong to the package probe).
+func TestCustomerLayerInsideItsPackage(t *testing.T) {
+	admin := apiServer(t)
+	drop := func() {
+		if _, err := admin.pool.Exec(context.Background(), "DELETE FROM definition WHERE package = 'probe' AND name = 'probe' AND layer = 'customer'"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	drop()
+	t.Cleanup(drop)
+	const base = "/api/v1/types/probe.probe/customer"
+	r := call(t, admin, http.MethodPost, base, `{"version": 0, "change": {"op": "add_field", "field": "k_pl43_paket", "new": {"name": "k_pl43_paket", "type": "text", "label": {"de": "Im Paket"}, "max_length": 40}}}`, nil)
+	if r.code != 200 {
+		t.Fatalf("add_field on probe.probe: %d %s", r.code, r.raw)
+	}
+	id := r.body["changes"].([]any)[0].(map[string]any)["id"].(string)
+	if r := call(t, admin, http.MethodDelete, base+"/"+id+"?version=1", "", nil); r.code != 200 {
+		t.Fatalf("take back: %d %s", r.code, r.raw)
+	}
+
+	// The state model (UI26.1): an own state and a transition into it with a condition, a
+	// transition of the package disabled and enabled again, a state with records stays.
+	version := int64(2)
+	add := func(change string, want int) resp {
+		t.Helper()
+		r := call(t, admin, http.MethodPost, base, fmt.Sprintf(`{"version": %d, "change": %s}`, version, change), nil)
+		if r.code != want {
+			t.Fatalf("%s: %d %s", change, r.code, r.raw)
+		}
+		if r.code == 200 {
+			version = int64(r.body["version"].(float64))
+		}
+		return r
+	}
+	add(`{"op": "add_state", "field": "k_review", "state": {"name": "k_review", "label": {"de": "Prüfung"}}}`, 200)
+	add(`{"op": "add_transition", "field": "k_review_it", "transition": {"name": "k_review_it", "label": {"de": "Prüfen"}, "from": ["in_progress"], "to": "k_review", "when": "record.priority <= 2"}}`, 200)
+	add(`{"op": "add_transition", "field": "k_back", "transition": {"name": "k_back", "label": {"de": "Zurück"}, "from": ["k_review"], "to": "in_progress"}}`, 200)
+	// The layout of the graph (UI26.2): one change with positions, in the effective type at
+	// once; a name that is no state is refused.
+	add(`{"op": "set_layout", "field": "layout", "layout": {"new": {"x": 0, "y": 0}, "in_progress": {"x": 240, "y": 0}, "k_review": {"x": 480, "y": 140}}}`, 200)
+	if r := add(`{"op": "set_layout", "field": "layout", "layout": {"nowhere": {"x": 1, "y": 1}}}`, 422); !strings.Contains(r.raw, "not a state") {
+		t.Fatalf("bad layout: %s", r.raw)
+	}
+	if r := call(t, admin, http.MethodGet, "/api/v1/types/probe.probe", "", nil); r.code != 200 || !strings.Contains(r.raw, `"k_review":{"x":480,"y":140}`) {
+		t.Fatalf("layout in the type: %d %s", r.code, r.raw)
+	}
+	// A condition that does not compile, and a transition from a state that is not there.
+	if r := add(`{"op": "add_transition", "field": "k_bad", "transition": {"name": "k_bad", "label": {"de": "x"}, "from": ["new"], "to": "k_review", "when": "record.priority <"}}`, 422); !strings.Contains(r.raw, "when:") {
+		t.Fatalf("bad condition: %s", r.raw)
+	}
+	if r := add(`{"op": "add_transition", "field": "k_bad", "transition": {"name": "k_bad", "label": {"de": "x"}, "from": ["nowhere"], "to": "k_review"}}`, 422); !strings.Contains(r.raw, "not a state") {
+		t.Fatalf("bad from: %s", r.raw)
+	}
+	// The live check of the editor.
+	if r := call(t, admin, http.MethodPost, "/api/v1/types/probe.probe:check-condition", `{"when": "record.priority <= 2"}`, nil); r.code != 200 || r.body["ok"] != true {
+		t.Fatalf("check ok: %d %s", r.code, r.raw)
+	}
+	if r := call(t, admin, http.MethodPost, "/api/v1/types/probe.probe:check-condition", `{"when": "record.priority <"}`, nil); r.code != 200 || r.body["ok"] != false || r.body["error"] == nil {
+		t.Fatalf("check bad: %d %s", r.code, r.raw)
+	}
+
+	// A record with priority 2 goes new → in_progress → k_review; the condition keeps one
+	// with priority 4 out.
+	rec := call(t, admin, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "ui26", "priority": 2}`, nil)
+	if rec.code != 201 {
+		t.Fatalf("record: %d %s", rec.code, rec.raw)
+	}
+	recID := rec.body["id"].(string)
+	move := func(id, tr string, want int) resp {
+		t.Helper()
+		r := call(t, admin, http.MethodPost, "/api/v1/records/probe.probe/"+id+":transition", `{"transition": "`+tr+`"}`, nil)
+		if r.code != want {
+			t.Fatalf("%s: %d %s", tr, r.code, r.raw)
+		}
+		return r
+	}
+	move(recID, "start", 200)
+	if r := move(recID, "k_review_it", 200); r.body["state"] != "k_review" {
+		t.Fatalf("after k_review_it: %s", r.raw)
+	}
+	other := call(t, admin, http.MethodPost, "/api/v1/records/probe.probe", `{"title": "ui26 b", "priority": 4}`, nil)
+	otherID := other.body["id"].(string)
+	move(otherID, "start", 200)
+	move(otherID, "k_review_it", 409)
+
+	// A disabled transition of the package is neither offered nor taken.
+	add(`{"op": "disable_transition", "field": "finish"}`, 200)
+	offered := call(t, admin, http.MethodGet, "/api/v1/records/probe.probe/"+otherID+"/transitions", "", nil)
+	var infos []map[string]any
+	if err := json.Unmarshal([]byte(offered.raw), &infos); err != nil || len(infos) == 0 {
+		t.Fatalf("transitions: %d %s", offered.code, offered.raw)
+	}
+	for _, it := range infos {
+		if it["name"] == "finish" {
+			t.Fatalf("finish offered while disabled: %s", offered.raw)
+		}
+	}
+	if r := move(otherID, "finish", 422); !strings.Contains(r.raw, "disabled") {
+		t.Fatalf("finish while disabled: %s", r.raw)
+	}
+	add(`{"op": "enable_transition", "field": "finish"}`, 200)
+	move(otherID, "finish", 200)
+
+	// The state with a record in it stays; empty, it goes once nothing uses it.
+	if r := add(`{"op": "remove_state", "field": "k_review"}`, 422); !strings.Contains(r.raw, "stand in state") {
+		t.Fatalf("remove used state: %s", r.raw)
+	}
+	move(recID, "k_back", 200)
+	if r := add(`{"op": "remove_state", "field": "k_review"}`, 422); !strings.Contains(r.raw, "still uses") {
+		t.Fatalf("remove referenced state: %s", r.raw)
+	}
+	add(`{"op": "remove_transition", "field": "k_review_it"}`, 200)
+	add(`{"op": "remove_transition", "field": "k_back"}`, 200)
+	add(`{"op": "remove_state", "field": "k_review"}`, 200)
+	typ := call(t, admin, http.MethodGet, "/api/v1/types/probe.probe", "", nil)
+	for _, st := range typ.body["states"].([]any) {
+		if st.(map[string]any)["name"] == "k_review" {
+			t.Fatalf("k_review still there: %s", typ.raw)
+		}
 	}
 }

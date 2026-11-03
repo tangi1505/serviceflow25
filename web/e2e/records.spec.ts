@@ -41,7 +41,7 @@ test("list, create, edit and resolve a conflict", async ({ page, context }) => {
   // Page change into the list: from the click to the rows, a first reading for LZ9.
   const started = Date.now();
   await page.getByRole("link", { name: "Probe" }).click();
-  await expect(page.getByRole("heading", { name: "Probe" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Probe", exact: true })).toBeVisible();
   await expect(page.getByText(/Datensätze$/)).toBeVisible();
   const elapsed = Date.now() - started;
   console.log(`LZ9 Seitenwechsel zur Liste: ${elapsed} ms`);

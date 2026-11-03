@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"group24.de/itsm/internal/db/dbtest"
 	"group24.de/itsm/internal/db/queries"
 )
 
@@ -56,6 +57,45 @@ func TestMigrateIsRepeatableAndCreatesExtensions(t *testing.T) {
 	}
 	if _, err := queries.New(pool).DatabaseNow(ctx); err != nil {
 		t.Fatalf("sqlc query: %v", err)
+	}
+}
+
+// Several processes migrating River at once on an empty database, as two test packages did in
+// the CI on 2026-11-02: every migration succeeds, River's tables are there once. The River step
+// runs on its own here; within Migrate the goose lock before it staggers the processes, so that
+// the race shows only now and then.
+func TestMigrateRiverAtOnceOnAnEmptyDatabase(t *testing.T) {
+	url := dbtest.Isolated(t, testURL(t), "itsmtest_db_at_once")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	const n = 8
+	errs := make(chan error, n)
+	for range n {
+		go func() { errs <- migrateRiver(ctx, url, logger) }()
+	}
+	for range n {
+		if err := <-errs; err != nil {
+			t.Error(err)
+		}
+	}
+
+	pool, err := Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	var versions int
+	if err := pool.QueryRow(ctx, "SELECT count(DISTINCT version) FROM river_migration").Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	var rows int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM river_migration").Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if versions == 0 || rows != versions {
+		t.Errorf("river_migration has %d rows for %d versions", rows, versions)
 	}
 }
 

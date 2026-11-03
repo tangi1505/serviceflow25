@@ -12,9 +12,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
+	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/rules"
@@ -30,8 +32,11 @@ type TransitionInfo struct {
 	Label   meta.Label `json:"label"`
 	To      string     `json:"to"`
 	Allowed bool       `json:"allowed"`
-	// Reason says why it is not allowed: "state" or "condition".
+	// Reason says why it is not allowed: "state", "condition" or "role" (SD-Plan N8).
 	Reason string `json:"reason,omitempty"`
+	// By and Comment come from the definition: who may take it, whether it takes a text.
+	By      []string `json:"by,omitempty"`
+	Comment string   `json:"comment,omitempty"`
 }
 
 // Event is one row of the outbox (E39) as the API shows it.
@@ -60,10 +65,18 @@ func (s *Service) Transitions(ctx context.Context, typeName string, id uuid.UUID
 	}
 	out := make([]TransitionInfo, 0, len(t.Transitions))
 	for _, tr := range t.Transitions {
-		info := TransitionInfo{Name: tr.Name, Label: tr.Label, To: tr.To}
+		// A transition the customer layer disabled (UI26.1) is not offered.
+		if tr.Disabled {
+			continue
+		}
+		info := TransitionInfo{Name: tr.Name, Label: tr.Label, To: tr.To, By: tr.By, Comment: tr.Comment}
 		info.Allowed, info.Reason, err = applies(tr, rec)
 		if err != nil {
 			return nil, err
+		}
+		// A transition of a role is the person's only if they hold it (SD-Plan N8).
+		if info.Allowed && len(tr.By) > 0 && !authz.From(ctx).HoldsAnyRole(rec, tr.By) {
+			info.Allowed, info.Reason = false, "role"
 		}
 		out = append(out, info)
 	}
@@ -127,7 +140,45 @@ func (s *Service) Transition(ctx context.Context, typeName string, id uuid.UUID,
 	if !ok {
 		return nil, &ValidationError{Problems: []Problem{{Field: "transition", Code: "unknown", Message: fmt.Sprintf("%q is not a transition of %s", name, t.QualifiedName())}}}
 	}
+	if tr.Disabled {
+		return nil, &ValidationError{Problems: []Problem{{Field: "transition", Code: "disabled", Message: fmt.Sprintf("%q is disabled by the customer layer", name)}}}
+	}
+	// A text with the transition becomes an entry in the same write (SD-Plan N8).
+	comment, _ := ctx.Value(commentKey{}).(string)
+	switch {
+	case tr.Comment == meta.CommentRequired && strings.TrimSpace(comment) == "":
+		return nil, &ValidationError{Problems: []Problem{{Field: "comment", Code: "required", Message: fmt.Sprintf("%q needs a comment", name)}}}
+	case comment != "" && tr.Comment == "":
+		return nil, &ValidationError{Problems: []Problem{{Field: "comment", Code: "unknown", Message: fmt.Sprintf("%q takes no comment", name)}}}
+	case len([]rune(comment)) > MaxEntryLength:
+		return nil, &ValidationError{Problems: []Problem{{Field: "comment", Code: "max_length", Message: fmt.Sprintf("is longer than %d characters", MaxEntryLength)}}}
+	}
+	if len(tr.By) > 0 {
+		// Only a role at the record may take it, and needs no other right on the type: the
+		// requester confirming a solution in the portal (SD-Plan N8).
+		if len(fields) > 0 {
+			return nil, &ValidationError{Problems: []Problem{{Field: "fields", Code: "unknown", Message: fmt.Sprintf("%q is taken by a role and sets no fields", name)}}}
+		}
+		a := authz.From(ctx)
+		system := authz.WithAccess(ctx, authz.SystemIn(a.CurrentTenant()))
+		rec, err := s.Get(system, typeName, id)
+		if err != nil {
+			return nil, err
+		}
+		if a.IsSystem() || !a.HoldsAnyRole(rec, tr.By) {
+			return nil, fmt.Errorf("%w: only %s at the record may take %q", ErrForbidden, strings.Join(tr.By, " or "), name)
+		}
+		ctx = system
+	}
 	return s.update(ctx, t, id, expectedVersion, fields, actor, nil, &tr)
+}
+
+type commentKey struct{}
+
+// WithComment hands the text a transition takes along (SD-Plan N8); Transition keeps it as an
+// entry at the record in the same write.
+func WithComment(ctx context.Context, body string) context.Context {
+	return context.WithValue(ctx, commentKey{}, body)
 }
 
 // Events returns the outbox after a position, oldest first (the stream of E39; PL24 adds
@@ -151,4 +202,19 @@ func (s *Service) Events(ctx context.Context, after int64, limit int) ([]Event, 
 		out = append(out, e)
 	}
 	return out, nil
+}
+
+// InState reports whether a record of the type stands in the state, in the database of the
+// context, the trash included: the customer layer does not remove such a state (UI26.1).
+func (s *Service) InState(ctx context.Context, typeName, state string) (bool, error) {
+	t, err := s.Type(ctx, typeName)
+	if err != nil {
+		return false, err
+	}
+	var found bool
+	err = s.db.Tenant(ctx).QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM "+table(t)+" WHERE state = $1)", state).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("records: state %s of %s: %w", state, typeName, err)
+	}
+	return found, nil
 }

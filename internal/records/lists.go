@@ -169,6 +169,10 @@ func (s *Service) SeedListsInto(ctx context.Context, types []meta.Type, scope st
 				return created, fmt.Errorf("records: seed %s: %w", t.QualifiedName(), err)
 			}
 			input := map[string]any{"name": e.Name, "key": e.Key, "org_path": scope}
+			if e.NameEn != "" {
+				// The English name as the translation of the name (PL21).
+				input["name"] = map[string]any{meta.DefaultLanguage: e.Name, "en": e.NameEn}
+			}
 			if e.Description != "" {
 				input["description"] = e.Description
 			}

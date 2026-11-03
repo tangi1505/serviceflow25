@@ -8,7 +8,8 @@
 // The filters of a list (UI4, Hauptplan E124): conditions "field – comparison – value", all
 // joined with AND, sent as the where of the JSON query (E40). The comparisons follow the kind
 // of the field; references and roles are chosen with the picker (UI28), a role also as "me" or
-// "my groups".
+// "my groups". The deadline (UI34) is breached, close or due by a day, against the moment of
+// the query ("@now"), so that a saved search stays right.
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,7 +20,8 @@ import { Input } from "@/ui/input";
 import { fieldLabel, optionLabel } from "./fields";
 import { RefPicker } from "./RefPicker";
 
-export type Op = "eq" | "neq" | "contains" | "starts" | "gte" | "lte" | "null";
+export type Op =
+  "eq" | "neq" | "contains" | "starts" | "gte" | "lte" | "null" | "breached" | "close";
 export type Condition = { field: string; op: Op; value: unknown };
 
 // A filterable thing of the type: a field, the state, a system time or a role.
@@ -27,6 +29,7 @@ type Subject =
   | { kind: "field"; name: string; field: Field }
   | { kind: "state"; name: "state"; states: State[] }
   | { kind: "time"; name: "created_at" | "updated_at" }
+  | { kind: "deadline"; name: "sla_due_at" }
   | { kind: "role"; name: string; to: string[]; label?: Record<string, string> };
 
 function subjects(type: TypeDefinition): Subject[] {
@@ -37,6 +40,7 @@ function subjects(type: TypeDefinition): Subject[] {
       : []),
     { kind: "time", name: "created_at" },
     { kind: "time", name: "updated_at" },
+    ...(type.timed ? [{ kind: "deadline", name: "sla_due_at" } as const] : []),
     ...(type.actors ?? []).map<Subject>((r) => ({
       kind: "role",
       name: `actors.${r.name}`,
@@ -53,6 +57,8 @@ export function opsFor(s: Subject): Op[] {
       return ["eq", "neq"];
     case "time":
       return ["gte", "lte"];
+    case "deadline":
+      return ["breached", "close", "lte"];
     case "role":
       return ["eq", "null"];
   }
@@ -62,6 +68,9 @@ export function opsFor(s: Subject): Op[] {
     case "number":
     case "date":
       return ["eq", "gte", "lte", "null"];
+    case "sequence":
+      // The running number, with or without its prefix (PL49).
+      return ["eq", "gte", "lte"];
     case "datetime":
       return ["gte", "lte", "null"];
     case "choice":
@@ -79,9 +88,13 @@ function isMoment(type: TypeDefinition, field: string): boolean {
   return (
     field === "created_at" ||
     field === "updated_at" ||
+    field === "sla_due_at" ||
     type.fields.some((f) => f.name === field && f.type === "datetime")
   );
 }
+
+// valueless are the comparisons without a value.
+const valueless: Op[] = ["null", "breached", "close"];
 
 // toWhere turns the conditions into the where of the JSON query; incomplete ones are left out.
 export function toWhere(
@@ -89,16 +102,28 @@ export function toWhere(
   conditions: Condition[],
 ): Record<string, unknown> | undefined {
   const parts = conditions
-    .filter((c) => c.op === "null" || (c.value !== "" && c.value !== undefined && c.value !== null))
-    .map((c) => {
+    .filter(
+      (c) =>
+        valueless.includes(c.op) || (c.value !== "" && c.value !== undefined && c.value !== null),
+    )
+    .flatMap((c) => {
       if (c.op === "null") {
-        return { field: c.field, null: true };
+        return [{ field: c.field, null: true }];
+      }
+      if (c.op === "breached") {
+        return [{ field: "sla_due_at", lte: "@now" }];
+      }
+      if (c.op === "close") {
+        return [
+          { field: "sla_warn_at", lte: "@now" },
+          { field: "sla_due_at", gt: "@now" },
+        ];
       }
       let v = c.value;
       if (isMoment(type, c.field) && typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
         v = new Date(`${v}T${c.op === "lte" ? "23:59:59.999" : "00:00:00"}`).toISOString();
       }
-      return { field: c.field, [c.op]: v };
+      return [{ field: c.field, [c.op]: v }];
     });
   if (parts.length === 0) {
     return undefined;
@@ -112,8 +137,21 @@ export function fromWhere(where: unknown): Condition[] | null {
   if (where === undefined || where === null) {
     return [];
   }
-  const list = (where as { and?: unknown[] }).and ?? [where];
+  const all = (where as { and?: unknown[] }).and ?? [where];
+  // The deadline against "@now" reads back as breached or close (UI34).
+  const isNode = (n: unknown, field: string, op: string) =>
+    typeof n === "object" &&
+    n !== null &&
+    (n as Record<string, unknown>)["field"] === field &&
+    (n as Record<string, unknown>)[op] === "@now";
+  const close = all.some((n) => isNode(n, "sla_warn_at", "lte"));
+  const list = all.filter(
+    (n) => !(close && (isNode(n, "sla_warn_at", "lte") || isNode(n, "sla_due_at", "gt"))),
+  );
   const out: Condition[] = [];
+  if (close) {
+    out.push({ field: "sla_due_at", op: "close", value: "" });
+  }
   for (const node of list) {
     if (typeof node !== "object" || node === null || !("field" in node)) {
       return null;
@@ -126,6 +164,10 @@ export function fromWhere(where: unknown): Condition[] | null {
     const op = keys[0] as Op;
     if (!["eq", "neq", "contains", "starts", "gte", "lte", "null"].includes(op)) {
       return null;
+    }
+    if (field === "sla_due_at" && op === "lte" && rest[op] === "@now") {
+      out.push({ field: "sla_due_at", op: "breached", value: "" });
+      continue;
     }
     let value = op === "null" ? true : rest[op];
     // A moment shows as its day again.
@@ -154,7 +196,7 @@ function ValueInput({
 }) {
   const { t, i18n } = useTranslation();
   const label = t("filter.value");
-  if (op === "null") {
+  if (valueless.includes(op)) {
     return null;
   }
   const select = (options: { value: string; label: string }[]) => (
@@ -204,7 +246,7 @@ function ValueInput({
       })),
     );
   }
-  if (subject.kind === "time") {
+  if (subject.kind === "time" || subject.kind === "deadline") {
     return (
       <Input
         id={id}
@@ -291,6 +333,7 @@ export function Filters({
       case "state":
         return t("column.state");
       case "time":
+      case "deadline":
         return t(`column.${s.name}`);
       case "role":
         return labelOf(s.label, i18n.language, s.name);
@@ -340,7 +383,9 @@ export function Filters({
               >
                 {opsFor(subject).map((op) => (
                   <option key={op} value={op}>
-                    {t(`filter.ops.${op}`)}
+                    {subject.kind === "deadline" && op === "lte"
+                      ? t("filter.ops.dueBy")
+                      : t(`filter.ops.${op}`)}
                   </option>
                 ))}
               </select>

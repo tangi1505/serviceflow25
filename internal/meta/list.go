@@ -24,8 +24,10 @@ type ListSpec struct {
 
 // ListEntry is one shipped value of a select list. Parent names the key of an earlier entry.
 type ListEntry struct {
-	Key         string   `json:"key" yaml:"key"`
-	Name        string   `json:"name" yaml:"name"`
+	Key  string `json:"key" yaml:"key"`
+	Name string `json:"name" yaml:"name"`
+	// NameEn is the English name, kept as the translation of the name (PL21; SD1).
+	NameEn      string   `json:"name_en,omitempty" yaml:"name_en"`
 	Description string   `json:"description,omitempty" yaml:"description"`
 	Parent      string   `json:"parent,omitempty" yaml:"parent"`
 	Position    *float64 `json:"position,omitempty" yaml:"position"`

@@ -151,10 +151,12 @@ func formulaInput(f meta.Field, v any) (any, error) {
 // --- the job that recomputes a type ---
 
 // RecomputeArgs asks for the calculated fields of every record of a type to be computed again;
-// with Search also its search column (PL26).
+// with Search also its search column (PL26); with Number first the running numbers of the
+// records that have none yet (PL49).
 type RecomputeArgs struct {
 	Type   string `json:"type"`
 	Search bool   `json:"search,omitempty"`
+	Number bool   `json:"number,omitempty"`
 }
 
 // Kind names the job.
@@ -167,6 +169,13 @@ type recomputeWorker struct {
 }
 
 func (w *recomputeWorker) Work(ctx context.Context, job *river.Job[RecomputeArgs]) error {
+	if job.Args.Number {
+		n, err := w.s.Number(ctx, job.Args.Type)
+		if err != nil {
+			return err
+		}
+		w.logger.Info("running numbers given", "type", job.Args.Type, "records", n)
+	}
 	n, failed, err := w.s.Recompute(ctx, job.Args.Type)
 	if err != nil {
 		return err

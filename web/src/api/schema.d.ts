@@ -1505,6 +1505,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/types/{typeName}:check-condition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Whether a CEL condition over a record compiles (UI26.1)
+         * @description Needs the right customize on core.type. An empty condition is fine.
+         */
+        post: operations["checkCondition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer": {
         parameters: {
             query?: never;
@@ -1531,7 +1551,7 @@ export interface paths {
         };
         /**
          * The settings of the session's person, each with where it comes from (UI9)
-         * @description source is own, the path of the node whose setting applies (ui.language, ui.time_zone, ui.theme at the person's unit, inherited), or default. defaults are the person's presets per type for creating.
+         * @description source is own, the path of the node whose setting applies (ui.language, ui.time_zone, ui.theme, ui.color_scheme, ui.density at the person's unit, inherited), or default. defaults are the person's presets per type for creating.
          */
         get: operations["mySettings"];
         put?: never;
@@ -1916,6 +1936,8 @@ export interface components {
             fields?: {
                 [key: string]: unknown;
             };
+            /** @description a text kept as an entry at the record in the same write, for a transition with comment required or optional (SD-Plan N8), e.g. the reason of a refused solution */
+            comment?: string;
         };
         FieldStatesRequest: {
             /**
@@ -1959,8 +1981,15 @@ export interface components {
             };
             to: string;
             allowed: boolean;
-            /** @description why it is not allowed, "state" or "condition" */
+            /** @description why it is not allowed, "state", "condition" or "role" (the person holds none of the roles in by) */
             reason?: string;
+            /** @description the roles at the record that alone may take it (SD-Plan N8) */
+            by?: string[];
+            /**
+             * @description whether it takes a text, kept as an entry at the record
+             * @enum {string}
+             */
+            comment?: "required" | "optional";
         };
         Event: {
             /** Format: int64 */
@@ -2145,6 +2174,10 @@ export interface components {
             roles?: string[];
             /** @description the session may use the workplace (right workplace on core.ui, UI10); without, the portal */
             workplace?: boolean;
+            /** @description the session may change types in the customer layer (right customize on core.type at the root, PL43); the interface offers the editor (UI25) */
+            customize?: boolean;
+            /** @description the session may manage roles, their permissions and assignments (right manage_rights on core.role, PL8); the interface offers the role editor (UI27) */
+            manage_rights?: boolean;
             /**
              * Format: uuid
              * @description the person of the account
@@ -2333,6 +2366,15 @@ export interface components {
         Checks: {
             [key: string]: string;
         };
+        ConditionCheck: {
+            /** @description a CEL condition over record */
+            when: string;
+        };
+        ConditionResult: {
+            ok: boolean;
+            /** @description why the condition does not compile */
+            error?: string;
+        };
         CustomerLayer: {
             type: string;
             /** Format: int64 */
@@ -2343,13 +2385,29 @@ export interface components {
         CustomerChange: {
             id?: string;
             /** @enum {string} */
-            op: "add_field" | "change_field" | "add_options" | "hide_field" | "show_field" | "remove_field" | "move_field";
+            op: "add_field" | "change_field" | "add_options" | "hide_field" | "show_field" | "remove_field" | "move_field" | "add_state" | "change_state" | "remove_state" | "add_transition" | "change_transition" | "remove_transition" | "disable_transition" | "enable_transition" | "set_layout";
+            /** @description the name of the field, state or transition; set_layout: layout */
             field: string;
             /** @description add_field: the field, as in a type definition */
             new?: {
                 [key: string]: unknown;
             };
-            /** @description change_field: label, description, required, default; max_length only on fields of the customer layer */
+            /** @description add_state: the state (name, label, initial), as in a type definition (UI26.1) */
+            state?: {
+                [key: string]: unknown;
+            };
+            /** @description add_transition: the transition (name, label, from, to, when), as in a type definition (UI26.1) */
+            transition?: {
+                [key: string]: unknown;
+            };
+            /** @description set_layout: the position of each state in the graph of the workflow editor (UI26.2); replaces the whole layout, an empty object removes it. The effective type carries it as layout */
+            layout?: {
+                [key: string]: {
+                    x: number;
+                    y: number;
+                };
+            };
+            /** @description change_field: label, description, required, default; max_length only on fields of the customer layer. change_state: label, initial. change_transition: label, from, to, when (empty when removes the condition) */
             set?: {
                 [key: string]: unknown;
             };
@@ -2365,6 +2423,8 @@ export interface components {
             /** @enum {string} */
             status?: "active" | "inactive" | "conflict";
             reason?: string;
+            /** @description the display name of the account that made the change (UI25) */
+            by_name?: string;
         };
         FormOffer: {
             /** Format: uuid */
@@ -2490,7 +2550,7 @@ export interface components {
              */
             total?: number;
         };
-        /** @description the effective definition of an entity type */
+        /** @description the effective definition of an entity type; "timed" is true when SLA clocks run on its records (UI34) */
         TypeDefinition: {
             [key: string]: unknown;
         };
@@ -2758,6 +2818,8 @@ export interface components {
             language: components["schemas"]["SettingValue"];
             time_zone: components["schemas"]["SettingValue"];
             theme: components["schemas"]["SettingValue"];
+            color_scheme: components["schemas"]["SettingValue"];
+            density: components["schemas"]["SettingValue"];
             defaults: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -3261,7 +3323,7 @@ export interface operations {
                 limit?: number;
                 /** @description the "next" value of the previous page */
                 after?: string;
-                /** @description id, created_at, updated_at or version; a leading "-" sorts descending */
+                /** @description id, created_at, updated_at, version or sla_due_at (the deadline, empty ones last); a leading "-" sorts descending */
                 sort?: string;
                 /** @description comma-separated field names to return; id and version always come */
                 fields?: string;
@@ -5954,6 +6016,35 @@ export interface operations {
             422: components["responses"]["ValidationProblem"];
         };
     };
+    checkCondition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConditionCheck"];
+            };
+        };
+        responses: {
+            /** @description the verdict */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionResult"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+        };
+    };
     exportCustomerLayers: {
         parameters: {
             query?: never;
@@ -6012,6 +6103,16 @@ export interface operations {
                     /** @description an IANA time zone */
                     time_zone?: string | null;
                     theme?: string | null;
+                    /**
+                     * @description light, dark or like the system of the device (UI29)
+                     * @enum {string|null}
+                     */
+                    color_scheme?: "light" | "dark" | "system" | null;
+                    /**
+                     * @description the row height of lists, 36 or 52 px (UI30)
+                     * @enum {string|null}
+                     */
+                    density?: "compact" | "normal" | null;
                     /** @description per type an object of field values, or null to remove */
                     defaults?: {
                         [key: string]: {

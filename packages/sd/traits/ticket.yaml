@@ -1,0 +1,62 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The trait ticket (SD1; SD-Plan E1, E4): what an incident and a request share, the fields and
+# the roles at the record (SD-Plan N6). The priority comes with the incident (SD2) from impact
+# and urgency (SD-Plan §2.4).
+name: ticket
+label: {de: Vorgang, en: Ticket}
+description:
+  de: Titel, Beschreibung, Kategorie, Anfragequelle, Auswirkung und Dringlichkeit, dazu die Rollen am Vorgang.
+  en: Title, description, category, channel, impact and urgency, and the roles at the ticket.
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    format: rich
+    searchable: true
+  - name: category
+    type: reference
+    label: {de: Kategorie, en: Category}
+    to: sd.category
+  - name: channel
+    type: reference
+    label: {de: Anfragequelle, en: Channel}
+    to: sd.channel
+  - name: impact
+    type: choice
+    label: {de: Auswirkung, en: Impact}
+    description:
+      de: "Hoch: viele Personen oder ein Fachverfahren; mittel: mehrere Personen; niedrig: eine Person."
+      en: "High: many persons or a specialist application; medium: several persons; low: one person."
+    options:
+      - {value: high, label: {de: Hoch, en: High}}
+      - {value: medium, label: {de: Mittel, en: Medium}}
+      - {value: low, label: {de: Niedrig, en: Low}}
+  - name: urgency
+    type: choice
+    label: {de: Dringlichkeit, en: Urgency}
+    options:
+      - {value: high, label: {de: Hoch, en: High}}
+      - {value: medium, label: {de: Mittel, en: Medium}}
+      - {value: low, label: {de: Niedrig, en: Low}}
+actors:
+  - name: requester
+    label: {de: Anforderer, en: Requester}
+    to: [core.person]
+  - name: observer
+    label: {de: Beobachter, en: Observer}
+    to: [core.person, core.group]
+  - name: assignee
+    label: {de: Bearbeiter, en: Assignee}
+    to: [core.person]
+  - name: group
+    label: {de: Gruppe, en: Group}
+    to: [core.group]
+    single: true

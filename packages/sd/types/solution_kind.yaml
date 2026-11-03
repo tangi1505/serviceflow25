@@ -1,0 +1,19 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# How a ticket was solved (SD1); the incident (SD2) asks for it with the solution.
+# Provisional (SD-Plan E4).
+name: solution_kind
+label: {de: Lösungsart, en: Kind of solution}
+description:
+  de: Wie ein Vorgang gelöst wurde.
+  en: How a ticket was solved.
+traits: [list]
+list:
+  entries:
+    - {key: fixed, name: Behoben, name_en: Fixed, position: 1}
+    - {key: instructed, name: Anleitung gegeben, name_en: Instructions given, position: 2}
+    - {key: workaround, name: Umgehungslösung, name_en: Workaround, position: 3}
+    - {key: no_fault, name: Kein Fehler, name_en: No fault, position: 4}
+    - {key: duplicate, name: Duplikat, name_en: Duplicate, position: 5}
+    - {key: unsolvable, name: Nicht lösbar, name_en: Not solvable, position: 6}

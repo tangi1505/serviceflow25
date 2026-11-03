@@ -30,14 +30,17 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
+import { forget } from "@/app/recent";
 import { LanguageSwitch, ThemeSwitch } from "@/app/Switches";
 import { Form } from "@/render/Form";
 
 import { hiddenOf } from "./conditions";
 import { fieldLabel, formatMoment, formatValue, setDisplayTimeZone } from "@/render/fields";
 import { Timeline } from "@/render/Timeline";
+import { Transitions } from "@/render/Transitions";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { applyColorScheme, isColorScheme } from "@/ui/colorScheme";
 import { applyTheme, isTheme } from "@/ui/theme";
 
 export function PortalShell() {
@@ -58,9 +61,17 @@ export function PortalShell() {
     if (isTheme(s.theme.value)) {
       applyTheme(s.theme.value);
     }
+    // Light, dark or like the system (UI29).
+    if (isColorScheme(s.color_scheme?.value)) {
+      applyColorScheme(s.color_scheme.value);
+    }
     setDisplayTimeZone(s.time_zone.value);
   }, [settings.data, i18n]);
   const logout = async () => {
+    // The records of the command line go with the sign-out (UI31).
+    if (me.data) {
+      forget(me.data.id);
+    }
     try {
       await api.logout();
     } finally {
@@ -437,6 +448,10 @@ export function PortalRecordPage() {
           ) : null;
         })}
       </dl>
+      {/* The requester confirms or refuses the solution (SD-Plan N8). */}
+      {type.transitions?.some((tr) => (tr.by?.length ?? 0) > 0) && (
+        <Transitions type={type} record={rec} onlyRoles />
+      )}
       {timeline && <Timeline type={type} id={id} portal />}
     </div>
   );

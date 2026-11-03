@@ -24,3 +24,9 @@ allow Unlicense
 allow CC0-1.0
 allow BlueOak-1.0.0
 allow MPL-2.0
+
+# Fonts (UI29, Pascal 2026-11-02): the SIL Open Font License is a free licence (OSI, FSF) for
+# the font alone; it allows embedding and shipping with commercial software and does not reach
+# into the program. It stays forbidden for code; only these font packages may carry it.
+except @fontsource/ibm-plex-sans | OFL-1.1 | 2026-11-02 | font IBM Plex Sans of the design kit Klartext (UI-Plan E22); OFL only for fonts
+except @fontsource/ibm-plex-mono | OFL-1.1 | 2026-11-02 | font IBM Plex Mono of the design kit Klartext (UI-Plan E22); OFL only for fonts

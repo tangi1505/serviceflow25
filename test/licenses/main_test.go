@@ -159,13 +159,16 @@ func TestRun(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// The fonts of UI29 are exceptions in licenses.txt; an exception without its package fails.
 	write(`{"MIT": [{"name": "react", "versions": ["19.3.1"], "license": "MIT"}],
-	         "(MIT OR CC0-1.0)": [{"name": "dual", "versions": ["1.0.0"], "license": "(MIT OR CC0-1.0)"}]}`)
+	         "(MIT OR CC0-1.0)": [{"name": "dual", "versions": ["1.0.0"], "license": "(MIT OR CC0-1.0)"}],
+	         "OFL-1.1": [{"name": "@fontsource/ibm-plex-sans", "versions": ["5.3.0"], "license": "OFL-1.1"},
+	                     {"name": "@fontsource/ibm-plex-mono", "versions": ["5.3.0"], "license": "OFL-1.1"}]}`)
 	var out bytes.Buffer
 	if code := run(t.Context(), []string{"--go=group24.de/itsm/cmd/itsm", "--web=" + web}, &out); code != 0 {
 		t.Fatalf("today's dependencies: %d\n%s", code, out.String())
 	}
-	if !strings.Contains(out.String(), "licenses ok") || !strings.Contains(out.String(), "2 web packages") {
+	if !strings.Contains(out.String(), "licenses ok") || !strings.Contains(out.String(), "4 web packages") {
 		t.Fatalf("output:\n%s", out.String())
 	}
 

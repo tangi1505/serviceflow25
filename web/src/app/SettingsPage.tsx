@@ -30,6 +30,7 @@ import { fieldLabel, isCalculated } from "@/render/fields";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
+import { colorSchemes } from "@/ui/colorScheme";
 import { themes } from "@/ui/theme";
 
 const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
@@ -53,7 +54,8 @@ function useSource() {
         : t("settings.source.node", { node: source });
 }
 
-type Key = "language" | "time_zone" | "theme";
+type Key = "language" | "time_zone" | "theme" | "color_scheme" | "density";
+const densities = ["compact", "normal"] as const;
 
 function Choice({
   name,
@@ -253,6 +255,8 @@ export function MySettingsPage() {
         language: (d.language || null) as "de" | "en" | null,
         time_zone: d.time_zone || null,
         theme: d.theme || null,
+        color_scheme: (d.color_scheme || null) as "light" | "dark" | "system" | null,
+        density: (d.density || null) as "compact" | "normal" | null,
       }),
     onSuccess: (saved) => {
       queryClient.setQueryData(mySettingsQuery.queryKey, saved);
@@ -274,6 +278,8 @@ export function MySettingsPage() {
     language: own(s, "language"),
     time_zone: own(s, "time_zone"),
     theme: own(s, "theme"),
+    color_scheme: own(s, "color_scheme"),
+    density: own(s, "density"),
   };
   const set = (k: Key) => (v: string) => setDraft({ ...d, [k]: v });
   return (
@@ -307,6 +313,20 @@ export function MySettingsPage() {
           onChange={set("theme")}
           options={themes.map((x) => ({ value: x, label: t(`theme.${x}`) }))}
         />
+        <Choice
+          name="color_scheme"
+          settings={s}
+          value={d.color_scheme}
+          onChange={set("color_scheme")}
+          options={colorSchemes.map((x) => ({ value: x, label: t(`colorScheme.${x}`) }))}
+        />
+        <Choice
+          name="density"
+          settings={s}
+          value={d.density}
+          onChange={set("density")}
+          options={densities.map((x) => ({ value: x, label: t(`list.densities.${x}`) }))}
+        />
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={save.isPending}>
             {t("form.save")}
@@ -336,6 +356,8 @@ const globalKeys = [
   { key: "ui.language", name: "language" },
   { key: "ui.time_zone", name: "time_zone" },
   { key: "ui.theme", name: "theme" },
+  { key: "ui.color_scheme", name: "color_scheme" },
+  { key: "ui.density", name: "density" },
 ] as const;
 
 export function GlobalSettingsPage() {
@@ -366,7 +388,11 @@ export function GlobalSettingsPage() {
       ? Object.keys(languages).map((l) => ({ value: l, label: t(`language.${l}`) }))
       : name === "theme"
         ? themes.map((x) => ({ value: x, label: t(`theme.${x}`) }))
-        : timeZones().map((z) => ({ value: z, label: z }));
+        : name === "color_scheme"
+          ? colorSchemes.map((x) => ({ value: x, label: t(`colorScheme.${x}`) }))
+          : name === "density"
+            ? densities.map((x) => ({ value: x, label: t(`list.densities.${x}`) }))
+            : timeZones().map((z) => ({ value: z, label: z }));
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <h1 className="text-2xl font-semibold">{t("settings.globalTitle")}</h1>

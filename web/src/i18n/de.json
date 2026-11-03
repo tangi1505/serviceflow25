@@ -13,7 +13,7 @@
   },
   "theme": {
     "neutral": "Neutral",
-    "probe": "Probe (grün)"
+    "probe": "Probe (blau)"
   },
   "login": {
     "title": "Anmelden",
@@ -39,7 +39,12 @@
     "logout": "Abmelden",
     "language": "Sprache",
     "theme": "Theme",
-    "tenant": "Mandant"
+    "tenant": "Mandant",
+    "admin": "Verwaltung",
+    "customize": "Typen anpassen",
+    "roles": "Rollen und Rechte",
+    "areas": "Bereiche",
+    "saved": "Gespeicherte Suchen"
   },
   "home": {
     "welcome": "Willkommen, {{name}}",
@@ -53,7 +58,8 @@
     "version": "Version",
     "state": "Status",
     "created_at": "Angelegt",
-    "updated_at": "Geändert"
+    "updated_at": "Geändert",
+    "sla_due_at": "Frist"
   },
   "list": {
     "new": "Neu",
@@ -62,7 +68,12 @@
     "loaded": "{{count}}{{more}} Datensätze",
     "error": "Die Liste konnte nicht geladen werden.",
     "select": "Auswählen: {{title}}",
-    "selectAll": "Alle geladenen auswählen"
+    "selectAll": "Alle geladenen auswählen",
+    "density": "Zeilenhöhe",
+    "densities": {
+      "compact": "Kompakt",
+      "normal": "Normal"
+    }
   },
   "form": {
     "newTitle": "Neuer Datensatz",
@@ -116,9 +127,13 @@
     "title": "Status",
     "refused": "Übergang nicht möglich: {{detail}}",
     "error": "Übergang fehlgeschlagen: {{detail}}",
+    "yours": "Ihre Rückmeldung",
+    "comment": "Text (freiwillig)",
+    "commentRequired": "Begründung",
     "reason": {
       "state": "Nicht aus dem aktuellen Status möglich.",
-      "condition": "Die Bedingung ist nicht erfüllt."
+      "condition": "Die Bedingung ist nicht erfüllt.",
+      "role": "Nur für eine Rolle am Vorgang."
     }
   },
   "timeline": {
@@ -202,7 +217,10 @@
       "starts": "beginnt mit",
       "gte": "ab",
       "lte": "bis",
-      "null": "ist leer"
+      "null": "ist leer",
+      "breached": "ist überschritten",
+      "close": "ist knapp (ab 75 %)",
+      "dueBy": "fällig bis"
     }
   },
   "search": {
@@ -316,7 +334,9 @@
     "removed": "Entfernt.",
     "forbidden": "Dafür fehlt dir das Recht manage_settings für diesen Knoten.",
     "error": "Speichern nicht möglich: {{detail}}",
-    "loadError": "Die Einstellungen konnten nicht geladen werden."
+    "loadError": "Die Einstellungen konnten nicht geladen werden.",
+    "color_scheme": "Darstellung",
+    "density": "Zeilenhöhe der Listen"
   },
   "portal": {
     "title": "itsm Portal",
@@ -394,5 +414,332 @@
         "empty": "ist leer"
       }
     }
+  },
+  "customize": {
+    "open": "Typ anpassen",
+    "title": "Typ anpassen: {{type}}",
+    "toList": "Zur Liste",
+    "intro": "Jede Aktion wird sofort gespeichert und wirkt gleich in Liste und Formular, für alle Mandanten. Eigene Felder heißen k_…; Felder des Pakets lassen sich umbenennen, ausblenden und verschieben, aber nicht entfernen.",
+    "fields": "Felder",
+    "newField": "Neues Feld",
+    "changes": "Änderungen",
+    "noChanges": "Noch keine Änderungen an diesem Typ.",
+    "export": "Kundenschicht exportieren",
+    "overview": "Typen anpassen",
+    "overviewIntro": "Die Typen mit der Zahl ihrer Änderungen in der Kundenschicht. Ein Klick öffnet den Editor.",
+    "edit": "„{{name}}“ bearbeiten",
+    "editShort": "Bearbeiten",
+    "hide": "„{{name}}“ ausblenden",
+    "hideShort": "Ausblenden",
+    "show": "„{{name}}“ einblenden",
+    "showShort": "Einblenden",
+    "remove": "„{{name}}“ entfernen",
+    "removeShort": "Entfernen",
+    "takeBack": "Zurücknehmen: {{change}}",
+    "takeBackShort": "Zurücknehmen",
+    "labelDe": "Beschriftung",
+    "labelEn": "Beschriftung auf Englisch",
+    "descDe": "Beschreibung",
+    "descEn": "Beschreibung auf Englisch",
+    "default": "Vorgabe",
+    "noDefault": "– keine –",
+    "maxLength": "Höchstlänge in Zeichen",
+    "required": "Pflichtfeld",
+    "moreOptions": "Weitere Werte, je Zeile einer",
+    "addOptions": "Werte ergänzen",
+    "options": "Werte, je Zeile einer",
+    "technical": "Technischer Name",
+    "technicalHelp": "Beginnt mit k_, danach Kleinbuchstaben, Ziffern und _. Lässt sich später nicht ändern.",
+    "kindLabel": "Feldtyp",
+    "to": "Verweist auf",
+    "add": "Feld an {{type}} anlegen",
+    "save": "Speichern",
+    "conflict": "Jemand anders hat den Typ gerade geändert. Der Editor zeigt jetzt den neuen Stand; bitte die Aktion wiederholen.",
+    "forbidden": "Typen anpassen darf nur, wer das Recht customize an core.type an der Wurzel hat.",
+    "refused": "Nicht übernommen: {{detail}}",
+    "error": "Das hat nicht geklappt: {{detail}}",
+    "kind": {
+      "text": "Text",
+      "rich": "Formatierter Text",
+      "number": "Zahl",
+      "boolean": "Ja/Nein",
+      "date": "Datum",
+      "datetime": "Zeitpunkt",
+      "choice": "Auswahl",
+      "reference": "Verweis",
+      "sequence": "Laufende Nummer"
+    },
+    "flag": {
+      "own": "eigenes Feld",
+      "package": "aus dem Paket",
+      "required": "Pflicht",
+      "hidden": "ausgeblendet",
+      "calculated": "berechnet",
+      "title": "Titel"
+    },
+    "col": {
+      "change": "Änderung",
+      "by": "Von",
+      "at": "Am",
+      "status": "Status",
+      "action": "Aktion",
+      "type": "Typ",
+      "count": "Änderungen"
+    },
+    "status": {
+      "active": "wirkt",
+      "inactive": "stillgelegt",
+      "conflict": "Konflikt"
+    },
+    "attr": {
+      "label": "Beschriftung",
+      "description": "Beschreibung",
+      "required": "Pflicht",
+      "default": "Vorgabe",
+      "max_length": "Höchstlänge",
+      "initial": "Anfangsstatus",
+      "from": "Von",
+      "to": "Nach",
+      "when": "Bedingung"
+    },
+    "op": {
+      "add_field": "Feld „{{name}}“ ({{field}}) angelegt",
+      "change_field": "„{{name}}“ geändert: {{what}}",
+      "add_options": "Werte für „{{name}}“ ergänzt: {{options}}",
+      "hide_field": "„{{name}}“ ausgeblendet",
+      "show_field": "„{{name}}“ eingeblendet",
+      "remove_field": "„{{name}}“ entfernt",
+      "move_field": "„{{name}}“ hinter „{{after}}“ verschoben",
+      "move_first": "„{{name}}“ an den Anfang verschoben",
+      "add_state": "Status „{{name}}“ ({{field}}) angelegt",
+      "change_state": "Status „{{name}}“ geändert: {{what}}",
+      "remove_state": "Status „{{name}}“ entfernt",
+      "add_transition": "Übergang „{{name}}“ ({{field}}) angelegt",
+      "change_transition": "Übergang „{{name}}“ geändert: {{what}}",
+      "remove_transition": "Übergang „{{name}}“ entfernt",
+      "disable_transition": "Übergang „{{name}}“ stillgelegt",
+      "enable_transition": "Übergang „{{name}}“ aktiviert",
+      "set_layout": "Anordnung des Graphen gespeichert"
+    },
+    "done": {
+      "added": "Feld „{{name}}“ angelegt.",
+      "changed": "„{{name}}“ geändert.",
+      "options": "Werte für „{{name}}“ ergänzt: {{options}}.",
+      "hidden": "„{{name}}“ ausgeblendet.",
+      "shown": "„{{name}}“ eingeblendet.",
+      "removed": "„{{name}}“ entfernt.",
+      "moved": "„{{name}}“ steht jetzt hinter „{{after}}“.",
+      "movedFirst": "„{{name}}“ steht jetzt am Anfang.",
+      "takenBack": "Zurückgenommen: {{change}}."
+    }
+  },
+  "workflow": {
+    "open": "Workflow",
+    "title": "Workflow: {{type}}",
+    "toFields": "Zum Typ-Editor",
+    "intro": "Status und Übergänge des Typs. Jede Zeile wird mit „Speichern“ sofort als Änderung der Kundenschicht gespeichert. Eigene Status und Übergänge heißen k_…; Status des Pakets lassen sich umbenennen, Übergänge des Pakets umbenennen, umleiten und stilllegen.",
+    "noStates": "Dieser Typ hat noch kein Statusmodell. Der erste Status wird der Anfangsstatus.",
+    "states": "Status",
+    "transitions": "Übergänge",
+    "newState": "Neuer Status",
+    "newTransition": "Neuer Übergang",
+    "addState": "Status anlegen",
+    "addTransition": "Übergang anlegen",
+    "makeInitial": "Anfangsstatus (neue Datensätze beginnen hier)",
+    "initialOf": "Anfangsstatus: {{name}}",
+    "disable": "„{{name}}“ stilllegen",
+    "disableShort": "Stilllegen",
+    "enable": "„{{name}}“ aktivieren",
+    "enableShort": "Aktivieren",
+    "conditionHelp": "CEL über record, zum Beispiel record.priority <= 2. Leer heißt immer.",
+    "conditionChecking": "Bedingung wird geprüft …",
+    "conditionOk": "Bedingung ist gültig.",
+    "conditionError": "Bedingung ungültig: {{detail}}",
+    "col": {
+      "label": "Beschriftung",
+      "name": "Technischer Name",
+      "initial": "Anfang",
+      "from": "Von",
+      "to": "Nach",
+      "when": "Bedingung"
+    },
+    "flag": {
+      "disabled": "stillgelegt"
+    },
+    "hint": {
+      "unreachable": "Kein Übergang führt nach „{{name}}“.",
+      "disabled": "Der Übergang „{{name}}“ ist stillgelegt."
+    },
+    "done": {
+      "stateAdded": "Status „{{name}}“ angelegt.",
+      "stateChanged": "Status „{{name}}“ geändert.",
+      "stateRemoved": "Status „{{name}}“ entfernt.",
+      "initial": "„{{name}}“ ist jetzt der Anfangsstatus.",
+      "transitionAdded": "Übergang „{{name}}“ angelegt.",
+      "transitionChanged": "Übergang „{{name}}“ geändert.",
+      "transitionRemoved": "Übergang „{{name}}“ entfernt.",
+      "disabled": "Übergang „{{name}}“ stillgelegt.",
+      "enabled": "Übergang „{{name}}“ aktiviert."
+    },
+    "graph": {
+      "title": "Graph",
+      "arrange": "Anordnen",
+      "save": "Anordnung speichern",
+      "saved": "Anordnung des Graphen gespeichert.",
+      "unsaved": "Anordnung verändert, noch nicht gespeichert.",
+      "collapse": "Graph einklappen",
+      "expand": "Graph aufklappen",
+      "initial": "Anfang",
+      "nodeLabel": "Status „{{name}}“",
+      "edgeLabel": "Übergang „{{name}}“ von „{{from}}“ nach „{{to}}“",
+      "legend": "Kräftiger Rahmen: Anfangsstatus. Gestrichelter Rahmen: eigener Status. Gestrichelte Kante: stillgelegter Übergang. Ein Klick auf eine Kante markiert den Übergang hier und in der Tabelle; eine Verbindung von einem Status zum anderen ziehen füllt das Formular „Neuer Übergang“ vor. Knoten bewegen mit der Maus oder mit Enter und den Pfeiltasten, dann „Anordnung speichern“.",
+      "connected": "Aus dem Graphen gezogen: {{from}} → {{to}}. Beschriftung vergeben, dann anlegen.",
+      "marked": "im Graphen markiert",
+      "a11y": {
+        "node": "Mit Enter oder Leertaste wählen, mit den Pfeiltasten bewegen, mit Escape abwählen.",
+        "live": "Verschoben, neue Position x: {{x}}, y: {{y}}",
+        "edge": "Mit Enter oder Leertaste den Übergang wählen, mit Escape abwählen.",
+        "controls": "Ansicht",
+        "zoomIn": "Vergrößern",
+        "zoomOut": "Verkleinern",
+        "fitView": "Einpassen"
+      }
+    }
+  },
+  "roles": {
+    "title": "Rollen",
+    "intro": "Jede Änderung gilt sofort für alle mit der Rolle und steht im Sicherheitsprotokoll.",
+    "forbidden": "Rollen verwalten braucht das Recht manage_rights.",
+    "unknown": "Diese Rolle gibt es nicht.",
+    "roleTitle": "Rolle: {{name}}",
+    "toAll": "Alle Rollen",
+    "new": "Neue Rolle",
+    "create": "Rolle anlegen",
+    "confirmRemove": "„{{name}}“ mit allen Rechten und Zuweisungen entfernen?",
+    "removeYes": "Ja, entfernen",
+    "permissions": "Berechtigungen",
+    "onlyGranted": "Nur Typen mit Rechten",
+    "matrixHelp": "In jeder Zelle die Reichweite; „–“ heißt kein Recht. „…“ öffnet Bedingung, Feldrechte und weitere Reichweiten der Zelle.",
+    "none": "–",
+    "details": "Details: {{where}}",
+    "detailsTitle": "{{where}}",
+    "narrowed": "eingeschränkt",
+    "close": "Schließen",
+    "noLine": "Noch kein Recht in dieser Zelle.",
+    "addLine": "Recht anlegen",
+    "addLineShort": "Anlegen",
+    "addScope": "Weitere Reichweite",
+    "removeLine": "Reichweite entfernen",
+    "lineOf": "{{where}}, {{scope}}",
+    "condition": "Bedingung",
+    "conditionHelp": "CEL über record, zum Beispiel record.priority > 1. Leer heißt ohne Bedingung.",
+    "fieldsRead": "Felder, die gelesen werden dürfen",
+    "fieldsWrite": "Felder, die geschrieben werden dürfen",
+    "allFields": "Alle Felder",
+    "systemFields": "Systemfelder (Nummer, Status, Version, Zeiten) sind immer lesbar und nie hier schreibbar.",
+    "specials": "Sonderrechte",
+    "special": {
+      "ui_workplace": "Arbeitsplatz für Bearbeiter (sonst Portal)",
+      "type_customize": "Typen und Workflows anpassen",
+      "role_manage_rights": "Rollen und Rechte verwalten",
+      "org_manage_org": "Organisationsbaum pflegen",
+      "org_manage_settings": "Einstellungen am Baum pflegen",
+      "rule_manage_rules": "Regeln pflegen",
+      "webhook_manage_webhooks": "Webhooks pflegen",
+      "job_manage_jobs": "Hintergrundaufträge steuern",
+      "security_event_read": "Sicherheitsprotokoll lesen",
+      "tenant_report_tenants": "Auswertungen über Mandanten"
+    },
+    "others": "Weitere Rechte",
+    "othersHelp": "Rechte, die weder die Matrix noch die Sonderrechte zeigen, etwa private Einträge lesen (read_private) oder alle Aktionen (*).",
+    "newOther": "Weiteres Recht",
+    "addOther": "Recht anlegen",
+    "assignments": "Zuweisungen",
+    "noAssignments": "Niemand hat diese Rolle.",
+    "newAssignment": "Neue Zuweisung",
+    "assign": "Zuweisen",
+    "unassign": "Zuweisung an {{node}} entfernen",
+    "anyType": "Alle Typen",
+    "anyAction": "alle Aktionen",
+    "action": {
+      "read": "lesen",
+      "create": "anlegen",
+      "update": "ändern",
+      "delete": "löschen"
+    },
+    "scope": {
+      "own": "eigene",
+      "group": "Gruppe",
+      "involved": "beteiligt",
+      "unit": "Einheit",
+      "subtree": "Unterbaum",
+      "all": "alle"
+    },
+    "col": {
+      "role": "Rolle",
+      "name": "Technischer Name",
+      "permissions": "Rechte",
+      "assignments": "Zuweisungen",
+      "type": "Typ",
+      "action": "Aktion",
+      "scope": "Reichweite",
+      "holder": "Person oder Gruppe",
+      "node": "Knoten"
+    },
+    "done": {
+      "created": "Rolle „{{name}}“ angelegt.",
+      "removed": "Rolle „{{name}}“ entfernt.",
+      "set": "{{where}}: {{scope}}.",
+      "unset": "{{where}}: kein Recht mehr.",
+      "saved": "{{where}}, {{scope}} gespeichert.",
+      "lineRemoved": "{{where}}: Reichweite {{scope}} entfernt.",
+      "specialOn": "„{{name}}“ erteilt.",
+      "specialOff": "„{{name}}“ entzogen.",
+      "assigned": "Rolle an {{node}} zugewiesen.",
+      "unassigned": "Zuweisung an {{node}} entfernt."
+    }
+  },
+  "colorScheme": {
+    "system": "Wie das System",
+    "light": "Hell",
+    "dark": "Dunkel"
+  },
+  "preview": {
+    "label": "Vorschau",
+    "close": "Vorschau schließen",
+    "open": "Öffnen"
+  },
+  "find": {
+    "title": "Suche: {{q}}",
+    "empty": "Suchbegriff in der Befehlszeile eingeben (Strg K).",
+    "none": "Nichts gefunden."
+  },
+  "command": {
+    "open": "Suchen oder Befehl …",
+    "shortcut": "Strg K",
+    "title": "Befehlszeile",
+    "input": "Befehl oder Suche",
+    "placeholder": "Datensatz, Befehl oder Seite …",
+    "options": "Treffer und Befehle",
+    "new": "Neu: {{type}}",
+    "colorScheme": "Darstellung: {{value}}",
+    "density": "Zeilenhöhe: {{value}}",
+    "searchAll": "Alle Treffer für „{{q}}“ in der Suche",
+    "none": "Nichts gefunden.",
+    "groups": {
+      "recent": "Zuletzt geöffnet",
+      "records": "Datensätze",
+      "commands": "Befehle",
+      "goto": "Gehe zu"
+    },
+    "keys": {
+      "choose": "↑ ↓ wählen",
+      "run": "Enter ausführen",
+      "close": "Esc schließen"
+    }
+  },
+  "area": {
+    "core": "Stammdaten",
+    "probe": "Probepaket"
   }
 }

@@ -22,6 +22,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/google/uuid"
@@ -45,12 +46,15 @@ type Actor *uuid.UUID
 
 // System fields every record carries in the API, in output order.
 var systemFields = []string{"id", "version", "state", "org_path", "source", "external_key",
-	"created_at", "created_by", "updated_at", "updated_by", "deleted_at"}
+	"created_at", "created_by", "updated_at", "updated_by", "deleted_at",
+	"sla_due_at", "sla_warn_at", "sla_paused"}
 
 // Service performs record operations for the installed types.
 type Service struct {
 	db    *db.Router
 	types func(ctx context.Context) (map[string]meta.Type, error)
+	// seqs are the sequences of the running numbers known to exist, by pool and name (PL49).
+	seqs sync.Map
 	// nodeExists tells whether a path of the organisation tree exists (PL6).
 	nodeExists func(ctx context.Context, path string) (bool, error)
 	// AfterWrite, when set, is told after every successful write which type changed; the
@@ -208,8 +212,8 @@ type ListOptions struct {
 	Limit int
 	// After is the Next cursor of the previous page.
 	After string
-	// Sort names one column, "-" prefix for descending; only NOT NULL system columns for now
-	// (id, created_at, updated_at, version). Default is id.
+	// Sort names one column, "-" prefix for descending: id, created_at, updated_at, version or
+	// sla_due_at, the deadline (UI34), whose records without one come last. Default is id.
 	Sort string
 	// Fields limits the returned fields; id and version always come.
 	Fields []string
@@ -220,7 +224,10 @@ type ListOptions struct {
 }
 
 // sortable lists the columns a list can be ordered by with a key-set cursor.
-var sortable = map[string]bool{"id": true, "created_at": true, "updated_at": true, "version": true}
+var sortable = map[string]bool{"id": true, "created_at": true, "updated_at": true, "version": true, "sla_due_at": true}
+
+// nullable are the sortable columns that may be empty; their empty rows come last.
+var nullable = map[string]bool{"sla_due_at": true}
 
 // filterableSystem lists the system columns a list can be filtered by.
 var filterableSystem = map[string]bool{"state": true, "source": true, "external_key": true}
@@ -248,7 +255,7 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 		sortCol = strings.TrimPrefix(o.Sort, "-")
 		desc = strings.HasPrefix(o.Sort, "-")
 		if !sortable[sortCol] {
-			ps = append(ps, Problem{Field: "sort", Code: "sort", Message: fmt.Sprintf("%q cannot be sorted by; use id, created_at, updated_at or version", sortCol)})
+			ps = append(ps, Problem{Field: "sort", Code: "sort", Message: fmt.Sprintf("%q cannot be sorted by; use id, created_at, updated_at, version or sla_due_at", sortCol)})
 		}
 	}
 
@@ -362,12 +369,21 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 			if desc {
 				op = "<"
 			}
-			if sortCol == "id" {
+			col := pgx.Identifier{sortCol}.Sanitize()
+			switch {
+			case sortCol == "id":
 				args = append(args, c.ID)
 				where = append(where, fmt.Sprintf("id %s $%d", op, len(args)))
-			} else {
+			case nullable[sortCol] && c.V == nil:
+				// The page ended among the empty ones, which come last.
+				args = append(args, c.ID)
+				where = append(where, fmt.Sprintf("(%s IS NULL AND id %s $%d)", col, op, len(args)))
+			case nullable[sortCol]:
 				args = append(args, c.V, c.ID)
-				where = append(where, fmt.Sprintf("(%s, id) %s ($%d, $%d)", pgx.Identifier{sortCol}.Sanitize(), op, len(args)-1, len(args)))
+				where = append(where, fmt.Sprintf("((%s, id) %s ($%d, $%d) OR %s IS NULL)", col, op, len(args)-1, len(args), col))
+			default:
+				args = append(args, c.V, c.ID)
+				where = append(where, fmt.Sprintf("(%s, id) %s ($%d, $%d)", col, op, len(args)-1, len(args)))
 			}
 		}
 	}
@@ -380,6 +396,9 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 		dir = "DESC"
 	}
 	order := fmt.Sprintf("%s %s", pgx.Identifier{sortCol}.Sanitize(), dir)
+	if nullable[sortCol] {
+		order += " NULLS LAST"
+	}
 	if sortCol != "id" {
 		order += ", id " + dir
 	}
@@ -473,9 +492,19 @@ func (s *Service) create(ctx context.Context, t meta.Type, input map[string]any,
 	if err != nil {
 		return nil, err
 	}
+	// An import with a source may bring the running numbers (PL49).
+	var given map[string]int64
+	if key != nil {
+		var nps []Problem
+		input, given, nps = takeNumbers(t, input)
+		aps = append(aps, nps...)
+	}
 	values, err := s.validate(ctx, t, input, true)
 	if err = withProblems(err, append(tps, aps...)); err != nil {
 		return nil, err
+	}
+	for f, n := range given {
+		values[f] = n
 	}
 	// The caller's field rights, before rules add their values with the rights of the system.
 	if err := checkFields(ctx, t, authz.ActionCreate, withActors(withTranslated(values, tr), nil, t, actors)); err != nil {
@@ -519,8 +548,27 @@ func (s *Service) create(ctx context.Context, t meta.Type, input map[string]any,
 		// A mirror keeps the id of its original (Mirror, PL47b).
 		id = fixed
 	}
+	seqs, err := s.sequences(ctx, t, node)
+	if err != nil {
+		return nil, err
+	}
 	var rec Record
 	err = s.tx(ctx, func(tx pgx.Tx) error {
+		// The running numbers in the transaction of the write (PL49): a new one from the
+		// sequence, an imported one moves the sequence above it.
+		for f, seq := range seqs {
+			if n, ok := given[f]; ok {
+				if err := raiseSequence(ctx, tx, seq, n); err != nil {
+					return err
+				}
+				continue
+			}
+			ns, err := s.nextNumbers(ctx, tx, seq, 1)
+			if err != nil {
+				return err
+			}
+			values[f] = ns[0]
+		}
 		cols := []string{"id", "created_by", "updated_by"}
 		args := []any{id, uuidOrNil(actor), uuidOrNil(actor)}
 		if t.HasStates() {
@@ -655,6 +703,13 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 	if err != nil {
 		return nil, err
 	}
+	// An import sends the running number again with every row; it may not change it (PL49).
+	var kept map[string]int64
+	if key != nil {
+		var nps []Problem
+		patch, kept, nps = takeNumbers(t, patch)
+		aps = append(aps, nps...)
+	}
 	values, err := s.validate(ctx, t, patch, false)
 	if err = withProblems(err, append(tps, aps...)); err != nil {
 		return nil, err
@@ -668,6 +723,12 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 		}
 		if err := checkAccess(ctx, t, old, authz.ActionUpdate); err != nil {
 			return err
+		}
+		for f, n := range kept {
+			if had, _ := old[f].(int64); had != n {
+				return &ValidationError{Problems: []Problem{{Field: f, Code: "read_only",
+					Message: fmt.Sprintf("is the running number %d and cannot be changed", had)}}}
+			}
 		}
 		if err := checkFields(ctx, t, authz.ActionUpdate, withActors(withTranslated(values, tr), old, t, actors)); err != nil {
 			return err
@@ -835,6 +896,20 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 			}
 		} else if err := event(ctx, q, t, id, rec, "update", v, changed, extra, actor); err != nil {
 			return err
+		}
+		// The text a transition took along (SD-Plan N8): an entry of the same write.
+		if body, _ := ctx.Value(commentKey{}).(string); move != nil && body != "" {
+			entry, err := uuid.NewV7()
+			if err != nil {
+				return err
+			}
+			if _, err := q.InsertEntry(ctx, queries.InsertEntryParams{ID: entry, TypeName: t.QualifiedName(), RecordID: id,
+				Body: body, Format: FormatText, CreatedBy: nullActor(actor)}); err != nil {
+				return fmt.Errorf("records: entry of %s: %w", move.Name, err)
+			}
+			if err := event(ctx, q, t, id, rec, EventComment, v, []string{}, map[string]any{"entry": entry.String(), "private": false}, actor); err != nil {
+				return err
+			}
 		}
 		// The sums at the records it points to, before and after (WF13); the clocks pause, go
 		// on or stop with the record as it is now (WF9).

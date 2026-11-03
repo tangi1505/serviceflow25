@@ -14,20 +14,23 @@ import type { ComponentProps } from "react";
 import { cn } from "@/ui/utils";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+  // Buttons of the kit (UI29, §2.1): 36 px, corner 8 px, weight 500; the focus ring is the
+  // global one (2 px accent, 2 px away). Disabled: muted ground, muted text, a border.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent text-sm font-medium transition-colors disabled:pointer-events-none disabled:border-border disabled:bg-muted disabled:text-foreground-2",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        outline: "border border-input bg-background hover:bg-muted",
-        ghost: "hover:bg-muted",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        default: "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+        secondary: "border-input bg-card text-foreground hover:bg-surface-active",
+        outline: "border-input bg-card text-foreground hover:bg-surface-active",
+        ghost: "text-foreground hover:bg-surface-active",
+        // Danger: card ground, text and border in red.
+        destructive: "border-destructive bg-card text-destructive hover:bg-destructive-background",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 px-3",
-        lg: "h-11 px-8",
+        default: "h-9 px-3.5",
+        sm: "h-8 px-2.5 text-[13px]",
+        lg: "h-11 px-6",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

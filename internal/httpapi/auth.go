@@ -220,6 +220,13 @@ func me(s auth.Session, a *authz.Access) gen.Me {
 	// The workplace for agents, the portal for everyone else (UI10).
 	workplace := a == nil || a.IsSystem() || a.Allowed("core.ui", "workplace")
 	m.Workplace = &workplace
+	// Changing types in the customer layer (PL43): the interface shows its editor (UI25).
+	customize := a != nil && !a.IsSystem() && a.Installation(typeRights, "customize")
+	m.Customize = &customize
+	// Managing roles, their permissions and assignments (PL8): the interface offers the role
+	// editor (UI27).
+	manageRights := a != nil && !a.IsSystem() && a.Allowed(rightsType, "manage_rights")
+	m.ManageRights = &manageRights
 	if a != nil && a.PersonID != nil {
 		m.PersonId = a.PersonID
 	}

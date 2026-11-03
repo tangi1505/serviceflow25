@@ -59,6 +59,11 @@ var systemColumns = []struct{ name, def string }{
 	{"updated_at", "timestamptz NOT NULL DEFAULT now()"},
 	{"updated_by", "uuid"},
 	{"deleted_at", "timestamptz"},
+	// The next deadline of the running SLA clocks, their three-quarter point and whether only
+	// paused clocks are left (UI34, migration 41): kept by internal/sla, not fields.
+	{"sla_due_at", "timestamptz"},
+	{"sla_warn_at", "timestamptz"},
+	{"sla_paused", "boolean NOT NULL DEFAULT false"},
 }
 
 // ColumnType maps a field type to its PostgreSQL column type.
@@ -76,6 +81,8 @@ func ColumnType(ft meta.FieldType) (string, error) {
 		return "timestamptz", nil
 	case meta.FieldReference:
 		return "uuid", nil
+	case meta.FieldSequence:
+		return "bigint", nil
 	}
 	return "", fmt.Errorf("schema: no column type for field type %q", ft)
 }
@@ -83,6 +90,7 @@ func ColumnType(ft meta.FieldType) (string, error) {
 // udtNames is what information_schema reports for each column type.
 var udtNames = map[string]string{
 	"text": "text", "numeric": "numeric", "boolean": "bool", "date": "date", "timestamptz": "timestamptz", "uuid": "uuid",
+	"bigint": "int8",
 }
 
 // Change is one applied DDL step.
@@ -209,7 +217,16 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 				return nil, err
 			}
 		}
-		if f.Unique {
+		if f.Type == meta.FieldSequence {
+			// A running number is unique per tenant, the trash included: it is never given
+			// twice (PL49).
+			idx := table + "_" + f.Name + "_key"
+			stmt := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (tenant, %s)",
+				pgx.Identifier{idx}.Sanitize(), pgx.Identifier{table}.Sanitize(), pgx.Identifier{f.Name}.Sanitize())
+			if err := ensureUnique(ctx, tx, table, idx, stmt, run); err != nil {
+				return nil, err
+			}
+		} else if f.Unique {
 			// Unique per tenant (PL46, E136), outside the trash.
 			idx := table + "_" + f.Name + "_key"
 			stmt := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (tenant, %s) WHERE deleted_at IS NULL",
@@ -252,6 +269,7 @@ func systemIndexes(table string) []string {
 		fmt.Sprintf("CREATE INDEX %s ON %s USING gist (org_path)", pgx.Identifier{table + "_org_path_idx"}.Sanitize(), id),
 		sourceKeyIndex(table),
 		fmt.Sprintf("CREATE INDEX %s ON %s (updated_at)", pgx.Identifier{table + "_updated_at_idx"}.Sanitize(), id),
+		fmt.Sprintf("CREATE INDEX %s ON %s (sla_due_at, id)", pgx.Identifier{table + "_sla_due_idx"}.Sanitize(), id),
 	}
 }
 

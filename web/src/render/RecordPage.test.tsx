@@ -129,6 +129,9 @@ describe("RecordPage", () => {
   it("says how the clocks stand", () => {
     expect(light(clock({}))).toBe("inTime");
     expect(light(clock({ remaining_minutes: 30 }))).toBe("close");
+    // Close from 75 % of the time used (UI30): 50 of 240 minutes left is 79 % used.
+    expect(light(clock({ remaining_minutes: 50 }))).toBe("close");
+    expect(light(clock({ remaining_minutes: 70 }))).toBe("inTime");
     expect(light(clock({ breached: true, remaining_minutes: -5 }))).toBe("breached");
     expect(light(clock({ state: "stopped" }))).toBe("met");
     expect(light(clock({ state: "paused" }))).toBe("paused");

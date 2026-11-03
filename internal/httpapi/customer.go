@@ -16,6 +16,7 @@ import (
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/httpapi/gen"
 	"group24.de/itsm/internal/meta"
+	"group24.de/itsm/internal/rules"
 )
 
 // --- customer layer (PL43, Hauptplan E135) ---
@@ -86,6 +87,28 @@ func (s *server) RemoveCustomerChange(w http.ResponseWriter, r *http.Request, ty
 		return
 	}
 	writeJSON(w, http.StatusOK, v)
+}
+
+// CheckCondition says whether a CEL condition over a record compiles (UI26.1): the editor
+// of the workflow asks while one types.
+func (s *server) CheckCondition(w http.ResponseWriter, r *http.Request, typeName gen.TypeName) {
+	if !s.mayCustomize(w, r) {
+		return
+	}
+	var body gen.ConditionCheck
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16))
+	if err := dec.Decode(&body); err != nil {
+		writeProblem(w, r, http.StatusBadRequest, "bad_request", "the body must be {\"when\": \"…\"}: "+err.Error(), nil)
+		return
+	}
+	out := gen.ConditionResult{Ok: true}
+	if body.When != "" {
+		if _, err := rules.Compile(body.When); err != nil {
+			msg := err.Error()
+			out.Ok, out.Error = false, &msg
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *server) ExportCustomerLayers(w http.ResponseWriter, r *http.Request) {

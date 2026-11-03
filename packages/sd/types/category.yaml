@@ -1,0 +1,33 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The category of a ticket as a tree (SD1; Inventar G39). An entry is there for the persons at
+# its node of the organisation tree and below, one at the root for everyone (SD-Plan E4, N5):
+# a category only for the Dienststelle Nord lies at that node. The shipped tree is
+# provisional until the business side answers Hauptplan V32.
+name: category
+label: {de: Kategorie, en: Category}
+description:
+  de: Kategorie eines Vorgangs, als Baum; sichtbar ab dem Knoten des Eintrags abwärts.
+  en: Category of a ticket, as a tree; visible from the node of the entry downwards.
+traits: [list]
+list:
+  tree: true
+  entries:
+    - {key: hardware, name: Hardware, name_en: Hardware, position: 1}
+    - {key: workstation, name: Arbeitsplatzrechner, name_en: Workstation, parent: hardware, position: 1}
+    - {key: printer, name: Drucker, name_en: Printer, parent: hardware, position: 2}
+    - {key: mobile, name: Mobilgerät, name_en: Mobile device, parent: hardware, position: 3}
+    - {key: software, name: Software, name_en: Software, position: 2}
+    - {key: application, name: Fachverfahren, name_en: Specialist application, parent: software, position: 1}
+    - {key: office, name: Bürosoftware, name_en: Office software, parent: software, position: 2}
+    - {key: os, name: Betriebssystem, name_en: Operating system, parent: software, position: 3}
+    - {key: access, name: Zugang und Berechtigung, name_en: Access and permissions, position: 3}
+    - {key: password, name: Kennwort, name_en: Password, parent: access, position: 1}
+    - {key: permission, name: Berechtigung, name_en: Permission, parent: access, position: 2}
+    - {key: account, name: Benutzerkonto, name_en: User account, parent: access, position: 3}
+    - {key: network, name: Netz und Telefonie, name_en: Network and telephony, position: 4}
+    - {key: lan, name: Netzwerk, name_en: Network, parent: network, position: 1}
+    - {key: phone, name: Telefonie, name_en: Telephony, parent: network, position: 2}
+    - {key: vpn, name: VPN, name_en: VPN, parent: network, position: 3}
+    - {key: other, name: Sonstiges, name_en: Other, position: 5}

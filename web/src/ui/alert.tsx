@@ -13,9 +13,10 @@ import { cn } from "@/ui/utils";
 const alertVariants = cva("rounded-md border px-4 py-3 text-sm", {
   variants: {
     variant: {
-      default: "bg-muted text-foreground",
-      destructive: "border-destructive/50 text-destructive",
-      success: "border-primary/50 text-primary",
+      // A note on the warm ground of the kit; errors and success with their colour (UI29).
+      default: "border-warning-border bg-warning-background text-foreground",
+      destructive: "border-destructive bg-destructive-background text-foreground",
+      success: "border-success bg-card text-foreground",
     },
   },
   defaultVariants: { variant: "default" },

@@ -84,7 +84,7 @@ function nextId(def: FormDefinition, prefix: string): string {
 }
 
 // optionValue makes the value of an option from its label: lower case, letters and digits.
-function optionValue(label: string, taken: Set<string>): string {
+export function optionValue(label: string, taken: Set<string>): string {
   const base =
     label
       .toLowerCase()
@@ -313,8 +313,8 @@ export function FormBuilder({
   );
 }
 
-// Handle is the grip to drag an element with mouse or keyboard.
-function Handle({
+// Handle is the grip to drag an element with mouse or keyboard; the type editor uses it too.
+export function Handle({
   name,
   listeners,
   attributes,

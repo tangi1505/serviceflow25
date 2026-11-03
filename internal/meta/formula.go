@@ -23,9 +23,9 @@ import (
 // calculated fields; the core computes them in the order of their dependencies and refuses
 // cycles. The sums of the trait costs change without a write and cannot be used.
 
-// Calculated reports whether the core computes the field: a sum of the costs or a formula.
-// Such a field cannot be written through the API.
-func (f Field) Calculated() bool { return f.Computed || f.Formula != "" }
+// Calculated reports whether the core computes the field: a sum of the costs, a formula or a
+// running number (PL49). Such a field cannot be written through the API.
+func (f Field) Calculated() bool { return f.Computed || f.Formula != "" || f.Type == FieldSequence }
 
 // FormulaKind is the CEL kind of a field's values.
 func FormulaKind(t FieldType) (rules.Kind, bool) {

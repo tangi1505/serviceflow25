@@ -10,7 +10,14 @@
 // user a quick answer (Plattform-Kern PL3 defines them).
 import { z } from "zod";
 
-import { labelOf, type Field, type RecordData, type TypeDefinition } from "@/api/client";
+import {
+  labelOf,
+  type Field,
+  type RecordData,
+  type State,
+  type TypeDefinition,
+} from "@/api/client";
+import type { StateCategory } from "@/ui/marks";
 
 // System columns the list can show; sortable are the ones the API orders by key (PL4, E12).
 export const systemColumns = [
@@ -19,6 +26,8 @@ export const systemColumns = [
   { name: "state", sortable: false },
   { name: "created_at", sortable: true },
   { name: "updated_at", sortable: true },
+  // The next deadline of the SLA clocks (UI34), with its three-quarter point and pause.
+  { name: "sla_due_at", sortable: true },
 ] as const;
 export type SystemColumn = (typeof systemColumns)[number]["name"];
 
@@ -26,10 +35,10 @@ export const sortableColumns: readonly string[] = systemColumns
   .filter((c) => c.sortable)
   .map((c) => c.name);
 
-// isCalculated tells the fields the server computes (sums of the costs, formulas): the form
-// shows them read-only and never sends them.
+// isCalculated tells the fields the server computes (sums of the costs, formulas, running
+// numbers): the form shows them read-only and never sends them.
 export function isCalculated(field: Field): boolean {
-  return field.computed === true || (field.formula ?? "") !== "";
+  return field.computed === true || (field.formula ?? "") !== "" || field.type === "sequence";
 }
 
 export function fieldLabel(field: Field, language: string): string {
@@ -67,6 +76,12 @@ export function plainText(html: string): string {
   return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
+// stateCategory is the kind of a state for its mark (UI29): as the type says, else open for
+// the initial state and active for the others.
+export function stateCategory(state: State | undefined): StateCategory {
+  return state?.category ?? (state?.initial ? "open" : "active");
+}
+
 // formatValue renders a value for the list.
 export function formatValue(field: Field | undefined, value: unknown, language: string): string {
   if (value === null || value === undefined || value === "") {
@@ -84,6 +99,9 @@ export function formatValue(field: Field | undefined, value: unknown, language: 
       return field.format === "rich" ? plainText(String(value)) : String(value);
     case "date":
       return new Date(String(value) + "T00:00:00").toLocaleDateString(language);
+    case "sequence":
+      // The running number with its prefix (PL49): PRB-24817.
+      return `${field.prefix ?? ""}${String(value)}`;
     default:
       return typeof value === "object" ? JSON.stringify(value) : String(value);
   }
@@ -173,6 +191,10 @@ export function toInput(
         break;
       case "datetime":
         out[f.name] = typeof v === "string" && v !== "" ? toLocalInput(v) : "";
+        break;
+      case "sequence":
+        // Shown read-only with its prefix; a new record gets it when it is saved.
+        out[f.name] = v === null || v === undefined ? "" : `${f.prefix ?? ""}${String(v)}`;
         break;
       default:
         out[f.name] = v === null || v === undefined ? "" : String(v);

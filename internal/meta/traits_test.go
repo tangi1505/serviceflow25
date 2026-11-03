@@ -103,6 +103,49 @@ func TestTraitsRejectUnknownCollidingAndBad(t *testing.T) {
 	}
 }
 
+// A package trait may bring roles besides its fields (SD-Plan N6): the type gets them and the
+// core trait actors; a role of the same name in the type collides; the roles of the trait are
+// checked like those of a type.
+func TestTraitBringsRoles(t *testing.T) {
+	trait := "name: ticket\nlabel: {de: Vorgang, en: Ticket}\nfields:\n  - {name: title, type: text, label: {de: T, en: T}}\n" +
+		"actors:\n  - {name: requester, label: {de: Anforderer, en: Requester}, to: [core.person]}\n"
+	p, err := LoadFS(fstest.MapFS{
+		"package.yaml":       {Data: []byte(manifest)},
+		"traits/ticket.yaml": {Data: []byte(trait)},
+		"types/thing.yaml":   {Data: []byte("name: thing\nlabel: {de: D, en: T}\ntraits: [ticket]\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(p, map[string]bool{"core.person": true}); err != nil {
+		t.Fatal(err)
+	}
+	thing := p.Types[0]
+	if r, ok := thing.Actor("requester"); !ok || r.To[0] != "core.person" || !thing.HasTrait(TraitActors) {
+		t.Fatalf("roles of the trait: %+v traits %v", thing.Actors, thing.Traits)
+	}
+	_, err = LoadFS(fstest.MapFS{
+		"package.yaml":       {Data: []byte(manifest)},
+		"traits/ticket.yaml": {Data: []byte(trait)},
+		"types/thing.yaml": {Data: []byte("name: thing\nlabel: {de: D, en: T}\ntraits: [ticket, actors]\n" +
+			"actors:\n  - {name: requester, label: {de: A, en: R}, to: [core.person]}\n")},
+	})
+	if err == nil || !strings.Contains(err.Error(), `role "requester" of trait "ticket" collides`) {
+		t.Fatalf("collision: %v", err)
+	}
+	bad, err := LoadFS(fstest.MapFS{
+		"package.yaml": {Data: []byte(manifest)},
+		"traits/ticket.yaml": {Data: []byte("name: ticket\nlabel: {de: Vorgang, en: Ticket}\nfields:\n  - {name: title, type: text, label: {de: T, en: T}}\n" +
+			"actors:\n  - {name: requester, label: {de: Anforderer, en: Requester}, to: [core.nobody]}\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(bad, nil); err == nil || !strings.Contains(err.Error(), "core.nobody") {
+		t.Fatalf("a role of the trait to an unknown type: %v", err)
+	}
+}
+
 // The core trait costs brings its sums as computed fields (PL20); a list cannot take it, and
 // a type with a field of the same name collides.
 func TestCostsTraitBringsComputedSums(t *testing.T) {

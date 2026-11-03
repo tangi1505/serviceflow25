@@ -77,6 +77,11 @@ func Migrate(ctx context.Context, url string, logger *slog.Logger) error {
 	return migrateRiver(ctx, url, logger)
 }
 
+// riverLock is the key of the advisory lock around the River migration. Without it, two
+// processes starting at once on an empty database both create River's types and one fails
+// (found in the CI on 2026-11-02); goose holds its own lock for the migrations above.
+const riverLock int64 = 0x72697665 // "rive"
+
 // migrateRiver applies the tables of the job queue (Hauptplan E19). River versions them in
 // its own table river_migration, so they do not clash with the goose versions above.
 func migrateRiver(ctx context.Context, url string, logger *slog.Logger) error {
@@ -85,6 +90,19 @@ func migrateRiver(ctx context.Context, url string, logger *slog.Logger) error {
 		return err
 	}
 	defer pool.Close()
+	// One process at a time: the lock is held on a connection of its own while the migrator
+	// works on the others of the pool.
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("db: river migration lock: %w", err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", riverLock); err != nil {
+		return fmt.Errorf("db: river migration lock: %w", err)
+	}
+	defer func() {
+		_, _ = conn.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", riverLock)
+	}()
 	migrator, err := rivermigrate.New(riverpgxv5.New(pool), &rivermigrate.Config{Logger: logger})
 	if err != nil {
 		return fmt.Errorf("db: river migrator: %w", err)

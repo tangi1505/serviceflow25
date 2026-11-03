@@ -11,7 +11,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // One test at a time (E150): the tests share one server and its data; side by side they
+  // tripped over each other's records.
   fullyParallel: false,
+  workers: 1,
   retries: 0,
   reporter: [["list"]],
   use: {

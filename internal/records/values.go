@@ -118,6 +118,13 @@ func coerce(f meta.Field, v any) (any, *Problem) {
 			return bad("must be the id of a " + f.To)
 		}
 		return id, nil
+	case meta.FieldSequence:
+		// A running number, with or without its prefix (PL49): for filters and imports.
+		n, ok := parseNumber(f, v)
+		if !ok {
+			return bad("must be a whole number from 1, with or without the prefix " + strconv.Quote(f.Prefix))
+		}
+		return n, nil
 	}
 	return bad("unsupported field type")
 }
@@ -175,7 +182,7 @@ func systemToJSON(name string, v any) any {
 		return x.String()
 	case [16]byte:
 		return uuid.UUID(x).String()
-	case int64:
+	case int64, bool:
 		return x
 	case string:
 		if name == "org_path" {

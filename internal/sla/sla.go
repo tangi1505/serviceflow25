@@ -358,7 +358,42 @@ func (s *Service) Written(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.U
 			return err
 		}
 	}
-	return nil
+	return s.setDeadline(ctx, tx, q, t.QualifiedName(), id)
+}
+
+// setDeadline leaves the deadline of a record's clocks at the record for its list (UI34,
+// UI-Plan E37): the running clock due first, with the moment it has used three quarters of its
+// target on its own calendar; without one running, a paused clock marks the record paused.
+func (s *Service) setDeadline(ctx context.Context, tx pgx.Tx, q *queries.Queries, typeName string, id uuid.UUID) error {
+	rows, err := q.ClocksOfRecord(ctx, id)
+	if err != nil {
+		return fmt.Errorf("sla: clocks: %w", err)
+	}
+	var d records.Deadline
+	var first *Clock
+	for _, r := range rows {
+		c := fromRow(r)
+		switch {
+		case c.State == StateRunning && c.DueAt != nil && c.ResumedAt != nil:
+			if first == nil || c.DueAt.Before(*first.DueAt) {
+				first = c
+			}
+		case c.State == StatePaused:
+			d.Paused = true
+		}
+	}
+	if first != nil {
+		n, err := s.counter(ctx, first.Calendar)
+		if err != nil {
+			return err
+		}
+		warn, err := n.Add(*first.ResumedAt, max(first.Target*3/4-first.Used, 0))
+		if err != nil {
+			return err
+		}
+		d = records.Deadline{Due: first.DueAt, Warn: &warn}
+	}
+	return s.rec.SetDeadlineTx(ctx, tx, typeName, id, d)
 }
 
 // settle notes the levels a clock reached with elapsed working time, saves it and plans its

@@ -104,6 +104,15 @@ fields:
   - {name: owner, type: reference, label: {de: X, en: X}, to: core.person}
   - {name: score, type: number, label: {de: X, en: X}, min: 10, max: 1, max_length: 5, default: "7"}
   - {name: note, type: text, label: {de: X}}
+  - {name: rank, type: text, label: {de: X, en: X}, format: priority}
+  - {name: level, type: number, label: {de: X, en: X}, format: priority}
+  - {name: tenant, type: text, label: {de: X, en: X}}
+  - {name: ticket, type: sequence, label: {de: X, en: X}, prefix: INC-, required: true}
+  - {name: code, type: text, label: {de: X, en: X}, prefix: X-}
+  - {name: case_no, type: sequence, label: {de: X, en: X}, prefix: "IN C"}
+states:
+  - {name: open, label: {de: O, en: O}, initial: true, category: open}
+  - {name: odd, label: {de: X, en: X}, category: pending}
 `})
 	got := problems(t, Validate(p, nil))
 	want := []string{
@@ -119,6 +128,18 @@ fields:
 		`field score: min 10 is greater than max 1`,
 		`field score: default must be a number`,
 		`field note: label has no "en" text`,
+		// UI29: priority only on numbers, the category of a state from a short list.
+		`field rank: format takes "rich" on text fields and "priority" on number fields`,
+		`state odd: category "pending" must be open, active, waiting or done`,
+		// The column of the tenant (PL46) is no field name either (found in UI34).
+		`field tenant: name "tenant" is reserved`,
+		// PL49: the running number is set by the core, the prefix belongs to it alone.
+		`field ticket: a sequence field is set by the core: no required, default or formula`,
+		`field code: prefix only applies to sequence fields`,
+		`field case_no: prefix must be at most 20 characters without spaces`,
+	}
+	if strings.Contains(strings.Join(got, "\n"), "field level") {
+		t.Errorf("priority on a number field is fine: %v", got)
 	}
 	all := strings.Join(got, "\n")
 	for _, w := range want {

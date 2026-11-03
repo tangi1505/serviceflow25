@@ -7,7 +7,14 @@
 
 package meta
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"slices"
+	"strings"
+
+	"group24.de/itsm/internal/db/queries"
+)
 
 // --- traits (architektur.md B2; Hauptplan E94; PL17) ---
 //
@@ -37,18 +44,21 @@ const (
 // Trait is one building block: its name, labels, the fields it gives a type and the
 // sub-resources it opens below /api/v1/records/{type}/{id}/. Package is empty for the core.
 type Trait struct {
-	Package      string   `json:"package,omitempty" yaml:"-"`
-	Name         string   `json:"name" yaml:"name"`
-	Label        Label    `json:"label" yaml:"label"`
-	Description  Label    `json:"description,omitempty" yaml:"description"`
-	Fields       []Field  `json:"fields,omitempty" yaml:"fields"`
-	SubResources []string `json:"sub_resources,omitempty" yaml:"-"`
+	Package     string  `json:"package,omitempty" yaml:"-"`
+	Name        string  `json:"name" yaml:"name"`
+	Label       Label   `json:"label" yaml:"label"`
+	Description Label   `json:"description,omitempty" yaml:"description"`
+	Fields      []Field `json:"fields,omitempty" yaml:"fields"`
+	// Actors are the roles a package trait gives a type besides its fields (SD-Plan N6): the
+	// type gets them and the core trait actors with them.
+	Actors       []ActorRole `json:"actors,omitempty" yaml:"actors"`
+	SubResources []string    `json:"sub_resources,omitempty" yaml:"-"`
 }
 
 // CoreTraits are the traits with behaviour, in a stable order.
 var CoreTraits = []Trait{
 	{Name: TraitList, Label: Label{"de": "Auswahlliste", "en": "Select list"},
-		Description: Label{"de": "Einträge in der Kerntabelle list_entry, Felder vom Merkmal, lesbar für jede angemeldete Person", "en": "Entries in the core table list_entry, fields from the trait, readable by every signed-in person"}},
+		Description: Label{"de": "Einträge in der Kerntabelle list_entry, Felder vom Merkmal, lesbar für jede angemeldete Person an ihrem Knoten und darunter", "en": "Entries in the core table list_entry, fields from the trait, readable by every signed-in person at their node and below"}},
 	{Name: TraitHistory, Label: Label{"de": "Verlauf", "en": "History"}, SubResources: []string{"history"},
 		Description: Label{"de": "Jede Änderung hinterlässt Verlaufszeilen je Feld", "en": "Every change leaves audit rows per field"}},
 	{Name: TraitDocuments, Label: Label{"de": "Dokumente", "en": "Documents"}, SubResources: []string{"documents"},
@@ -107,10 +117,17 @@ func (t Type) SubResources() []string {
 
 // expandTraits appends the fields of the traits to the type, each marked with the trait it
 // came from: the fields of the package's own traits and of core traits that bring fields
-// (costs). The list trait has expandList.
+// (costs). A package trait may bring roles too; the type then has the core trait actors. The
+// list trait has expandList.
 func expandTraits(t *Type, p Package) error {
 	done := map[string]bool{}
+	withActors := false
 	for _, name := range t.Traits {
+		if strings.Contains(name, ".") {
+			// The trait of another package (SD-Plan N7): ResolveTraits, once the installed
+			// packages are known.
+			continue
+		}
 		tr, ok := p.Trait(name)
 		if core, isCore := CoreTrait(name); isCore && name != TraitList {
 			tr, ok = core, len(core.Fields) > 0
@@ -120,18 +137,83 @@ func expandTraits(t *Type, p Package) error {
 			continue
 		}
 		done[name] = true
-		if t.IsList() {
-			return fmt.Errorf("a list takes its fields from its trait; it cannot take trait %q", name)
+		if err := addTrait(t, name, tr); err != nil {
+			return err
 		}
-		for _, f := range tr.Fields {
-			if _, dup := t.Field(f.Name); dup {
-				return fmt.Errorf("field %q of trait %q collides with a field of the type", f.Name, name)
+		withActors = withActors || len(tr.Actors) > 0
+	}
+	if withActors && !t.HasTrait(TraitActors) {
+		t.Traits = append(t.Traits, TraitActors)
+	}
+	return nil
+}
+
+// addTrait gives a type the fields and roles of one trait, each field marked with the trait.
+func addTrait(t *Type, name string, tr Trait) error {
+	if t.IsList() {
+		return fmt.Errorf("a list takes its fields from its trait; it cannot take trait %q", name)
+	}
+	for _, f := range tr.Fields {
+		if _, dup := t.Field(f.Name); dup {
+			return fmt.Errorf("field %q of trait %q collides with a field of the type", f.Name, name)
+		}
+		f.Trait = name
+		t.Fields = append(t.Fields, f)
+	}
+	for _, r := range tr.Actors {
+		if _, dup := t.Actor(r.Name); dup {
+			return fmt.Errorf("role %q of trait %q collides with a role of the type", r.Name, name)
+		}
+		t.Actors = append(t.Actors, r)
+	}
+	return nil
+}
+
+// ResolveTraits gives the types of a package the traits they name with the name of another
+// package, such as traits: [sd.ticket] (SD-Plan N7), from the traits installed. The package
+// must depend on that package. Load leaves these traits for this step, which needs the
+// installed packages; call it once, before Store and schema.Apply.
+func ResolveTraits(p *Package, installed []Trait) error {
+	byName := map[string]Trait{}
+	for _, tr := range installed {
+		if tr.Package != "" {
+			byName[tr.Package+"."+tr.Name] = tr
+		}
+	}
+	for i := range p.Types {
+		t := &p.Types[i]
+		withActors := false
+		for _, name := range t.Traits {
+			pkg, _, foreign := strings.Cut(name, ".")
+			if !foreign {
+				continue
 			}
-			f.Trait = name
-			t.Fields = append(t.Fields, f)
+			if !slices.Contains(p.Depends, pkg) {
+				return fmt.Errorf("types/%s.yaml: trait %q needs depends: [%s] in package.yaml", t.Name, name, pkg)
+			}
+			tr, ok := byName[name]
+			if !ok {
+				return fmt.Errorf("types/%s.yaml: trait %q is not installed; install package %s first", t.Name, name, pkg)
+			}
+			if err := addTrait(t, name, tr); err != nil {
+				return fmt.Errorf("types/%s.yaml: %w", t.Name, err)
+			}
+			withActors = withActors || len(tr.Actors) > 0
+		}
+		if withActors && !t.HasTrait(TraitActors) {
+			t.Traits = append(t.Traits, TraitActors)
 		}
 	}
 	return nil
+}
+
+// ResolveInstalled is ResolveTraits with the traits installed in the database.
+func ResolveInstalled(ctx context.Context, q *queries.Queries, p *Package) error {
+	installed, err := Traits(ctx, q)
+	if err != nil {
+		return err
+	}
+	return ResolveTraits(p, installed)
 }
 
 // validateTraits checks the trait names of a type: known (core or this package), no repeats.
@@ -140,7 +222,9 @@ func validateTraits(add func(string, string, ...any), where string, t Type, p Pa
 	for _, name := range t.Traits {
 		_, core := CoreTrait(name)
 		_, own := p.Trait(name)
-		if !core && !own {
+		// The trait of another package counts once ResolveTraits gave its fields (N7).
+		foreign := strings.Contains(name, ".") && slices.ContainsFunc(t.Fields, func(f Field) bool { return f.Trait == name })
+		if !core && !own && !foreign {
 			add(where, "unknown trait %q; the core knows %s, this package adds %s", name, traitNames(CoreTraits), traitNames(p.Traits))
 		}
 		if seen[name] {

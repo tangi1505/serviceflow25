@@ -37,6 +37,17 @@ export type FormOffer = components["schemas"]["FormOffer"];
 export type FormDefinition = components["schemas"]["FormDefinition"];
 export type FormSection = components["schemas"]["FormSection"];
 export type FormQuestion = components["schemas"]["FormQuestion"];
+// The customer layer of a type (PL43): the list of changes the editor makes (UI25).
+export type CustomerLayer = components["schemas"]["CustomerLayer"];
+export type CustomerChange = components["schemas"]["CustomerChange"];
+// Roles, their permissions and assignments (PL8, UI27).
+export type Role = components["schemas"]["Role"];
+export type Permission = components["schemas"]["Permission"];
+export type Scope = Permission["scope"];
+export type Assignment = components["schemas"]["Assignment"];
+export type AssignmentCreate = components["schemas"]["AssignmentCreate"];
+// FieldRights are the field rights of a permission (PL9); without, every field.
+export type FieldRights = { read?: string[]; write?: string[] };
 export type ListParams = NonNullable<
   paths["/api/v1/records/{typeName}"]["get"]["parameters"]["query"]
 >;
@@ -61,7 +72,7 @@ export class ApiError extends Error {
 // open object), so their shape is spelled out here once.
 export type Label = Record<string, string>;
 export type FieldType =
-  "text" | "number" | "boolean" | "date" | "datetime" | "choice" | "reference";
+  "text" | "number" | "boolean" | "date" | "datetime" | "choice" | "reference" | "sequence";
 export type Field = {
   name: string;
   type: FieldType;
@@ -75,6 +86,8 @@ export type Field = {
   max?: number;
   options?: { value: string; label?: Label }[];
   to?: string;
+  // prefix comes before the running number of a sequence field (PL49): "INC-" shows INC-24817.
+  prefix?: string;
   default?: unknown;
   // trait names the trait the field came from; computed fields (the sums of the trait costs,
   // PL20) are kept by the server and never sent.
@@ -85,14 +98,32 @@ export type Field = {
   // formula makes the field calculated by the server (PL22): shown, never sent.
   formula?: string;
   // format "rich" makes a text field formatted text (UI7): the editor, HTML the server cleans.
-  format?: "rich";
+  // rich: formatted text (UI7); priority: a number shown as a mark P1 … (UI29).
+  format?: "rich" | "priority";
   // hidden is set by the customer layer (PL43): left out of forms and lists, kept by the API.
   hidden?: boolean;
   // rollup sums or counts the records of another type that point here (WF13).
   rollup?: { from: string; via: string; op: "sum" | "count"; field?: string; where?: string };
 };
-export type State = { name: string; label?: Label; initial?: boolean };
-export type Transition = { name: string; label?: Label; from: string[]; to: string; when?: string };
+// category gives the colour of the state's mark (UI29): open, active, waiting or done.
+export type State = {
+  name: string;
+  label?: Label;
+  initial?: boolean;
+  category?: "open" | "active" | "waiting" | "done";
+};
+// disabled is set by the customer layer (UI26.1): kept, but neither offered nor taken.
+export type Transition = {
+  name: string;
+  label?: Label;
+  from: string[];
+  to: string;
+  when?: string;
+  // by names the roles that alone may take it; comment whether it takes a text (SD-Plan N8).
+  by?: string[];
+  comment?: "required" | "optional";
+  disabled?: boolean;
+};
 // ActorRole is a role at the record (WF3): who may hold it.
 export type ActorRole = { name: string; label?: Label; to: string[]; single?: boolean };
 // ActorRef is one holder of a role.
@@ -113,6 +144,10 @@ export type TypeDefinition = {
   portal?: { fields: string[] };
   // revision is the hash of the effective definition, base and customer layer (PL43).
   revision?: string;
+  // layout is where the workflow editor draws each state (UI26.2); set by the customer layer.
+  layout?: Record<string, { x: number; y: number }>;
+  // timed tells that SLA clocks run on the records: the list shows their deadline (UI34).
+  timed?: boolean;
 };
 export type TransitionInfo = components["schemas"]["TransitionInfo"];
 // FieldStates is what the field states of the type (WF2) say for a record or a new one.
@@ -189,11 +224,12 @@ export const api = {
       }),
     ),
   // transition moves the record along its state model (WF1); 409 carries the reason.
-  transition: async (typeName: string, id: string, transition: string) =>
+  // A text goes along for a transition that takes one (SD-Plan N8), kept as an entry.
+  transition: async (typeName: string, id: string, transition: string, comment?: string) =>
     unwrap(
       await client.POST("/api/v1/records/{typeName}/{id}:transition", {
         params: { path: { typeName, id } },
-        body: { transition },
+        body: { transition, ...(comment ? { comment } : {}) },
       }),
     ),
   // timeline lists entries and history, oldest first (PL42); the page turns it round.
@@ -293,8 +329,13 @@ export const api = {
   job: async (jobId: number) =>
     unwrap(await client.GET("/api/v1/jobs/{jobId}", { params: { path: { jobId } } })),
   // search is the full-text search (PL26) over the types named, best first.
+  // search over the types named, or over every readable type without (UI30).
   search: async (q: string, types: string, limit: number) =>
-    unwrap(await client.GET("/api/v1/search", { params: { query: { q, types, limit } } })),
+    unwrap(
+      await client.GET("/api/v1/search", {
+        params: { query: { q, limit, ...(types ? { types } : {}) } },
+      }),
+    ),
   // history is the timeline of a type with history but without the trait timeline.
   history: async (typeName: string, id: string) =>
     unwrap(
@@ -327,6 +368,58 @@ export const api = {
       await client.POST("/api/v1/forms/{formId}:submit", {
         params: { path: { formId } },
         body: { answers },
+      }),
+    ),
+  // The customer layer (PL43, UI25): read, add one change with the version seen, take one
+  // back; another version is 409. customerLayers is the export of every layer with changes.
+  customerLayer: async (typeName: string) =>
+    unwrap(
+      await client.GET("/api/v1/types/{typeName}/customer", { params: { path: { typeName } } }),
+    ),
+  addCustomerChange: async (typeName: string, version: number, change: CustomerChange) =>
+    unwrap(
+      await client.POST("/api/v1/types/{typeName}/customer", {
+        params: { path: { typeName } },
+        body: { version, change },
+      }),
+    ),
+  removeCustomerChange: async (typeName: string, changeId: string, version: number) =>
+    unwrap(
+      await client.DELETE("/api/v1/types/{typeName}/customer/{changeId}", {
+        params: { path: { typeName, changeId }, query: { version } },
+      }),
+    ),
+  customerLayers: async () => unwrap(await client.GET("/api/v1/customer")),
+  // Roles (PL8, UI27): a permission is set or replaced by type, action and scope, and
+  // removed by type and action, with the scope only that line.
+  roles: async () => unwrap(await client.GET("/api/v1/roles")),
+  role: async (name: string) =>
+    unwrap(await client.GET("/api/v1/roles/{name}", { params: { path: { name } } })),
+  createRole: async (name: string, label: Label) =>
+    unwrap(await client.POST("/api/v1/roles", { body: { name, label } })),
+  deleteRole: async (name: string) =>
+    unwrap(await client.DELETE("/api/v1/roles/{name}", { params: { path: { name } } })),
+  setPermission: async (name: string, p: Permission) =>
+    unwrap(
+      await client.PUT("/api/v1/roles/{name}/permissions", { params: { path: { name } }, body: p }),
+    ),
+  unsetPermission: async (name: string, typeName: string, action: string, scope?: Scope) =>
+    unwrap(
+      await client.DELETE("/api/v1/roles/{name}/permissions/{typeName}/{action}", {
+        params: { path: { name, typeName, action }, query: scope ? { scope } : {} },
+      }),
+    ),
+  assignments: async () => unwrap(await client.GET("/api/v1/assignments")),
+  createAssignment: async (body: AssignmentCreate) =>
+    unwrap(await client.POST("/api/v1/assignments", { body })),
+  deleteAssignment: async (id: string) =>
+    unwrap(await client.DELETE("/api/v1/assignments/{id}", { params: { path: { id } } })),
+  // checkCondition says whether a CEL condition compiles (UI26.1), while one types.
+  checkCondition: async (typeName: string, when: string) =>
+    unwrap(
+      await client.POST("/api/v1/types/{typeName}:check-condition", {
+        params: { path: { typeName } },
+        body: { when },
       }),
     ),
   // update sends If-Match with the version seen; 409 means someone saved in between (E29).
@@ -362,6 +455,14 @@ export const typesQuery = queryOptions({
   staleTime: 5 * 60_000,
 });
 
+// savedSearchesQuery are the saved searches one may read, own and shared, for the navigation
+// (UI30) and the command line (UI31).
+export const savedSearchesQuery = queryOptions({
+  queryKey: ["records", "core.saved_search", "list", "nav"],
+  queryFn: () => api.list("core.saved_search", { limit: 50, sort: "name" }),
+  retry: false,
+});
+
 // The ways to sign in besides the local account (PL11); none is the normal case.
 export const providersQuery = queryOptions({
   queryKey: ["providers"],
@@ -374,6 +475,23 @@ export const versionQuery = queryOptions({
   queryFn: api.version,
   staleTime: Infinity,
 });
+
+export const rolesQuery = queryOptions({ queryKey: ["roles"], queryFn: api.roles });
+export const assignmentsQuery = queryOptions({
+  queryKey: ["assignments"],
+  queryFn: api.assignments,
+});
+export const orgNodesQuery = queryOptions({
+  queryKey: ["org", "nodes"],
+  queryFn: api.orgNodes,
+  staleTime: 60_000,
+});
+
+export const customerLayerQuery = (typeName: string) =>
+  queryOptions({
+    queryKey: ["customer", typeName],
+    queryFn: () => api.customerLayer(typeName),
+  });
 
 export const recordQuery = (typeName: string, id: string) =>
   queryOptions({

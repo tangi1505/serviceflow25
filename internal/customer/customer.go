@@ -44,11 +44,13 @@ type View struct {
 	Changes []Entry `json:"changes"`
 }
 
-// Entry is one change with whether it applies.
+// Entry is one change with whether it applies, and the name of the account that made it
+// (UI25).
 type Entry struct {
 	meta.Change
 	Status string `json:"status"`
 	Reason string `json:"reason,omitempty"`
+	ByName string `json:"by_name,omitempty"`
 }
 
 // Service keeps the customer layers.
@@ -104,11 +106,47 @@ func (s *Service) Get(ctx context.Context, typeName string) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	l, version, err := meta.GetCustomerLayer(ctx, queries.New(s.db.Control()), t.Package, t.Name)
+	q := queries.New(s.db.Control())
+	l, version, err := meta.GetCustomerLayer(ctx, q, t.Package, t.Name)
 	if err != nil {
 		return View{}, err
 	}
-	return view(t, l, version), nil
+	vs := []View{view(t, l, version)}
+	if err := nameAuthors(ctx, q, vs); err != nil {
+		return View{}, err
+	}
+	return vs[0], nil
+}
+
+// nameAuthors fills in the display names of the accounts that made the changes, with one
+// query; the accounts live in the control database (PL47b).
+func nameAuthors(ctx context.Context, q *queries.Queries, vs []View) error {
+	var ids []uuid.UUID
+	for _, v := range vs {
+		for _, e := range v.Changes {
+			if id, err := uuid.Parse(e.By); err == nil && id != uuid.Nil && !slices.Contains(ids, id) {
+				ids = append(ids, id)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := q.AccountNames(ctx, ids)
+	if err != nil {
+		return fmt.Errorf("customer: names: %w", err)
+	}
+	names := make(map[string]string, len(rows))
+	for _, r := range rows {
+		names[r.ID.String()] = r.DisplayName
+	}
+	// The views share the backing arrays of their changes, so the copies write through.
+	for _, v := range vs {
+		for k, e := range v.Changes {
+			v.Changes[k].ByName = names[e.By]
+		}
+	}
+	return nil
 }
 
 // problems turns a refusal into the 422 of the API.
@@ -129,6 +167,18 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 	}
 	if t.IsList() && c.Op == meta.OpAddField {
 		return View{}, problems("op", "a select list keeps its entries in a core table and takes no fields of its own")
+	}
+	// A state with records in it stays (UI26.1), in every database (PL47).
+	if c.Op == meta.OpRemoveState {
+		for _, d := range s.db.Databases() {
+			found, err := s.rec.InState(d.Bind(ctx), typeName, c.Field)
+			if err != nil {
+				return View{}, err
+			}
+			if found {
+				return View{}, problems(c.Field, fmt.Sprintf("records of %s stand in state %s", typeName, c.Field))
+			}
+		}
 	}
 	q := queries.New(s.db.Control())
 	l, version, err := meta.GetCustomerLayer(ctx, q, t.Package, t.Name)
@@ -154,7 +204,15 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 	if err != nil {
 		return View{}, err
 	}
-	if err := meta.ValidateCustomer(eff, known); err != nil {
+	bases, err := meta.BaseTypes(ctx, q)
+	if err != nil {
+		return View{}, err
+	}
+	traits, err := meta.Traits(ctx, q)
+	if err != nil {
+		return View{}, err
+	}
+	if err := meta.ValidateCustomer(eff, bases, traits, known); err != nil {
 		if verr, ok := meta.AsValidationError(err); ok {
 			var msgs []string
 			for _, p := range verr.Problems {
@@ -175,6 +233,19 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 	if !eff.IsList() {
 		for _, pool := range s.db.Pools() {
 			if _, err := schema.Apply(ctx, pool, []meta.Type{eff}, s.logger); err != nil {
+				return View{}, err
+			}
+		}
+	}
+	// A new running number: the records there are get theirs at once, in the order of their
+	// creation, and can be found by it (PL49, Kern-Plan E63).
+	if c.Op == meta.OpAddField && c.New != nil && c.New.Type == meta.FieldSequence {
+		for _, d := range s.db.Databases() {
+			bound := d.Bind(ctx)
+			if _, err := s.rec.Number(bound, typeName); err != nil {
+				return View{}, err
+			}
+			if _, err := s.rec.RecomputeSearch(bound, typeName); err != nil {
 				return View{}, err
 			}
 		}
@@ -245,6 +316,9 @@ func (s *Service) Export(ctx context.Context) ([]View, error) {
 		if l, ok := layers[t.QualifiedName()]; ok && len(l.Changes) > 0 {
 			out = append(out, view(t, l, versions[t.QualifiedName()]))
 		}
+	}
+	if err := nameAuthors(ctx, q, out); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

@@ -1,0 +1,17 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# How a ticket came in (SD1; Inventar G55). Provisional (SD-Plan E4).
+name: channel
+label: {de: Anfragequelle, en: Channel}
+description:
+  de: Woher ein Vorgang kam.
+  en: Where a ticket came from.
+traits: [list]
+list:
+  entries:
+    - {key: phone, name: Telefon, name_en: Phone, position: 1}
+    - {key: mail, name: Mail, name_en: Mail, position: 2}
+    - {key: portal, name: Portal, name_en: Portal, position: 3}
+    - {key: on_site, name: Vor Ort, name_en: On site, position: 4}
+    - {key: monitoring, name: Überwachung, name_en: Monitoring, position: 5}

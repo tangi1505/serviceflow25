@@ -31,6 +31,7 @@ import (
 	"group24.de/itsm/internal/calendar"
 	"group24.de/itsm/internal/customer"
 	"group24.de/itsm/internal/db"
+	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/export"
 	"group24.de/itsm/internal/files"
@@ -330,6 +331,9 @@ func installPackage(t *testing.T, ctx context.Context, rt *db.Router, dir string
 	t.Helper()
 	p, err := meta.Load(dir)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := meta.ResolveInstalled(ctx, queries.New(rt.Control()), &p); err != nil {
 		t.Fatal(err)
 	}
 	if err := meta.Store(ctx, rt.Control(), p); err != nil {

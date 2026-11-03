@@ -9,12 +9,16 @@ package authn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/db/queries"
+	"group24.de/itsm/internal/records"
 )
 
 // Mirrors reports whether administrators of the installation get mirrors in the tenants: only
@@ -41,6 +45,19 @@ func (s *Service) Mirror(ctx context.Context, accountID uuid.UUID, tenant string
 	if home != s.db.Control() {
 		return nil
 	}
+	// The browser sends several requests at once right after a switch, and each brings the
+	// mirror up to date. Two that create it at the same moment collide on a unique key; the
+	// one that loses tries once more and then finds the mirror there (Nachtrag 2026-11-03).
+	err = s.mirror(ctx, home, target, accountID, tenant)
+	var pgErr *pgconn.PgError
+	if errors.Is(err, records.ErrConflict) || errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		err = s.mirror(ctx, home, target, accountID, tenant)
+	}
+	return err
+}
+
+// mirror writes the mirror of an account and its person in a tenant's database once.
+func (s *Service) mirror(ctx context.Context, home, target *pgxpool.Pool, accountID uuid.UUID, tenant string) error {
 	acc, err := queries.New(home).GetAccount(ctx, accountID)
 	if err != nil {
 		return fmt.Errorf("authn: account to mirror: %w", err)

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -230,6 +231,11 @@ func (b *builder) value(field string, r resolved, v any) (any, bool) {
 				return nil, false
 			}
 			return s, true
+		}
+		// "@now" is the moment of the query on a system time, so that a saved search for what
+		// is overdue stays right (UI34).
+		if s, ok := v.(string); ok && s == "@now" && strings.HasSuffix(r.system, "_at") {
+			return time.Now().UTC(), true
 		}
 		return v, true
 	}

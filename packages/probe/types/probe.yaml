@@ -24,6 +24,11 @@ fields:
     max_length: 200
     # German in the column, English in the table translation (PL21).
     translatable: true
+  # The running number the core gives every new record, per tenant (PL49): PRB-1, PRB-2, …
+  - name: number
+    type: sequence
+    label: {de: Nummer, en: Number}
+    prefix: PRB-
   # Unique per tenant (PL46): the same serial number in two tenants, not twice in one.
   - name: serial
     type: text
@@ -47,6 +52,8 @@ fields:
   - name: priority
     type: number
     label: {de: Priorität, en: Priority}
+    # Shown as a mark P1 … P5 (UI29).
+    format: priority
     min: 1
     max: 5
     default: 3
@@ -110,12 +117,13 @@ fields:
        "low": {"high": 3.0, "medium": 4.0, "low": 5.0}}[impact][urgency]
 # The state model of the Durchstich (WF1): three states, a transition back needs a condition.
 states:
-  - {name: new, label: {de: Neu, en: New}, initial: true}
-  - {name: in_progress, label: {de: In Arbeit, en: In progress}}
-  - {name: waiting, label: {de: Wartet, en: Waiting}}
-  - {name: done, label: {de: Erledigt, en: Done}}
-  - {name: resolved, label: {de: Gelöst, en: Resolved}}
-  - {name: closed, label: {de: Geschlossen, en: Closed}}
+  # The category gives the colour of the mark in the interface (UI29).
+  - {name: new, label: {de: Neu, en: New}, initial: true, category: open}
+  - {name: in_progress, label: {de: In Arbeit, en: In progress}, category: active}
+  - {name: waiting, label: {de: Wartet, en: Waiting}, category: waiting}
+  - {name: done, label: {de: Erledigt, en: Done}, category: done}
+  - {name: resolved, label: {de: Gelöst, en: Resolved}, category: done}
+  - {name: closed, label: {de: Geschlossen, en: Closed}, category: done}
 transitions:
   - {name: start, label: {de: Beginnen, en: Start}, from: [new], to: in_progress}
   - {name: finish, label: {de: Erledigen, en: Finish}, from: [in_progress], to: done}

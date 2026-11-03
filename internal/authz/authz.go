@@ -454,13 +454,20 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 		return "TRUE", args
 	}
 	b := a.boundary()
+	listVis := ""
 	if a.readsAll(typeName, action) {
-		if b == "" {
-			return "TRUE", args
+		// A select list (PL16): an entry is there for the persons at its node and below, one at
+		// the root for everyone (SD-Plan N5); the tenant has its own copy (PL45, V28). A grant
+		// of one's own on the list adds what it gives, for those who keep it.
+		args = append(args, a.listNode())
+		listVis = fmt.Sprintf("$%d::ltree <@ org_path", len(args))
+		if b != "" {
+			args = append(args, b)
+			listVis = fmt.Sprintf("(%s AND org_path <@ $%d::ltree)", listVis, len(args))
 		}
-		// The select lists of the tenant: each has its own copy (PL45, V28).
-		args = append(args, b)
-		return fmt.Sprintf("org_path <@ $%d::ltree", len(args)), args
+		if len(a.grantsFor(typeName, action)) == 0 {
+			return listVis, args
+		}
 	}
 	var parts []string
 	for _, g := range a.grantsFor(typeName, action) {
@@ -501,6 +508,9 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 		parts = append(parts, scope)
 	}
 	if len(parts) == 0 {
+		if listVis != "" {
+			return listVis, args
+		}
 		return "FALSE", args
 	}
 	filter := "(" + strings.Join(parts, " OR ") + ")"
@@ -512,7 +522,19 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 		args = append(args, b)
 		filter = fmt.Sprintf("(%s AND org_path <@ $%d::ltree)", filter, len(args))
 	}
+	if listVis != "" {
+		filter = "(" + filter + " OR " + listVis + ")"
+	}
 	return filter, args
+}
+
+// listNode is the node from which the entries of the select lists are seen (SD-Plan N5): the
+// node of the person, without one the tenant or the root.
+func (a *Access) listNode() string {
+	if a.PersonNode != "" {
+		return a.PersonNode
+	}
+	return a.HomeNode()
 }
 
 // Permits checks one record against the grants for an action: the same rules as Filter,
@@ -523,8 +545,9 @@ func (a *Access) Permits(typeName, action string, rec map[string]any) bool {
 		return true
 	}
 	orgPath, _ := rec["org_path"].(string)
-	if a.readsAll(typeName, action) {
-		return a.InTenant(orgPath)
+	if a.readsAll(typeName, action) && a.InTenant(orgPath) && within(a.listNode(), orgPath) {
+		// An entry of a select list at the person's node or above (SD-Plan N5).
+		return true
 	}
 	if !a.InTenant(orgPath) {
 		return false
@@ -608,6 +631,28 @@ func (a *Access) fieldRights(typeName, action string, pick func(*Fields) []strin
 // Involved says whether the person of the access or one of their groups holds a role at the
 // record (WF3); the stream marks such events as mine (UI8).
 func (a *Access) Involved(rec map[string]any) bool { return a != nil && a.holdsRole(rec) }
+
+// HoldsAnyRole reports whether the person or one of their groups holds one of the named roles
+// at the record (SD-Plan N8: a transition only a role may take).
+func (a *Access) HoldsAnyRole(rec map[string]any, names []string) bool {
+	if a == nil {
+		return false
+	}
+	roles, _ := rec["actors"].(map[string]any)
+	mine := map[string]bool{}
+	for _, id := range a.involved() {
+		mine[id.String()] = true
+	}
+	for _, name := range names {
+		refs, _ := roles[name].([]any)
+		for _, r := range refs {
+			if ref, ok := r.(map[string]any); ok && mine[fmt.Sprint(ref["id"])] {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func (a *Access) holdsRole(rec map[string]any) bool {
 	roles, _ := rec["actors"].(map[string]any)

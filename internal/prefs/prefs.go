@@ -36,6 +36,10 @@ const (
 	GlobalLanguage = "ui.language"
 	GlobalTimeZone = "ui.time_zone"
 	GlobalTheme    = "ui.theme"
+	// GlobalColorScheme is light, dark or system (UI29, UI-Plan E24).
+	GlobalColorScheme = "ui.color_scheme"
+	// GlobalDensity is compact or normal, the row height of lists (UI30, UI-Plan E35).
+	GlobalDensity = "ui.density"
 )
 
 // Defaults when neither the person nor the tree says anything.
@@ -43,6 +47,10 @@ const (
 	DefaultLanguage = "de"
 	DefaultTimeZone = "Europe/Berlin"
 	DefaultTheme    = "neutral"
+	// DefaultColorScheme follows the system of the device (prefers-color-scheme).
+	DefaultColorScheme = "system"
+	// DefaultDensity is the normal row height of 52 px.
+	DefaultDensity = "normal"
 )
 
 // Sources of a value besides a node path.
@@ -56,6 +64,12 @@ var Languages = []string{"de", "en"}
 
 var themeRe = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,30}$`)
 
+// isColorScheme says whether v is light, dark or system.
+func isColorScheme(v string) bool { return v == "light" || v == "dark" || v == "system" }
+
+// isDensity says whether v is compact or normal.
+func isDensity(v string) bool { return v == "compact" || v == "normal" }
+
 // Value is one setting with where it comes from: own, a node path, or default.
 type Value struct {
 	Value  string `json:"value"`
@@ -64,9 +78,13 @@ type Value struct {
 
 // Prefs are the effective settings of a person.
 type Prefs struct {
-	Language Value                     `json:"language"`
-	TimeZone Value                     `json:"time_zone"`
-	Theme    Value                     `json:"theme"`
+	Language Value `json:"language"`
+	TimeZone Value `json:"time_zone"`
+	Theme    Value `json:"theme"`
+	// ColorScheme is light, dark or system (UI29).
+	ColorScheme Value `json:"color_scheme"`
+	// Density is compact or normal (UI30).
+	Density  Value                     `json:"density"`
 	Defaults map[string]map[string]any `json:"defaults"`
 }
 
@@ -171,6 +189,17 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	out.Language = pick(lang, GlobalLanguage, DefaultLanguage)
 	out.TimeZone = pick(str("time_zone"), GlobalTimeZone, DefaultTimeZone)
 	out.Theme = pick(str("theme"), GlobalTheme, DefaultTheme)
+	scheme := pick(str("color_scheme"), GlobalColorScheme, DefaultColorScheme)
+	if !isColorScheme(scheme.Value) {
+		// A wrong value at the tree falls back, the interface stays usable.
+		scheme = Value{DefaultColorScheme, SourceDefault}
+	}
+	out.ColorScheme = scheme
+	density := pick(str("density"), GlobalDensity, DefaultDensity)
+	if !isDensity(density.Value) {
+		density = Value{DefaultDensity, SourceDefault}
+	}
+	out.Density = density
 	return out, nil
 }
 
@@ -204,14 +233,16 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "defaults":
+		case "language", "time_zone", "theme", "color_scheme", "density", "defaults":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme and defaults")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density and defaults")
 		}
 	}
 	text("language", func(v string) bool { return v == "de" || v == "en" }, "must be de or en")
 	text("time_zone", func(v string) bool { _, err := time.LoadLocation(v); return err == nil && v != "" && v != "Local" }, "must be an IANA time zone such as Europe/Berlin")
 	text("theme", themeRe.MatchString, "must be the name of a theme")
+	text("color_scheme", isColorScheme, "must be light, dark or system")
+	text("density", isDensity, "must be compact or normal")
 	if raw, given := input["defaults"]; given {
 		m, ok := raw.(map[string]any)
 		if !ok {

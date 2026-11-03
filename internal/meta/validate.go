@@ -10,7 +10,9 @@ package meta
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
 
 	"group24.de/itsm/internal/rules"
@@ -104,6 +106,10 @@ func Validate(p Package, known map[string]bool) error {
 			fseen[f.Name] = true
 			checkLabel(add, fw, "label", f.Label)
 			validateField(add, fw, f, local, known)
+		}
+		if len(tr.Actors) > 0 {
+			// The roles a trait brings (SD-Plan N6), checked like those of a type.
+			validateActors(add, where, Type{Traits: []string{TraitActors}, Actors: tr.Actors}, local, known)
 		}
 	}
 	seen := map[string]bool{}
@@ -341,12 +347,22 @@ func validateStates(add func(string, string, ...any), where string, t Type) {
 		}
 		states[s.Name] = true
 		checkLabel(add, sw, "label", s.Label)
+		switch s.Category {
+		case "", CategoryOpen, CategoryActive, CategoryWaiting, CategoryDone:
+		default:
+			add(sw, "category %q must be open, active, waiting or done", s.Category)
+		}
 		if s.Initial {
 			initial++
 		}
 	}
 	if initial != 1 {
 		add(where, "exactly one state must be marked initial, %d are", initial)
+	}
+	for _, name := range slices.Sorted(maps.Keys(t.Layout)) {
+		if !states[name] {
+			add(where, "layout names %q, which is not a state of this type", name)
+		}
 	}
 	tseen := map[string]bool{}
 	for _, tr := range t.Transitions {
@@ -375,6 +391,15 @@ func validateStates(add func(string, string, ...any), where string, t Type) {
 				add(tw, "when: %v", err)
 			}
 		}
+		// Who alone may take it, and whether it takes a text (SD-Plan N8).
+		for _, role := range tr.By {
+			if _, ok := t.Actor(role); !ok {
+				add(tw, "by %q is not a role at the record of this type", role)
+			}
+		}
+		if tr.Comment != "" && tr.Comment != CommentRequired && tr.Comment != CommentOptional {
+			add(tw, "comment %q must be required or optional", tr.Comment)
+		}
 	}
 }
 
@@ -392,8 +417,21 @@ func validateField(add func(string, string, ...any), fw string, f Field, local, 
 	if f.Type != FieldText && f.MaxLength != 0 {
 		add(fw, "max_length only applies to text fields")
 	}
-	if f.Format != "" && (f.Type != FieldText || f.Format != FormatRich) {
-		add(fw, `format only takes "rich", on text fields`)
+	rich := f.Type == FieldText && f.Format == FormatRich
+	priority := f.Type == FieldNumber && f.Format == FormatPriority
+	if f.Format != "" && !rich && !priority {
+		add(fw, `format takes "rich" on text fields and "priority" on number fields`)
+	}
+	if f.Type != FieldSequence && f.Prefix != "" {
+		add(fw, "prefix only applies to sequence fields")
+	}
+	if f.Type == FieldSequence {
+		if len(f.Prefix) > 20 || strings.ContainsAny(f.Prefix, " \t\n") {
+			add(fw, "prefix must be at most 20 characters without spaces")
+		}
+		if f.Required || f.Default != nil || f.Formula != "" {
+			add(fw, "a sequence field is set by the core: no required, default or formula")
+		}
 	}
 	if f.Type != FieldText && f.Translatable {
 		add(fw, "translatable only applies to text fields")
@@ -494,7 +532,9 @@ func joinTypes() string {
 var systemColumns = map[string]bool{
 	"id": true, "org_path": true, "version": true, "state": true, "source": true, "external_key": true,
 	"row_hash": true, "search": true, "created_at": true, "created_by": true, "updated_at": true,
-	"updated_by": true, "deleted_at": true,
+	"updated_by": true, "deleted_at": true, "sla_due_at": true, "sla_warn_at": true, "sla_paused": true,
+	// The tenant of the row (PL46); missing here until 2026-11-03, found in UI34.
+	"tenant": true,
 }
 
 func isSystemColumn(name string) bool { return systemColumns[name] }

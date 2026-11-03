@@ -10,7 +10,7 @@
 // them; a sidebar with roles, SLA clocks and related records. Saving stays on the page.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -25,11 +25,13 @@ import {
   type TypeDefinition,
 } from "@/api/client";
 import { useLive } from "@/app/live";
+import { remember } from "@/app/recent";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 
 import { Form } from "./Form";
 import { PresenceLine, usePresence } from "./Presence";
+import { titleOf } from "./RefName";
 import { Sidebar } from "./Sidebar";
 import { Timeline } from "./Timeline";
 import { Transitions } from "./Transitions";
@@ -135,6 +137,14 @@ export function RecordPage() {
       });
     }
   });
+  // The command line lists the records opened last (UI31).
+  const account = me.data?.id;
+  const opened = type && record.data ? titleOf(type, record.data) : undefined;
+  useEffect(() => {
+    if (account && opened !== undefined) {
+      remember(account, { type: typeName, id, title: opened });
+    }
+  }, [account, typeName, id, opened]);
   if (pending || record.isPending || states.isPending) {
     return <p>{t("list.loading")}</p>;
   }

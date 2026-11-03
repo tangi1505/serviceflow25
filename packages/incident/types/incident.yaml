@@ -1,0 +1,83 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Störung (SD2; Inventar G36, G38, G42; IP19). The values of the priority matrix are
+# provisional (SD-Plan E3, §2.4) until the business side answers Hauptplan V30.
+name: incident
+label: {de: Störung, en: Incident}
+description:
+  de: Eine Störung eines Dienstes oder Arbeitsplatzes.
+  en: A disruption of a service or a workplace.
+title_field: title
+# ticket from sd brings title, description, category, channel, impact, urgency and the roles
+# requester, observer, assignee and group (SD-Plan N6, N7).
+traits: [sd.ticket, history, documents, timeline]
+fields:
+  # The running number per tenant (PL49): INC-1, INC-2, …
+  - name: number
+    type: sequence
+    label: {de: Nummer, en: Number}
+    prefix: INC-
+  # Calculated (PL22) from the matrix of SD-Plan §2.4: P1 is the most urgent; empty until both
+  # impact and urgency are set.
+  - name: priority
+    type: number
+    label: {de: Priorität, en: Priority}
+    format: priority
+    formula: >-
+      {"high": {"high": 1.0, "medium": 2.0, "low": 3.0},
+       "medium": {"high": 2.0, "medium": 3.0, "low": 4.0},
+       "low": {"high": 3.0, "medium": 4.0, "low": 4.0}}[impact][urgency]
+  - name: solution
+    type: text
+    label: {de: Lösung, en: Solution}
+    format: rich
+    searchable: true
+  - name: solution_kind
+    type: reference
+    label: {de: Lösungsart, en: Kind of solution}
+    to: sd.solution_kind
+  # Why it waits (WF11); later the clocks pause by it (SD3).
+  - name: wait_reason
+    type: reference
+    label: {de: Wartegrund, en: Reason to wait}
+    to: core.wait_reason
+states:
+  - {name: new, label: {de: Neu, en: New}, initial: true, category: open}
+  - {name: in_progress, label: {de: In Arbeit, en: In progress}, category: active}
+  - {name: waiting, label: {de: Wartet, en: Waiting}, category: waiting}
+  - {name: resolved, label: {de: Gelöst, en: Resolved}, category: done}
+  - {name: closed, label: {de: Geschlossen, en: Closed}, category: done}
+transitions:
+  - {name: start, label: {de: Beginnen, en: Start}, from: [new], to: in_progress}
+  - {name: wait, label: {de: Warten, en: Wait}, from: [in_progress], to: waiting}
+  - {name: resume, label: {de: Fortsetzen, en: Resume}, from: [waiting], to: in_progress}
+  - {name: resolve, label: {de: Lösen, en: Resolve}, from: [new, in_progress, waiting], to: resolved}
+  # Reopened only from resolved; closed is final (SD-Plan E5).
+  - {name: reopen, label: {de: Wieder öffnen, en: Reopen}, from: [resolved], to: in_progress}
+  - {name: close, label: {de: Schließen, en: Close}, from: [resolved], to: closed}
+  # The requester confirms or refuses the solution, also in the portal (SD-Plan E5, N8); a
+  # refusal needs its reason, kept as an entry at the record.
+  - name: confirm
+    label: {de: Lösung bestätigen, en: Confirm the solution}
+    from: [resolved]
+    to: closed
+    by: [requester]
+  - name: refuse
+    label: {de: Lösung ablehnen, en: Refuse the solution}
+    from: [resolved]
+    to: in_progress
+    by: [requester]
+    comment: required
+field_states:
+  # A resolved incident needs its solution and how it was solved; a closed one changes no
+  # more (SD-Plan E5).
+  - states: [resolved, closed]
+    required: [solution, solution_kind]
+  - states: [waiting]
+    required: [wait_reason]
+  - states: [closed]
+    read_only: ["*"]
+# In the portal (UI10): a person reports with title, description and category, and answers.
+portal:
+  fields: [title, description, category]

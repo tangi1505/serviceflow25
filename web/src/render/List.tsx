@@ -15,6 +15,7 @@
 // list does not jump while one reads it.
 import {
   useInfiniteQuery,
+  useMutation,
   useQuery,
   useQueryClient,
   type InfiniteData,
@@ -35,7 +36,9 @@ import { useTranslation } from "react-i18next";
 
 import {
   api,
+  labelOf,
   meQuery,
+  mySettingsQuery,
   qualifiedName,
   type Page,
   type RecordData,
@@ -43,14 +46,17 @@ import {
 } from "@/api/client";
 import { useLive } from "@/app/live";
 import { Button } from "@/ui/button";
+import { PriorityMark, StatePill } from "@/ui/marks";
 import { cn } from "@/ui/utils";
 
 import { BatchBar } from "./Batch";
+import { DeadlineCell } from "./DeadlineCell";
 import { ExportButton } from "./Export";
-import { fieldLabel, formatValue, sortableColumns, systemColumns } from "./fields";
+import { fieldLabel, formatValue, sortableColumns, stateCategory, systemColumns } from "./fields";
 
 const pageSize = 100;
-const rowHeight = 36;
+// Row heights of the kit (UI30, §2.1): compact 36 px, normal 52 px, per person.
+const rowHeights = { compact: 36, normal: 52 } as const;
 
 type Sort = { column: string; desc: boolean };
 
@@ -73,14 +79,23 @@ function storageKey(typeName: string) {
 function loadVisibility(typeName: string, type: TypeDefinition): VisibilityState {
   const initial: VisibilityState = {};
   for (const c of systemColumns) {
-    initial[c.name] = c.name === "updated_at";
+    // The deadline shows where clocks run (UI34).
+    initial[c.name] = c.name === "updated_at" || (c.name === "sla_due_at" && type.timed === true);
   }
   for (const f of type.fields) {
     initial[f.name] = true;
   }
   try {
     const stored = localStorage.getItem(storageKey(typeName));
-    return stored ? { ...initial, ...(JSON.parse(stored) as VisibilityState) } : initial;
+    if (!stored) {
+      return initial;
+    }
+    // Only columns the type still has: a field the customer layer took back (UI25) would
+    // otherwise stay in the request and the API would refuse the list (422).
+    const kept = Object.entries(JSON.parse(stored) as VisibilityState).filter(
+      ([name]) => name in initial,
+    );
+    return { ...initial, ...Object.fromEntries(kept) };
   } catch {
     return initial;
   }
@@ -91,6 +106,8 @@ export function List({
   where,
   view,
   onView,
+  picked,
+  onPick,
 }: {
   type: TypeDefinition;
   // where is the condition of the JSON query; without one the plain list.
@@ -98,6 +115,10 @@ export function List({
   // view is the columns and sort of a saved search; without one they come from the browser.
   view?: Partial<ListView>;
   onView?: (view: ListView) => void;
+  // picked is the record in the preview; onPick shows one there (UI30). Without onPick, or
+  // on a narrow screen, a click opens the record page.
+  picked?: string;
+  onPick?: (id: string) => void;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -115,6 +136,14 @@ export function List({
   const [selection, setSelection] = useState<RowSelectionState>({});
   const ownView = (view?.columns?.length ?? 0) > 0;
   const chooserId = useId();
+  const settings = useQuery(mySettingsQuery);
+  const density = settings.data?.density?.value === "compact" ? "compact" : "normal";
+  const rowHeight = rowHeights[density];
+  const settingsClient = useQueryClient();
+  const setDensity = useMutation({
+    mutationFn: (d: "compact" | "normal") => api.setMySettings({ density: d }),
+    onSuccess: (saved) => settingsClient.setQueryData(mySettingsQuery.queryKey, saved),
+  });
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,9 +160,11 @@ export function List({
 
   const fields = useMemo(() => {
     const sortParam = (sort.desc ? "-" : "") + sort.column;
-    const columns = Object.entries(visibility)
-      .filter(([, shown]) => shown)
+    const shown = Object.entries(visibility)
+      .filter(([, on]) => on)
       .map(([name]) => name);
+    // The deadline mark needs the three-quarter point and the pause too (UI34).
+    const columns = shown.includes("sla_due_at") ? [...shown, "sla_warn_at", "sla_paused"] : shown;
     return { sortParam, columns };
   }, [sort, visibility]);
 
@@ -235,10 +266,24 @@ export function List({
       id: c.name,
       accessorFn: (row) => row[c.name],
       header: t(`column.${c.name}`),
-      cell: (info) =>
-        c.name.endsWith("_at")
+      cell: (info) => {
+        if (c.name === "sla_due_at") {
+          return <DeadlineCell row={info.row.original} />;
+        }
+        // The state as a pill with the dot of its kind (UI29).
+        if (c.name === "state" && info.getValue()) {
+          const s = type.states?.find((x) => x.name === info.getValue());
+          return (
+            <StatePill
+              label={s ? labelOf(s.label, i18n.language, s.name) : String(info.getValue())}
+              category={stateCategory(s)}
+            />
+          );
+        }
+        return c.name.endsWith("_at")
           ? formatValue({ name: c.name, type: "datetime" }, info.getValue(), i18n.language)
-          : String(info.getValue() ?? ""),
+          : String(info.getValue() ?? "");
+      },
     }));
     // Fields the customer layer hid (PL43) are no column.
     const own = type.fields
@@ -247,7 +292,12 @@ export function List({
         id: f.name,
         accessorFn: (row) => row[f.name],
         header: fieldLabel(f, i18n.language),
-        cell: (info) => formatValue(f, info.getValue(), i18n.language),
+        cell: (info) =>
+          f.format === "priority" && typeof info.getValue() === "number" ? (
+            <PriorityMark value={info.getValue() as number} />
+          ) : (
+            formatValue(f, info.getValue(), i18n.language)
+          ),
       }));
     // The choice for mass actions (UI6): a box per row and one for all loaded rows.
     const titleField = type.title_field ?? type.fields[0]?.name ?? "id";
@@ -327,6 +377,11 @@ export function List({
           lane: 0,
         }));
 
+  // Another row height measures the rows anew.
+  useEffect(() => {
+    virtualizer.measure();
+  }, [rowHeight, virtualizer]);
+
   // Load the next page when the last rendered row comes into view.
   const lastIndex = virtualRows[virtualRows.length - 1]?.index ?? -1;
   useEffect(() => {
@@ -344,6 +399,14 @@ export function List({
 
   const open = (row: RecordData) =>
     void navigate({ to: "/types/$typeName/$id", params: { typeName, id: String(row["id"]) } });
+  // pick shows the record in the preview where there is room for it (UI30, from 1100 px).
+  const pick = (row: RecordData) => {
+    if (onPick && window.innerWidth >= 1100) {
+      onPick(String(row["id"]));
+    } else {
+      open(row);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -377,7 +440,28 @@ export function List({
               ))}
           </fieldset>
         </details>
-        <span className="text-sm text-muted-foreground" aria-live="polite">
+        <div
+          role="group"
+          aria-label={t("list.density")}
+          className="inline-flex rounded-md bg-muted p-0.5"
+        >
+          {(["compact", "normal"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={density === d}
+              disabled={setDensity.isPending}
+              onClick={() => setDensity.mutate(d)}
+              className={cn(
+                "h-8 rounded-[6px] px-3 text-[13px] font-medium",
+                density === d ? "bg-segment-active text-foreground shadow-sm" : "text-foreground-2",
+              )}
+            >
+              {t(`list.densities.${d}`)}
+            </button>
+          ))}
+        </div>
+        <span className="text-sm text-foreground-2" aria-live="polite">
           {query.isPending
             ? t("list.loading")
             : t("list.loaded", { count: rows.length, more: query.hasNextPage ? "+" : "" })}
@@ -456,14 +540,17 @@ export function List({
                   key={row.id}
                   data-index={virtualRow.index}
                   className={cn(
-                    "absolute left-0 flex w-full cursor-pointer border-t hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none",
+                    "absolute left-0 flex w-full cursor-pointer items-center border-t hover:bg-surface-active focus-visible:bg-surface-active",
+                    picked === row.id && "bg-accent-soft hover:bg-accent-soft",
                   )}
                   style={{ transform: `translateY(${virtualRow.start}px)`, height: rowHeight }}
                   tabIndex={0}
-                  onClick={() => open(row.original)}
+                  aria-selected={onPick ? picked === row.id : undefined}
+                  onClick={() => pick(row.original)}
+                  onDoubleClick={() => open(row.original)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      open(row.original);
+                      pick(row.original);
                     }
                   }}
                 >

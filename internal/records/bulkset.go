@@ -194,6 +194,11 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 		return pending{}, nil, false
 	}
 	input, tr, tps := splitTranslations(ctx, t, row.Fields)
+	// The running numbers a row brings (PL49): kept on a new record, the same on an old one.
+	input, given, nps := takeNumbers(t, input)
+	if len(nps) > 0 {
+		return fail(&ValidationError{Problems: nps})
+	}
 	if len(tr) > 0 || s.timed(ctx, t) || s.rolledUp(ctx, t) {
 		// Translations, the clocks of a type with SLAs (WF9) and the sums of a type others
 		// count (WF13) go the way of Sync.
@@ -203,6 +208,9 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 		values, err := s.validate(ctx, t, input, true)
 		if err = withProblems(err, tps); err != nil {
 			return fail(err)
+		}
+		for f, n := range given {
+			values[f] = n
 		}
 		path, err := createNode(ctx, t, values)
 		if err != nil {
@@ -248,6 +256,12 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 			return fail(err)
 		}
 		return pending{}, &BulkResult{Status: SyncUnchanged, ID: id}, true
+	}
+	for f, n := range given {
+		if had, _ := ex.rec[f].(int64); had != n {
+			return fail(&ValidationError{Problems: []Problem{{Field: f, Code: "read_only",
+				Message: fmt.Sprintf("is the running number %d and cannot be changed", had)}}})
+		}
 	}
 	values, err := s.validate(ctx, t, input, false)
 	if err = withProblems(err, tps); err != nil {
@@ -305,6 +319,9 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 func (s *Service) bulkWrite(ctx context.Context, t meta.Type, source string, rows []BulkRow, todo []pending, results []BulkResult, actor Actor) ([]int, error) {
 	var left []int
 	err := s.tx(ctx, func(tx pgx.Tx) error {
+		if err := s.numberBatch(ctx, tx, t, todo); err != nil {
+			return err
+		}
 		if err := copyTemp(ctx, tx, t, rows, todo); err != nil {
 			return err
 		}

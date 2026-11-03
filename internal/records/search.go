@@ -57,7 +57,14 @@ func searchExpr(t meta.Type) string {
 func searchParts(t meta.Type, col func(name string) string) []string {
 	title, others := t.SearchFields()
 	var parts []string
-	text := func(name string) string { return "coalesce((" + col(name) + ")::text, '')" }
+	text := func(name string) string {
+		if f, _ := t.Field(name); f.Type == meta.FieldSequence {
+			// A running number is found with and without its prefix (PL49).
+			c := "(" + col(name) + ")::text"
+			return "coalesce(" + quoteText(f.Prefix) + " || " + c + " || ' ' || " + c + ", '')"
+		}
+		return "coalesce((" + col(name) + ")::text, '')"
+	}
 	if title != "" {
 		parts = append(parts, "setweight(to_tsvector('german', "+text(title)+"), 'A')")
 	}
@@ -86,6 +93,9 @@ func searchInsert(t meta.Type, values map[string]any, tr translations, args []an
 		text := ""
 		if v := toJSON(f, values[name]); v != nil {
 			text = fmt.Sprint(v)
+			if f.Type == meta.FieldSequence {
+				text = f.Prefix + text + " " + text
+			}
 		}
 		args = append(args, text)
 		return fmt.Sprintf("$%d::text", len(args))

@@ -126,7 +126,7 @@ paths:
           schema: { type: string }
         - name: sort
           in: query
-          description: id, created_at, updated_at or version; a leading "-" sorts descending
+          description: id, created_at, updated_at, version or sla_due_at (the deadline, empty ones last); a leading "-" sorts descending
           schema: { type: string }
         - name: fields
           in: query
@@ -2030,6 +2030,27 @@ paths:
         "404": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/types/{typeName}:check-condition:
+    post:
+      operationId: checkCondition
+      summary: Whether a CEL condition over a record compiles (UI26.1)
+      description: Needs the right customize on core.type. An empty condition is fine.
+      tags: [types]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConditionCheck" }
+      responses:
+        "200":
+          description: the verdict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConditionResult" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
   /api/v1/customer:
     get:
       operationId: exportCustomerLayers
@@ -2051,7 +2072,7 @@ paths:
       summary: The settings of the session's person, each with where it comes from (UI9)
       description: >-
         source is own, the path of the node whose setting applies (ui.language, ui.time_zone,
-        ui.theme at the person's unit, inherited), or default. defaults are the person's
+        ui.theme, ui.color_scheme, ui.density at the person's unit, inherited), or default. defaults are the person's
         presets per type for creating.
       tags: [auth]
       responses:
@@ -2075,6 +2096,8 @@ paths:
                 language: { type: string, nullable: true, enum: [de, en, null] }
                 time_zone: { type: string, nullable: true, description: an IANA time zone }
                 theme: { type: string, nullable: true }
+                color_scheme: { type: string, nullable: true, enum: [light, dark, system, null], description: "light, dark or like the system of the device (UI29)" }
+                density: { type: string, nullable: true, enum: [compact, normal, null], description: "the row height of lists, 36 or 52 px (UI30)" }
                 defaults:
                   type: object
                   description: 'per type an object of field values, or null to remove'
@@ -2660,6 +2683,9 @@ components:
           type: object
           additionalProperties: true
           description: "fields (and actors) set in the same version, like a PATCH, e.g. {\"solution\": \"…\"}"
+        comment:
+          type: string
+          description: "a text kept as an entry at the record in the same write, for a transition with comment required or optional (SD-Plan N8), e.g. the reason of a refused solution"
     FieldStatesRequest:
       type: object
       properties:
@@ -2713,7 +2739,15 @@ components:
         allowed: { type: boolean }
         reason:
           type: string
-          description: why it is not allowed, "state" or "condition"
+          description: why it is not allowed, "state", "condition" or "role" (the person holds none of the roles in by)
+        by:
+          type: array
+          items: { type: string }
+          description: the roles at the record that alone may take it (SD-Plan N8)
+        comment:
+          type: string
+          enum: [required, optional]
+          description: whether it takes a text, kept as an entry at the record
     Event:
       type: object
       required: [position, at, kind, type_name, record_id, payload]
@@ -2879,6 +2913,12 @@ components:
         workplace:
           type: boolean
           description: "the session may use the workplace (right workplace on core.ui, UI10); without, the portal"
+        customize:
+          type: boolean
+          description: "the session may change types in the customer layer (right customize on core.type at the root, PL43); the interface offers the editor (UI25)"
+        manage_rights:
+          type: boolean
+          description: "the session may manage roles, their permissions and assignments (right manage_rights on core.role, PL8); the interface offers the role editor (UI27)"
         person_id: { type: string, format: uuid, description: the person of the account }
         nodes:
           type: array
@@ -3053,6 +3093,17 @@ components:
     Checks:
       type: object
       additionalProperties: { type: string }
+    ConditionCheck:
+      type: object
+      required: [when]
+      properties:
+        when: { type: string, description: a CEL condition over record }
+    ConditionResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        error: { type: string, description: why the condition does not compile }
     CustomerLayer:
       type: object
       required: [type, version, changes]
@@ -3068,12 +3119,23 @@ components:
       required: [op, field]
       properties:
         id: { type: string }
-        op: { type: string, enum: [add_field, change_field, add_options, hide_field, show_field, remove_field, move_field] }
-        field: { type: string }
+        op: { type: string, enum: [add_field, change_field, add_options, hide_field, show_field, remove_field, move_field, add_state, change_state, remove_state, add_transition, change_transition, remove_transition, disable_transition, enable_transition, set_layout] }
+        field: { type: string, description: "the name of the field, state or transition; set_layout: layout" }
         new: { type: object, additionalProperties: true, description: "add_field: the field, as in a type definition" }
+        state: { type: object, additionalProperties: true, description: "add_state: the state (name, label, initial), as in a type definition (UI26.1)" }
+        transition: { type: object, additionalProperties: true, description: "add_transition: the transition (name, label, from, to, when), as in a type definition (UI26.1)" }
+        layout:
+          type: object
+          description: "set_layout: the position of each state in the graph of the workflow editor (UI26.2); replaces the whole layout, an empty object removes it. The effective type carries it as layout"
+          additionalProperties:
+            type: object
+            required: [x, y]
+            properties:
+              x: { type: number }
+              y: { type: number }
         set:
           type: object
-          description: "change_field: label, description, required, default; max_length only on fields of the customer layer"
+          description: "change_field: label, description, required, default; max_length only on fields of the customer layer. change_state: label, initial. change_transition: label, from, to, when (empty when removes the condition)"
           additionalProperties: true
         options:
           type: array
@@ -3084,6 +3146,7 @@ components:
         inactive: { type: string }
         status: { type: string, enum: [active, inactive, conflict] }
         reason: { type: string }
+        by_name: { type: string, description: "the display name of the account that made the change (UI25)" }
     FormOffer:
       type: object
       required: [id, name, target_type, definition]
@@ -3241,7 +3304,7 @@ components:
           description: number of matching records over all pages, when count was asked for
     TypeDefinition:
       type: object
-      description: the effective definition of an entity type
+      description: the effective definition of an entity type; "timed" is true when SLA clocks run on its records (UI34)
       additionalProperties: true
     RelationEnd:
       type: object
@@ -3493,11 +3556,13 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, defaults]
+      required: [language, time_zone, theme, color_scheme, density, defaults]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
         theme: { $ref: "#/components/schemas/SettingValue" }
+        color_scheme: { $ref: "#/components/schemas/SettingValue" }
+        density: { $ref: "#/components/schemas/SettingValue" }
         defaults:
           type: object
           additionalProperties: { type: object, additionalProperties: true }

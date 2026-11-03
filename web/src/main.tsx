@@ -5,6 +5,12 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
+// IBM Plex, shipped with the tool (UI29; OFL-1.1 allowed for fonts only, test/licenses).
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "@/ui/tokens.css";
 
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -13,11 +19,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { initI18n } from "@/i18n";
+import { applyColorScheme, currentColorScheme } from "@/ui/colorScheme";
 import { applyTheme, currentTheme } from "@/ui/theme";
 import { createAppRouter, createQueryClient } from "@/app/router";
 
 initI18n(navigator.language);
 applyTheme(currentTheme());
+// The last known scheme before the settings load, so that a dark page does not flash light.
+applyColorScheme(currentColorScheme());
 
 const queryClient = createQueryClient();
 const router = createAppRouter({ queryClient });

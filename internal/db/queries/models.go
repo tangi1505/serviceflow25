@@ -283,6 +283,9 @@ type ListEntry struct {
 	Lon         pgtype.Numeric
 	Alt         pgtype.Numeric
 	Tenant      string
+	SlaDueAt    pgtype.Timestamptz
+	SlaWarnAt   pgtype.Timestamptz
+	SlaPaused   bool
 }
 
 type LoginRule struct {

@@ -87,6 +87,22 @@ describe("List", () => {
     expect(stored["priority"]).toBe(false);
   });
 
+  it("drops a remembered column the type no longer has", async () => {
+    // A field the customer layer took back (UI25) is still in the browser's choice; the list
+    // asks only for columns of the type, or the API would refuse it (422).
+    localStorage.setItem(
+      "itsm.list.probe.probe.columns",
+      JSON.stringify({ k_dienststelle: true, priority: false }),
+    );
+    renderAt("/types/probe.probe");
+    await screen.findByText("100+ Datensätze");
+    const list = state.calls.filter((c) => c.path === "/api/v1/records/probe.probe");
+    const fields = list[0]?.query.get("fields")?.split(",") ?? [];
+    expect(fields).not.toContain("k_dienststelle");
+    expect(fields).not.toContain("priority");
+    expect(fields).toContain("title");
+  });
+
   it("opens a record from its row", async () => {
     const user = userEvent.setup();
     const { router, container } = renderAt("/types/probe.probe");

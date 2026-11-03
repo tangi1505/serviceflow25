@@ -562,8 +562,11 @@ func tenantSideData(t *testing.T, admin, userA, userB *testAPI, a, b tenantData)
 	rec := create(userA, "probe.probe", `{"title": "PL45 Webhook"}`)
 	id := uuid.MustParse(rec["id"].(string))
 	var e records.Event
-	for deadline := time.Now().Add(10 * time.Second); e.Position == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
-		list, err := records.New(admin.rt).Events(inA, 0, 100000)
+	// Page through the outbox: Events gives at most 1,000 at a time. The call before asked for
+	// 100,000, got 100 and missed the event once more than 100 lay before it (found in SD1).
+	var after int64
+	for deadline := time.Now().Add(10 * time.Second); e.Position == 0 && time.Now().Before(deadline); {
+		list, err := records.New(admin.rt).Events(inA, after, 1000)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -571,6 +574,10 @@ func tenantSideData(t *testing.T, admin, userA, userB *testAPI, a, b tenantData)
 			if ev.RecordID == id {
 				e = ev
 			}
+			after = ev.Position
+		}
+		if len(list) < 1000 && e.Position == 0 {
+			time.Sleep(20 * time.Millisecond)
 		}
 	}
 	if err := admin.hooks.Handle(inA, e); err != nil {

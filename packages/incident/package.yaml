@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The incident (SD2; SD-Plan E1, E5): a disruption of a service, with the trait ticket of the
+# base package sd, a running number INC-…, the priority from impact and urgency and a state
+# model in which the requester confirms or refuses the solution.
+name: incident
+version: 0.1.0
+label:
+  de: Störungen
+  en: Incidents
+# sd brings the trait ticket and the lists (SD-Plan N7); core the persons, groups and reasons
+# to wait.
+depends: [core, sd]

@@ -61,11 +61,12 @@ func TestTenantBoundary(t *testing.T) {
 		t.Fatal("a role at a tenant holds the installation")
 	}
 
-	// Select lists: the tenant's own copy only (PL45, V28).
+	// Select lists: the tenant's own copy only (PL45, V28), and of it the entries at or above
+	// the node one sees them from, here the tenant (SD-Plan N5; the filter has the node since).
 	lists := &Access{AccountID: uuid.New(), Tenants: []string{"root.a"}, ReadAll: []string{"core.wait_reason"}}
-	filter, _ = lists.Filter("core.wait_reason", ActionRead, nil)
-	if filter != "org_path <@ $1::ltree" {
-		t.Fatalf("list filter: %s", filter)
+	filter, args = lists.Filter("core.wait_reason", ActionRead, nil)
+	if filter != "($1::ltree <@ org_path AND org_path <@ $2::ltree)" || args[0] != "root.a" || args[1] != "root.a" {
+		t.Fatalf("list filter: %s %v", filter, args)
 	}
 	if !lists.Permits("core.wait_reason", ActionRead, map[string]any{"org_path": "root.a"}) ||
 		lists.Permits("core.wait_reason", ActionRead, map[string]any{"org_path": "root"}) ||

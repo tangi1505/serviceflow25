@@ -85,6 +85,10 @@ func packageInstall(ctx context.Context, rt *db.Router, dir string, force bool, 
 		return fmt.Errorf("package %s: %w", dir, err)
 	}
 	pool := rt.Control()
+	// Traits of other packages, such as sd.ticket, from the installed ones (SD-Plan N7).
+	if err := meta.ResolveInstalled(ctx, queries.New(pool), &p); err != nil {
+		return fmt.Errorf("package %s: %w", dir, err)
+	}
 	before, err := meta.Types(ctx, queries.New(pool))
 	if err != nil {
 		return err
@@ -218,11 +222,22 @@ func recomputeIn(ctx context.Context, rt *db.Router, js *jobs.Service, before []
 				break
 			}
 		}
-		if searchSignature(t) != searchSignature(prev) {
+		// A new running number: the records there are get theirs, in the order of their
+		// creation (PL49, Kern-Plan E63).
+		for _, f := range t.Fields {
+			if pf, had := prev.Field(f.Name); f.Type == meta.FieldSequence && (!had || pf.Type != meta.FieldSequence) {
+				args.Number, args.Search = true, true
+			}
+		}
+		switch {
+		case args.Search:
+		case searchSignature(t) != searchSignature(prev):
 			args.Search = true
-		} else if unfilled, err := rec.SearchUnfilled(ctx, t.QualifiedName()); err != nil {
-			return err
-		} else {
+		default:
+			unfilled, err := rec.SearchUnfilled(ctx, t.QualifiedName())
+			if err != nil {
+				return err
+			}
 			args.Search = unfilled
 		}
 		if formulas || args.Search {
@@ -240,6 +255,9 @@ func recomputeIn(ctx context.Context, rt *db.Router, js *jobs.Service, before []
 		what := "Berechnete Felder"
 		if args.Search {
 			what = "Berechnete Felder und Suchspalte"
+		}
+		if args.Number {
+			what = "Laufende Nummern, berechnete Felder und Suchspalte"
 		}
 		fmt.Fprintf(stdout, "  %s von %s werden neu berechnet (Job %d)\n", what, args.Type, job.ID)
 	}

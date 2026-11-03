@@ -33,7 +33,7 @@ export function searchable(t: TypeDefinition | undefined): boolean {
 }
 
 // useDebounced gives the value once it has stood still for ms.
-function useDebounced<T>(value: T, ms: number): T {
+export function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setV(value), ms);

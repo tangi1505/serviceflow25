@@ -17,7 +17,8 @@ func (t Type) SearchFields() (title string, others []string) {
 		title = f.Name
 	}
 	for _, f := range t.Fields {
-		if f.Searchable && f.Name != title {
+		// A running number is always found, with and without its prefix (PL49).
+		if (f.Searchable || f.Type == FieldSequence) && f.Name != title {
 			others = append(others, f.Name)
 		}
 	}

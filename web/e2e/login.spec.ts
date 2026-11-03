@@ -46,7 +46,7 @@ test("sign in, navigate, switch the theme, sign out", async ({ page }) => {
 
   await page.getByRole("link", { name: "Probe" }).click();
   await expect(page).toHaveURL(/\/types\/probe\.probe$/);
-  await expect(page.getByRole("heading", { name: "Probe" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Probe", exact: true })).toBeVisible();
   await expectNoViolations(page);
 
   await page.getByRole("button", { name: "Abmelden" }).click();

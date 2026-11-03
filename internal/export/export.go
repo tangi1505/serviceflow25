@@ -116,6 +116,7 @@ var systemLabels = map[string]map[string]string{
 	"org_path":   {"de": "Organisationseinheit", "en": "Organisational unit"},
 	"created_at": {"de": "Angelegt", "en": "Created"},
 	"updated_at": {"de": "Geändert", "en": "Updated"},
+	"sla_due_at": {"de": "Frist", "en": "Deadline"},
 }
 
 func label(l meta.Label, lang, fallback string) string {
@@ -283,7 +284,7 @@ func cellOf(t meta.Type, c column, rec records.Record, lang string, loc *time.Lo
 			if n, ok := number(v); ok {
 				return Cell{Kind: Number, F: n}
 			}
-		case "created_at", "updated_at":
+		case "created_at", "updated_at", "sla_due_at":
 			if tm, ok := moment(v); ok {
 				return Cell{Kind: DateTime, T: tm.In(loc)}
 			}
@@ -318,6 +319,9 @@ func cellOf(t meta.Type, c column, rec records.Record, lang string, loc *time.Lo
 		if title, ok := rec[c.title]; ok && title != nil && fmt.Sprint(title) != "" {
 			return Cell{Kind: Text, S: fmt.Sprint(title)}
 		}
+	case meta.FieldSequence:
+		// The running number as it is shown, with its prefix (PL49).
+		return Cell{Kind: Text, S: f.Prefix + fmt.Sprint(v)}
 	}
 	if f.Format == meta.FormatRich {
 		// Formatted text (UI7) as its plain text.
