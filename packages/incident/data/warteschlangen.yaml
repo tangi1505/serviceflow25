@@ -1,0 +1,56 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The queues of the incidents (SD7, SD-Plan; IP28, KF7): a new incident goes to the group of its
+# category, and four searches shared with the service desk show what is to do. All of it is
+# start data each tenant changes.
+
+# The group responsible for the category (sd.responsibility), or for the category above; a
+# group named on creating stays.
+- key: gruppe_nach_kategorie
+  rule:
+    label: {de: Gruppe nach Kategorie, en: Group by category}
+    type_name: incident.incident
+    trigger: create
+    mode: before
+    condition: >-
+      has(record.category) && record.category != null &&
+      (!has(record.actors) || !has(record.actors.group) || size(record.actors.group) == 0)
+    actions:
+      - assign: {role: group, lookup: {type: sd.responsibility, match: category, take: group}}
+- key: meine
+  type: core.saved_search
+  values:
+    name: Meine Störungen
+    target_type: incident.incident
+    query: '{"and": [{"field": "actors.assignee", "eq": "@me"}, {"field": "state", "in": ["new", "in_progress", "waiting"]}]}'
+    columns: number,title,priority,state,sla_due_at
+    sort: sla_due_at
+    actors: {shared: [{type: core.group, id: "@sd.service_desk"}]}
+- key: mein_team
+  type: core.saved_search
+  values:
+    name: Störungen meines Teams
+    target_type: incident.incident
+    query: '{"and": [{"field": "actors.group", "eq": "@my_groups"}, {"field": "state", "in": ["new", "in_progress", "waiting"]}]}'
+    columns: number,title,priority,state,actors,sla_due_at
+    sort: sla_due_at
+    actors: {shared: [{type: core.group, id: "@sd.service_desk"}]}
+- key: nicht_zugewiesen
+  type: core.saved_search
+  values:
+    name: Störungen ohne Bearbeiter
+    target_type: incident.incident
+    query: '{"and": [{"field": "actors.assignee", "null": true}, {"field": "state", "in": ["new", "in_progress", "waiting"]}]}'
+    columns: number,title,priority,state,actors,sla_due_at
+    sort: sla_due_at
+    actors: {shared: [{type: core.group, id: "@sd.service_desk"}]}
+- key: sla_risiko
+  type: core.saved_search
+  values:
+    name: Störungen mit SLA-Risiko
+    target_type: incident.incident
+    query: '{"and": [{"field": "sla_warn_at", "lte": "@now"}, {"field": "state", "in": ["new", "in_progress", "waiting"]}]}'
+    columns: number,title,priority,state,actors,sla_due_at
+    sort: sla_due_at
+    actors: {shared: [{type: core.group, id: "@sd.service_desk"}]}

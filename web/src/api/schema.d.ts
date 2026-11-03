@@ -3011,9 +3011,16 @@ export interface components {
             set?: {
                 [key: string]: unknown;
             };
+            /** @description the holders in to, or with lookup the one a record of another type names (SD7) */
             assign?: {
                 role: string;
-                to: {
+                /** @description the records of type whose field match names what the same field of this record names give their reference field take, e.g. {"type": "sd.responsibility", "match": "category", "take": "group"}; a tree list without a match asks the entry above */
+                lookup?: {
+                    type: string;
+                    match: string;
+                    take: string;
+                };
+                to?: {
                     type: string;
                     /** Format: uuid */
                     id: string;

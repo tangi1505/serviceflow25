@@ -41,7 +41,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **SD7** | Warteschlangen: mitgelieferte geteilte Suchen „Meine“, „Mein Team“, „Nicht zugewiesen“, „SLA-Risiko“; Zuweisung per Regel nach Kategorie an eine Gruppe (IP28; KF7) | ⬜ | 1 d | Nach der Installation stehen die vier Suchen in der Navigation; Störung mit Kategorie „Netzwerk › VPN“ → Gruppe Netzwerk per Regel, der Verlauf nennt die Regel; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD7** | Warteschlangen: mitgelieferte geteilte Suchen „Meine“, „Mein Team“, „Nicht zugewiesen“, „SLA-Risiko“; Zuweisung per Regel nach Kategorie an eine Gruppe (IP28; KF7) | 🟢 | 1 d | Nach der Installation stehen die vier Suchen in der Navigation; Störung mit Kategorie „Netzwerk › VPN“ → Gruppe Netzwerk per Regel, der Verlauf nennt die Regel; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD8** | Textbausteine für Antworten, Aufgaben und Lösungen mit Platzhaltern wie in den Benachrichtigungen (Hauptplan E120), Auswahl über „Textbaustein“ im Editor, sichtbar je Gruppe (Inventar G56) | ⬜ | 1,5 d | Baustein „Protokoll anfordern“ mit `{{record.title}}` wählen → der Text steht mit eingesetztem Titel im Editor, nur mit Tastatur bedienbar; ein Baustein einer Gruppe erscheint nur bei ihren Mitgliedern; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD9** | Telefonnotiz: Störung in einem Schritt anlegen mit Quelle „Telefon“, Anforderer per Suche, Rückruf als Aufgabe (IP28) | ⬜ | 0,5 d | „Telefonnotiz“ im Arbeitsplatz → Formular; mit Anforderer und Text anlegen → Störung mit Quelle „Telefon“ und Aufgabe „Rückruf“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD10** | Mail hinaus: Vorlagen der Benachrichtigungen für Störung und Anfrage (angelegt, Antwort, Bitte um Bestätigung, gelöst, geschlossen) mit Kennung im Betreff; baut auf WF15 (Inventar G163; KF14) | ⬜ | 1 d | Antwort an den Anforderer → Mail in Mailpit mit der Kennung im Betreff (bis PL49 die Kurzkennung); interne Notiz → keine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -193,6 +193,47 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD7 — Warteschlangen und Zuweisung nach Kategorie, 2026-11-03
+
+- **Grundlage:** IP28, KF7; Hauptplan E164; deine Entscheidungen vom 2026-11-03: die vier
+  Suchen geteilt mit einer Gruppe „Service Desk“ der Startdaten; die Gruppe nach der Kategorie
+  mit Vererbung nach oben; „Nicht zugewiesen“ heißt ohne Bearbeiter. Weil Auswahllisten keine
+  eigenen Felder haben (Hauptplan E93), steht die Zuordnung nicht an der Kategorie, sondern in
+  einem eigenen Typ „Zuständigkeit“ (deine Entscheidung nach diesem Befund).
+- **Gebaut:**
+  - Kern, Regeln: `assign` nimmt statt fester Halter `lookup` (Typ, `match`, `take`): die
+    Datensätze des Typs, deren Feld `match` dasselbe nennt wie der Datensatz, geben ihr
+    Verweisfeld `take`; zeigt `match` in eine Liste als Baum und nennt niemand den Eintrag,
+    zählt der Eintrag darüber, bis zur Wurzel. Die Regel prüft Typ, Felder und ob die Rolle den
+    Halter nimmt.
+  - Paket `sd` 0.4.0: Typ `sd.responsibility` „Zuständigkeit“ (Kategorie, Gruppe); Startdaten:
+    Gruppe „Service Desk“.
+  - Paket `incident` 0.4.0, Startdaten: Regel `gruppe_nach_kategorie` (vor dem Anlegen, nur
+    ohne genannte Gruppe); die geteilten Suchen „Meine Störungen“ (Bearbeiter ich), „Störungen
+    meines Teams“ (Gruppe eine meiner), „Störungen ohne Bearbeiter“ und „Störungen mit
+    SLA-Risiko“ (Warnzeit der Frist erreicht), jeweils offen, nach Frist sortiert.
+- **Belegt:**
+  - Go `TestIncidentQueuesOverHTTP` (eigene Datenbank): Zuständigkeit für „Netz und Telefonie“,
+    eine Störung mit Kategorie VPN bekommt die Gruppe, der Verlauf nennt die Regel; eine
+    genannte Gruppe bleibt; „Sonstiges“ ohne Zuständigkeit bleibt ohne Gruppe; eine Regel mit
+    falschem Feld wird abgelehnt (422). Sven, Mitglied von „Service Desk“ und der Gruppe, sieht
+    die vier Suchen; „meines Teams“ findet die VPN-Störung, „ohne Bearbeiter“ alle drei, „Meine“
+    erst, nachdem er Bearbeiter ist; „SLA-Risiko“ ist gleich nach dem Anlegen leer.
+  - Angepasst: `TestIncidentDeadlinesOverHTTP` und `TestMajorIncidentOverHTTP` zählen 28 statt 27
+    Startdaten von `sd` und 29 statt 24 von `incident`, ein neuer Mandant 57 statt 51.
+  - Ganze CI am 2026-11-03 grün im zweiten Lauf (11:31 min): alle 19 Schritte, 96 Vitest-Fälle,
+    18 Browser-Tests, LZ1 p95 3,85 ms gegen 3,75 ms der Basislinie, LZ13 6.736 gegen 7.160
+    Zeilen/s. Lauf 1 scheiterte nur daran, dass die Typen der Weboberfläche nach der Änderung an
+    `api/openapi.yaml` nicht neu erzeugt waren.
+- **Nicht geprüft:** Kein Browser-Test, weil die CI-Instanz `sd` und `incident` nicht
+  installiert; die Navigation zeigt jede lesbare gespeicherte Suche (UI30). Die Mitgliedschaft
+  zählt nur direkt: wer die Suchen sehen soll, steht selbst in „Service Desk“, oder seine Gruppe
+  wird an der Suche unter „Geteilt mit“ ergänzt; eine Untergruppe von „Service Desk“ reicht
+  nicht. Die Regel greift nur beim Anlegen, nicht bei einer späteren Änderung der Kategorie.
+  „SLA-Risiko“ mit erreichter Warnzeit ist im Go-Test nicht belegt (die Abfrage auf
+  `sla_warn_at` ist es seit UI34). Gibt es zwei Zuständigkeiten für eine Kategorie, gilt die
+  ältere.
 
 ### SD5 — Major Incident, 2026-11-03
 

@@ -512,9 +512,9 @@ E8, KF3 bis KF5, KF7:
   braucht, gehalten von Personen, Gruppen oder Lieferanten; Reichweite `involved` in den Rechten.
 - **Regeln** (gebaut, E111): vor dem Schreiben in derselben Version oder danach als Job, nach
   Zeitplan oder als Eskalationsstufe einer SLA-Uhr (Auslöser `clock`, E115, nach Anteil oder
-  Minuten); Aktionen setzen, zuweisen, anlegen, benachrichtigen, Übergang (E116), Übergang an
-  den verknüpften Datensätzen einer Beziehungsart (`related`, E163); Systemrechte, die Regel
-  steht im Verlauf.
+  Minuten); Aktionen setzen, zuweisen (auch nachgeschlagen in einem anderen Typ, `lookup`,
+  E164), anlegen, benachrichtigen, Übergang (E116), Übergang an den verknüpften Datensätzen
+  einer Beziehungsart (`related`, E163); Systemrechte, die Regel steht im Verlauf.
 - **Genehmigungen** sind Unterdatensätze mit Stufen, in fester Reihenfolge oder parallel, mit
   Mindestanteil, Vertretung und Erinnerung.
 - **Fristen:** Kalender mit Arbeitszeit und Feiertagen sind Typen des Kernpakets (gebaut,

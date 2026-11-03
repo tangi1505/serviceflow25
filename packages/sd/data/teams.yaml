@@ -1,0 +1,11 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The service desk as a group (SD7): the queues of incident and later of request are shared
+# with it. The administration enters the persons who work on tickets; other groups get a queue
+# by being added under "Geteilt mit" of the search.
+- key: service_desk
+  type: core.group
+  values:
+    name: Service Desk
+    purpose: Sieht die mitgelieferten Warteschlangen der Vorgänge.

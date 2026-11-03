@@ -1,0 +1,25 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Which group works on the tickets of a category (SD7; IP28, KF7). A select list has no fields
+# of its own (Hauptplan E93), so the assignment is a type of its own, kept by the
+# administration as a table; a rule of the start data of incident gives a new incident the
+# group of its category, or of the category above. Further criteria (a location, a channel)
+# can come as fields later.
+name: responsibility
+label: {de: Zuständigkeit, en: Responsibility}
+description:
+  de: Welche Gruppe die Vorgänge einer Kategorie bearbeitet; gilt auch für die Kategorien darunter, die keine eigene haben.
+  en: Which group works on the tickets of a category; also for the categories below that have none of their own.
+traits: [history]
+fields:
+  - name: category
+    type: reference
+    label: {de: Kategorie, en: Category}
+    to: sd.category
+    required: true
+  - name: group
+    type: reference
+    label: {de: Zuständige Gruppe, en: Responsible group}
+    to: core.group
+    required: true

@@ -221,7 +221,10 @@ func (e *Engine) apply(ctx context.Context, r Rule, typeName string, id uuid.UUI
 	if err != nil {
 		return err
 	}
-	set, roles := e.changes(r, rec)
+	set, roles, err := e.changes(ctx, r, rec)
+	if err != nil {
+		return err
+	}
 	patch := map[string]any{}
 	for k, v := range set {
 		patch[k] = v

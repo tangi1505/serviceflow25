@@ -3705,9 +3705,21 @@ components:
           description: field values, as in a PATCH
         assign:
           type: object
-          required: [role, to]
+          required: [role]
+          description: "the holders in to, or with lookup the one a record of another type names (SD7)"
           properties:
             role: { type: string }
+            lookup:
+              type: object
+              required: [type, match, take]
+              description: >-
+                the records of type whose field match names what the same field of this record
+                names give their reference field take, e.g. {"type": "sd.responsibility", "match":
+                "category", "take": "group"}; a tree list without a match asks the entry above
+              properties:
+                type: { type: string }
+                match: { type: string }
+                take: { type: string }
             to:
               type: array
               items:

@@ -134,12 +134,28 @@ type Related struct {
 	Comment    string         `json:"comment,omitempty"`
 }
 
-// Assign names a role and its holders; Add keeps the holders the record has.
+// Assign names a role and its holders; Add keeps the holders the record has. Lookup finds the
+// holder in a record of another type instead (SD7). Nothing found leaves the role as it is.
 type Assign struct {
-	Role string `json:"role"`
-	To   []Ref  `json:"to"`
-	Add  bool   `json:"add,omitempty"`
+	Role   string  `json:"role"`
+	To     []Ref   `json:"to,omitempty"`
+	Add    bool    `json:"add,omitempty"`
+	Lookup *Lookup `json:"lookup,omitempty"`
 }
+
+// Lookup finds a holder in the records of Type whose field Match names what the same field of
+// this record names, and takes their reference field Take (SD7): {"type": "sd.responsibility",
+// "match": "category", "take": "group"} is the group responsible for the incident's category.
+// When the match points into a select list as a tree and no record names the entry, the entry
+// above is asked, up to the root.
+type Lookup struct {
+	Type  string `json:"type"`
+	Match string `json:"match"`
+	Take  string `json:"take"`
+}
+
+// maxTreeDepth bounds the walk up a tree list for a lookup.
+const maxTreeDepth = 20
 
 // Ref is a holder of a role or the recipient of a notification.
 type Ref struct {
@@ -370,7 +386,10 @@ func (e *Engine) Before(ctx context.Context, t meta.Type, trigger string, rec ma
 		if !e.matches(c, current, changed) {
 			continue
 		}
-		set, roles := e.changes(c.Rule, current)
+		set, roles, err := e.changes(ctx, c.Rule, current)
+		if err != nil {
+			return rc, err
+		}
 		for k, v := range set {
 			if rc.Set == nil {
 				rc.Set, rc.By = map[string]any{}, map[string]string{}
@@ -396,7 +415,7 @@ func (e *Engine) Before(ctx context.Context, t meta.Type, trigger string, rec ma
 
 // changes turns the set and assign actions of a rule into field values and whole roles,
 // against the record as it is.
-func (e *Engine) changes(r Rule, rec map[string]any) (map[string]any, map[string]any) {
+func (e *Engine) changes(ctx context.Context, r Rule, rec map[string]any) (map[string]any, map[string]any, error) {
 	set, roles := map[string]any{}, map[string]any{}
 	for _, a := range r.Actions {
 		for k, v := range a.Set {
@@ -404,6 +423,17 @@ func (e *Engine) changes(r Rule, rec map[string]any) (map[string]any, map[string
 		}
 		if a.Assign == nil {
 			continue
+		}
+		to := a.Assign.To
+		if a.Assign.Lookup != nil {
+			ref, err := e.lookup(ctx, rec, a.Assign.Lookup)
+			if err != nil {
+				return nil, nil, err
+			}
+			if ref == nil {
+				continue
+			}
+			to = []Ref{*ref}
 		}
 		var holders []any
 		if a.Assign.Add {
@@ -413,7 +443,7 @@ func (e *Engine) changes(r Rule, rec map[string]any) (map[string]any, map[string
 				holders = append(holders, holdersOf(rec, a.Assign.Role)...)
 			}
 		}
-		for _, ref := range a.Assign.To {
+		for _, ref := range to {
 			holders = append(holders, map[string]any{"type": ref.Type, "id": ref.ID.String()})
 		}
 		if holders == nil {
@@ -421,7 +451,84 @@ func (e *Engine) changes(r Rule, rec map[string]any) (map[string]any, map[string
 		}
 		roles[a.Assign.Role] = holders
 	}
-	return set, roles
+	return set, roles, nil
+}
+
+// lookup finds the holder of an Assign.Lookup, read with the rights of the system of the
+// tenant; nil when there is none.
+func (e *Engine) lookup(ctx context.Context, rec map[string]any, l *Lookup) (*Ref, error) {
+	// A rule before the write runs in the caller's session, one after it as the system of the
+	// tenant already, which stays.
+	system := ctx
+	if a := authz.From(ctx); !a.IsSystem() {
+		system = authz.WithAccess(ctx, authz.SystemIn(a.CurrentTenant()))
+	}
+	in, err := e.rec.Type(system, l.Type)
+	if err != nil {
+		return nil, err
+	}
+	match, ok := in.Field(l.Match)
+	take, ok2 := in.Field(l.Take)
+	if !ok || !ok2 {
+		return nil, nil
+	}
+	list, err := e.rec.Type(system, match.To)
+	if err != nil {
+		return nil, err
+	}
+	value, err := uuid.Parse(fmt.Sprint(rec[l.Match]))
+	for depth := 0; err == nil && depth < maxTreeDepth; depth++ {
+		where, _ := json.Marshal(map[string]any{"field": l.Match, "eq": value.String()})
+		page, _, qerr := e.rec.Query(system, l.Type, records.Query{Where: where, Fields: []string{l.Take}, Sort: []string{"created_at"}, Limit: 1})
+		if qerr != nil {
+			return nil, qerr
+		}
+		if len(page.Items) > 0 {
+			if hid, perr := uuid.Parse(fmt.Sprint(page.Items[0][l.Take])); perr == nil {
+				return &Ref{Type: take.To, ID: hid}, nil
+			}
+		}
+		if !list.IsTree() {
+			return nil, nil
+		}
+		entry, gerr := e.rec.Get(system, match.To, value)
+		if errors.Is(gerr, records.ErrNotFound) {
+			return nil, nil
+		}
+		if gerr != nil {
+			return nil, gerr
+		}
+		value, err = uuid.Parse(fmt.Sprint(entry["parent"]))
+	}
+	return nil, nil
+}
+
+// checkLookup checks an Assign.Lookup: the type is installed, the match is a reference field
+// of both types to the same target, the take a reference field the role may hold. Empty when
+// it fits.
+func (e *Engine) checkLookup(ctx context.Context, t meta.Type, a *Assign) string {
+	l := a.Lookup
+	in, err := e.rec.Type(ctx, l.Type)
+	if err != nil {
+		return fmt.Sprintf("lookup: type %s is not installed", l.Type)
+	}
+	mine, ok := t.Field(l.Match)
+	theirs, ok2 := in.Field(l.Match)
+	if !ok || !ok2 || mine.Type != meta.FieldReference || theirs.Type != meta.FieldReference || mine.To != theirs.To {
+		return fmt.Sprintf("lookup: match %q must be a reference field of %s and of %s to the same type", l.Match, t.QualifiedName(), l.Type)
+	}
+	take, ok := in.Field(l.Take)
+	if !ok || take.Type != meta.FieldReference {
+		return fmt.Sprintf("lookup: %s has no reference field %q", l.Type, l.Take)
+	}
+	role, ok := t.Actor(a.Role)
+	if !ok {
+		return fmt.Sprintf("%q is not a role at the record of %s", a.Role, t.QualifiedName())
+	}
+	if !slices.Contains(role.To, take.To) {
+		return fmt.Sprintf("lookup: %q gives a %s, which the role %q does not take", l.Take, take.To, a.Role)
+	}
+	return ""
 }
 
 func holdersOf(rec map[string]any, role string) []any {
@@ -687,6 +794,13 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 			}
 			if err := e.rec.CheckValues(ctx, r.TypeName, a.Set, false); err != nil {
 				add(where, "invalid", "%v", err)
+			}
+		case a.Assign != nil && a.Assign.Lookup != nil:
+			if len(a.Assign.To) > 0 {
+				add(where, "type", "assign takes either to or lookup")
+			}
+			if msg := e.checkLookup(ctx, t, a.Assign); msg != "" {
+				add(where, "invalid", "%s", msg)
 			}
 		case a.Assign != nil:
 			holders := make([]any, len(a.Assign.To))
