@@ -81,7 +81,12 @@ func CreateIn(ctx context.Context, control *pgxpool.Pool, url string, o Options,
 	} else if err != nil {
 		return Result{}, err
 	}
-	seeded, err := records.New(db.NewRouter(control, map[string]*pgxpool.Pool{path: pool}, nil)).SeedListsInto(ctx, types, path)
+	rt := db.NewRouter(control, map[string]*pgxpool.Pool{path: pool}, nil)
+	seeded, err := records.New(rt).SeedListsInto(ctx, types, path)
+	if err != nil {
+		return Result{}, err
+	}
+	started, err := startData(ctx, rt, path)
 	if err != nil {
 		return Result{}, err
 	}
@@ -89,7 +94,7 @@ func CreateIn(ctx context.Context, control *pgxpool.Pool, url string, o Options,
 	if err != nil {
 		return Result{}, fmt.Errorf("tenant %s: directory: %w", path, err)
 	}
-	return Result{Tenant: org.Node{Path: row.Path, Name: row.Name, Label: label, Parent: org.Root, Tenant: true}, Seeded: seeded}, nil
+	return Result{Tenant: org.Node{Path: row.Path, Name: row.Name, Label: label, Parent: org.Root, Tenant: true}, Seeded: seeded, Started: started}, nil
 }
 
 // freeName checks the directory: the name is not taken, and the root has no nodes below it

@@ -25,6 +25,7 @@ import (
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/jobs"
+	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
 )
@@ -248,12 +249,30 @@ func (e *Engine) apply(ctx context.Context, r Rule, typeName string, id uuid.UUI
 			}
 			to := []Ref{}
 			for _, target := range a.Notify.To {
-				if role, ok := strings.CutPrefix(target, "actors."); ok {
+				if spec, ok := strings.CutPrefix(target, "actors."); ok {
+					role, lead := strings.CutSuffix(spec, meta.LeadSuffix)
 					for _, h := range holdersOf(rec, role) {
 						m, _ := h.(map[string]any)
 						typ, _ := m["type"].(string)
 						hid, _ := uuid.Parse(fmt.Sprint(m["id"]))
-						to = append(to, Ref{Type: typ, ID: hid})
+						if !lead {
+							to = append(to, Ref{Type: typ, ID: hid})
+							continue
+						}
+						// The responsible person of a group that holds the role (SD-Plan N10).
+						if typ != "core.group" {
+							continue
+						}
+						g, err := e.rec.Get(ctx, "core.group", hid)
+						if errors.Is(err, records.ErrNotFound) {
+							continue
+						}
+						if err != nil {
+							return err
+						}
+						if pid, err := uuid.Parse(fmt.Sprint(g["responsible"])); err == nil {
+							to = append(to, Ref{Type: "core.person", ID: pid})
+						}
 					}
 					continue
 				}

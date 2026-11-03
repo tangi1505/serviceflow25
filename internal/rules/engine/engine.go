@@ -135,7 +135,8 @@ type Create struct {
 	Fields   map[string]any `json:"fields"`
 }
 
-// Notify says whom to tell what: "actors.<role>" for the holders of a role at the record, or
+// Notify says whom to tell what: "actors.<role>" for the holders of a role at the record,
+// "actors.<role>.responsible" for the responsible persons of its groups (SD-Plan N10), or
 // "<package.type>:<id>" for a person or group.
 type Notify struct {
 	To      []string `json:"to"`
@@ -691,15 +692,15 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 				add(where, "required", "a notification needs recipients and a message")
 			}
 			for _, to := range a.Notify.To {
-				if role, ok := strings.CutPrefix(to, "actors."); ok {
-					if _, known := t.Actor(role); !known {
-						add(where, "unknown", "%q is not a role of %s", role, r.TypeName)
+				if spec, ok := strings.CutPrefix(to, "actors."); ok {
+					if msg := t.CheckRoleRecipient(spec); msg != "" {
+						add(where, "unknown", "%s", msg)
 					}
 					continue
 				}
 				typ, id, ok := strings.Cut(to, ":")
 				if _, err := uuid.Parse(id); !ok || err != nil || !strings.Contains(typ, ".") {
-					add(where, "type", "recipient %q must be actors.<role> or <package.type>:<id>", to)
+					add(where, "type", "recipient %q must be actors.<role>, actors.<role>.responsible or <package.type>:<id>", to)
 				}
 			}
 		}

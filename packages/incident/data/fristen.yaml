@@ -1,0 +1,189 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The deadlines of an incident (SD3, SD-Plan §2.4, E3, E6), provisional until the customer answers
+# Hauptplan V31: reaction and solution per priority, in the service time of the package sd; P1
+# round the clock (V31, Beta). The reaction is met once the incident leaves "new"; every wait
+# holds the clock of the solution. At 80 % the responsible person of the assigned group hears of
+# it (N10). A day of the service time has 11 hours (660 minutes).
+- key: sla_p1_reaction
+  type: core.sla
+  values:
+    name: Störung P1 Reaktion
+    target_type: incident.incident
+    target_minutes: 15
+    counts: round_the_clock
+    applies: record.priority == 1
+    stop: record.state != "new"
+- key: sla_p1_solution
+  type: core.sla
+  values:
+    name: Störung P1 Lösung
+    target_type: incident.incident
+    target_minutes: 240
+    counts: round_the_clock
+    applies: record.priority == 1
+    pause: record.state == "waiting"
+    stop: record.state in ["resolved", "closed"]
+- key: sla_p2_reaction
+  type: core.sla
+  values:
+    name: Störung P2 Reaktion
+    target_type: incident.incident
+    target_minutes: 30
+    calendar: "@sd.servicezeit"
+    applies: record.priority == 2
+    stop: record.state != "new"
+- key: sla_p2_solution
+  type: core.sla
+  values:
+    name: Störung P2 Lösung
+    target_type: incident.incident
+    target_minutes: 480
+    calendar: "@sd.servicezeit"
+    applies: record.priority == 2
+    pause: record.state == "waiting"
+    stop: record.state in ["resolved", "closed"]
+- key: sla_p3_reaction
+  type: core.sla
+  values:
+    name: Störung P3 Reaktion
+    target_type: incident.incident
+    target_minutes: 240
+    calendar: "@sd.servicezeit"
+    applies: record.priority == 3
+    stop: record.state != "new"
+- key: sla_p3_solution
+  type: core.sla
+  values:
+    name: Störung P3 Lösung
+    target_type: incident.incident
+    target_minutes: 1980
+    calendar: "@sd.servicezeit"
+    applies: record.priority == 3
+    pause: record.state == "waiting"
+    stop: record.state in ["resolved", "closed"]
+- key: sla_p4_reaction
+  type: core.sla
+  values:
+    name: Störung P4 Reaktion
+    target_type: incident.incident
+    target_minutes: 660
+    calendar: "@sd.servicezeit"
+    applies: record.priority == 4
+    stop: record.state != "new"
+- key: sla_p4_solution
+  type: core.sla
+  values:
+    name: Störung P4 Lösung
+    target_type: incident.incident
+    target_minutes: 6600
+    calendar: "@sd.servicezeit"
+    applies: record.priority == 4
+    pause: record.state == "waiting"
+    stop: record.state in ["resolved", "closed"]
+
+# Escalation at 80 % of each deadline to the lead of the assigned group (WF10, N10).
+- key: escalate_p1_reaction
+  rule:
+    label: {de: Störung P1 Reaktion zu 80 %, en: Incident P1 reaction at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p1_reaction"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Reaktionsfrist (P1) sind verbraucht."}
+- key: escalate_p1_solution
+  rule:
+    label: {de: Störung P1 Lösung zu 80 %, en: Incident P1 solution at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p1_solution"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Lösungsfrist (P1) sind verbraucht."}
+- key: escalate_p2_reaction
+  rule:
+    label: {de: Störung P2 Reaktion zu 80 %, en: Incident P2 reaction at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p2_reaction"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Reaktionsfrist (P2) sind verbraucht."}
+- key: escalate_p2_solution
+  rule:
+    label: {de: Störung P2 Lösung zu 80 %, en: Incident P2 solution at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p2_solution"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Lösungsfrist (P2) sind verbraucht."}
+- key: escalate_p3_reaction
+  rule:
+    label: {de: Störung P3 Reaktion zu 80 %, en: Incident P3 reaction at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p3_reaction"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Reaktionsfrist (P3) sind verbraucht."}
+- key: escalate_p3_solution
+  rule:
+    label: {de: Störung P3 Lösung zu 80 %, en: Incident P3 solution at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p3_solution"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Lösungsfrist (P3) sind verbraucht."}
+- key: escalate_p4_reaction
+  rule:
+    label: {de: Störung P4 Reaktion zu 80 %, en: Incident P4 reaction at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p4_reaction"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Reaktionsfrist (P4) sind verbraucht."}
+- key: escalate_p4_solution
+  rule:
+    label: {de: Störung P4 Lösung zu 80 %, en: Incident P4 solution at 80 %}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_p4_solution"
+    percent: 80
+    actions:
+      - notify: {to: [actors.group.responsible], message: "80 % der Lösungsfrist (P4) sind verbraucht."}
+
+# Closed by itself five days of the service time after "resolved", if the requester neither
+# confirms nor refuses (WF12); a reopened incident starts anew.
+- key: sla_close
+  type: core.sla
+  values:
+    name: Störung automatisch schließen
+    target_type: incident.incident
+    target_minutes: 3300
+    calendar: "@sd.servicezeit"
+    start_from: applies
+    applies: record.state == "resolved"
+    stop: "false"
+- key: close_resolved
+  rule:
+    label: {de: Gelöste Störung schließen, en: Close a resolved incident}
+    type_name: incident.incident
+    trigger: clock
+    mode: after
+    sla: "@sla_close"
+    percent: 100
+    actions:
+      - transition: {name: close}

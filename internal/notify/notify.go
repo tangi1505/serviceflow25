@@ -148,18 +148,16 @@ func list(v any) []string {
 	return strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\n' || r == ';' })
 }
 
-// checkRecipient checks one recipient: actors.<role> of the type, or core.group:<id> or
+// checkRecipient checks one recipient: actors.<role> of the type, actors.<role>.responsible
+// for the responsible persons of its groups (SD-Plan N10), or core.group:<id> or
 // core.person:<id>.
 func checkRecipient(t meta.Type, r string) string {
-	if role, ok := strings.CutPrefix(r, "actors."); ok {
-		if _, known := t.Actor(role); !known {
-			return fmt.Sprintf("%q is not a role of %s", role, t.QualifiedName())
-		}
-		return ""
+	if spec, ok := strings.CutPrefix(r, "actors."); ok {
+		return t.CheckRoleRecipient(spec)
 	}
 	typ, id, ok := strings.Cut(r, ":")
 	if _, err := uuid.Parse(id); !ok || err != nil || (typ != "core.group" && typ != "core.person") {
-		return fmt.Sprintf("recipient %q must be actors.<role>, core.group:<id> or core.person:<id>", r)
+		return fmt.Sprintf("recipient %q must be actors.<role>, actors.<role>.responsible, core.group:<id> or core.person:<id>", r)
 	}
 	return ""
 }
@@ -360,12 +358,20 @@ func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, er
 	}
 	for _, target := range targets {
 		var refs []string
-		if role, ok := strings.CutPrefix(target, "actors."); ok {
+		if spec, ok := strings.CutPrefix(target, "actors."); ok {
+			role, lead := strings.CutSuffix(spec, meta.LeadSuffix)
 			all, _ := rec["actors"].(map[string]any)
 			holders, _ := all[role].([]any)
 			for _, h := range holders {
 				m, _ := h.(map[string]any)
 				refs = append(refs, fmt.Sprint(m["type"])+":"+fmt.Sprint(m["id"]))
+			}
+			if lead {
+				leads, err := s.leads(ctx, refs)
+				if err != nil {
+					return nil, err
+				}
+				refs = leads
 			}
 		} else {
 			refs = []string{target}
@@ -509,6 +515,30 @@ func (s *Service) notification(ctx context.Context, id uuid.UUID) (notification,
 }
 
 // members are the persons in a group.
+// leads are the responsible persons of the groups among refs (SD-Plan N10); a group without
+// one adds no one, persons among refs are no group and drop out.
+func (s *Service) leads(ctx context.Context, refs []string) ([]string, error) {
+	var out []string
+	for _, ref := range refs {
+		raw, ok := strings.CutPrefix(ref, "core.group:")
+		id, err := uuid.Parse(raw)
+		if !ok || err != nil {
+			continue
+		}
+		g, err := s.rec.Get(ctx, "core.group", id)
+		if errors.Is(err, records.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if p, ok := g["responsible"].(string); ok && p != "" {
+			out = append(out, "core.person:"+p)
+		}
+	}
+	return out, nil
+}
+
 func (s *Service) members(ctx context.Context, group uuid.UUID) ([]uuid.UUID, error) {
 	var out []uuid.UUID
 	after := ""

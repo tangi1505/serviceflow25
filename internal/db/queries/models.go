@@ -327,6 +327,15 @@ type Package struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type PackageSeed struct {
+	OrgPath   string
+	Package   string
+	Key       string
+	Target    string
+	Ref       string
+	CreatedAt pgtype.Timestamptz
+}
+
 type Permission struct {
 	ID        uuid.UUID
 	RoleID    uuid.UUID

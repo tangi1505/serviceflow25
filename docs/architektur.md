@@ -78,7 +78,7 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 | Ablauf | Fristen | `internal/calendar`, `internal/sla` | Kalender mit Arbeitszeit und Feiertagen (gebaut, E113); SLAs und Uhren mit Pause und Verstoß (gebaut, E114); Eskalationsstufen als Regeln mit Auslöser `clock` (gebaut, E115) | KF5 | WF |
 | Ablauf | Regeln | `internal/rules`, `internal/rules/engine`, `internal/recurrence` | CEL für Bedingungen (E45); die Regeln „wenn, dann“ vor dem Schreiben und als Job danach, nach Zeitplan (gebaut, E111); wiederkehrende Vorgänge (gebaut, E119) | KF7 | WF |
 | Ablauf | Formulare | `internal/forms` | Kerntyp `core.form`, Prüfung des Aufbaus, Absenden mit erstem Eintrag (UI11), Bedingungen und Übersetzung (UI12); Formularziele (was ein Formular anlegt), Zugriff auch anonym mit Captcha, Umfragen als Formular mit Auswertung | KF8, KF15 | UI, SD |
-| Ablauf | Benachrichtigung | `internal/notify` | Einstellungen mit übersetzbaren Vorlagen, Empfänger aus Rollen, Gruppen, Personen, Mail hinaus über SMTP (gebaut, E120); Mail hinein (IMAP), Browser (SD) | KF14 | WF, SD |
+| Ablauf | Benachrichtigung | `internal/notify` | Einstellungen mit übersetzbaren Vorlagen, Empfänger aus Rollen, Gruppen, Personen und den Verantwortlichen der Gruppen einer Rolle (`actors.<rolle>.responsible`, SD-Plan N10), Mail hinaus über SMTP (gebaut, E120); Mail hinein (IMAP), Browser (SD) | KF14 | WF, SD |
 | Erweiterung | Pakete | `internal/packages` | Paketformat, Installation, Aktualisierung, Export | KF16 | EX |
 | Erweiterung | Sandbox | `internal/sandbox` | WASM per `wazero`, Host-Funktionen, Grenzen (§9) | KF6 | EX |
 | Erweiterung | Discovery | `internal/discovery` | Quellen (Proxmox, VMware, Kubernetes, SNMP, LDAP) als Jobs, liefern an `bulk` | KF12 | CM |
@@ -214,6 +214,14 @@ Wirksame Definition  ← im Prozess und in Valkey gecacht, Hash als Version
   N6); der Typ bekommt dann das Kern-Merkmal `actors` dazu. Ein Typ darf das Merkmal eines
   anderen Pakets nennen (`traits: [sd.ticket]`), wenn sein Paket davon abhängt; das Installieren
   löst es aus den installierten Paketen auf (SD-Plan N7).
+- **Startdaten** (SD-Plan N9, seit SD3): Ein Paket bringt unter `data/*.yaml` Datensätze und Regeln
+  mit, etwa Kalender, Fristen, Eskalationsstufen und Wartegründe. Jeder Eintrag hat einen Schlüssel;
+  `@schlüssel` verweist auf einen Eintrag davor, `@paket.schlüssel` auf einen eines Pakets, von dem
+  es abhängt. `internal/seed` legt sie beim Installieren je Mandant einmal an, bei einem neuen
+  Mandanten auch, und merkt sich in `package_seed`, was wozu wurde. Danach gehören sie dem Kunden:
+  ein Update legt nur an, was noch nie angelegt war, Gelöschtes kommt nicht wieder. Regeln heißen
+  `<paket>_<schlüssel>`, in einem Mandanten mit dessen Namen dahinter, weil Regelnamen über alle
+  Mandanten eindeutig sind.
 
 ---
 

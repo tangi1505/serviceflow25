@@ -18,8 +18,9 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// Load reads a package directory: package.yaml and types/*.yaml. It parses strictly (unknown
-// keys are errors) but does not validate; call Validate on the result.
+// Load reads a package directory: package.yaml, types/*.yaml, traits/, relations/ and data/.
+// It parses strictly (unknown keys are errors) but does not validate; call Validate on the
+// result.
 func Load(dir string) (Package, error) {
 	return LoadFS(os.DirFS(dir))
 }
@@ -106,6 +107,9 @@ func LoadFS(fsys fs.FS) (Package, error) {
 		p.Relations = append(p.Relations, k)
 	}
 	sort.Slice(p.Relations, func(i, j int) bool { return p.Relations[i].Name < p.Relations[j].Name })
+	if err := loadData(fsys, &p); err != nil {
+		return p, err
+	}
 	return p, nil
 }
 

@@ -13,8 +13,10 @@
 package meta
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 )
 
 // Label is a display name per language, e.g. {"de": "Störung", "en": "Incident"}.
@@ -323,6 +325,25 @@ func (t Type) Actor(name string) (ActorRole, bool) {
 // Allows reports whether a record of the type may hold the role.
 func (r ActorRole) Allows(typeName string) bool { return matchesType(r.To, typeName) }
 
+// LeadSuffix after a role names, as a recipient, the responsible persons of the groups that
+// hold it: "actors.group.responsible", the lead of the team (SD-Plan N10).
+const LeadSuffix = ".responsible"
+
+// CheckRoleRecipient checks "<role>" or "<role>.responsible" of a recipient "actors.…": the
+// role is one of the type, and one that groups may hold when it asks for their lead; "" if
+// it fits.
+func (t Type) CheckRoleRecipient(spec string) string {
+	role, lead := strings.CutSuffix(spec, LeadSuffix)
+	r, known := t.Actor(role)
+	switch {
+	case !known:
+		return fmt.Sprintf("%q is not a role of %s", role, t.QualifiedName())
+	case lead && !r.Allows("core.group"):
+		return fmt.Sprintf("%q is no role of groups, so it has no responsible persons", role)
+	}
+	return ""
+}
+
 // QualifiedName is "package.type", the name used in references.
 func (t Type) QualifiedName() string { return t.Package + "." + t.Name }
 
@@ -351,6 +372,9 @@ type Package struct {
 	Relations []RelationKind `json:"relations,omitempty" yaml:"-"`
 	// Traits are the package's own traits below traits/ (PL17, B2): bundles of fields.
 	Traits []Trait `json:"traits,omitempty" yaml:"-"`
+	// Data is the start data below data/ (SD-Plan N9): records and rules the core creates once
+	// per tenant.
+	Data []Seed `json:"data,omitempty" yaml:"-"`
 }
 
 // RelationKind is a kind of link between records (relations/<name>.yaml): what it is called

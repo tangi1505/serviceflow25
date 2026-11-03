@@ -1,0 +1,20 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Reasons to wait (SD3, SD-Plan E6): every wait holds the clock of the solution, whatever the
+# reason. Shared by incident and request (SD6).
+- key: warten_rueckmeldung
+  type: core.wait_reason
+  values:
+    name: Rückmeldung Anforderer
+    description: Der Vorgang wartet auf eine Antwort der anfragenden Person.
+- key: warten_termin
+  type: core.wait_reason
+  values:
+    name: Termin mit Anforderer
+    description: Ein Termin vor Ort oder per Fernwartung ist vereinbart.
+- key: warten_dritte
+  type: core.wait_reason
+  values:
+    name: Zulieferung durch Dritte
+    description: Der Vorgang wartet auf einen Lieferanten oder eine andere Stelle.

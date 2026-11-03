@@ -2985,7 +2985,7 @@ export interface components {
                 };
             };
             notify?: {
-                /** @description actors.<role> or <package.type>:<id> */
+                /** @description actors.<role>, actors.<role>.responsible (the responsible persons of the groups holding the role, SD-Plan N10) or <package.type>:<id> */
                 to: string[];
                 message: string;
             };

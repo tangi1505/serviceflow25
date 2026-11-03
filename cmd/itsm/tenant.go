@@ -103,6 +103,9 @@ func tenantCmd(args []string, getenv func(string) string, stdout io.Writer) erro
 		cliChanged(ctx, sec, "tenant.create", res.Tenant.Path, map[string]any{"after": map[string]any{
 			"label": label, "adopt": *adopt, "admins": []string(admins), "nodes": res.Nodes, "assignments": res.Assignments, "accounts": res.Accounts}})
 		fmt.Fprintf(stdout, "Mandant %s angelegt\n", res.Tenant.Path)
+		if res.Started > 0 {
+			fmt.Fprintf(stdout, "Startdaten der Pakete angelegt: %d Einträge\n", res.Started)
+		}
 		if res.Seeded > 0 {
 			fmt.Fprintf(stdout, "Auswahllisten der Pakete kopiert: %d Einträge\n", res.Seeded)
 		}

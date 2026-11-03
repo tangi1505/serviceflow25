@@ -1,0 +1,35 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The calendar of the service time (SD3, SD-Plan §2.4, E3, E6): Monday to Friday 7 to 18 o'clock,
+# without the holidays of all of Germany in 2026 and 2027. Provisional until the customer answers
+# Hauptplan V31; the holidays of a federal state and later years the customer adds.
+- key: servicezeit
+  type: core.calendar
+  values:
+    name: Servicezeit
+    timezone: Europe/Berlin
+    description: Servicezeit des Service Desks, Montag bis Freitag 7 bis 18 Uhr (vorläufig).
+- {key: servicezeit_mon, type: core.calendar_hours, values: {calendar: "@servicezeit", weekday: mon, starts: "07:00", ends: "18:00"}}
+- {key: servicezeit_tue, type: core.calendar_hours, values: {calendar: "@servicezeit", weekday: tue, starts: "07:00", ends: "18:00"}}
+- {key: servicezeit_wed, type: core.calendar_hours, values: {calendar: "@servicezeit", weekday: wed, starts: "07:00", ends: "18:00"}}
+- {key: servicezeit_thu, type: core.calendar_hours, values: {calendar: "@servicezeit", weekday: thu, starts: "07:00", ends: "18:00"}}
+- {key: servicezeit_fri, type: core.calendar_hours, values: {calendar: "@servicezeit", weekday: fri, starts: "07:00", ends: "18:00"}}
+- {key: feiertag_2026_neujahr, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-01-01", name: Neujahr}}
+- {key: feiertag_2026_karfreitag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-04-03", name: Karfreitag}}
+- {key: feiertag_2026_ostermontag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-04-06", name: Ostermontag}}
+- {key: feiertag_2026_maifeiertag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-05-01", name: Tag der Arbeit}}
+- {key: feiertag_2026_himmelfahrt, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-05-14", name: Christi Himmelfahrt}}
+- {key: feiertag_2026_pfingstmontag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-05-25", name: Pfingstmontag}}
+- {key: feiertag_2026_einheit, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-10-03", name: Tag der Deutschen Einheit}}
+- {key: feiertag_2026_weihnachten1, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-12-25", name: 1. Weihnachtstag}}
+- {key: feiertag_2026_weihnachten2, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2026-12-26", name: 2. Weihnachtstag}}
+- {key: feiertag_2027_neujahr, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-01-01", name: Neujahr}}
+- {key: feiertag_2027_karfreitag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-03-26", name: Karfreitag}}
+- {key: feiertag_2027_ostermontag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-03-29", name: Ostermontag}}
+- {key: feiertag_2027_maifeiertag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-05-01", name: Tag der Arbeit}}
+- {key: feiertag_2027_himmelfahrt, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-05-06", name: Christi Himmelfahrt}}
+- {key: feiertag_2027_pfingstmontag, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-05-17", name: Pfingstmontag}}
+- {key: feiertag_2027_einheit, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-10-03", name: Tag der Deutschen Einheit}}
+- {key: feiertag_2027_weihnachten1, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-12-25", name: 1. Weihnachtstag}}
+- {key: feiertag_2027_weihnachten2, type: core.calendar_holiday, values: {calendar: "@servicezeit", date: "2027-12-26", name: 2. Weihnachtstag}}

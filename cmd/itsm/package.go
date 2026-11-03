@@ -32,7 +32,9 @@ import (
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/platform"
 	"group24.de/itsm/internal/records"
+	"group24.de/itsm/internal/rules/engine"
 	"group24.de/itsm/internal/schema"
+	"group24.de/itsm/internal/seed"
 )
 
 // packageCmd handles "itsm package install [--force] <dir>", "itsm package list" and
@@ -137,7 +139,15 @@ func packageInstall(ctx context.Context, rt *db.Router, dir string, force bool, 
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "Paket %s %s installiert, %d Schemaänderungen, %d Listeneinträge angelegt\n", p.Name, p.Version, len(changes), seeded)
+	// The start data once per tenant (SD-Plan N9); the server sees new SLAs and rules within
+	// half a minute.
+	recs := records.New(rt)
+	started, err := seed.New(rt, recs, engine.New(rt, recs, nil, nil, logger)).Package(ctx, p)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "Paket %s %s installiert, %d Schemaänderungen, %d Listeneinträge und %d Startdaten angelegt\n",
+		p.Name, p.Version, len(changes), seeded, started)
 	if err := recomputeChanged(ctx, rt, before, p, logger, stdout); err != nil {
 		return err
 	}

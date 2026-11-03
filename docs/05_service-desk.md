@@ -32,7 +32,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | --- | --- | --- | --- | --- |
 | **SD1** | Grundpaket `sd`: Auswahllisten Kategorie als Baum mit Sichtbarkeit je Organisationseinheit, Anfragequelle, Lösungsart; Merkmal `ticket` mit Titel, Beschreibung (formatiert), Kategorie, Quelle, Auswirkung, Dringlichkeit; Rollen Anforderer, Beobachter, Bearbeiter, Gruppe (E1, E4; Inventar G39, G55) | 🟢 | 1,5 d | `docker compose run --rm tools go run ./cmd/itsm package install packages/sd` → Listen und Merkmal sind da; eine Kategorie in drei Ebenen anlegen; eine nur für die Dienststelle Nord sichtbare Kategorie sieht eine Person aus Süd nicht; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD2** | Paket `incident`: Typ Störung mit Merkmal `ticket`; Priorität P1 bis P4 als berechnetes Feld aus Auswirkung und Dringlichkeit; Statusmodell Neu, In Arbeit, Wartet, Gelöst, Geschlossen mit Wiedereröffnen; Lösung mit Lösungsart, Bestätigen oder Ablehnen durch den Anforderer; Pflichtfelder je Status. Die laufende Nummer kommt mit Kern-Plan PL49 dazu (§2.3, N1) (E3, E5; Inventar G36, G38, G42; IP19; Kern-Bedarf N7, N8) | 🟢 | 3 d | Störung mit Auswirkung „mehrere Personen“ und Dringlichkeit „hoch“ → P2; „Lösen“ ohne Lösungstext → 422 am Feld `solution`; der Anforderer lehnt die Lösung im Portal ab → wieder „In Arbeit“; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD3** | Fristen der Störung: Reaktion und Lösung je Priorität mit Kalender der Servicezeit, Eskalation an die Teamleitung bei 80 %, Wartegründe halten die Uhr an, automatisch schließen fünf Arbeitstage nach „Gelöst“; baut auf WF8 bis WF12 (E3; IP19) | ⬜ | 1 d | P1 um 08:00 anlegen → Lösungsfrist nach Kalender; „Wartet“ mit Grund „Rückmeldung Anforderer“ hält die Uhr an; mit Testzeit bei 80 % eine Mail an die Teamleitung in Mailpit; nach fünf Arbeitstagen „Gelöst“ → „Geschlossen“; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD3** | Fristen der Störung: Reaktion und Lösung je Priorität mit Kalender der Servicezeit, Eskalation an die Teamleitung bei 80 %, Wartegründe halten die Uhr an, automatisch schließen fünf Arbeitstage nach „Gelöst“; baut auf WF8 bis WF12 (E3; IP19) | 🟢 | 2 d | P1 um 08:00 anlegen → Lösungsfrist nach Kalender; „Wartet“ mit Grund „Rückmeldung Anforderer“ hält die Uhr an; mit Testzeit bei 80 % eine Mail an die Teamleitung in Mailpit; nach fünf Arbeitstagen „Gelöst“ → „Geschlossen“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD4** | Betroffene Elemente und Bezüge: Beziehungsart „betrifft“ von Störung und Anfrage zu jedem Typ; „Duplikat von“ und „verwandt“ aus `core`; Verträge kommen mit CM (Inventar G49, G50) | ⬜ | 0,5 d | An einer Störung einen Datensatz eines beliebigen Typs als betroffen verknüpfen → steht in den Bezügen beider Seiten; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD5** | Major Incident: Übergang „zum Major Incident erklären“ mit Begründung, Mail an einen Verteiler, untergeordnete Störungen verknüpfen und mit dem Major Incident gemeinsam lösen, Hinweis im Portal (IP19; N3) | ⬜ | 1,5 d | Störung zum Major Incident erklären → Mail an den Verteiler; drei Störungen unterordnen, den Major Incident lösen → alle drei gelöst mit derselben Lösung, je eine Mail an ihre Anforderer; der Hinweis steht im Portal unter „Aktuell“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD6** | Paket `request`: Typ Anfrage mit Merkmal `ticket`, Statusmodell mit Genehmigung, Erfüllungsaufgaben aus einer Vorlage, wiederkehrende Anfragen, Fristen wie SD3; baut auf WF6, WF13, WF14 (Inventar G36; IP30) | 🔒 WF6 | 1,5 d | Anfrage mit zweistufiger Genehmigung → nach beiden Zustimmungen entstehen zwei Aufgaben für die Gruppe; eine Ablehnung schließt die Anfrage mit Grund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -69,7 +69,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -88,6 +88,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E3** | Matrix der Priorität, Fristen und Servicezeit bekommen vorläufige Werte nach ITIL-Brauch (§2.4), bis die Fachseite Hauptplan V30 und V31 beantwortet | 2026-10-30 | Umsetzung |
 | **E4** | Grundpaket `sd` (SD1, deine Entscheidungen 2026-11-03, Hauptplan E158): **Sichtbarkeit** einer Kategorie über den Knoten des Eintrags im Organisationsbaum: sichtbar für Personen an diesem Knoten und darunter, an der Wurzel für alle (Kern-Bedarf N5). **Rollen** Anforderer, Beobachter, Bearbeiter und Gruppe stehen am Merkmal `ticket`; Paket-Merkmale dürfen dafür Rollen mitbringen (Kern-Bedarf N6). **Startinhalt:** ein kleiner vorläufiger Kategorienbaum (Hardware, Software, Zugang und Berechtigung, Netz und Telefonie, Sonstiges, je mit Unterkategorien), bis die Fachseite Hauptplan V32 beantwortet. **Listen:** Anfragequelle Telefon, Mail, Portal, Vor Ort, Überwachung; Lösungsart Behoben, Anleitung gegeben, Umgehungslösung, Kein Fehler, Duplikat, Nicht lösbar; vorläufig wie E3. Verworfen: Feld mit mehreren Einheiten; Rollen in jedem Typ; leere Liste | 2026-11-03 | Pascal |
 | **E5** | Störung (SD2, deine Entscheidungen 2026-11-03, Hauptplan E159): **Merkmal** mit Paketnamen, `traits: [sd.ticket]` aus installierten Paketen, von denen das Paket abhängt (N7). **Bestätigen und Ablehnen** der Lösung durch den Anforderer über Übergänge, die nur eine Rolle auslösen darf (`by: [requester]`); der Kern prüft die Rolle, das Portal zeigt solche Übergänge als Knöpfe (N8). **Ablehnen** braucht eine Begründung, die als Eintrag am Vorgang steht; der Bearbeiter wird benachrichtigt. **Pflicht:** Gelöst braucht Lösung und Lösungsart, Wartet einen Wartegrund; **Geschlossen** ist endgültig, wiedereröffnet wird nur aus Gelöst. Verworfen: Merkmal kopieren; nur antworten statt bestätigen; Ablehnen ohne Grund; Pflicht Bearbeiter oder Gruppe für „In Arbeit“ | 2026-11-03 | Pascal |
+| **E6** | Fristen der Störung (SD3, deine Entscheidungen 2026-11-03, Hauptplan E160): **Startdaten** bringt ein Paket unter `data/` mit: Datensätze und Regeln, beim ersten Installieren je Mandant angelegt, danach gehören sie dem Kunden; ein Update legt nur an, was noch nie angelegt war, und überschreibt nichts, Gelöschtes kommt nicht wieder (Kern-Bedarf N9). **Teamleitung** ist die verantwortliche Person der Gruppe in der Rolle Gruppe, als Empfänger `actors.group.responsible` (N10). **Reaktion** ist erfüllt, sobald die Störung „Neu“ verlässt. **Jedes Warten** hält die Lösungsuhr an. Kalender „Servicezeit“ und Wartegründe liegen im Grundpaket `sd`, weil die Anfrage (SD6) sie auch braucht; Fristen, Eskalation bei 80 % und automatisches Schließen liegen in `incident`. P1 zählt rund um die Uhr (Hauptplan V31, Beta). Verworfen: Startdaten, die jedes Update zurücksetzt; Einrichtung nur per Anleitung; feste Gruppe Teamleitung; Leitung je Organisationseinheit; Reaktion erst mit der ersten Antwort; Haken je Wartegrund | 2026-11-03 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -152,6 +153,8 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | **N6** | Rollen an Paket-Merkmalen (E4) | Paket-Merkmale (`traits/*.yaml`, Kern-Plan PL17) bündeln nur Felder; Rollen stehen unter `actors:` am Typ (WF3) | Paket-Merkmale dürfen `actors:` mitbringen, der Typ bekommt sie dazu; gebaut in SD1 |
 | **N7** | Ein Merkmal eines anderen Pakets nutzen (SD2) | Ein Typ findet Merkmale nur im Kern und im eigenen Paket (`meta.expandTraits`, `p.Trait(name)`); `incident` braucht `ticket` aus `sd` | Merkmale mit Paketnamen (`traits: [sd.ticket]`) aus installierten Paketen auflösen, das Paket hängt dann von `sd` ab; bauen in SD2 |
 | **N8** | Übergänge, die nur eine Rolle auslösen darf, und ihre Knöpfe im Portal (E5) | Bedingungen eines Übergangs sehen nur den Datensatz (`record`), nicht die handelnde Person; das Portal zeigt keine Übergänge (`web/src/portal/Portal.tsx`) | `by: [rolle]` am Übergang, der Kern prüft, dass die Person (oder eine ihrer Gruppen) die Rolle hält; ein Übergang mit `comment: required` verlangt einen Eintrag; das Portal zeigt die Übergänge, die die Person auslösen darf; gebaut in SD2 |
+| **N9** | Ein Paket bringt Startdaten mit: Kalender, Fristen, Eskalationsstufen, Wartegründe (E6) | Ein Paket kennt nur Typen, Merkmale, Beziehungsarten und Listeneinträge (`meta.Package`); Kalender, Fristen und Wartegründe sind Datensätze, Eskalationsstufen Regeln | Ordner `data/` mit Einträgen je Schlüssel: ein Datensatz eines Typs oder eine Regel, Verweise `@schlüssel` (auch `@paket.schlüssel`); je Mandant einmal angelegt, gemerkt in der Tabelle `package_seed`, auch für neue Mandanten; gebaut in SD3 |
+| **N10** | Die Teamleitung benachrichtigen (E6) | Empfänger sind Rollen am Vorgang, Gruppen und Personen (`notify.checkRecipient`, Regelaktion `notify`); die verantwortliche Person einer Gruppe (`core.group.responsible`) nutzt niemand | Empfänger `actors.<rolle>.responsible`: die verantwortlichen Personen der Gruppen, die die Rolle halten; in Benachrichtigungen und Regeln; gebaut in SD3 |
 
 ### 2.4 Vorläufige Werte (E3)
 
@@ -188,6 +191,48 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD3 — Fristen der Störung, 2026-11-03
+
+- **Grundlage:** E3, E6 dieses Plans; Hauptplan E160, V31 (Beta: P1 rund um die Uhr); deine
+  Entscheidungen vom 2026-11-03.
+- **Gebaut:**
+  - Kern-Bedarf N9, Startdaten: ein Paket bringt unter `data/*.yaml` Einträge mit Schlüssel mit,
+    je ein Datensatz eines Typs (`type`, `values`) oder eine Regel (`rule`); `@schlüssel` und
+    `@paket.schlüssel` verweisen auf frühere Einträge (`meta.Seed`, geprüft in `meta.Validate`).
+    `internal/seed` legt sie beim Installieren je Mandant an, ohne Mandanten an der Wurzel, und bei
+    jedem neuen Mandanten (beide Betriebsarten); die Tabelle `package_seed` (Migration 42) merkt,
+    was angelegt wurde. Ein zweites Installieren legt nichts an, Gelöschtes kommt nicht wieder;
+    beim Übernehmen des ersten Mandanten wandern die Einträge mit. Regeln heißen
+    `<paket>_<schlüssel>`, in einem Mandanten mit dessen Namen dahinter.
+  - Kern-Bedarf N10: Empfänger `actors.<rolle>.responsible` sind die verantwortlichen Personen der
+    Gruppen, die die Rolle halten, in Regelaktionen `notify` und in Benachrichtigungen; eine Rolle,
+    die keine Gruppen hält, wird abgelehnt (422).
+  - Paket `sd` 0.2.0: Kalender „Servicezeit“ Montag bis Freitag 7 bis 18 Uhr mit den bundesweiten
+    Feiertagen 2026 und 2027; Wartegründe Rückmeldung Anforderer, Termin mit Anforderer, Zulieferung
+    durch Dritte.
+  - Paket `incident` 0.2.0: acht Fristen nach §2.4 (Reaktion erfüllt, sobald die Störung „Neu“
+    verlässt; Lösung pausiert in „Wartet“), P1 rund um die Uhr, P2 bis P4 in der Servicezeit mit
+    11 Stunden je Tag; je Frist eine Eskalationsstufe bei 80 % an `actors.group.responsible`;
+    automatisch schließen 5 Tage der Servicezeit (3.300 Minuten) nach „Gelöst“.
+- **Belegt:**
+  - Go `TestIncidentDeadlinesOverHTTP` (eigene Datenbank): `sd` legt 27, `incident` 18 Einträge
+    an, ein zweites Installieren keinen, ein gelöschter Wartegrund bleibt gelöscht; P2 am Freitag
+    6.11. um 17:00 hat die Reaktion um 17:30 und die Lösung am Montag um 14:00, die Liste zeigt
+    17:30; die Benachrichtigung an `actors.group.responsible` erreicht die Leiterin Lena; bei 80 %
+    der Reaktion geht genau eine Mail an Lena; nach dem Beginnen ist die Reaktion erfüllt; Warten
+    von 9 bis 11 Uhr verschiebt die Lösung auf 16:00; gelöst am Montag um 12:00 schließt sie am
+    Montag darauf um 12:00; P1 am Freitag um 17:00 hat die Lösung um 21:00; P3 an Heiligabend um
+    17:00 hat die Reaktion am Montag 28.12. um 10:00; `actors.requester.responsible` gibt 422; ein
+    neuer Mandant bekommt 45 Einträge und die Regeln mit seinem Namen.
+  - Go `TestStartDataLoadsChecksAndResolves`: Reihenfolge der Dateien, Verweise, und sieben falsche
+    Einträge mit ihrer Meldung.
+  - Ganze CI am 2026-11-03 grün im ersten Lauf (10:27 min): alle 19 Schritte, 92 Vitest-Fälle,
+    17 Browser-Tests, LZ1 p95 3,18 ms, LZ13 7.979 Zeilen/s.
+- **Nicht geprüft:** Kein Browser-Test, die Oberfläche zeigt nichts Neues (die Fristspalte aus UI34
+  zeigt die Fristen). Den Server erreichen neue Fristen und Regeln nach dem Installieren erst nach
+  höchstens 30 Sekunden, weil das Kommando die laufenden Instanzen nicht benachrichtigt. Einstellbar
+  je Organisationseinheit (automatisches Schließen, Matrix) wird es mit SD20.
 
 ### SD2 — Störung, 2026-11-03
 

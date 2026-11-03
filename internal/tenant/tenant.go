@@ -28,6 +28,8 @@ import (
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
+	"group24.de/itsm/internal/rules/engine"
+	"group24.de/itsm/internal/seed"
 )
 
 // ErrInvalid says a name, a tenant or an account does not fit.
@@ -61,6 +63,8 @@ type Result struct {
 	Accounts    int64
 	// Seeded counts the select list entries a new tenant got as its copy.
 	Seeded int
+	// Started counts the entries of the packages' start data a new tenant got (SD-Plan N9).
+	Started int
 }
 
 // Create adds a tenant; with Adopt the first one takes over all that is there, in one
@@ -81,7 +85,12 @@ func Create(ctx context.Context, pool *pgxpool.Pool, o Options) (Result, error) 
 			return Result{Tenant: n}, err
 		}
 		seeded, err := records.New(db.Single(pool)).SeedListsInto(ctx, types, n.Path)
-		return Result{Tenant: n, Seeded: seeded}, err
+		if err != nil {
+			return Result{Tenant: n, Seeded: seeded}, err
+		}
+		// And the start data of every package, calendars, deadlines and their rules (N9).
+		started, err := startData(ctx, db.Single(pool), n.Path)
+		return Result{Tenant: n, Seeded: seeded, Started: started}, err
 	}
 	tenants, err := svc.Tenants(ctx)
 	if err != nil {
@@ -146,6 +155,8 @@ func Create(ctx context.Context, pool *pgxpool.Pool, o Options) (Result, error) 
 		// Rules and webhooks of before belong to the first tenant (PL45).
 		{"UPDATE rule SET tenant = $1::ltree WHERE tenant IS NULL", nil, false},
 		{"UPDATE webhook SET tenant = $1::ltree WHERE tenant = 'root'", nil, false},
+		// What the root got of the start data is the tenant's now (SD-Plan N9).
+		{"UPDATE package_seed SET org_path = $1::ltree WHERE org_path = 'root'", nil, false},
 		{"UPDATE ldap_directory SET org_path = " + records.MovedPath("org_path"), nil, false},
 		{"UPDATE account SET tenant = $1::ltree, updated_at = now() WHERE tenant IS NULL AND NOT username = ANY($2::text[])", &res.Accounts, true},
 	}
@@ -166,6 +177,12 @@ func Create(ctx context.Context, pool *pgxpool.Pool, o Options) (Result, error) 
 		return Result{}, err
 	}
 	return res, tx.Commit(ctx)
+}
+
+// startData creates the start data of the installed packages in a new tenant (SD-Plan N9).
+func startData(ctx context.Context, rt *db.Router, path string) (int, error) {
+	recs := records.New(rt)
+	return seed.New(rt, recs, engine.New(rt, recs, nil, nil, nil)).Installed(ctx, path)
 }
 
 // Bind binds an account to a tenant; an empty tenant makes it an account of the installation.

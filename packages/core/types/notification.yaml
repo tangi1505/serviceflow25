@@ -38,7 +38,7 @@ fields:
   - name: recipients
     type: text
     label: {de: Empfänger, en: Recipients}
-    description: {de: "actors.<rolle>, core.group:<id>, core.person:<id>; durch Komma getrennt", en: "actors.<role>, core.group:<id>, core.person:<id>; separated by commas"}
+    description: {de: "actors.<rolle>, actors.<rolle>.responsible (Verantwortliche der Gruppen), core.group:<id>, core.person:<id>; durch Komma getrennt", en: "actors.<role>, actors.<role>.responsible (responsible persons of the groups), core.group:<id>, core.person:<id>; separated by commas"}
     required: true
     max_length: 2000
   - name: notify_actor
