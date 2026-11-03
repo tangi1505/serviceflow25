@@ -72,7 +72,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL49** | Laufende Nummer je Typ: Feldtyp `sequence` mit Präfix (etwa `INC-24817`), vom Kern beim Anlegen vergeben, fortlaufend je Typ und Mandant in beiden Betriebsarten, danach nicht änderbar, in Liste, Suche und Betreff von Mails nutzbar; Lücken nach abgebrochenen Transaktionen sind erlaubt (aus dem [SD-Plan](05_service-desk.md) §2.3, N1; Hauptplan E137, E141; E63) | 🟢 | 1 d | Typ mit Feld `sequence` und Präfix `INC-` → neue Datensätze `INC-1`, `INC-2`; 100 Anlagen gleichzeitig ergeben 100 verschiedene Nummern; Mandant B beginnt wieder bei `INC-1`; PATCH auf das Feld → 422; `/api/v1/search?q=INC-2` findet den Datensatz, ebenso die Befehlszeile (Strg K, `INC-2` tippen, Enter öffnet ihn; UI-Plan E36); `docker compose run --rm tools scripts/ci.sh` grün |
 | ~~**PL50**~~ | ~~Zwei CIs gleichzeitig (Spuren K und O, Hauptplan E147): die festen Namen der Test-Datenbanken aus `dbtest.Isolated` bekommen eine Endung aus einer Umgebungsvariable, ebenso die CI-Datenbank `itsm_ci`; Valkey getrennt je Spur (eigene Valkey-Datenbank oder Präfix der Schlüssel, Entscheidung vor dem Bau); Compose-Projekt und Ports der zweiten WSL-Kopie stören die erste nicht. Bis dahin läuft nie mehr als eine CI~~ — **entfällt am 2026-10-31:** nur noch ein Agent, nie zwei CIs gleichzeitig (Hauptplan E149) | — | 0,5 d | Zwei `scripts/ci.sh` mit verschiedener Endung laufen gleichzeitig und sind beide grün; keine löscht Datenbanken oder Schlüssel der anderen |
 | **PL51** | CI mit eigenem Stand je Lauf: eigener PostgreSQL und Valkey je Lauf, frisch und danach entfernt; zeitkritische Pakete nacheinander; kein Abbruch beim ersten Fehler, alle Fehler gesammelt; Browser-Tests einzeln (Hauptplan E150) | 🟢 | 0,5 d | Zwei Läufe nacheinander finden dieselben Datenbanken vor (nur `itsm_ci` samt Vorlagen); nach dem Lauf gibt es keine Container `postgres-ci` und `valkey-ci` mehr; ein absichtlich roter Schritt hält die übrigen nicht auf und steht in der Zusammenfassung; `scripts/ci-run.sh` grün |
-| **PL52** | Schnellere CI in zwei Stufen (Hauptplan E162): ein Skript für die Teil-CI während der Arbeit (Lint, Format, Typen immer; die geänderten Go-Pakete samt allen, die sie nutzen; Vitest nur für betroffene Dateien; die Browser-Tests des Bereichs); die ganze CI bleibt vor jedem Commit; die Lastmessung läuft nur, wenn sich Go-Code des Servers (`cmd/`, `internal/`) oder Migrationen ändern; die Basislinie der schnellen Stufe wieder messbar machen (heute „login as load: 404“, verglichen werden nur die festen Grenzen); `internal/httpapi` (210 s) in parallele Teile mit eigener Datenbank aufteilen; die wackeligen Browser-Tests (Formular-Baukasten per Tastatur, Zeitleiste in `records.spec`, LZ9-Seitenwechsel nach einem Neustart; in Vitest die Zeitgrenze von Formular-Baukasten und Workflow-Editor unter Last) stabil machen | ⬜ | 1 d | Eine Änderung nur in `web/src` läuft in der Teil-CI ohne Go-Tests und ohne Lastmessung durch und nennt die Tests, die sie gewählt hat; die ganze CI misst LZ1 bis LZ4 wieder gegen die Basislinie; die ganze CI ist mindestens zwei Minuten schneller als 10:27 min; drei Läufe nacheinander ohne wackelnden Test; `scripts/ci-run.sh` grün |
+| **PL52** | Schnellere CI in zwei Stufen (Hauptplan E162): ein Skript für die Teil-CI während der Arbeit (Lint, Format, Typen immer; die geänderten Go-Pakete samt allen, die sie nutzen; Vitest nur für betroffene Dateien; die Browser-Tests des Bereichs); die ganze CI bleibt vor jedem Commit; die Lastmessung läuft nur, wenn sich Go-Code des Servers (`cmd/`, `internal/`) oder Migrationen ändern; die Basislinie der schnellen Stufe wieder messbar machen (heute „login as load: 404“, verglichen werden nur die festen Grenzen); `internal/httpapi` (210 s) in parallele Teile mit eigener Datenbank aufteilen; die wackeligen Browser-Tests (Formular-Baukasten per Tastatur, Zeitleiste in `records.spec`, LZ9-Seitenwechsel nach einem Neustart; in Vitest die Zeitgrenze von Formular-Baukasten und Workflow-Editor unter Last) stabil machen | 🟢 | 1 d | Eine Änderung nur in `web/src` läuft in der Teil-CI ohne Go-Tests und ohne Lastmessung durch und nennt die Tests, die sie gewählt hat; die ganze CI misst LZ1 bis LZ4 wieder gegen die Basislinie; die ganze CI ohne Lastmessung ist mindestens zwei Minuten schneller als 10:27 min (deine Entscheidung 2026-11-03); drei Läufe nacheinander ohne wackelnden Test; `scripts/ci-run.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -1533,6 +1533,63 @@ Die Fragen an die Fachseite stehen im Hauptplan.
 - **Nicht geprüft:** Der Lauf dauert durch die zweite Phase und die einzelnen Browser-Tests
   knapp 2 min länger (8 min 48 s statt etwa 7 min). Die Caches von Go und pnpm und das Volume der Basislinie bleiben zwischen den
   Läufen, das ist gewollt. Der Werkzeug-Container selbst wird nicht neu gebaut.
+
+### PL52 — Schnellere CI in zwei Stufen, 2026-11-03
+
+- **Grundlage:** Hauptplan E162; deine Entscheidungen vom 2026-11-03 (Teil-CI während der
+  Arbeit, ganze CI vor jedem Commit, Lastmessung nur bei Änderungen am Server; Basislinie ist
+  der grüne Stand am Ende von PL52 mit deiner Freigabe; LZ9 einmal ungemessen aufwärmen; das
+  Zeitziel gilt für die ganze CI ohne Lastmessung).
+- **Gebaut:**
+  - `scripts/ci-run.sh`: `--part` für die Teil-CI, `--all` für die ganze CI wie bei einer
+    Änderung überall; ohne Angabe die ganze CI. Was sich seit dem letzten Commit geändert hat,
+    schreibt es nach `.ci-changed` (in `.gitignore`); die Kopie in WSL bringt die Liste mit.
+  - `scripts/ci.sh`, Umfang über `ITSM_CI_SCOPE`:
+    - Teil-CI: Go-Vet, Lint und Tests nur für die geänderten Pakete und alle, die sie nutzen
+      (`go list` über Abhängigkeiten und Test-Importe); Vitest mit `vitest related` für die
+      geänderten Quellen; die Browser-Tests des Bereichs (Zuordnung in `e2e_specs`, alle bei
+      Änderungen an API, Übersetzungen, Test-Helfern oder Konfiguration); keine Lastmessung.
+    - Ganze CI: Go-Schritte nur bei Änderungen an Go-Code, Migrationen, API oder Paketen; die
+      Laststufe und die Tests des Lastwerkzeugs nur bei Änderungen an `cmd/`, `internal/`,
+      `db/`, `go.mod` oder `test/load/`; die Lizenzprüfung bei geänderten Modulen; die
+      Web-Schritte bei Änderungen unter `web/`. Jeder übersprungene Schritt nennt den Grund.
+    - `internal/httpapi` läuft in drei Teilen nebeneinander, je mit eigener Datenbank
+      (`itsm_ci_h1` bis `_h3`) und eigener Valkey-Datenbank; die Tests aus Dateien, die
+      `/api/v1/events` lesen, laufen danach allein, weil der Horizont des Ereignisstroms (E87)
+      der älteste offene Vorgang des ganzen Servers ist.
+    - Die Zusammenfassung nennt die Dauer jedes Schritts.
+  - `internal/cache`: eine Adresse `host:port/n` wählt die Valkey-Datenbank `n`; die Kanäle von
+    Pub/Sub bekommen dann den Vorsatz `db<n>:`, weil sie anders als die Schlüssel für den ganzen
+    Server gelten (`TestOpenSelectsADatabase`).
+  - Wackelnde Tests: `records.spec` besucht die Liste einmal ungemessen vor LZ9; `forms.spec`
+    wartet zwei Bildaufbauten nach der Ansage, bevor die Pfeiltaste kommt; Formular-Baukasten
+    und Workflow-Editor haben in Vitest 15 s statt 5 s je Test.
+  - Basislinie der schnellen Stufe neu: Binary des Stands nach SD4 und PL52 in
+    `/var/lib/itsm-load/itsm-baseline` (sha256 `b0ac8f7cab39…`), Messwerte aller Szenarien in
+    `test/load/baseline.json`; `approved_by` ist leer und wartet auf deine Freigabe.
+- **Belegt, 2026-11-03:**
+  - Teil-CI mit allen Änderungen grün (3:55 min, `internal/httpapi` 130 s statt 210 s); Teil-CI
+    für eine Änderung nur in `web/src` grün in 1:08 min: Go-Schritte und Lastmessung
+    übersprungen mit Grund, gewählt die Browser-Tests `live`, `records` und `relations`.
+  - Ganze CI mit Lastmessung grün in 11:08 min: die schnelle Stufe vergleicht LP1, LP2, LZ1 bis
+    LZ5 und LZ13 wieder gegen die Basislinie im selben Lauf (LZ1 p95 3,02 ms gegen 3,38 ms, LZ4
+    10,71 ms gegen 10,68 ms, LZ13 8.709 gegen 9.101 Zeilen/s). Dauer je Schritt: Go-Tests
+    255 s, Lastmessung 295 s, Browser-Tests 84 s, alles andere zusammen unter 40 s.
+  - Ganze CI ohne Lastmessung (Änderung an Paket-YAML, Go-Tests ohne das Lastwerkzeug) grün in
+    5:18 min, also 5 min schneller als 10:27 min.
+  - Vier ganze Läufe nacheinander grün ohne wackelnden Test: 9:37 min (alte Basislinie),
+    11:08 min, 5:18 min und vor dem Commit 10:43 min (LZ1 p95 2,97 ms gegen 3,23 ms der
+    Basislinie, LZ4 9,16 ms gegen 8,99 ms). LZ9 maß 80 ms, 110 ms und 96 ms.
+- **Nicht geprüft:**
+  - Mit Lastmessung ist die ganze CI länger als vorher (11:08 statt 10:27 min), weil die alte
+    Basislinie die Szenarien LZ1 bis LZ13 gar nicht mehr messen konnte; die Messung dauert
+    jetzt gut 2 min länger, ist dafür wieder ein echter Vergleich.
+  - Die API-Tests dauerten in drei Läufen 126 s, 139 s und 183 s; die Streuung kommt aus den
+    Tests des Ereignisstroms, die allein laufen. Nicht weiter untersucht.
+  - Der Selbsttest des Lastwerkzeugs braucht allein 72 s und läuft nicht neben anderen Tests.
+    Nebenher zu laufen würde etwa 70 s sparen; das bleibt bei deiner Entscheidung offen.
+  - Die Auswahl der Browser-Tests nach Dateien ist eine Liste von Hand; ein neuer Bereich ohne
+    Eintrag wählt keinen Browser-Test, bis die ganze CI vor dem Commit läuft.
 
 ### PL48 — Auswertungen über Mandanten, 2026-10-31
 

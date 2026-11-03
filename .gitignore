@@ -14,3 +14,6 @@
 
 # curl session of the README examples: holds a live session token
 /cookies.txt
+
+# the changed files of a CI run (scripts/ci-run.sh, PL52)
+/.ci-changed

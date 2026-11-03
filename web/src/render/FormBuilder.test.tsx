@@ -30,7 +30,9 @@ function renderAt(path: string) {
   return { router, ...view };
 }
 
-describe("FormBuilder", () => {
+// The longest tests of the web, keyboard by keyboard: under load they passed the default of
+// 5 s now and then (PL52).
+describe("FormBuilder", { timeout: 15_000 }, () => {
   let state: FakeState;
   beforeEach(() => {
     state = newState(0);

@@ -93,6 +93,11 @@ test("a form built by keyboard is filled in in the portal", async ({ page }) => 
   await builder.getByRole("button", { name: "„Ort“ verschieben" }).focus();
   await page.keyboard.press("Space");
   await expect(page.getByText("„Ort“ aufgenommen.")).toBeAttached();
+  // The announcement comes before the measuring is done: two frames later it is (PL52; an
+  // arrow too early moved nothing now and then).
+  await page.evaluate(
+    () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+  );
   await page.keyboard.press("ArrowUp");
   await expect(page.getByText("„Ort“ bei „Etage“.")).toBeAttached();
   await page.keyboard.press("Space");

@@ -38,6 +38,14 @@ test("list, create, edit and resolve a conflict", async ({ page, context }) => {
   await signIn(page);
   const title = `E2E ${Date.now()}`;
 
+  // One visit of the list first, not measured (Hauptplan E162): right after a start of the
+  // machine the first page change pays for a cold server and browser. The reload afterwards
+  // empties the query cache again, so the measured change loads its data like a first one.
+  await page.goto("/types/probe.probe");
+  await expect(page.getByText(/Datensätze$/)).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Probe" })).toBeVisible();
+
   // Page change into the list: from the click to the rows, a first reading for LZ9.
   const started = Date.now();
   await page.getByRole("link", { name: "Probe" }).click();

@@ -7,9 +7,24 @@
 # lives in memory, profile ci of compose.yaml) and are removed afterwards, so that every run
 # starts from the same state and leaves nothing behind. The instance on 8092 and its database
 # are not touched. Usage, from the directory of the project:
-#   scripts/ci-run.sh
+#   scripts/ci-run.sh           the whole CI, before every commit
+#   scripts/ci-run.sh --part    the quick check while working (PL52, Hauptplan E162)
+#   scripts/ci-run.sh --all     the whole CI as if everything had changed (load stage included)
+# What changed since the last commit goes to .ci-changed for ci.sh; a copy without .git (the
+# copy in WSL) brings its own .ci-changed, written by whoever synced it.
 set -u
 cd "$(dirname "$0")/.."
+
+scope=full
+case "${1:-}" in
+  --part) scope=part ;;
+  --all) rm -f .ci-changed ;;
+  "") ;;
+  *) echo "usage: scripts/ci-run.sh [--part|--all]"; exit 2 ;;
+esac
+if [ "${1:-}" != --all ] && [ -d .git ]; then
+  { git diff --name-only HEAD; git ls-files --others --exclude-standard; } | sort -u > .ci-changed
+fi
 
 ci="docker compose --profile ci"
 cleanup() { $ci rm -sfv postgres-ci valkey-ci >/dev/null 2>&1 || true; }
@@ -20,7 +35,7 @@ if ! $ci up -d --wait --force-recreate --renew-anon-volumes postgres-ci valkey-c
   echo "ci: the servers of the CI did not start"
   exit 1
 fi
-docker compose run --rm -T tools scripts/ci.sh
+docker compose run --rm -T -e ITSM_CI_SCOPE="$scope" tools scripts/ci.sh
 rc=$?
 echo "ci: removing the servers of this run"
 exit $rc

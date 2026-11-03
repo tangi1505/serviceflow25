@@ -4,42 +4,87 @@
     "cpu": "Intel(R) Core(TM) Ultra 7 255H",
     "cores": 16,
     "memory_gb": 31.1,
-    "kernel": "6.6.87.2-microsoft-standard-WSL2",
+    "kernel": "6.18.54.1-microsoft-standard-WSL2",
     "go_version": "go1.27.3"
   },
-  "load1": 3.64,
+  "load1": 3.57,
   "results": {
     "LP1": {
-      "requests": 131374,
+      "requests": 181555,
       "errors": 0,
-      "p50_ms": 0.203,
-      "p95_ms": 0.545,
-      "p99_ms": 0.917,
-      "rps": 32843.5
+      "p50_ms": 0.146,
+      "p95_ms": 0.392,
+      "p99_ms": 0.718,
+      "rps": 45388.75
     },
     "LP2": {
-      "requests": 50391,
+      "requests": 78487,
       "errors": 0,
-      "p50_ms": 0.553,
-      "p95_ms": 1.114,
-      "p99_ms": 1.78,
-      "rps": 12597.75
+      "p50_ms": 0.369,
+      "p95_ms": 0.664,
+      "p99_ms": 1.011,
+      "rps": 19621.75
+    },
+    "LZ1": {
+      "requests": 16279,
+      "errors": 0,
+      "p50_ms": 1.795,
+      "p95_ms": 3.316,
+      "p99_ms": 4.523,
+      "rps": 4069.75
+    },
+    "LZ13": {
+      "requests": 1,
+      "errors": 0,
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "rps": 6720.371040072146,
+      "rows": 20000
+    },
+    "LZ2": {
+      "requests": 7876,
+      "errors": 0,
+      "p50_ms": 3.931,
+      "p95_ms": 6.285,
+      "p99_ms": 7.657,
+      "rps": 1969
+    },
+    "LZ3": {
+      "requests": 6820,
+      "errors": 0,
+      "p50_ms": 4.369,
+      "p95_ms": 7.272,
+      "p99_ms": 9.644,
+      "rps": 1705
+    },
+    "LZ4": {
+      "requests": 5306,
+      "errors": 0,
+      "p50_ms": 5.726,
+      "p95_ms": 9.374,
+      "p99_ms": 11.95,
+      "rps": 1326.5
+    },
+    "LZ5": {
+      "requests": 1,
+      "errors": 0,
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "rps": 11576.849576863167,
+      "rows": 20000
     }
   },
   "waiting": {
-    "LZ1": "PL3, PL4",
     "LZ10": "LZ1 bis LZ9",
     "LZ11": "LZ1 bis LZ4",
     "LZ12": "LZ11, Helm (BT)",
-    "LZ2": "PL4, PL8, PL14",
-    "LZ3": "PL26",
-    "LZ4": "PL3, PL4, WF4",
-    "LZ5": "PL31, PL32",
     "LZ6": "PL32, PL33",
     "LZ7": "PL32, PL33",
     "LZ8": "PL32, PL33",
     "LZ9": "UI2 (Messung mit Playwright)"
   },
-  "binary_sha256": "df6e5da4fb7f77275e922d65ff5a79a15228821a65530d3331e3e4151cfb4ecb",
-  "note": "Basislinie nach PL2, A/B-Verfahren (E69), 2026-10-20"
+  "binary_sha256": "b0ac8f7cab397fcd654b608979f926f3d55e84bbc130d034fd8089c532c51ac4",
+  "note": "Basislinie nach PL52 (Hauptplan E162), 2026-11-03: Stand nach SD4 mit allen Szenarien der schnellen Stufe"
 }

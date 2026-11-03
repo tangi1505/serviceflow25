@@ -13,7 +13,8 @@ Kurz das Wichtigste für die Umsetzung:
 - Bei jeder Unsicherheit fragen, nichts annehmen; Fragen immer mit Empfehlung.
 - Eine Aufgabe nach der anderen; Stand sofort im Plan eintragen; sagen, wie die Abnahme prüft.
 - Nur in der Windows-Kopie schreiben; die Abnahme überträgt nach `~/police/itsm` in WSL.
-- Werkzeuge nur im Werkzeug-Container; die CI startet `scripts/ci-run.sh` (Hauptplan E150).
+- Werkzeuge nur im Werkzeug-Container; die CI startet `scripts/ci-run.sh` (Hauptplan E150),
+  während der Arbeit `--part`, vor jedem Commit ganz (E162).
 - Lizenzkopf AGPL-3.0-only von Hand in jeder neuen Quelldatei; Dateien mit LF und UTF-8.
 - Committen nach jeder fertigen Aufgabe mit kurzer Nachricht; Pushen macht nur die Abnahme.
 
@@ -422,7 +423,10 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
   danach entfernt; kein Abbruch beim ersten Fehler, alle Fehler in der Zusammenfassung.
   `docker compose run --rm tools scripts/ci.sh` in den Abnahmen der Pläne meint diesen Lauf.
   Nach einem roten Lauf werden die Fehler bewertet; Kritisches geht an die Abnahme, bevor
-  etwas wiederholt wird.
+  etwas wiederholt wird. Seit PL52 (Hauptplan E162) in zwei Stufen: `scripts/ci-run.sh --part`
+  während der Arbeit (die geänderten Stellen und was davon abhängt, ohne Lastmessung), die
+  ganze CI vor jedem Commit; die Lastmessung läuft nur, wenn sich Go-Code des Servers,
+  Migrationen oder das Lastwerkzeug seit dem letzten Commit geändert haben.
 - Das Repository liegt vorerst nur lokal; ein Remote kommt vor Meilenstein 1 (E48).
 - Eine Aufgabe, die Code ändert, ist erst fertig, wenn die Leistungsmessung aus Hauptplan H11 grün
   ist (E32), sobald H11 steht.

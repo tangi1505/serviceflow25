@@ -58,7 +58,7 @@ func (c *Client) GetInt(ctx context.Context, key string) (int64, error) {
 // Publish sends a message on a channel to every subscriber (Hauptplan E20: Pub/Sub for
 // invalidation across api instances).
 func (c *Client) Publish(ctx context.Context, channel, message string) error {
-	if err := c.c.Do(ctx, c.c.B().Publish().Channel(channel).Message(message).Build()).Error(); err != nil {
+	if err := c.c.Do(ctx, c.c.B().Publish().Channel(c.channels+channel).Message(message).Build()).Error(); err != nil {
 		return fmt.Errorf("cache: publish %s: %w", channel, err)
 	}
 	return nil
@@ -67,7 +67,7 @@ func (c *Client) Publish(ctx context.Context, channel, message string) error {
 // Subscribe calls fn for every message on the channel until the context ends. It blocks; run
 // it in its own goroutine. The connection is a dedicated one, so other calls go on.
 func (c *Client) Subscribe(ctx context.Context, channel string, fn func(message string)) error {
-	err := c.c.Receive(ctx, c.c.B().Subscribe().Channel(channel).Build(), func(msg valkey.PubSubMessage) {
+	err := c.c.Receive(ctx, c.c.B().Subscribe().Channel(c.channels+channel).Build(), func(msg valkey.PubSubMessage) {
 		fn(msg.Message)
 	})
 	if err != nil && ctx.Err() == nil {

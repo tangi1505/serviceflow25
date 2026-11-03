@@ -108,7 +108,8 @@ function stubLayout() {
   vi.stubGlobal("DOMMatrixReadOnly", DOMMatrixReadOnly);
 }
 
-describe("Workflow editor", () => {
+// Like the form builder, long keyboard tests: 15 s instead of 5 under load (PL52).
+describe("Workflow editor", { timeout: 15_000 }, () => {
   let state: FakeState;
   beforeEach(() => {
     state = newState(1);

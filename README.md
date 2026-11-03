@@ -125,6 +125,17 @@ Bauen, prüfen und testen im Werkzeug-Container / build, lint and test in the to
 scripts/ci-run.sh
 ```
 
+Während der Arbeit reicht die Teil-CI: nur die Go-Pakete, die sich seit dem letzten Commit
+geändert haben, und alle, die sie nutzen, Vitest für die geänderten Quellen, die Browser-Tests
+des Bereichs, keine Lastmessung. Vor jedem Commit läuft die ganze CI; ihre Lastmessung nur,
+wenn sich Go-Code des Servers, Migrationen oder das Lastwerkzeug geändert haben (`--all`
+misst trotzdem). *While working, `--part` checks what changed and what depends on it; the
+whole CI runs before every commit.*
+
+```bash
+scripts/ci-run.sh --part
+```
+
 Der Lauf bekommt einen eigenen PostgreSQL und Valkey (Profil `ci`, Daten im Arbeitsspeicher),
 die danach entfernt werden: jeder Lauf beginnt mit demselben Stand, die Instanz auf 8092 bleibt
 unberührt. Die CI bricht nicht beim ersten Fehler ab; am Ende stehen alle Schritte mit Ergebnis

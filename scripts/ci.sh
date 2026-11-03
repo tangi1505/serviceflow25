@@ -10,11 +10,28 @@
 # Every step runs, whatever the steps before did; a step that needs the result of a failed
 # step is skipped. The end is a summary of every step and the failures with their reasons,
 # so that one run shows everything (Pascal's decision 2026-11-02, E150).
+#
+# Two scopes (PL52, Hauptplan E162): ITSM_CI_SCOPE=full, the default, is the whole CI before a
+# commit; ITSM_CI_SCOPE=part is the quick check while working: the Go packages that changed and
+# all that use them, Vitest for the changed sources, the browser tests of the area, no load.
+# What changed is listed in .ci-changed (ci-run.sh writes it from git: the changes since the
+# last commit); without the file everything counts as changed. The load stage runs only when
+# server code, migrations or the load tool changed.
 set -u
 cd "$(dirname "$0")/.."
 
 steps=$(mktemp -d)
 order=""
+scope=${ITSM_CI_SCOPE:-full}
+changed_file=.ci-changed
+# changed REGEX: whether a changed path matches; everything matches without .ci-changed.
+changed() {
+  [ -f "$changed_file" ] || return 0
+  grep -Eq "$1" "$changed_file"
+}
+server_re='^(cmd/|internal/|db/|go\.(mod|sum)$|test/load/)'
+web_re='^web/'
+go_re='(\.go$|^db/|^go\.(mod|sum)$|^api/|^packages/)'
 
 # run FN TITLE [NEEDS...]: runs the step function FN under its title. NEEDS are the functions
 # of the steps it needs; when one of them did not pass, the step is skipped. The output goes
@@ -33,13 +50,23 @@ run() {
       return 0
     fi
   done
+  began=$(date +%s)
   { ( set -e; "$fn" ); echo "$?" > "$steps/$fn.rc"; } 2>&1 | tee "$steps/$fn.log"
+  echo "$(($(date +%s) - began)) s" > "$steps/$fn.secs"
   if [ "$(cat "$steps/$fn.rc")" = 0 ]; then
     echo ok > "$steps/$fn.status"
   else
     echo "FAILED: $title"
     echo failed > "$steps/$fn.status"
   fi
+}
+
+# skip FN TITLE REASON: the step does not run in this scope or for these changes.
+skip() {
+  order="$order $1"
+  printf '%s' "$2" > "$steps/$1.title"
+  printf '\n== %s\nskipped: %s\n' "$2" "$3"
+  echo skipped > "$steps/$1.status"
 }
 
 license_headers() { scripts/check-license.sh; }
@@ -61,9 +88,40 @@ go_oapi() {
   fi
 }
 
-go_vet() { go vet ./...; }
+go_vet() {
+  # shellcheck disable=SC2046
+  go vet $(go_packages)
+}
 
-go_lint() { golangci-lint run ./...; }
+go_lint() {
+  if [ "$scope" = part ]; then
+    # golangci-lint takes directories: the affected packages as paths below the module.
+    mod=$(go list -m)
+    # shellcheck disable=SC2046
+    golangci-lint run $(go_packages | sed "s#^$mod#.#")
+  else
+    golangci-lint run ./...
+  fi
+}
+
+# go_packages are the packages to check: all, or in part scope those whose Go files changed and
+# every package that imports one of them, directly or through others; package YAML and the API
+# description count for the API tests, migrations and queries for the users of internal/db.
+go_packages() {
+  if [ "$scope" != part ] || [ ! -f "$changed_file" ]; then
+    go list ./...
+    return
+  fi
+  mod=$(go list -m)
+  {
+    grep -E '\.go$' "$changed_file" | while read -r f; do echo "$mod/$(dirname "$f")"; done
+    changed '^db/' && printf '%s\n' "$mod/internal/db" "$mod/internal/db/queries"
+    changed '^(packages/|api/)' && printf '%s\n' "$mod/internal/httpapi" "$mod/internal/meta" "$mod/cmd/itsm"
+  } | sort -u > /tmp/ci-changed-pkgs
+  go list -f '{{.ImportPath}} {{join .Deps " "}} {{join .TestImports " "}} {{join .XTestImports " "}}' ./... |
+    awk 'BEGIN { while ((getline l < "/tmp/ci-changed-pkgs") > 0) c[l] = 1 }
+      { for (i = 1; i <= NF; i++) if ($i in c) { print $1; break } }'
+}
 
 go_type_tables() { sh scripts/check-type-tables.sh; }
 
@@ -78,10 +136,13 @@ ci_database() {
     if [ "$tries" -gt 60 ]; then echo "the database server of the CI is not reachable"; return 1; fi
     sleep 1
   done
-  if [ "$(psql "$server_db" -tAc "SELECT 1 FROM pg_database WHERE datname = '$ci_db'")" != 1 ]; then
-    psql "$server_db" -qc "CREATE DATABASE $ci_db"
-    echo "created $ci_db"
-  fi
+  # The CI database and one for each part of the API tests (PL52).
+  for db in "$ci_db" $(seq 1 "$httpapi_parts" | sed "s/^/${ci_db}_h/"); do
+    if [ "$(psql "$server_db" -tAc "SELECT 1 FROM pg_database WHERE datname = '$db'")" != 1 ]; then
+      psql "$server_db" -qc "CREATE DATABASE $db"
+      echo "created $db"
+    fi
+  done
   echo "databases on the server of the CI: $(psql "$server_db" -tAc "SELECT string_agg(datname, ', ' ORDER BY datname) FROM pg_database WHERE NOT datistemplate")"
 }
 
@@ -91,14 +152,84 @@ ci_database() {
 # and made those tests red without a fault in the code.
 quiet_packages='^group24\.de/itsm/(internal/(events|webhooks|jobs|httpapi)|test/load)(/.*)?$'
 
+# The API tests run in parts side by side (PL52): each part a database of its own on the server
+# of the CI and a Valkey database of its own (keys and channels), so that their records and
+# counters do not meet. Before, they ran one after another in 210 s. The tests that read the
+# event stream itself (/api/v1/events) run alone afterwards: the horizon of the stream (E87)
+# follows the oldest open transaction of the whole server, not of one database, so a part
+# running beside them holds their stream back.
+httpapi_parts=3
+
 go_test() {
-  go list ./... | grep -Ev "$quiet_packages" > /tmp/pkgs-parallel
-  go list ./... | grep -E "$quiet_packages" > /tmp/pkgs-quiet
+  go_packages > /tmp/pkgs-all
+  # The tests of the load tool belong to the load stage: only when it runs (E162).
+  if [ "$scope" = full ] && ! changed "$server_re"; then
+    grep -Ev '/test/load(/|$)' /tmp/pkgs-all > /tmp/pkgs-run || true
+  else
+    cp /tmp/pkgs-all /tmp/pkgs-run
+  fi
+  grep -Ev "$quiet_packages" /tmp/pkgs-run > /tmp/pkgs-parallel || true
+  grep -E "$quiet_packages" /tmp/pkgs-run | grep -v '/internal/httpapi$' > /tmp/pkgs-quiet || true
   rc=0
-  echo "-- side by side: $(wc -l < /tmp/pkgs-parallel) packages"
-  xargs go test -race -count=1 < /tmp/pkgs-parallel || rc=1
-  echo "-- one after another: $(tr '\n' ' ' < /tmp/pkgs-quiet)"
-  xargs go test -race -count=1 -p 1 < /tmp/pkgs-quiet || rc=1
+  if [ -s /tmp/pkgs-parallel ]; then
+    echo "-- side by side: $(wc -l < /tmp/pkgs-parallel) packages"
+    xargs go test -race -count=1 < /tmp/pkgs-parallel || rc=1
+  fi
+  if [ -s /tmp/pkgs-quiet ]; then
+    echo "-- one after another: $(tr '\n' ' ' < /tmp/pkgs-quiet)"
+    xargs go test -race -count=1 -p 1 < /tmp/pkgs-quiet || rc=1
+  fi
+  if grep -q '/internal/httpapi$' /tmp/pkgs-run; then
+    httpapi_test || rc=1
+  fi
+  if [ ! -s /tmp/pkgs-run ]; then
+    echo "no Go package affected"
+  fi
+  return $rc
+}
+
+httpapi_test() {
+  go test -race -c -o /tmp/httpapi.test ./internal/httpapi || return 1
+  (cd internal/httpapi && /tmp/httpapi.test -test.list '.*') | grep '^Test' > /tmp/httpapi-tests
+  grep -l '/api/v1/events' internal/httpapi/*_test.go | xargs sed -n 's/^func \(Test[A-Za-z0-9_]*\)(.*/\1/p' |
+    sort -u > /tmp/httpapi-quiet
+  for k in $(seq 1 "$httpapi_parts"); do : > "/tmp/httpapi-part-$k"; done
+  i=0
+  grep -vxF -f /tmp/httpapi-quiet /tmp/httpapi-tests | while read -r name; do
+    echo "$name" >> "/tmp/httpapi-part-$((i % httpapi_parts + 1))"
+    i=$((i + 1))
+  done
+  echo "-- internal/httpapi in $httpapi_parts parts side by side: $(cat /tmp/httpapi-part-* | wc -l) tests"
+  started=$(date +%s)
+  for k in $(seq 1 "$httpapi_parts"); do
+    url=$(printf '%s' "$ITSM_TEST_DATABASE_URL" | sed -E "s#/([^/?]+)([?]|\$)#/\\1_h$k\\2#")
+    run_re="^($(paste -sd'|' "/tmp/httpapi-part-$k"))\$"
+    (
+      cd internal/httpapi &&
+        ITSM_TEST_DATABASE_URL="$url" ITSM_TEST_VALKEY_ADDR="$ITSM_TEST_VALKEY_ADDR/$k" \
+          /tmp/httpapi.test -test.count=1 -test.timeout=15m -test.run "$run_re" > "/tmp/httpapi-part-$k.log" 2>&1 &&
+        echo 0 > "/tmp/httpapi-part-$k.rc" || echo 1 > "/tmp/httpapi-part-$k.rc"
+    ) &
+  done
+  wait
+  rc=0
+  for k in $(seq 1 "$httpapi_parts"); do
+    echo "-- part $k, $(wc -l < "/tmp/httpapi-part-$k") tests: $(tail -n 1 "/tmp/httpapi-part-$k.log")"
+    if [ "$(cat "/tmp/httpapi-part-$k.rc")" != 0 ]; then
+      cat "/tmp/httpapi-part-$k.log"
+      rc=1
+    fi
+  done
+  echo "-- the tests of the event stream alone: $(tr '\n' ' ' < /tmp/httpapi-quiet)"
+  (
+    cd internal/httpapi &&
+      /tmp/httpapi.test -test.count=1 -test.timeout=15m -test.run "^($(paste -sd'|' /tmp/httpapi-quiet))\$" > /tmp/httpapi-quiet.log 2>&1
+  ) || {
+    cat /tmp/httpapi-quiet.log
+    rc=1
+  }
+  echo "-- quiet: $(tail -n 1 /tmp/httpapi-quiet.log)"
+  echo "-- internal/httpapi took $(($(date +%s) - started)) s"
   return $rc
 }
 
@@ -193,7 +324,54 @@ web_lint() { cd web && pnpm lint; }
 
 web_format() { cd web && pnpm format:check; }
 
-web_test() { cd web && pnpm test; }
+web_test() {
+  cd web
+  if [ "$scope" = part ] && [ -f "../$changed_file" ]; then
+    files=$(grep -E '^web/src/' "../$changed_file" | sed 's#^web/##' | while read -r f; do [ -f "$f" ] && echo "$f"; done)
+    if [ -z "$files" ]; then
+      echo "no changed source of the web: no Vitest"
+      return 0
+    fi
+    # The tests that import a changed file, directly or through others.
+    # shellcheck disable=SC2086
+    pnpm exec vitest related --run --passWithNoTests $files
+  else
+    pnpm test
+  fi
+}
+
+# e2e_specs prints the browser tests of a part run: the changed ones and those of the areas
+# that changed; ALL for shared code (client, texts, the fake of the tests) or every spec in a
+# full run; nothing when the web did not change. Server code alone brings the walk through
+# the records as a smoke test.
+e2e_specs() {
+  if [ "$scope" != part ] || [ ! -f "$changed_file" ]; then
+    echo ALL
+    return
+  fi
+  if grep -Eq '^web/(src/(api|i18n|test)/|package\.json|playwright\.config\.ts|vite\.config\.ts)' "$changed_file"; then
+    echo ALL
+    return
+  fi
+  {
+    grep -E '^web/e2e/.*\.spec\.ts$' "$changed_file" | sed 's#^web/##'
+    while read -r pattern specs; do
+      if grep -Eq "$pattern" "$changed_file"; then
+        for spec in $specs; do echo "e2e/$spec.spec.ts"; done
+      fi
+    done <<'MAP'
+^web/src/render/(RecordPage|RecordTabs|Relations|Timeline|Form|Sidebar|Transitions|RefPicker|RefName|RichEditor|Presence|fields) records relations live
+^web/src/render/(List|ListPreview|Preview|Filters|Batch|Export|DeadlineCell|SearchPage) records deadline scroll
+^web/src/(render/FormBuilder|portal/) forms form-conditions portal
+^web/src/render/Workflow workflow
+^web/src/render/Role roles
+^web/src/render/(Customize|TypePage) customize
+^web/src/app/ login frame command settings design sequence
+^web/src/ui/ design frame
+^(cmd|internal|db)/ records
+MAP
+  } | sort -u | while read -r f; do [ -f "web/$f" ] && echo "$f"; done
+}
 
 web_build() { cd web && pnpm build; }
 
@@ -245,36 +423,83 @@ web_e2e() {
     printf 'Portal-Sprache12!' | /tmp/itsm user passwd englisch >/dev/null 2>&1 || true
   /tmp/itsm user grant englisch e2e_portal >/dev/null 2>&1 || true
   cd web
-  ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e
+  # shellcheck disable=SC2086
+  if [ "$specs" = ALL ]; then
+    ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e
+  else
+    echo "-- browser tests of this part run: $specs"
+    ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e $specs
+  fi
 }
 
-run license_headers "license headers"
-run go_format "go: format"
-run go_sqlc "go: sqlc code is up to date"
-run go_oapi "go: generated API server is up to date (api/openapi.yaml, oapi-codegen)"
-run go_vet "go: vet"
-run go_lint "go: lint"
-run go_type_tables "go: only records and query touch type tables (E34)"
-run ci_database "go: the database of the CI"
-run go_test "go: test" ci_database
-run go_build "go: build"
-run load_quick "load: quick stage, A/B against the baseline build (Hauptplan E32, E63, E69)" go_build ci_database
-run web_install "web: install"
-run licenses "licenses: Go modules and web packages that are shipped (Hauptplan E15)" web_install
-run web_apigen "web: generated API types are up to date (api/openapi.yaml, openapi-typescript)" web_install
-run web_lint "web: lint" web_install
-run web_format "web: format" web_install
-run web_test "web: test" web_install
-run web_build "web: build" web_install
-run web_e2e "web: browser tests (Playwright with axe, UI1)" web_build go_build ci_database
+echo "ci: scope $scope"
+if [ -f "$changed_file" ]; then
+  echo "ci: $(wc -l < "$changed_file") changed files since the last commit"
+else
+  echo "ci: no list of changed files, everything counts as changed"
+fi
+specs=$(e2e_specs | tr '\n' ' ' | sed 's/ $//')
+part_go() { [ "$scope" = full ] || changed "$go_re"; }
+part_web() { [ "$scope" = full ] || changed "$web_re" || [ -n "$specs" ]; }
+nogo="no change to Go code, migrations, packages or the API since the last commit"
+noweb="no change to the web since the last commit"
 
-# The summary: every step with its outcome, then the failures with the lines that name them
-# (failed tests, errors), so that one run says everything.
+run license_headers "license headers"
+if part_go; then
+  run go_format "go: format"
+  run go_sqlc "go: sqlc code is up to date"
+  run go_oapi "go: generated API server is up to date (api/openapi.yaml, oapi-codegen)"
+  run go_vet "go: vet"
+  run go_lint "go: lint"
+  run go_type_tables "go: only records and query touch type tables (E34)"
+else
+  for step in go_format:"go: format" go_sqlc:"go: sqlc code" go_oapi:"go: generated API server"     go_vet:"go: vet" go_lint:"go: lint" go_type_tables:"go: type tables (E34)"; do
+    skip "${step%%:*}" "${step#*:}" "$nogo"
+  done
+fi
+run ci_database "go: the database of the CI"
+if part_go; then
+  run go_test "go: test" ci_database
+else
+  skip go_test "go: test" "$nogo"
+fi
+run go_build "go: build"
+if [ "$scope" = part ]; then
+  skip load_quick "load: quick stage" "the part run measures nothing (Hauptplan E162)"
+elif changed "$server_re"; then
+  run load_quick "load: quick stage, A/B against the baseline build (Hauptplan E32, E63, E69)" go_build ci_database
+else
+  skip load_quick "load: quick stage" "no change to server code, migrations or the load tool since the last commit (Hauptplan E162)"
+fi
+if part_web; then
+  run web_install "web: install"
+  if [ "$scope" = full ] || changed '^(go\.(mod|sum)|web/package\.json|web/pnpm-lock\.yaml)$'; then
+    run licenses "licenses: Go modules and web packages that are shipped (Hauptplan E15)" web_install
+  else
+    skip licenses "licenses" "no change to the modules or packages"
+  fi
+  run web_apigen "web: generated API types are up to date (api/openapi.yaml, openapi-typescript)" web_install
+  run web_lint "web: lint" web_install
+  run web_format "web: format" web_install
+  run web_test "web: test" web_install
+  if [ -n "$specs" ]; then
+    run web_build "web: build" web_install
+    run web_e2e "web: browser tests (Playwright with axe, UI1)" web_build go_build ci_database
+  else
+    skip web_e2e "web: browser tests" "no browser test for these changes"
+  fi
+else
+  skip web_test "web: test" "$noweb"
+  skip web_e2e "web: browser tests" "$noweb"
+fi
+
+# The summary: every step with its outcome and its time (PL52), then the failures with the
+# lines that name them (failed tests, errors), so that one run says everything.
 printf '\n== summary\n'
 failed=0
 for fn in $order; do
   status=$(cat "$steps/$fn.status")
-  printf '%-8s %s\n' "$status" "$(cat "$steps/$fn.title")"
+  printf '%-8s %6s  %s\n' "$status" "$(cat "$steps/$fn.secs" 2>/dev/null)" "$(cat "$steps/$fn.title")"
   [ "$status" = failed ] && failed=$((failed + 1))
 done
 if [ "$failed" -gt 0 ]; then
