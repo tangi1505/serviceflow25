@@ -425,6 +425,11 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
   Abgleich zurück.
 - Befehle für die Abnahme laufen in WSL im Verzeichnis `~/police/itsm`, Werkzeuge im
   Werkzeug-Container über `docker compose`; auf dem Rechner wird nichts installiert (E52).
+- Die CI startet `scripts/ci-run.sh` (Hauptplan E150): eigener PostgreSQL und Valkey je Lauf,
+  danach entfernt; kein Abbruch beim ersten Fehler, alle Fehler in der Zusammenfassung.
+  `docker compose run --rm tools scripts/ci.sh` in den Abnahmen der Pläne meint diesen Lauf.
+  Nach einem roten Lauf werden die Fehler bewertet; Kritisches geht an die Abnahme, bevor
+  etwas wiederholt wird.
 - Das Repository liegt vorerst nur lokal; ein Remote kommt vor Meilenstein 1 (E48).
 - Eine Aufgabe, die Code ändert, ist erst fertig, wenn die Leistungsmessung aus Hauptplan H11 grün
   ist (E32), sobald H11 steht.

@@ -14,7 +14,10 @@
 #   docker compose --profile mail up -d             the same plus Mailpit (WF15): the mails of
 #                                                   the notifications at http://localhost:8026
 #                                                   (8025 is the Mailpit of the GLPI setup)
-#   docker compose run --rm tools scripts/ci.sh     build, lint and test in the tool container
+#   scripts/ci-run.sh                               build, lint and test in the tool container,
+#                                                   with a PostgreSQL and a Valkey of their own
+#                                                   (profile ci), fresh for the run and removed
+#                                                   afterwards (E150)
 
 name: itsm
 
@@ -132,6 +135,33 @@ services:
     depends_on:
       - lldap
 
+  # The servers of the CI (E150): their data lives in memory and goes with the container;
+  # scripts/ci-run.sh recreates them for every run and removes them afterwards. No ports.
+  postgres-ci:
+    profiles: ["ci"]
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: itsm
+      POSTGRES_PASSWORD: itsm-dev
+      POSTGRES_DB: itsm_ci
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itsm -d itsm_ci"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  valkey-ci:
+    profiles: ["ci"]
+    image: valkey/valkey:9.1.2
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   mailpit:
     profiles: ["mail"]
     image: axllent/mailpit:v1.31.0
@@ -144,9 +174,11 @@ services:
     build: tools
     working_dir: /src
     environment:
-      # the CI and the tests have a database of their own (PL47e); scripts/ci.sh creates it
-      ITSM_TEST_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm_ci?sslmode=disable
-      ITSM_TEST_VALKEY_ADDR: valkey:6379
+      # the CI and the tests run on the servers of the CI (postgres-ci, valkey-ci; E150),
+      # which scripts/ci-run.sh starts fresh; for tests by hand start them first:
+      #   docker compose --profile ci up -d --wait postgres-ci valkey-ci
+      ITSM_TEST_DATABASE_URL: postgres://itsm:itsm-dev@postgres-ci:5432/itsm_ci?sslmode=disable
+      ITSM_TEST_VALKEY_ADDR: valkey-ci:6379
       # the same services for the binary's commands run from the tool container
       # (go run ./cmd/itsm package install …, user create …)
       ITSM_DATABASE_URL: postgres://itsm:itsm-dev@postgres:5432/itsm?sslmode=disable
