@@ -1427,6 +1427,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the portal shows under "Aktuell" (SD5)
+         * @description The records the active notices of the tenant (core.portal_notice) name, each with its text field, state and times; whoever is signed in reads them, the records themselves stay unreadable otherwise.
+         */
+        get: operations["listPortalNotices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forms/{formId}": {
         parameters: {
             query?: never;
@@ -2962,7 +2982,30 @@ export interface components {
             attempts: number;
             error: string;
         };
-        /** @description exactly one of set, assign, create, notify, transition */
+        PortalNotice: {
+            /**
+             * Format: uuid
+             * @description the core.portal_notice that shows it
+             */
+            notice: string;
+            type_name: string;
+            /** Format: uuid */
+            id: string;
+            /** @description the value of the text field the notice names */
+            text: string;
+            state?: string;
+            state_label?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: date-time
+             * @description created_at of the record
+             */
+            since: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description exactly one of set, assign, create, notify, transition, related */
         RuleAction: {
             /** @description field values, as in a PATCH */
             set?: {
@@ -2996,6 +3039,25 @@ export interface components {
                 fields?: {
                     [key: string]: unknown;
                 };
+                /** @description the text a transition with a comment takes (SD5) */
+                comment?: string;
+            };
+            /** @description after the write only (SD5): moves the records linked by the relation kind along their transition; a linked record whose state does not allow it stays as it is */
+            related?: {
+                /** @description relation kind, e.g. incident.part_of */
+                kind: string;
+                /**
+                 * @description in for the records that point at this one, out for those it points at
+                 * @enum {string}
+                 */
+                direction: "in" | "out";
+                transition: string;
+                /** @description fields of this record taken along under the same names */
+                copy?: string[];
+                fields?: {
+                    [key: string]: unknown;
+                };
+                comment?: string;
             };
         };
         RuleInput: {
@@ -5858,6 +5920,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FormOffer"][];
+                };
+            };
+            401: components["responses"]["Problem"];
+        };
+    };
+    listPortalNotices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the records, notice by notice, the newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalNotice"][];
                 };
             };
             401: components["responses"]["Problem"];

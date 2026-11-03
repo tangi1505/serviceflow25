@@ -300,7 +300,8 @@ func (s *sampler) record(name string) string {
 // a template; WF15: a notification has events, recipients and placeholders); the sample SLA
 // never holds and the samples of recurrence and notification are not active, so they time,
 // create and send nothing; a saved search needs an installed type (UI4); a form asks for the
-// required title of its target and is not offered (UI11).
+// required title of its target and is not offered (UI11); a notice in the portal names a text
+// field of an installed type and is not shown (SD5).
 var checkedSamples = map[string]map[string]any{
 	"core.sla": {"target_type": "probe.probe", "applies": "false", "pause": "false", "stop": "true"},
 	"core.recurrence": {"target_type": "probe.probe", "schedule": "0 7 * * 1", "timezone": "Europe/Berlin",
@@ -310,6 +311,7 @@ var checkedSamples = map[string]map[string]any{
 	"core.saved_search": {"target_type": "probe.probe", "query": "", "columns": "", "sort": ""},
 	"core.form": {"target_type": "probe.probe", "active": false,
 		"definition": `{"sections": [{"id": "s1", "title": {"de": "Anliegen"}, "questions": [{"id": "q1", "field": "title"}]}]}`},
+	"core.portal_notice": {"target_type": "probe.probe", "query": "", "text_field": "title", "active": false},
 }
 
 // sampleValue is a valid value of a field that is not a reference.

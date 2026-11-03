@@ -43,16 +43,16 @@ func TestIncidentDeadlinesOverHTTP(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	api.sla.Now = func() time.Time { return now }
 
-	// The start data: 27 entries of sd (calendar, hours, holidays, reasons to wait), 18 of
-	// incident (nine deadlines, nine rules); a second install creates nothing, nor does it
-	// bring back what the customer deleted.
+	// The start data: 27 entries of sd (calendar, hours, holidays, reasons to wait), 24 of
+	// incident (nine deadlines, nine rules, and since SD5 the six of the major incident); a
+	// second install creates nothing, nor does it bring back what the customer deleted.
 	recs := records.New(api.rt)
 	starter := seed.New(api.rt, recs, api.rules)
 	var pkgs []meta.Package
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 27}, {"../../packages/incident", 18}} {
+	}{{"../../packages/sd", 27}, {"../../packages/incident", 24}} {
 		p := installPackage(t, ctx, api.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -239,7 +239,7 @@ func TestIncidentDeadlinesOverHTTP(t *testing.T) {
 
 	// A new tenant gets its own copy of the start data, rules with its name.
 	res, err := tenant.Create(ctx, api.pool, tenant.Options{Name: "sd3_nord"})
-	if err != nil || res.Started != 45 {
+	if err != nil || res.Started != 51 {
 		t.Fatalf("new tenant: %+v %v", res, err)
 	}
 	var owner string

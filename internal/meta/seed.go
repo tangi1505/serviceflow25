@@ -21,8 +21,10 @@ import (
 //
 // A package brings start data below data/*.yaml: calendars, deadlines, reasons to wait as
 // records of a type, escalation levels as rules. Each entry has a key of the package; a value
-// "@key" names an entry before it, "@package.key" one of a package this one depends on. The
-// core creates them once per tenant and then leaves them to the customer (internal/seed).
+// "@key" names an entry before it, "@package.key" one of a package this one depends on, and
+// "<package.type>:@key" names it as the recipient of a notification ("core.group:@verteiler",
+// SD5). The core creates them once per tenant and then leaves them to the customer
+// (internal/seed).
 
 // Seed is one entry of the start data: a record of Type with Values, or a Rule.
 type Seed struct {
@@ -32,16 +34,38 @@ type Seed struct {
 	Rule   map[string]any `json:"rule,omitempty" yaml:"rule"`
 }
 
-// SeedRef splits a value that names another entry: "@key" or "@package.key".
+// SeedRef splits a value that names another entry: "@key" or "@package.key", also after the
+// type of a recipient, "core.group:@key".
 func SeedRef(v any) (pkg, key string, ok bool) {
-	s, isText := v.(string)
-	if !isText || !strings.HasPrefix(s, "@") {
+	_, ref, ok := seedRef(v)
+	if !ok {
 		return "", "", false
 	}
-	if p, k, dotted := strings.Cut(s[1:], "."); dotted {
+	if p, k, dotted := strings.Cut(ref, "."); dotted {
 		return p, k, true
 	}
-	return "", s[1:], true
+	return "", ref, true
+}
+
+// seedRef splits a reference into the type before it ("core.group:"; empty for a plain "@")
+// and the name after the "@".
+func seedRef(v any) (prefix, ref string, ok bool) {
+	s, isText := v.(string)
+	if !isText {
+		return "", "", false
+	}
+	if strings.HasPrefix(s, "@") {
+		return "", s[1:], true
+	}
+	head, ref, found := strings.Cut(s, ":@")
+	if !found {
+		return "", "", false
+	}
+	pkg, name, dotted := strings.Cut(head, ".")
+	if !dotted || !IsIdent(pkg) || !IsIdent(name) {
+		return "", "", false
+	}
+	return head + ":", ref, true
 }
 
 // loadData reads data/*.yaml in the order of the file names, each a list of entries.
@@ -164,5 +188,6 @@ func ResolveSeedRefs(v any, pkg string, ids map[string]string) (any, error) {
 	if !found {
 		return nil, fmt.Errorf("%v names %s.%s, which is not there", v, p, key)
 	}
-	return id, nil
+	prefix, _, _ := seedRef(v)
+	return prefix + id, nil
 }

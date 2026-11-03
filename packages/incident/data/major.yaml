@@ -1,0 +1,66 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The major incident (SD5, SD-Plan N3; IP19) as start data each tenant changes: whom declaring
+# tells, when one is declared by itself, that the incidents belonging to it are resolved with
+# it, the mail to the requesters on a solution and the notice in the portal.
+
+# The distribution list: the administration keeps its members; each gets the mail.
+- key: verteiler
+  type: core.group
+  values:
+    name: Major-Incident-Verteiler
+    purpose: Bekommt die Mail, wenn eine Störung zum Major Incident erklärt wird.
+- key: major_mail
+  rule:
+    label: {de: Major Incident an den Verteiler, en: Major incident to the distribution list}
+    type_name: incident.incident
+    trigger: update
+    mode: after
+    condition: record.major == true && "major" in changed
+    actions:
+      - notify: {to: ["core.group:@verteiler"], message: "Die Störung ist zum Major Incident erklärt worden."}
+# Declared by itself for priority 1; delivered switched off, the tenant switches it on and
+# changes the condition.
+- key: major_p1
+  rule:
+    label: {de: P1 automatisch zum Major Incident, en: P1 declared a major incident by itself}
+    type_name: incident.incident
+    trigger: create
+    mode: after
+    condition: record.priority == 1 && record.major != true
+    enabled: false
+    actions:
+      - transition:
+          name: declare_major
+          fields: {public_note: "Wir kennen die Störung und arbeiten an der Lösung. Sie müssen sie nicht melden."}
+          comment: "Automatisch erklärt: Priorität 1."
+# Resolved together: the incidents belonging to a major incident take its solution.
+- key: major_solve
+  rule:
+    label: {de: Zugehörige Störungen mitlösen, en: Resolve the incidents belonging to it}
+    type_name: incident.incident
+    trigger: update
+    mode: after
+    condition: record.major == true && record.state == "resolved" && "state" in changed
+    actions:
+      - related: {kind: incident.part_of, direction: in, transition: resolve, copy: [solution, solution_kind]}
+# The requester hears of the solution, also of one that came with the major incident.
+- key: solved_mail
+  type: core.notification
+  values:
+    name: Störung gelöst
+    target_type: incident.incident
+    events: transition
+    condition: record.state == "resolved"
+    recipients: actors.requester
+    subject: "Ihre Störung {{record.number}} ist gelöst"
+    body: "„{{title}}“ ist gelöst. Die Lösung steht in der Störung; bitte bestätigen Sie sie oder lehnen Sie sie ab: {{link}}"
+# Under "Aktuell" in the portal: the open major incidents with their message.
+- key: aktuell
+  type: core.portal_notice
+  values:
+    name: Offene Major Incidents
+    target_type: incident.incident
+    query: '{"and": [{"field": "major", "eq": true}, {"field": "state", "in": ["new", "in_progress", "waiting"]}]}'
+    text_field: public_note

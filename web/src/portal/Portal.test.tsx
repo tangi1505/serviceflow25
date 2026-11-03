@@ -55,6 +55,47 @@ describe("Portal", () => {
     await waitFor(() => expect(list.router.state.location.pathname).toBe("/portal"));
   });
 
+  // SD5: the band "Aktuell" under the head, on every page of the portal, its message cut to
+  // one line until "Mehr" opens it; nothing when no notice names a record.
+  it("shows what is going on in a band under the head", async () => {
+    const user = userEvent.setup();
+    state.workplace = false;
+    state.notices = [
+      {
+        notice: "01a15a3c-8545-7691-b780-a00000000081",
+        type_name: "incident.incident",
+        id: "01a15a3c-8545-7691-b780-a00000000082",
+        text: "Die Vorgangsbearbeitung ist nicht erreichbar. Wir arbeiten daran.",
+        state: "in_progress",
+        state_label: { de: "In Arbeit", en: "In progress" },
+        since: "2026-11-03T07:12:00Z",
+        updated_at: "2026-11-03T08:40:00Z",
+      },
+    ];
+    const { container } = renderAt("/portal");
+    const band = await screen.findByRole("region", { name: "Aktuell" });
+    expect(within(band).getByText(/Die Vorgangsbearbeitung ist nicht erreichbar/)).toHaveClass(
+      "truncate",
+    );
+    expect(within(band).getByText(/seit .* · In Arbeit/)).toBeInTheDocument();
+    const more = within(band).getByRole("button", { name: "Mehr" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    await user.click(more);
+    expect(within(band).getByRole("button", { name: "Weniger" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(within(band).getByText(/Die Vorgangsbearbeitung/)).not.toHaveClass("truncate");
+    await expectAccessible(container);
+  });
+
+  it("has no band without notices", async () => {
+    state.workplace = false;
+    renderAt("/portal");
+    await screen.findByRole("heading", { name: "Meine Vorgänge" });
+    expect(screen.queryByRole("region", { name: "Aktuell" })).toBeNull();
+  });
+
   it("creates as requester with the fields of the portal and answers in the timeline", async () => {
     const user = userEvent.setup();
     state.workplace = false;

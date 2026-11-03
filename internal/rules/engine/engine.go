@@ -96,7 +96,7 @@ type Rule struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 
-// Action is one thing a rule does; exactly one of the five is set.
+// Action is one thing a rule does; exactly one of the six is set.
 type Action struct {
 	// Set gives fields values (API shape).
 	Set map[string]any `json:"set,omitempty"`
@@ -108,12 +108,30 @@ type Action struct {
 	Notify *Notify `json:"notify,omitempty"`
 	// Transition moves the record along its state model (after the write only; WF11).
 	Transition *Move `json:"transition,omitempty"`
+	// Related moves the records linked to this one (after the write only; SD5).
+	Related *Related `json:"related,omitempty"`
 }
 
-// Move is a transition a rule makes, with the fields it sets on the way (WF2).
+// Move is a transition a rule makes, with the fields it sets on the way (WF2) and the text a
+// transition with a comment takes (SD5).
 type Move struct {
-	Name   string         `json:"name"`
-	Fields map[string]any `json:"fields,omitempty"`
+	Name    string         `json:"name"`
+	Fields  map[string]any `json:"fields,omitempty"`
+	Comment string         `json:"comment,omitempty"`
+}
+
+// Related moves the records linked to this one by a relation kind along a transition of
+// theirs (SD5, SD-Plan N3): direction "in" for the records that point at this one (the
+// incidents that belong to a major incident), "out" for those it points at. Copy takes fields
+// of this record along under the same names, Fields sets fixed values. A linked record whose
+// state does not allow the transition, or whose type has none of that name, stays as it is.
+type Related struct {
+	Kind       string         `json:"kind"`
+	Direction  string         `json:"direction"`
+	Transition string         `json:"transition"`
+	Copy       []string       `json:"copy,omitempty"`
+	Fields     map[string]any `json:"fields,omitempty"`
+	Comment    string         `json:"comment,omitempty"`
 }
 
 // Assign names a role and its holders; Add keeps the holders the record has.
@@ -647,12 +665,15 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 		if a.Transition != nil {
 			n++
 		}
+		if a.Related != nil {
+			n++
+		}
 		if n != 1 {
-			add(where, "type", "an action is exactly one of set, assign, create, notify or transition")
+			add(where, "type", "an action is exactly one of set, assign, create, notify, transition or related")
 			continue
 		}
-		if r.Mode == ModeBefore && (a.Create != nil || a.Notify != nil || a.Transition != nil) {
-			add(where, "type", "before the write a rule can only set and assign; create, notify and transition run after")
+		if r.Mode == ModeBefore && (a.Create != nil || a.Notify != nil || a.Transition != nil || a.Related != nil) {
+			add(where, "type", "before the write a rule can only set and assign; create, notify, transition and related run after")
 		}
 		if err != nil {
 			continue
@@ -685,6 +706,22 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 			} else if len(a.Transition.Fields) > 0 {
 				if err := e.rec.CheckValues(ctx, r.TypeName, a.Transition.Fields, false); err != nil {
 					add(where, "invalid", "%v", err)
+				}
+			}
+		case a.Related != nil:
+			rel := a.Related
+			if !strings.Contains(rel.Kind, ".") {
+				add(where, "required", "related needs the kind of the relation, as <package>.<name>")
+			}
+			if rel.Direction != "in" && rel.Direction != "out" {
+				add(where, "type", "related: direction must be in or out")
+			}
+			if rel.Transition == "" {
+				add(where, "required", "related needs the transition of the linked records")
+			}
+			for _, name := range rel.Copy {
+				if _, ok := t.Field(name); !ok {
+					add(where, "unknown", "related: copy: %q is not a field of %s", name, r.TypeName)
 				}
 			}
 		case a.Notify != nil:

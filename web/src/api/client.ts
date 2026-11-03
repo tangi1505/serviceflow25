@@ -36,6 +36,7 @@ export type OrgSetting = components["schemas"]["OrgSetting"];
 export type PresenceEntry = components["schemas"]["Presence"]["others"][number];
 // A form (UI11): sections with questions, bound to fields of the target type or free.
 export type FormOffer = components["schemas"]["FormOffer"];
+export type PortalNotice = components["schemas"]["PortalNotice"];
 export type FormDefinition = components["schemas"]["FormDefinition"];
 export type FormSection = components["schemas"]["FormSection"];
 export type FormQuestion = components["schemas"]["FormQuestion"];
@@ -374,6 +375,8 @@ export const api = {
     ),
   // forms are the forms offered to the session (UI11): it may create their target type.
   forms: async () => unwrap(await client.GET("/api/v1/forms")),
+  // portalNotices is what the portal shows under "Aktuell" (SD5).
+  portalNotices: async () => unwrap(await client.GET("/api/v1/portal/notices")),
   form: async (formId: string) =>
     unwrap(await client.GET("/api/v1/forms/{formId}", { params: { path: { formId } } })),
   // submitForm creates the record of a form; problems name the question ids.

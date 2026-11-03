@@ -10,7 +10,9 @@
 // fields the type names, and a lean page per record with the public timeline. What a person
 // may read and change the API decides with the rights at the records; the portal only shows
 // less. Agents reach it too, to see what users see. The forms (UI11) are offered to whoever may
-// create their target type; filling one in creates its record.
+// create their target type; filling one in creates its record. Under the head a band shows
+// what is going on, such as an open major incident, on every page of the portal (SD5); the
+// cards of the start page stand side by side where there is room.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -27,6 +29,7 @@ import {
   type Field,
   type FormOffer,
   type Label,
+  type PortalNotice,
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
@@ -103,10 +106,69 @@ export function PortalShell() {
           </Button>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-4xl flex-1 p-6">
+      <Notices />
+      <main className="mx-auto w-full max-w-6xl flex-1 p-6">
         <Outlet />
       </main>
     </div>
+  );
+}
+
+const noticesQuery = {
+  queryKey: ["portal", "notices"],
+  queryFn: api.portalNotices,
+  staleTime: 60_000,
+  refetchInterval: 60_000,
+};
+
+// Notices is the band "Aktuell" (SD5, variant A of the mockup): one line per record a notice
+// of the tenant names, its message cut to one line until "Mehr" opens it.
+function Notices() {
+  const { t } = useTranslation();
+  const notices = useQuery(noticesQuery);
+  if (!notices.data || notices.data.length === 0) {
+    return null;
+  }
+  return (
+    <section
+      aria-label={t("portal.current")}
+      className="border-b border-warning-border bg-warning-background text-foreground"
+    >
+      <ul className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-6 py-2">
+        {notices.data.map((n) => (
+          <Notice key={n.notice + n.id} notice={n} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Notice({ notice }: { notice: PortalNotice }) {
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const textId = `notice-${notice.id}`;
+  const state = notice.state_label
+    ? labelOf(notice.state_label, i18n.language, notice.state ?? "")
+    : notice.state;
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+      <p id={textId} className={open ? "min-w-0 flex-1" : "min-w-0 flex-1 truncate"}>
+        <b className="font-semibold">{t("portal.current")}:</b> {notice.text}
+      </p>
+      <span className="text-muted-foreground">
+        {t("portal.since", { time: formatMoment(notice.since, i18n.language) })}
+        {state ? ` · ${state}` : ""}
+      </span>
+      <button
+        type="button"
+        className="underline"
+        aria-expanded={open}
+        aria-controls={textId}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? t("portal.less") : t("portal.more")}
+      </button>
+    </li>
   );
 }
 
@@ -237,14 +299,17 @@ export function PortalHome() {
   const { t } = useTranslation();
   const types = useQuery(typesQuery);
   const offered = (types.data ?? []).filter((x) => x.portal);
+  // Side by side where each card keeps 22.5 rem, below each other on a phone (SD5).
   return (
     <div className="flex flex-col gap-6">
-      <Forms />
       <h1 className="text-2xl font-semibold">{t("portal.mine")}</h1>
       {types.isSuccess && offered.length === 0 && <p>{t("portal.nothing")}</p>}
-      {offered.map((type) => (
-        <MyRecords key={qualifiedName(type)} type={type} />
-      ))}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22.5rem),1fr))] items-start gap-4">
+        {offered.map((type) => (
+          <MyRecords key={qualifiedName(type)} type={type} />
+        ))}
+        <Forms />
+      </div>
     </div>
   );
 }

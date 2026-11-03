@@ -42,6 +42,19 @@ fields:
     type: reference
     label: {de: Wartegrund, en: Reason to wait}
     to: core.wait_reason
+  # A major incident (SD5, SD-Plan N3): declared by its transition, with a message for the
+  # users that the portal shows under "Aktuell" as long as it is open.
+  - name: major
+    type: boolean
+    label: {de: Major Incident, en: Major incident}
+    default: false
+  - name: public_note
+    type: text
+    label: {de: Mitteilung an Anwender, en: Message to the users}
+    description:
+      de: Steht im Portal unter „Aktuell“, solange der Major Incident offen ist.
+      en: Shown in the portal under "Aktuell" while the major incident is open.
+    max_length: 1000
 states:
   - {name: new, label: {de: Neu, en: New}, initial: true, category: open}
   - {name: in_progress, label: {de: In Arbeit, en: In progress}, category: active}
@@ -53,6 +66,14 @@ transitions:
   - {name: wait, label: {de: Warten, en: Wait}, from: [in_progress], to: waiting}
   - {name: resume, label: {de: Fortsetzen, en: Resume}, from: [waiting], to: in_progress}
   - {name: resolve, label: {de: Lösen, en: Resolve}, from: [new, in_progress, waiting], to: resolved}
+  # Declaring a major incident (SD5): with its reason as an entry, and the message to the users
+  # set before; the rules of the start data tell the distribution list.
+  - name: declare_major
+    label: {de: Zum Major Incident erklären, en: Declare a major incident}
+    from: [new, in_progress, waiting]
+    to: in_progress
+    comment: required
+    set: {major: true}
   # Reopened only from resolved; closed is final (SD-Plan E5).
   - {name: reopen, label: {de: Wieder öffnen, en: Reopen}, from: [resolved], to: in_progress}
   - {name: close, label: {de: Schließen, en: Close}, from: [resolved], to: closed}
@@ -76,6 +97,8 @@ field_states:
     required: [solution, solution_kind]
   - states: [waiting]
     required: [wait_reason]
+  - when: record.major == true
+    required: [public_note]
   - states: [closed]
     read_only: ["*"]
 # In the portal (UI10): a person reports with title, description and category, and answers.

@@ -38,6 +38,7 @@ import (
 	"group24.de/itsm/internal/httpapi/gen"
 	"group24.de/itsm/internal/jobs"
 	"group24.de/itsm/internal/org"
+	"group24.de/itsm/internal/portal"
 	"group24.de/itsm/internal/prefs"
 	"group24.de/itsm/internal/presence"
 	"group24.de/itsm/internal/query"
@@ -105,6 +106,8 @@ type Options struct {
 	Prefs *prefs.Service
 	// Forms offers and submits the forms (UI11); nil answers 503.
 	Forms *forms.Service
+	// Portal reads the notices under "Aktuell" (SD5); nil answers 503.
+	Portal *portal.Service
 	// Customer keeps the customer layer of the types (PL43); nil answers 503.
 	Customer *customer.Service
 	// Rules keeps the rules "if, then" (WF4); nil answers 503 on /api/v1/rules.

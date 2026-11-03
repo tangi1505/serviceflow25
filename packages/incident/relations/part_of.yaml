@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# An incident that belongs to a major incident (SD5, SD-Plan N3; IP19): the reports of the users
+# hang under the one incident that is worked on, and are resolved with it (start data rule
+# incident_major_solve).
+name: part_of
+label: {de: gehört zu, en: part of}
+inverse: {de: umfasst, en: includes}
+description:
+  de: Die Störung gehört zu dieser Störung, meist einem Major Incident, und wird mit ihr gelöst.
+  en: The incident belongs to this incident, mostly a major incident, and is resolved with it.
+from: ["incident.incident"]
+to: ["incident.incident"]

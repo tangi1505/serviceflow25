@@ -43,6 +43,7 @@ import (
 	"group24.de/itsm/internal/notify"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/platform"
+	"group24.de/itsm/internal/portal"
 	"group24.de/itsm/internal/prefs"
 	"group24.de/itsm/internal/presence"
 	"group24.de/itsm/internal/query"
@@ -236,7 +237,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		notifySvc.Register(js)
 		ev.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
 	}
-	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec))
+	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec))
 	after := rec.AfterWrite
 	rec.AfterWrite = func(ctx context.Context, typeName string) {
 		after(ctx, typeName)
@@ -300,6 +301,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Presence:   presence.New(kv),
 		Prefs:      prefs.New(rt, rec, orgSvc.Setting),
 		Forms:      forms.New(rec),
+		Portal:     portal.New(rec),
 		Customer:   customer.New(rt, rec, logger),
 		Bulk:       bulkAsync,
 		Export:     exportSvc,

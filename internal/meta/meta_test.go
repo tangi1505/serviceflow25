@@ -239,3 +239,37 @@ func TestStoreRoundTripAndPrune(t *testing.T) {
 		t.Fatalf("stored type not readable: %+v", types)
 	}
 }
+
+// A transition sets fixed values (SD5): fields of the type, of their kind; not on a transition
+// a role takes, which sets no fields.
+func TestTransitionSetsFixedValues(t *testing.T) {
+	p := pkg(t, map[string]string{"probe": `name: probe
+label: {de: Probe, en: Probe}
+fields:
+  - {name: title, type: text, label: {de: Titel, en: Title}}
+  - {name: major, type: boolean, label: {de: M, en: M}}
+traits: [actors]
+actors:
+  - {name: requester, label: {de: A, en: R}, to: [core.person]}
+states:
+  - {name: open, label: {de: O, en: O}, initial: true}
+  - {name: done, label: {de: D, en: D}}
+transitions:
+  - {name: declare, label: {de: E, en: D}, from: [open], to: open, set: {major: true}}
+  - {name: odd, label: {de: X, en: X}, from: [open], to: done, set: {nope: 1, major: "ja"}}
+  - {name: mine, label: {de: X, en: X}, from: [open], to: done, by: [requester], set: {major: true}}
+`})
+	all := strings.Join(problems(t, Validate(p, nil)), "\n")
+	for _, w := range []string{
+		`set: "nope" is not a field that can be set`,
+		`set: major: default must be`,
+		`a transition taken by a role sets no fields`,
+	} {
+		if !strings.Contains(all, w) {
+			t.Errorf("missing problem %q in:\n%s", w, all)
+		}
+	}
+	if strings.Contains(all, "transition declare") {
+		t.Errorf("declare is fine: %s", all)
+	}
+}

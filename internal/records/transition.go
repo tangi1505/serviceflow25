@@ -170,6 +170,17 @@ func (s *Service) Transition(ctx context.Context, typeName string, id uuid.UUID,
 		}
 		ctx = system
 	}
+	// The fixed values of the transition win over what the caller sends (SD5).
+	if len(tr.Set) > 0 {
+		merged := make(map[string]any, len(fields)+len(tr.Set))
+		for k, v := range fields {
+			merged[k] = v
+		}
+		for k, v := range tr.Set {
+			merged[k] = v
+		}
+		fields = merged
+	}
 	return s.update(ctx, t, id, expectedVersion, fields, actor, nil, &tr)
 }
 

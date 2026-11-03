@@ -117,3 +117,27 @@ func TestRelationKindNamesATrait(t *testing.T) {
 		t.Fatalf("marks links %s only from the tagged type", marks.Name)
 	}
 }
+
+// A name after the type of a recipient (SD5): "core.group:@verteiler" becomes
+// "core.group:<id>"; a text with a colon before an "@" stays text.
+func TestSeedRefAfterARecipientType(t *testing.T) {
+	ids := map[string]string{"incident.verteiler": "g-1", "sd.liste": "l-2"}
+	for in, want := range map[string]any{
+		"core.group:@verteiler": "core.group:g-1",
+		"core.group:@sd.liste":  "core.group:l-2",
+		"@verteiler":            "g-1",
+		"Kontakt:@verteiler":    "Kontakt:@verteiler",
+		"Mail an x:@y":          "Mail an x:@y",
+	} {
+		got, err := ResolveSeedRefs(in, "incident", ids)
+		if err != nil || got != want {
+			t.Errorf("%q: %v %v, want %v", in, got, err, want)
+		}
+	}
+	if p, k, ok := SeedRef("core.group:@sd.liste"); !ok || p != "sd" || k != "liste" {
+		t.Errorf("SeedRef: %q %q %v", p, k, ok)
+	}
+	if _, err := ResolveSeedRefs("core.group:@fehlt", "incident", ids); err == nil {
+		t.Error("an unknown name after a type resolved")
+	}
+}

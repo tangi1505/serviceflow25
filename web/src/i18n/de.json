@@ -362,7 +362,11 @@
     "toPortal": "Zum Portal",
     "forms": "Formulare",
     "formUnknown": "Dieses Formular gibt es nicht oder nicht für Sie.",
-    "sent": "Danke, „{{title}}“ ist angelegt."
+    "sent": "Danke, „{{title}}“ ist angelegt.",
+    "current": "Aktuell",
+    "since": "seit {{time}}",
+    "more": "Mehr",
+    "less": "Weniger"
   },
   "builder": {
     "section": "Abschnitt {{n}}",

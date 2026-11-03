@@ -1904,6 +1904,24 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/FormOffer" }
         "401": { $ref: "#/components/responses/Problem" }
+  /api/v1/portal/notices:
+    get:
+      operationId: listPortalNotices
+      summary: What the portal shows under "Aktuell" (SD5)
+      description: >-
+        The records the active notices of the tenant (core.portal_notice) name, each with its
+        text field, state and times; whoever is signed in reads them, the records themselves
+        stay unreadable otherwise.
+      tags: [forms]
+      responses:
+        "200":
+          description: the records, notice by notice, the newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PortalNotice" }
+        "401": { $ref: "#/components/responses/Problem" }
   /api/v1/forms/{formId}:
     get:
       operationId: getForm
@@ -3663,9 +3681,23 @@ components:
         job_id: { type: integer, format: int64 }
         attempts: { type: integer }
         error: { type: string }
+    PortalNotice:
+      type: object
+      required: [notice, type_name, id, text, since, updated_at]
+      properties:
+        notice: { type: string, format: uuid, description: the core.portal_notice that shows it }
+        type_name: { type: string }
+        id: { type: string, format: uuid }
+        text: { type: string, description: the value of the text field the notice names }
+        state: { type: string }
+        state_label:
+          type: object
+          additionalProperties: { type: string }
+        since: { type: string, format: date-time, description: created_at of the record }
+        updated_at: { type: string, format: date-time }
     RuleAction:
       type: object
-      description: exactly one of set, assign, create, notify, transition
+      description: exactly one of set, assign, create, notify, transition, related
       properties:
         set:
           type: object
@@ -3712,6 +3744,28 @@ components:
               type: object
               additionalProperties: true
               description: fields the transition sets, as in a transition with fields (WF2)
+            comment: { type: string, description: "the text a transition with a comment takes (SD5)" }
+        related:
+          type: object
+          required: [kind, direction, transition]
+          description: >-
+            after the write only (SD5): moves the records linked by the relation kind along their
+            transition; a linked record whose state does not allow it stays as it is
+          properties:
+            kind: { type: string, description: "relation kind, e.g. incident.part_of" }
+            direction:
+              type: string
+              enum: [in, out]
+              description: in for the records that point at this one, out for those it points at
+            transition: { type: string }
+            copy:
+              type: array
+              items: { type: string }
+              description: fields of this record taken along under the same names
+            fields:
+              type: object
+              additionalProperties: true
+            comment: { type: string }
     RuleInput:
       type: object
       required: [type_name, trigger, mode, actions]

@@ -23,6 +23,7 @@ import type {
   Transition,
   FieldStates,
   FormOffer,
+  PortalNotice,
   Permission,
   RecordData,
   Relation,
@@ -333,6 +334,7 @@ export type FakeState = {
   others?: { account: string; name: string; editing: boolean; since: string; at: string }[];
   // forms are the forms offered to the session (UI11); formRecords the records of core.form.
   forms?: FormOffer[];
+  notices?: PortalNotice[];
   formRecords?: RecordData[];
   // tenants are the tenants the session may switch between (PL44); tenant the one it is in.
   tenants?: { path: string; label: Record<string, string> }[];
@@ -862,6 +864,9 @@ export function fakeApi(state: FakeState) {
     }
     if (url.pathname === "/api/v1/forms") {
       return json(200, state.forms ?? []);
+    }
+    if (url.pathname === "/api/v1/portal/notices") {
+      return json(200, state.notices ?? []);
     }
     const form = url.pathname.match(/^\/api\/v1\/forms\/([^/:]+)(:submit)?$/);
     if (form) {

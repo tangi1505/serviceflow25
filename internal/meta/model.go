@@ -186,6 +186,9 @@ type Transition struct {
 	// Comment "required" makes the transition take a text, kept as an entry at the record in
 	// the same write (SD-Plan N8; the reason of a refused solution); "optional" offers it.
 	Comment string `json:"comment,omitempty" yaml:"comment"`
+	// Set gives fields fixed values in the same write (SD5): declaring a major incident sets
+	// "major" to true. They win over the fields the caller sends.
+	Set map[string]any `json:"set,omitempty" yaml:"set"`
 	// Disabled is set by the customer layer (UI26.1): the transition stays in the definition
 	// but is neither offered nor executed.
 	Disabled bool `json:"disabled,omitempty" yaml:"-"`

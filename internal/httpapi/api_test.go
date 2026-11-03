@@ -41,6 +41,7 @@ import (
 	"group24.de/itsm/internal/notify"
 	"group24.de/itsm/internal/notify/smtptest"
 	"group24.de/itsm/internal/org"
+	"group24.de/itsm/internal/portal"
 	"group24.de/itsm/internal/prefs"
 	"group24.de/itsm/internal/presence"
 	"group24.de/itsm/internal/query"
@@ -295,7 +296,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 			t.Fatal(err)
 		}
 	}
-	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs))
+	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs))
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {
 		list, err := ruleEngine.Levels(ctx, typeName, id)
 		out := make([]sla.Level, len(list))
@@ -310,7 +311,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 		slaSvc.Wrote(ctx, typeName)
 	}
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(rt, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs), Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(rt, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs), Portal: portal.New(recs), Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
 		Calendars: calendars, SLA: slaSvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

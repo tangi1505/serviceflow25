@@ -34,7 +34,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD2** | Paket `incident`: Typ Störung mit Merkmal `ticket`; Priorität P1 bis P4 als berechnetes Feld aus Auswirkung und Dringlichkeit; Statusmodell Neu, In Arbeit, Wartet, Gelöst, Geschlossen mit Wiedereröffnen; Lösung mit Lösungsart, Bestätigen oder Ablehnen durch den Anforderer; Pflichtfelder je Status. Die laufende Nummer kommt mit Kern-Plan PL49 dazu (§2.3, N1) (E3, E5; Inventar G36, G38, G42; IP19; Kern-Bedarf N7, N8) | 🟢 | 3 d | Störung mit Auswirkung „mehrere Personen“ und Dringlichkeit „hoch“ → P2; „Lösen“ ohne Lösungstext → 422 am Feld `solution`; der Anforderer lehnt die Lösung im Portal ab → wieder „In Arbeit“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD3** | Fristen der Störung: Reaktion und Lösung je Priorität mit Kalender der Servicezeit, Eskalation an die Teamleitung bei 80 %, Wartegründe halten die Uhr an, automatisch schließen fünf Arbeitstage nach „Gelöst“; baut auf WF8 bis WF12 (E3; IP19) | 🟢 | 2 d | P1 um 08:00 anlegen → Lösungsfrist nach Kalender; „Wartet“ mit Grund „Rückmeldung Anforderer“ hält die Uhr an; mit Testzeit bei 80 % eine Mail an die Teamleitung in Mailpit; nach fünf Arbeitstagen „Gelöst“ → „Geschlossen“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD4** | Betroffene Elemente und Bezüge: Beziehungsart „betrifft“ von Störung und Anfrage zu jedem Typ; „Duplikat von“ und „verwandt“ aus `core`; Verträge kommen mit CM (Inventar G49, G50) | 🟢 | 1,5 d | An einer Störung einen Datensatz eines beliebigen Typs als betroffen verknüpfen → steht in den Bezügen beider Seiten; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD5** | Major Incident: Übergang „zum Major Incident erklären“ mit Begründung, Mail an einen Verteiler, untergeordnete Störungen verknüpfen und mit dem Major Incident gemeinsam lösen, Hinweis im Portal (IP19; N3) | ⬜ | 1,5 d | Störung zum Major Incident erklären → Mail an den Verteiler; drei Störungen unterordnen, den Major Incident lösen → alle drei gelöst mit derselben Lösung, je eine Mail an ihre Anforderer; der Hinweis steht im Portal unter „Aktuell“; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD5** | Major Incident: Übergang „zum Major Incident erklären“ mit Begründung, Mail an einen Verteiler, untergeordnete Störungen verknüpfen und mit dem Major Incident gemeinsam lösen, Hinweis im Portal (IP19; N3) | 🟢 | 1,5 d | Störung zum Major Incident erklären → Mail an den Verteiler; drei Störungen unterordnen, den Major Incident lösen → alle drei gelöst mit derselben Lösung, je eine Mail an ihre Anforderer; der Hinweis steht im Portal unter „Aktuell“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD6** | Paket `request`: Typ Anfrage mit Merkmal `ticket`, Statusmodell mit Genehmigung, Erfüllungsaufgaben aus einer Vorlage, wiederkehrende Anfragen, Fristen wie SD3; baut auf WF6, WF13, WF14 (Inventar G36; IP30) | 🔒 WF6 | 1,5 d | Anfrage mit zweistufiger Genehmigung → nach beiden Zustimmungen entstehen zwei Aufgaben für die Gruppe; eine Ablehnung schließt die Anfrage mit Grund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### B — Arbeitsplatz und Kanäle
@@ -148,7 +148,7 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | --- | --- | --- | --- |
 | **N1** | Laufende Nummer je Typ mit Präfix, etwa `INC-24817` | Der Kern kennt die Feldtypen text, number, boolean, date, datetime, choice und reference (`internal/meta/model.go:49` bis `:57`), keinen Nummernkreis | Feldtyp `sequence` mit Präfix, fortlaufend je Typ und Mandant: Kern-Plan PL49 (1 d), steht vor SD2 |
 | **N2** | Zugang ohne Anmeldung für anonyme Formulare | Ohne Sitzung erreichbar sind nur Version, Anmeldung und Token (`internal/httpapi/auth.go:37`) | ein eigener Endpunkt nur zum Abrufen und Absenden freigegebener Formulare, mit Captcha und Ratenbegrenzung; gebaut in SD15 |
-| **N3** | Gemeinsam lösen in SD5 | Nicht geprüft, ob eine Regel einen Übergang an verknüpften Datensätzen auslösen kann | in SD5 klären; sonst über `:batch` (Hauptplan E126) aus der Oberfläche |
+| **N3** | Gemeinsam lösen in SD5 | Gebaut in SD5 (Hauptplan E163): Regelaktion `related` bewegt die verknüpften Datensätze einer Beziehungsart; dazu feste Werte am Übergang (`set`) und ein Text für den Übergang einer Regel | erledigt |
 | **N4** | Mail hinein | Kein Paket im Kern holt Mail ab; Mailpit im Profil `mail` kann nur SMTP (`compose.yaml:135`) | neues Paket `internal/mailin`; IMAP-Bibliothek und Testserver wählt SD11 nach Lizenzprüfung (PL29) |
 | **N5** | Sichtbarkeit von Listeneinträgen je Organisationseinheit (E4) | Listeneinträge darf jeder lesen (implizites Lesen, Kern-Plan PL16); der Ort `org_path` eines Eintrags schränkt nichts ein | beim Lesen von Listen nur Einträge, deren Knoten über oder auf dem Knoten der Person liegt; gebaut in SD1 |
 | **N6** | Rollen an Paket-Merkmalen (E4) | Paket-Merkmale (`traits/*.yaml`, Kern-Plan PL17) bündeln nur Felder; Rollen stehen unter `actors:` am Typ (WF3) | Paket-Merkmale dürfen `actors:` mitbringen, der Typ bekommt sie dazu; gebaut in SD1 |
@@ -184,7 +184,7 @@ Daraus sind die Frage Hauptplan V37 und die Aufgabe Hauptplan H15 entstanden.
 
 | # | Frage | Hängt daran |
 | --- | --- | --- |
-| **V1** 🟡 | Gemeinsam lösen beim Major Incident: als Regelaktion im Kern oder als Massenaktion aus der Oberfläche (N3)? Klärt die Umsetzung in SD5 | SD5 |
+| **V1** ✅ | Gemeinsam lösen beim Major Incident: als Regelaktion im Kern oder als Massenaktion aus der Oberfläche (N3)? Klärt die Umsetzung in SD5 | SD5 |
 | **V2** 🟡 | Welche IMAP-Bibliothek und welcher Testserver, beide mit erlaubter Lizenz (PL29)? Klärt die Umsetzung in SD11 | SD11 |
 
 Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mailsystem), V30
@@ -193,6 +193,63 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD5 — Major Incident, 2026-11-03
+
+- **Grundlage:** N3 dieses Plans, V1; Hauptplan E163; deine Entscheidungen vom 2026-11-03:
+  allgemeine Bausteine im Kern, der Major Incident selbst als Standard im Paket, den jeder
+  Mandant ändert; Erklären von Hand, eine Regel für automatisches Erklären ausgeschaltet dabei;
+  Verteiler als Gruppe; gemeinsames Lösen als Regelaktion im Kern; im Portal Variante A des
+  Mockups „Aktuell im Portal“ ([Artifact](https://claude.ai/artifact/Czt6iSNDdYvCFTLYkHMVmY)):
+  ein Band unter dem Kopf, die Karten der Startseite nebeneinander, wo Platz ist.
+- **Gebaut:**
+  - Kern, Workflow: ein Übergang setzt feste Werte (`set`, `meta.Transition.Set`), die über den
+    Feldern des Aufrufs stehen; `meta.Validate` prüft Feld und Art, ein Übergang einer Rolle
+    (`by`) setzt keine.
+  - Kern, Regeln: Aktion `related` (Art, Richtung `in` oder `out`, Übergang, `copy` von Feldern,
+    feste Werte, Text) bewegt die verknüpften Datensätze; einer, dessen Status den Übergang
+    nicht erlaubt, bleibt, wie er ist. Der Übergang einer Regel nimmt einen Text (`comment`).
+  - Kern, Startdaten: `<paket.typ>:@schlüssel` nennt einen Eintrag als Empfänger
+    (`core.group:@verteiler`).
+  - Kern, Portal: Typ `core.portal_notice` (Typ, Bedingung als JSON-Abfrage, Textfeld, aktiv)
+    mit Prüfung beim Schreiben (`internal/portal`); `GET /api/v1/portal/notices` liefert jedem
+    Angemeldeten Text, Status und Zeiten der Datensätze, mit den Rechten des Systems im
+    Mandanten.
+  - Paket `incident` 0.3.0: Felder „Major Incident“ und „Mitteilung an Anwender“ (Pflicht, sobald
+    Major Incident); Übergang „Zum Major Incident erklären“ von Neu, In Arbeit und Wartet nach In
+    Arbeit, mit Begründung, setzt „Major Incident“; Beziehungsart `incident.part_of` „gehört zu“
+    / „umfasst“. Startdaten: Gruppe „Major-Incident-Verteiler“, Regel `major_mail` an sie, Regel
+    `major_p1` (P1 automatisch, ausgeschaltet), Regel `major_solve` (zugehörige Störungen mit
+    Lösung und Lösungsart mitlösen), Benachrichtigung „Störung gelöst“ an den Anforderer,
+    Hinweis „Offene Major Incidents“ im Portal.
+  - Portal: Band „Aktuell“ unter dem Kopf auf jeder Seite, je Datensatz eine Zeile mit
+    Mitteilung, seit wann und Status, „Mehr“ klappt den Text auf; Inhalt 1.152 px breit, die
+    Karten der Startseite nebeneinander, wo jede 22,5 rem behält, auf dem Handy untereinander.
+- **Belegt:**
+  - Go `TestMajorIncidentOverHTTP` (eigene Datenbank): Erklären ohne Begründung und ohne
+    Mitteilung 422, mit beiden „Major Incident“ und „In Arbeit“; Mail an das Mitglied des
+    Verteilers; eine Person ohne Recht auf Störungen liest die Störung nicht, sieht aber im
+    Portal genau die Mitteilung mit Status „In Arbeit“, ohne Titel; drei zugehörige Störungen
+    (eine davon in Arbeit) nach dem Lösen gelöst mit derselben Lösung und Lösungsart, je eine
+    Mail an ihre Anforderer; danach ist „Aktuell“ leer.
+  - Go `TestTransitionSetsFixedValues` und `TestSeedRefAfterARecipientType`.
+  - Vitest `Portal.test.tsx` (2 neue Fälle): das Band mit Mitteilung, Zeit und Status, „Mehr“
+    und „Weniger“ mit `aria-expanded`, axe ohne Befund; ohne Hinweis kein Band.
+  - Angepasst: `TestIncidentDeadlinesOverHTTP` zählt 24 statt 18 Startdaten von `incident` und
+    51 statt 45 für einen neuen Mandanten, weil SD5 sechs dazubringt; der Beispieldatensatz der
+    API-Abdeckung bekommt für `core.portal_notice` einen Typ und ein Textfeld, die es gibt.
+  - Ganze CI am 2026-11-03 grün im zweiten Lauf (10:49 min): alle 19 Schritte, 96 Vitest-Fälle,
+    18 Browser-Tests, LZ1 p95 2,92 ms gegen 3,00 ms der Basislinie, LZ13 8.119 gegen 8.214
+    Zeilen/s. Lauf 1 scheiterte nur an LZ13 (7.948 gegen 8.908 Zeilen/s, 11 % weniger, erlaubt
+    10 %); bewertet als Streuung, weil LZ13 schon bei gleichem Code 4 % und 7 % unter der
+    Basislinie lag (PL52) und SD5 den Pfad nicht berührt.
+- **Nicht geprüft:** Kein Browser-Test, weil die CI-Instanz `sd` und `incident` nicht
+  installiert; das Band belegen Vitest und der Go-Test. „Zum Major Incident erklären“ wird auch
+  an einem schon erklärten Major Incident angeboten (eine Bedingung am Übergang prüft den Stand
+  nach dem Setzen und schlösse ihn aus); es ändert dann nichts und schickt keine zweite Mail.
+  Die Mitteilung muss vor dem Erklären im Formular gespeichert sein; einen Dialog mit Feldern am
+  Übergang gibt es noch nicht. Die automatische Regel für P1 ist nur ausgeschaltet geprüft
+  (vorhanden, `enabled: false`).
 
 ### SD4 — Betroffene Elemente und Bezüge, 2026-11-03
 

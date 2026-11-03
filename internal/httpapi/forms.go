@@ -36,6 +36,20 @@ func (s *server) ListForms(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, list)
 }
 
+// ListPortalNotices answers what the portal shows under "Aktuell" (SD5).
+func (s *server) ListPortalNotices(w http.ResponseWriter, r *http.Request) {
+	if s.o.Portal == nil {
+		writeProblem(w, r, http.StatusServiceUnavailable, "unavailable", "the portal notices are not configured", nil)
+		return
+	}
+	list, err := s.o.Portal.Notices(r.Context())
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
 func (s *server) GetForm(w http.ResponseWriter, r *http.Request, formID gen.FormId) {
 	if !s.forms(w, r) {
 		return

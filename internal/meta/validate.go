@@ -414,6 +414,23 @@ func validateStates(add func(string, string, ...any), where string, t Type) {
 		if tr.Comment != "" && tr.Comment != CommentRequired && tr.Comment != CommentOptional {
 			add(tw, "comment %q must be required or optional", tr.Comment)
 		}
+		// Fixed values (SD5): fields of the type that can take them, of their kind.
+		for _, name := range slices.Sorted(maps.Keys(tr.Set)) {
+			f, ok := t.Field(name)
+			if !ok || f.Calculated() {
+				add(tw, "set: %q is not a field that can be set", name)
+				continue
+			}
+			f.Default = tr.Set[name]
+			if msg := checkDefault(f); msg != "" {
+				add(tw, "set: %s: %s", name, msg)
+			} else if f.Type == FieldChoice && !hasOption(f, tr.Set[name]) {
+				add(tw, "set: %s: %v is not an option", name, tr.Set[name])
+			}
+		}
+		if len(tr.Set) > 0 && len(tr.By) > 0 {
+			add(tw, "a transition taken by a role sets no fields")
+		}
 	}
 }
 

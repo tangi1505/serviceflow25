@@ -362,7 +362,11 @@
     "toPortal": "To the portal",
     "forms": "Forms",
     "formUnknown": "This form does not exist or is not for you.",
-    "sent": "Thank you, “{{title}}” has been created."
+    "sent": "Thank you, “{{title}}” has been created.",
+    "current": "Current",
+    "since": "since {{time}}",
+    "more": "More",
+    "less": "Less"
   },
   "builder": {
     "section": "Section {{n}}",

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -288,9 +289,71 @@ func (e *Engine) apply(ctx context.Context, r Rule, typeName string, id uuid.UUI
 		case a.Transition != nil:
 			// A transition the record no longer allows (it moved on meanwhile) is refused and
 			// kept with the failures.
-			if _, err := e.rec.Transition(ctx, typeName, id, a.Transition.Name, a.Transition.Fields, -1, nil); err != nil {
+			move := ctx
+			if a.Transition.Comment != "" {
+				move = records.WithComment(ctx, a.Transition.Comment)
+			}
+			if _, err := e.rec.Transition(move, typeName, id, a.Transition.Name, a.Transition.Fields, -1, nil); err != nil {
 				return refused(r, err)
 			}
+		case a.Related != nil:
+			if err := e.related(ctx, r, typeName, id, a.Related); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// related moves the records linked by the kind along their transition (SD5). The values
+// copied are read after the actions before, so a rule that sets the solution and then solves
+// the linked records hands on the new one.
+func (e *Engine) related(ctx context.Context, r Rule, typeName string, id uuid.UUID, a *Related) error {
+	rec, err := e.rec.Get(ctx, typeName, id)
+	if err != nil {
+		return err
+	}
+	rows, err := queries.New(e.db.Tenant(ctx)).ListRelationsOf(ctx, queries.ListRelationsOfParams{TypeName: typeName, RecordID: id,
+		Outgoing: a.Direction == "out", Incoming: a.Direction == "in", Kind: pgtype.Text{String: a.Kind, Valid: true}})
+	if err != nil {
+		return fmt.Errorf("rules: relations of %s/%s: %w", typeName, id, err)
+	}
+	fields := map[string]any{}
+	for _, name := range a.Copy {
+		fields[name] = rec[name]
+	}
+	for k, v := range a.Fields {
+		fields[k] = v
+	}
+	move := ctx
+	if a.Comment != "" {
+		move = records.WithComment(ctx, a.Comment)
+	}
+	for _, row := range rows {
+		otherType, otherID := row.FromType, row.FromID
+		if a.Direction == "out" {
+			otherType, otherID = row.ToType, row.ToID
+		}
+		t, err := e.rec.Type(ctx, otherType)
+		if err != nil {
+			return err
+		}
+		tr, ok := t.Transition(a.Transition)
+		if !ok {
+			continue
+		}
+		other, err := e.rec.Get(ctx, otherType, otherID)
+		if errors.Is(err, records.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(tr.From, fmt.Sprint(other["state"])) {
+			continue
+		}
+		if _, err := e.rec.Transition(move, otherType, otherID, a.Transition, fields, -1, nil); err != nil {
+			return refused(r, err)
 		}
 	}
 	return nil
