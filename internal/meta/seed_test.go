@@ -83,3 +83,37 @@ func fmtAny(v any) string {
 	})
 	return b.String()
 }
+
+// A relation kind may name a trait instead of a type (SD-Plan N11): it then holds for every
+// type with the trait, its own package's or one of a package depended on.
+func TestRelationKindNamesATrait(t *testing.T) {
+	p, err := LoadFS(fstest.MapFS{
+		"package.yaml":          {Data: []byte(manifest)},
+		"traits/tagged.yaml":    {Data: []byte(taggedTrait)},
+		"types/thing.yaml":      {Data: []byte("name: thing\nlabel: {de: D, en: T}\ntraits: [tagged]\nfields:\n  - {name: title, type: text, label: {de: T, en: T}}\n")},
+		"types/plain.yaml":      {Data: []byte("name: plain\nlabel: {de: P, en: P}\nfields:\n  - {name: title, type: text, label: {de: T, en: T}}\n")},
+		"relations/marks.yaml":  {Data: []byte("name: marks\nlabel: {de: M, en: M}\ninverse: {de: N, en: N}\nfrom: [\"trait:metatest.tagged\"]\nto: [\"*\"]\n")},
+		"relations/broken.yaml": {Data: []byte("name: broken\nlabel: {de: B, en: B}\ninverse: {de: B, en: B}\nfrom: [\"trait:tagged\", \"trait:metatest.nothing\", \"trait:sd.ticket\"]\nto: [\"*\"]\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Validate(p, nil)
+	for _, want := range []string{
+		`relation broken: from names "trait:tagged"; a trait goes with its package`,
+		`relation broken: from names "trait:metatest.nothing", which is no trait of this package`,
+		`relation broken: from names "trait:sd.ticket" of package sd, which this package does not depend on`,
+	} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Fatalf("missing %q in %v", want, err)
+		}
+	}
+	if strings.Contains(err.Error(), "relation marks") {
+		t.Fatalf("marks is fine: %v", err)
+	}
+	plain, thing := p.Types[0], p.Types[1]
+	marks := p.Relations[1]
+	if !marks.Allows(thing, plain) || marks.Allows(plain, thing) {
+		t.Fatalf("marks links %s only from the tagged type", marks.Name)
+	}
+}

@@ -25,10 +25,32 @@ import type {
   FormOffer,
   Permission,
   RecordData,
+  Relation,
+  RelationKind,
   Role,
   TimelineItem,
   TypeDefinition,
 } from "@/api/client";
+
+// The relation kinds of core (PL15) for the relations tab (SD4).
+const defaultKinds: RelationKind[] = [
+  {
+    package: "core",
+    name: "related",
+    label: { de: "verknüpft mit", en: "related to" },
+    inverse: { de: "verknüpft mit", en: "related to" },
+    from: ["*"],
+    to: ["*"],
+  },
+  {
+    package: "core",
+    name: "duplicate_of",
+    label: { de: "Duplikat von", en: "duplicate of" },
+    inverse: { de: "hat Duplikat", en: "has duplicate" },
+    from: ["*"],
+    to: ["*"],
+  },
+];
 
 // formTypeDef is the core type of the forms (UI11) as /api/v1/types gives it; tests add it to
 // extraTypes when they build a form.
@@ -277,6 +299,9 @@ function applies(name: string, rec: RecordData): { allowed: boolean; reason?: st
 
 export type FakeState = {
   signedIn: boolean;
+  // relations between records and their kinds (SD4); kinds default to related and duplicate.
+  relations?: Relation[];
+  relationKinds?: RelationKind[];
   // roleTransitions are transitions only a role may take (SD-Plan N8), added to the probe
   // type; holder says whether the signed-in person holds the role. comments keeps their texts.
   roleTransitions?: (Transition & { holder: boolean })[];
@@ -993,6 +1018,33 @@ export function fakeApi(state: FakeState) {
       };
       items.push({ kind: "entry", at, actor: me.id, actor_name: me.display_name, entry });
       return json(201, entry);
+    }
+    if (url.pathname === "/api/v1/relations/kinds") {
+      return json(200, state.relationKinds ?? defaultKinds);
+    }
+    const relationsOf = url.pathname.match(/^\/api\/v1\/records\/([^/]+)\/([^/]+)\/relations$/);
+    if (relationsOf) {
+      const at = (e: { type: string; id: string }) =>
+        e.type === relationsOf[1] && e.id === relationsOf[2];
+      return json(
+        200,
+        (state.relations ?? []).filter((r) => at(r.from) || at(r.to)),
+      );
+    }
+    if (url.pathname === "/api/v1/relations" && method === "POST") {
+      const body = JSON.parse(bodyText) as Pick<Relation, "kind" | "from" | "to">;
+      const rel: Relation = {
+        ...body,
+        id: `rel-${(state.relations ?? []).length + 1}`,
+        created_at: new Date().toISOString(),
+      };
+      (state.relations ??= []).push(rel);
+      return json(201, rel);
+    }
+    const relation = url.pathname.match(/^\/api\/v1\/relations\/([^/]+)$/);
+    if (relation && method === "DELETE") {
+      state.relations = (state.relations ?? []).filter((r) => r.id !== relation[1]);
+      return new Response(null, { status: 204 });
     }
     const clocks = url.pathname.match(/^\/api\/v1\/records\/probe\.probe\/([^/]+)\/clocks$/);
     if (clocks) {

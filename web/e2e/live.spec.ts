@@ -49,6 +49,9 @@ test("a change in one window appears in the other, with who is editing", async (
   const results = await new AxeBuilder({ page: b }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
 
+  // B has the timeline open, the last tab since SD4 (UI-Plan E38), so the live change shows there.
+  await b.getByRole("tab", { name: "Zeitleiste" }).click();
+
   // A saves: B shows the new title without reloading.
   await a.getByRole("button", { name: "Speichern" }).click();
   await expect(a.getByText("Gespeichert.")).toBeVisible();

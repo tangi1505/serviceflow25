@@ -178,6 +178,19 @@ func Validate(p Package, known map[string]bool) error {
 				add(where, "%s needs at least one type, or *", side.what)
 			}
 			for _, name := range side.types {
+				if trait, ok := strings.CutPrefix(name, TraitPrefix); ok {
+					// A trait of this package or of one it depends on (SD-Plan N11).
+					pkg, tr, dotted := strings.Cut(trait, ".")
+					switch {
+					case !dotted:
+						add(where, "%s names %q; a trait goes with its package, as trait:<package>.<trait>", side.what, name)
+					case pkg == p.Name && !trseen[tr]:
+						add(where, "%s names %q, which is no trait of this package", side.what, name)
+					case pkg != p.Name && !slices.Contains(p.Depends, pkg):
+						add(where, "%s names %q of package %s, which this package does not depend on", side.what, name, pkg)
+					}
+					continue
+				}
 				if name != "*" && !local[name] && !known[name] {
 					add(where, "%s names %q, which is neither a type of this package nor installed", side.what, name)
 				}

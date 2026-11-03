@@ -152,7 +152,9 @@ func (s *Service) Create(ctx context.Context, kind string, from, to End, actor r
 	if err != nil {
 		return Relation{}, fmt.Errorf("%w: unknown kind %s", ErrInvalid, kind)
 	}
-	if !k.Allows(from.Type, to.Type) {
+	fromType, ferr := s.rec.Type(ctx, from.Type)
+	toType, terr := s.rec.Type(ctx, to.Type)
+	if ferr != nil || terr != nil || !k.Allows(fromType, toType) {
 		return Relation{}, fmt.Errorf("%w: %s does not link %s to %s", ErrInvalid, kind, from.Type, to.Type)
 	}
 	if from == to {

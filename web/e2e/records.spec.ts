@@ -99,7 +99,9 @@ test("list, create, edit and resolve a conflict", async ({ page, context }) => {
   await expect(page.getByText("Gespeichert.")).toBeVisible();
   await expect(page.getByText("Version 4", { exact: true })).toBeVisible();
 
-  // The timeline (UI3): the changes so far, then two new entries on top, one private.
+  // The timeline (UI3): the changes so far, then two new entries on top, one private. Since
+  // SD4 it is the last tab, after the relations (UI-Plan E38).
+  await page.getByRole("tab", { name: "Zeitleiste" }).click();
   const timeline = page.getByRole("region", { name: "Zeitleiste" });
   await expect(timeline).toContainText(`Titel: ${title} (Fenster 2) → ${title} (einig)`);
   await expect(timeline).toContainText("Status: Neu → In Arbeit");

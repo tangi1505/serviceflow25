@@ -222,6 +222,10 @@ Wirksame Definition  ← im Prozess und in Valkey gecacht, Hash als Version
   ein Update legt nur an, was noch nie angelegt war, Gelöschtes kommt nicht wieder. Regeln heißen
   `<paket>_<schlüssel>`, in einem Mandanten mit dessen Namen dahinter, weil Regelnamen über alle
   Mandanten eindeutig sind.
+- **Beziehungsarten** nennen in `from` und `to` Typen, `*` oder seit SD4 ein Merkmal
+  (`trait:sd.ticket`, SD-Plan N11): „betrifft“ aus `sd` gilt so für jeden Vorgangstyp. Die
+  Detailseite zeigt die Bezüge eines Datensatzes im ersten Reiter unter dem Formular, die
+  Zeitleiste im letzten (UI-Plan E38).
 
 ---
 

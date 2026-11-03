@@ -6,7 +6,7 @@
 # (SD2) and request (SD6) share. The values are provisional (SD-Plan E3, E4) until the business
 # side answers Hauptplan V32; they can be changed in operation.
 name: sd
-version: 0.2.0
+version: 0.3.0
 label:
   de: Service Desk
   en: Service desk

@@ -136,6 +136,19 @@
       "role": "Nur für eine Rolle am Vorgang."
     }
   },
+  "relations": {
+    "title": "Bezüge",
+    "tabs": "Bereiche des Datensatzes",
+    "kind": "Art",
+    "type": "Typ",
+    "record": "Datensatz",
+    "state": "Status",
+    "remove": "Lösen",
+    "removeOne": "Bezug „{{kind}}“ zu {{name}} lösen",
+    "add": "Verknüpfen",
+    "empty": "Noch keine Bezüge.",
+    "error": "Bezug nicht geändert: {{detail}}"
+  },
   "timeline": {
     "title": "Zeitleiste",
     "history": "Verlauf",

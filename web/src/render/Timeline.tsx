@@ -245,15 +245,18 @@ function NewEntry({ typeName, id, portal }: { typeName: string; id: string; port
   );
 }
 
-// portal (UI10): no private entries to write; what a user reads the server decides.
+// portal (UI10): no private entries to write; what a user reads the server decides. inTab: in
+// the tabs of the record page (UI-Plan E38), whose tab names it; the heading stays for readers.
 export function Timeline({
   type,
   id,
   portal = false,
+  inTab = false,
 }: {
   type: TypeDefinition;
   id: string;
   portal?: boolean;
+  inTab?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const typeName = qualifiedName(type);
@@ -263,9 +266,12 @@ export function Timeline({
   const shown = blocks(items.data ?? []).filter((b) => !onlyEntries || b.kind === "entry");
   const when = (at: string) => formatMoment(at, i18n.language);
   return (
-    <section aria-labelledby="timeline-heading" className="mt-8 flex max-w-2xl flex-col gap-4">
+    <section
+      aria-labelledby="timeline-heading"
+      className={inTab ? "flex max-w-2xl flex-col gap-4" : "mt-8 flex max-w-2xl flex-col gap-4"}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="timeline-heading" className="text-lg font-semibold">
+        <h2 id="timeline-heading" className={inTab ? "sr-only" : "text-lg font-semibold"}>
           {withEntries ? t("timeline.title") : t("timeline.history")}
         </h2>
         {withEntries && (

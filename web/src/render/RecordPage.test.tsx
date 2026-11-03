@@ -173,7 +173,9 @@ describe("RecordPage", () => {
     expect(clocks).toHaveTextContent("Verletzt");
     expect(clocks).toHaveTextContent("Überfällig seit 1 h 30 min");
 
-    // Timeline: newest first; the two changes of version 2 in one block, with labels.
+    // Timeline: the last tab since SD4 (UI-Plan E38), the relations come first; newest first,
+    // the two changes of version 2 in one block, with labels.
+    await user.click(screen.getByRole("tab", { name: "Zeitleiste" }));
     const timeline = screen.getByRole("region", { name: "Zeitleiste" });
     await within(timeline).findByText("Drucker im 3. Stock");
     // The blocks of the timeline, not the lines of changes inside them.

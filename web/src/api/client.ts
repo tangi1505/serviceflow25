@@ -23,6 +23,8 @@ export type AuditEntry = components["schemas"]["AuditEntry"];
 export type TimelineItem = components["schemas"]["TimelineItem"];
 export type TimelineEntry = components["schemas"]["TimelineEntry"];
 export type Clock = components["schemas"]["Clock"];
+export type Relation = components["schemas"]["Relation"];
+export type RelationKind = components["schemas"]["RelationKind"];
 export type Query = components["schemas"]["Query"];
 export type Job = components["schemas"]["Job"];
 export type MySettings = components["schemas"]["MySettings"];
@@ -328,6 +330,18 @@ export const api = {
   },
   job: async (jobId: number) =>
     unwrap(await client.GET("/api/v1/jobs/{jobId}", { params: { path: { jobId } } })),
+  // Relations between records (PL15) and their kinds, for the tab of the record page (SD4).
+  relations: async (typeName: string, id: string) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/relations", {
+        params: { path: { typeName, id } },
+      }),
+    ),
+  relationKinds: async () => unwrap(await client.GET("/api/v1/relations/kinds")),
+  relate: async (body: components["schemas"]["RelationCreate"]) =>
+    unwrap(await client.POST("/api/v1/relations", { body })),
+  unrelate: async (id: string) =>
+    unwrap(await client.DELETE("/api/v1/relations/{id}", { params: { path: { id } } })),
   // search is the full-text search (PL26) over the types named, best first.
   // search over the types named, or over every readable type without (UI30).
   search: async (q: string, types: string, limit: number) =>
@@ -538,6 +552,18 @@ export const childrenQuery = (from: string, via: string, id: string) =>
     queryKey: ["records", from, "list", "children", via, id],
     queryFn: () => api.list(from, { limit: 50, filter: { [via]: id } }),
   });
+
+export const relationsQuery = (typeName: string, id: string) =>
+  queryOptions({
+    queryKey: ["records", typeName, id, "relations"],
+    queryFn: () => api.relations(typeName, id),
+  });
+
+export const relationKindsQuery = queryOptions({
+  queryKey: ["relations", "kinds"],
+  queryFn: api.relationKinds,
+  staleTime: 5 * 60_000,
+});
 
 export const transitionsQuery = (typeName: string, id: string) =>
   queryOptions({

@@ -394,9 +394,28 @@ type RelationKind struct {
 // QualifiedName is package.name.
 func (k RelationKind) QualifiedName() string { return k.Package + "." + k.Name }
 
-// Allows reports whether the kind links the two types.
-func (k RelationKind) Allows(from, to string) bool {
-	return matchesType(k.From, from) && matchesType(k.To, to)
+// Allows reports whether the kind links records of the two types; an entry "trait:<p>.<t>"
+// stands for every type with that trait (SD-Plan N11).
+func (k RelationKind) Allows(from, to Type) bool {
+	return relates(k.From, from) && relates(k.To, to)
+}
+
+// TraitPrefix marks an entry of a relation kind's from or to that names a trait (N11).
+const TraitPrefix = "trait:"
+
+func relates(allowed []string, t Type) bool {
+	for _, a := range allowed {
+		if trait, ok := strings.CutPrefix(a, TraitPrefix); ok {
+			if t.HasTrait(trait) || (strings.HasPrefix(trait, t.Package+".") && t.HasTrait(strings.TrimPrefix(trait, t.Package+"."))) {
+				return true
+			}
+			continue
+		}
+		if a == "*" || a == t.QualifiedName() {
+			return true
+		}
+	}
+	return false
 }
 
 func matchesType(allowed []string, typeName string) bool {

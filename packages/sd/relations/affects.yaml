@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# What a ticket is about (SD4, SD-Plan E7; Inventar G49): an incident, later a request or a
+# problem, affects any record, a server, a service, a workplace. One kind for every type with the
+# trait ticket (N11), so a report finds all tickets of a server through one kind.
+name: affects
+label: {de: betrifft, en: affects}
+inverse: {de: betroffen von, en: affected by}
+description:
+  de: Der Vorgang betrifft diesen Datensatz, etwa einen Server, einen Dienst oder einen Arbeitsplatz.
+  en: The ticket is about this record, such as a server, a service or a workplace.
+from: ["trait:sd.ticket"]
+to: ["*"]

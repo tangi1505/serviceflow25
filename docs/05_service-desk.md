@@ -33,7 +33,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD1** | Grundpaket `sd`: Auswahllisten Kategorie als Baum mit Sichtbarkeit je Organisationseinheit, Anfragequelle, Lösungsart; Merkmal `ticket` mit Titel, Beschreibung (formatiert), Kategorie, Quelle, Auswirkung, Dringlichkeit; Rollen Anforderer, Beobachter, Bearbeiter, Gruppe (E1, E4; Inventar G39, G55) | 🟢 | 1,5 d | `docker compose run --rm tools go run ./cmd/itsm package install packages/sd` → Listen und Merkmal sind da; eine Kategorie in drei Ebenen anlegen; eine nur für die Dienststelle Nord sichtbare Kategorie sieht eine Person aus Süd nicht; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD2** | Paket `incident`: Typ Störung mit Merkmal `ticket`; Priorität P1 bis P4 als berechnetes Feld aus Auswirkung und Dringlichkeit; Statusmodell Neu, In Arbeit, Wartet, Gelöst, Geschlossen mit Wiedereröffnen; Lösung mit Lösungsart, Bestätigen oder Ablehnen durch den Anforderer; Pflichtfelder je Status. Die laufende Nummer kommt mit Kern-Plan PL49 dazu (§2.3, N1) (E3, E5; Inventar G36, G38, G42; IP19; Kern-Bedarf N7, N8) | 🟢 | 3 d | Störung mit Auswirkung „mehrere Personen“ und Dringlichkeit „hoch“ → P2; „Lösen“ ohne Lösungstext → 422 am Feld `solution`; der Anforderer lehnt die Lösung im Portal ab → wieder „In Arbeit“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD3** | Fristen der Störung: Reaktion und Lösung je Priorität mit Kalender der Servicezeit, Eskalation an die Teamleitung bei 80 %, Wartegründe halten die Uhr an, automatisch schließen fünf Arbeitstage nach „Gelöst“; baut auf WF8 bis WF12 (E3; IP19) | 🟢 | 2 d | P1 um 08:00 anlegen → Lösungsfrist nach Kalender; „Wartet“ mit Grund „Rückmeldung Anforderer“ hält die Uhr an; mit Testzeit bei 80 % eine Mail an die Teamleitung in Mailpit; nach fünf Arbeitstagen „Gelöst“ → „Geschlossen“; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD4** | Betroffene Elemente und Bezüge: Beziehungsart „betrifft“ von Störung und Anfrage zu jedem Typ; „Duplikat von“ und „verwandt“ aus `core`; Verträge kommen mit CM (Inventar G49, G50) | ⬜ | 0,5 d | An einer Störung einen Datensatz eines beliebigen Typs als betroffen verknüpfen → steht in den Bezügen beider Seiten; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD4** | Betroffene Elemente und Bezüge: Beziehungsart „betrifft“ von Störung und Anfrage zu jedem Typ; „Duplikat von“ und „verwandt“ aus `core`; Verträge kommen mit CM (Inventar G49, G50) | 🟢 | 1,5 d | An einer Störung einen Datensatz eines beliebigen Typs als betroffen verknüpfen → steht in den Bezügen beider Seiten; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD5** | Major Incident: Übergang „zum Major Incident erklären“ mit Begründung, Mail an einen Verteiler, untergeordnete Störungen verknüpfen und mit dem Major Incident gemeinsam lösen, Hinweis im Portal (IP19; N3) | ⬜ | 1,5 d | Störung zum Major Incident erklären → Mail an den Verteiler; drei Störungen unterordnen, den Major Incident lösen → alle drei gelöst mit derselben Lösung, je eine Mail an ihre Anforderer; der Hinweis steht im Portal unter „Aktuell“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD6** | Paket `request`: Typ Anfrage mit Merkmal `ticket`, Statusmodell mit Genehmigung, Erfüllungsaufgaben aus einer Vorlage, wiederkehrende Anfragen, Fristen wie SD3; baut auf WF6, WF13, WF14 (Inventar G36; IP30) | 🔒 WF6 | 1,5 d | Anfrage mit zweistufiger Genehmigung → nach beiden Zustimmungen entstehen zwei Aufgaben für die Gruppe; eine Ablehnung schließt die Anfrage mit Grund; `docker compose run --rm tools scripts/ci.sh` grün |
 
@@ -69,7 +69,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -89,6 +89,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E4** | Grundpaket `sd` (SD1, deine Entscheidungen 2026-11-03, Hauptplan E158): **Sichtbarkeit** einer Kategorie über den Knoten des Eintrags im Organisationsbaum: sichtbar für Personen an diesem Knoten und darunter, an der Wurzel für alle (Kern-Bedarf N5). **Rollen** Anforderer, Beobachter, Bearbeiter und Gruppe stehen am Merkmal `ticket`; Paket-Merkmale dürfen dafür Rollen mitbringen (Kern-Bedarf N6). **Startinhalt:** ein kleiner vorläufiger Kategorienbaum (Hardware, Software, Zugang und Berechtigung, Netz und Telefonie, Sonstiges, je mit Unterkategorien), bis die Fachseite Hauptplan V32 beantwortet. **Listen:** Anfragequelle Telefon, Mail, Portal, Vor Ort, Überwachung; Lösungsart Behoben, Anleitung gegeben, Umgehungslösung, Kein Fehler, Duplikat, Nicht lösbar; vorläufig wie E3. Verworfen: Feld mit mehreren Einheiten; Rollen in jedem Typ; leere Liste | 2026-11-03 | Pascal |
 | **E5** | Störung (SD2, deine Entscheidungen 2026-11-03, Hauptplan E159): **Merkmal** mit Paketnamen, `traits: [sd.ticket]` aus installierten Paketen, von denen das Paket abhängt (N7). **Bestätigen und Ablehnen** der Lösung durch den Anforderer über Übergänge, die nur eine Rolle auslösen darf (`by: [requester]`); der Kern prüft die Rolle, das Portal zeigt solche Übergänge als Knöpfe (N8). **Ablehnen** braucht eine Begründung, die als Eintrag am Vorgang steht; der Bearbeiter wird benachrichtigt. **Pflicht:** Gelöst braucht Lösung und Lösungsart, Wartet einen Wartegrund; **Geschlossen** ist endgültig, wiedereröffnet wird nur aus Gelöst. Verworfen: Merkmal kopieren; nur antworten statt bestätigen; Ablehnen ohne Grund; Pflicht Bearbeiter oder Gruppe für „In Arbeit“ | 2026-11-03 | Pascal |
 | **E6** | Fristen der Störung (SD3, deine Entscheidungen 2026-11-03, Hauptplan E160): **Startdaten** bringt ein Paket unter `data/` mit: Datensätze und Regeln, beim ersten Installieren je Mandant angelegt, danach gehören sie dem Kunden; ein Update legt nur an, was noch nie angelegt war, und überschreibt nichts, Gelöschtes kommt nicht wieder (Kern-Bedarf N9). **Teamleitung** ist die verantwortliche Person der Gruppe in der Rolle Gruppe, als Empfänger `actors.group.responsible` (N10). **Reaktion** ist erfüllt, sobald die Störung „Neu“ verlässt. **Jedes Warten** hält die Lösungsuhr an. Kalender „Servicezeit“ und Wartegründe liegen im Grundpaket `sd`, weil die Anfrage (SD6) sie auch braucht; Fristen, Eskalation bei 80 % und automatisches Schließen liegen in `incident`. P1 zählt rund um die Uhr (Hauptplan V31, Beta). Verworfen: Startdaten, die jedes Update zurücksetzt; Einrichtung nur per Anleitung; feste Gruppe Teamleitung; Leitung je Organisationseinheit; Reaktion erst mit der ersten Antwort; Haken je Wartegrund | 2026-11-03 | Pascal |
+| **E7** | Betroffene Elemente und Bezüge (SD4, deine Entscheidungen 2026-11-03 nach dem Mockup „Bezüge am Vorgang“, [Artifact](https://claude.ai/artifact/LB9eW2KAQP7HHerk2ZMugJ), Hauptplan E161): **Beziehungsart** „betrifft“ (invers „betroffen von“) einmal im Grundpaket `sd`, von jedem Typ mit dem Merkmal `ticket` zu jedem Typ; Beziehungsarten dürfen dafür ein Merkmal statt eines Typs nennen (`trait:sd.ticket`, Kern-Bedarf N11). **Oberfläche:** die Detailseite bekommt Reiter unter dem Formular, „Bezüge“ zuerst, „Zeitleiste“ zuletzt (später „Dateien“ dazwischen); Bezüge als Tabelle mit Art, Typ, Datensatz, Status und Lösen, darüber Art und Datensatz zum Verknüpfen, die Suche über alle Typen; für jeden Typ, nicht nur Vorgänge. **Portal:** zeigt keine Bezüge, das entscheidet die Portal-Aufgabe. SD4 von 0,5 d auf 1,5 d. Verworfen: je Paket eine eigene Art; „betrifft“ von jedem Typ; Karte in der Seitenleiste; Abschnitt unter dem Formular; Zeitleiste als erster Reiter | 2026-11-03 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -155,6 +156,7 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | **N8** | Übergänge, die nur eine Rolle auslösen darf, und ihre Knöpfe im Portal (E5) | Bedingungen eines Übergangs sehen nur den Datensatz (`record`), nicht die handelnde Person; das Portal zeigt keine Übergänge (`web/src/portal/Portal.tsx`) | `by: [rolle]` am Übergang, der Kern prüft, dass die Person (oder eine ihrer Gruppen) die Rolle hält; ein Übergang mit `comment: required` verlangt einen Eintrag; das Portal zeigt die Übergänge, die die Person auslösen darf; gebaut in SD2 |
 | **N9** | Ein Paket bringt Startdaten mit: Kalender, Fristen, Eskalationsstufen, Wartegründe (E6) | Ein Paket kennt nur Typen, Merkmale, Beziehungsarten und Listeneinträge (`meta.Package`); Kalender, Fristen und Wartegründe sind Datensätze, Eskalationsstufen Regeln | Ordner `data/` mit Einträgen je Schlüssel: ein Datensatz eines Typs oder eine Regel, Verweise `@schlüssel` (auch `@paket.schlüssel`); je Mandant einmal angelegt, gemerkt in der Tabelle `package_seed`, auch für neue Mandanten; gebaut in SD3 |
 | **N10** | Die Teamleitung benachrichtigen (E6) | Empfänger sind Rollen am Vorgang, Gruppen und Personen (`notify.checkRecipient`, Regelaktion `notify`); die verantwortliche Person einer Gruppe (`core.group.responsible`) nutzt niemand | Empfänger `actors.<rolle>.responsible`: die verantwortlichen Personen der Gruppen, die die Rolle halten; in Benachrichtigungen und Regeln; gebaut in SD3 |
+| **N11** | Eine Beziehungsart für alle Vorgänge (E7) | `from` und `to` einer Beziehungsart nennen nur Typen oder `*` (`meta.RelationKind.Allows`) | Einträge `trait:<paket>.<merkmal>` gelten für jeden Typ mit dem Merkmal; das Paket muss das Merkmal selbst haben oder von seinem Paket abhängen; gebaut in SD4 |
 
 ### 2.4 Vorläufige Werte (E3)
 
@@ -191,6 +193,49 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD4 — Betroffene Elemente und Bezüge, 2026-11-03
+
+- **Grundlage:** E7 dieses Plans; Hauptplan E161; UI-Plan E38; deine Entscheidungen vom
+  2026-11-03 nach dem Mockup „Bezüge am Vorgang“
+  ([Artifact](https://claude.ai/artifact/LB9eW2KAQP7HHerk2ZMugJ), Variante C mit „Bezüge“ als
+  erstem und „Zeitleiste“ als letztem Reiter).
+- **Gebaut:**
+  - Kern-Bedarf N11: `from` und `to` einer Beziehungsart dürfen `trait:<paket>.<merkmal>` nennen;
+    die Art gilt dann für jeden Typ mit dem Merkmal (`meta.RelationKind.Allows` nimmt Typen).
+    `meta.Validate` lehnt ein Merkmal ohne Paket, ein unbekanntes eigenes und eines aus einem
+    Paket ohne Abhängigkeit ab.
+  - Paket `sd` 0.3.0: Beziehungsart `sd.affects` „betrifft“ / „betroffen von“ von
+    `trait:sd.ticket` zu jedem Typ. „Duplikat von“ und „verknüpft mit“ kommen aus `core`.
+  - Detailseite jedes Typs: Reiter unter dem Formular (`RecordTabs`, Pfeiltasten, Pos1 und Ende),
+    „Bezüge“ zuerst, „Zeitleiste“ oder „Verlauf“ zuletzt. Der Reiter Bezüge (`Relations`) zeigt
+    beide Richtungen als Tabelle mit Art (Beschriftung oder Gegenrichtung), Typ, Datensatz mit
+    laufender Nummer und Status; Lösen fragt nach. Darüber Art (je Richtung, in der der Typ
+    stehen darf) und Datensatz über die Suche der erlaubten Typen, bei `*` aller durchsuchbaren.
+  - Das Portal zeigt keine Bezüge.
+- **Belegt:**
+  - Go `TestIncidentAffectsOverHTTP` (eigene Datenbank): die Art steht mit `trait:sd.ticket`
+    unter den Arten; eine Störung betrifft eine Probe, beide Seiten zeigen den Bezug; eine Probe
+    kann keine Störung „betreffen“ (422).
+  - Go `TestRelationKindNamesATrait`: drei falsche Merkmalsangaben mit Meldung; die Art gilt
+    für den Typ mit dem Merkmal und nicht für einen ohne.
+  - Vitest `Relations.test.tsx` (2 Fälle): Merkmale in `relates`; Reiter in der Reihenfolge,
+    ein eingehender Bezug liest „hat Duplikat“, Anna per Suche als „verknüpft mit“ verknüpft,
+    axe ohne Befund, Lösen erst nach Rückfrage, Pfeiltaste zur Zeitleiste.
+  - Playwright `relations.spec.ts`: zwei Proben verknüpft, Bezug mit Nummer auf beiden Seiten,
+    axe ohne Befund.
+  - Angepasst, weil die Zeitleiste jetzt im letzten Reiter steht: `RecordPage.test.tsx`,
+    `e2e/records.spec.ts` und `e2e/live.spec.ts` klicken vorher auf den Reiter „Zeitleiste“.
+  - Ganze CI am 2026-11-03 grün im sechsten Lauf (10:54 min): alle 19 Schritte, 94 Vitest-Fälle,
+    18 Browser-Tests, LZ1 p95 3,67 ms, LZ13 8.763 Zeilen/s. Lauf 1 fand `live.spec` (Zeitleiste im
+    Reiter, behoben); die Läufe 2 bis 5 scheiterten an wackelnden Tests ohne Bezug zu SD4:
+    Formular-Baukasten per Tastatur (Spur in WSL `~/ci-befunde/formbuilder-2026-11-03`), Zeitgrenze
+    von Formular-Baukasten und Workflow-Editor in Vitest unter Last, ein Neustart mitten im Lauf und
+    LZ9 (Seitenwechsel 777 ms) direkt nach dem Neustart. Sie gehen in PL52.
+- **Nicht geprüft:** Der Browser-Test nimmt zwei Proben, weil die CI-Instanz `sd` und `incident`
+  nicht installiert; „betrifft“ an der Störung belegt der Go-Test. Jede Zeile lädt ihren
+  Datensatz einzeln (für Name und Status); bei sehr vielen Bezügen wird das langsam. Die Wahl
+  des Reiters bleibt nicht über einen Seitenwechsel erhalten.
 
 ### SD3 — Fristen der Störung, 2026-11-03
 

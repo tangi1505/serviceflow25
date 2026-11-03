@@ -33,7 +33,7 @@ import { Form } from "./Form";
 import { PresenceLine, usePresence } from "./Presence";
 import { titleOf } from "./RefName";
 import { Sidebar } from "./Sidebar";
-import { Timeline } from "./Timeline";
+import { RecordTabs } from "./RecordTabs";
 import { Transitions } from "./Transitions";
 
 function useType(typeName: string): { type?: TypeDefinition; pending: boolean } {
@@ -213,7 +213,7 @@ export function RecordPage() {
             }}
             onCancel={back}
           />
-          {timeline && <Timeline type={type} id={id} />}
+          <RecordTabs type={type} id={id} timeline={timeline === true} />
         </div>
         <Sidebar type={type} record={record.data} />
       </div>

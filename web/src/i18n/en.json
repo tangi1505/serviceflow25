@@ -136,6 +136,19 @@
       "role": "Only for a role at the ticket."
     }
   },
+  "relations": {
+    "title": "Relations",
+    "tabs": "Parts of the record",
+    "kind": "Kind",
+    "type": "Type",
+    "record": "Record",
+    "state": "State",
+    "remove": "Remove",
+    "removeOne": "Remove relation \"{{kind}}\" to {{name}}",
+    "add": "Link",
+    "empty": "No relations yet.",
+    "error": "Relation not changed: {{detail}}"
+  },
   "timeline": {
     "title": "Timeline",
     "history": "History",
