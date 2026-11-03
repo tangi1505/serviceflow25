@@ -30,8 +30,8 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **SD1** | Grundpaket `sd`: Auswahllisten Kategorie als Baum mit Sichtbarkeit je Organisationseinheit, Anfragequelle, Lösungsart; Merkmal `ticket` mit Titel, Beschreibung (formatiert), Kategorie, Quelle, Auswirkung, Dringlichkeit; Rollen Anforderer, Beobachter, Bearbeiter, Gruppe (E1; Inventar G39, G55) | ⬜ | 1,5 d | `docker compose run --rm tools go run ./cmd/itsm package install packages/sd` → Listen und Merkmal sind da; eine Kategorie in drei Ebenen anlegen; eine nur für die Dienststelle Nord sichtbare Kategorie sieht eine Person aus Süd nicht; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD2** | Paket `incident`: Typ Störung mit Merkmal `ticket`; Priorität P1 bis P4 als berechnetes Feld aus Auswirkung und Dringlichkeit; Statusmodell Neu, In Arbeit, Wartet, Gelöst, Geschlossen mit Wiedereröffnen; Lösung mit Lösungsart, Bestätigen oder Ablehnen durch den Anforderer; Pflichtfelder je Status. Die laufende Nummer kommt mit Kern-Plan PL49 dazu (§2.3, N1) (E3; Inventar G36, G38, G42; IP19) | ⬜ | 2 d | Störung mit Auswirkung „mehrere Personen“ und Dringlichkeit „hoch“ → P2; „Lösen“ ohne Lösungstext → 422 am Feld `solution`; der Anforderer lehnt die Lösung im Portal ab → wieder „In Arbeit“; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD1** | Grundpaket `sd`: Auswahllisten Kategorie als Baum mit Sichtbarkeit je Organisationseinheit, Anfragequelle, Lösungsart; Merkmal `ticket` mit Titel, Beschreibung (formatiert), Kategorie, Quelle, Auswirkung, Dringlichkeit; Rollen Anforderer, Beobachter, Bearbeiter, Gruppe (E1, E4; Inventar G39, G55) | 🟢 | 1,5 d | `docker compose run --rm tools go run ./cmd/itsm package install packages/sd` → Listen und Merkmal sind da; eine Kategorie in drei Ebenen anlegen; eine nur für die Dienststelle Nord sichtbare Kategorie sieht eine Person aus Süd nicht; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD2** | Paket `incident`: Typ Störung mit Merkmal `ticket`; Priorität P1 bis P4 als berechnetes Feld aus Auswirkung und Dringlichkeit; Statusmodell Neu, In Arbeit, Wartet, Gelöst, Geschlossen mit Wiedereröffnen; Lösung mit Lösungsart, Bestätigen oder Ablehnen durch den Anforderer; Pflichtfelder je Status. Die laufende Nummer kommt mit Kern-Plan PL49 dazu (§2.3, N1) (E3, E5; Inventar G36, G38, G42; IP19; Kern-Bedarf N7, N8) | 🟢 | 3 d | Störung mit Auswirkung „mehrere Personen“ und Dringlichkeit „hoch“ → P2; „Lösen“ ohne Lösungstext → 422 am Feld `solution`; der Anforderer lehnt die Lösung im Portal ab → wieder „In Arbeit“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD3** | Fristen der Störung: Reaktion und Lösung je Priorität mit Kalender der Servicezeit, Eskalation an die Teamleitung bei 80 %, Wartegründe halten die Uhr an, automatisch schließen fünf Arbeitstage nach „Gelöst“; baut auf WF8 bis WF12 (E3; IP19) | ⬜ | 1 d | P1 um 08:00 anlegen → Lösungsfrist nach Kalender; „Wartet“ mit Grund „Rückmeldung Anforderer“ hält die Uhr an; mit Testzeit bei 80 % eine Mail an die Teamleitung in Mailpit; nach fünf Arbeitstagen „Gelöst“ → „Geschlossen“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD4** | Betroffene Elemente und Bezüge: Beziehungsart „betrifft“ von Störung und Anfrage zu jedem Typ; „Duplikat von“ und „verwandt“ aus `core`; Verträge kommen mit CM (Inventar G49, G50) | ⬜ | 0,5 d | An einer Störung einen Datensatz eines beliebigen Typs als betroffen verknüpfen → steht in den Bezügen beider Seiten; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD5** | Major Incident: Übergang „zum Major Incident erklären“ mit Begründung, Mail an einen Verteiler, untergeordnete Störungen verknüpfen und mit dem Major Incident gemeinsam lösen, Hinweis im Portal (IP19; N3) | ⬜ | 1,5 d | Störung zum Major Incident erklären → Mail an den Verteiler; drei Störungen unterordnen, den Major Incident lösen → alle drei gelöst mit derselben Lösung, je eine Mail an ihre Anforderer; der Hinweis steht im Portal unter „Aktuell“; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -69,7 +69,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -86,6 +86,8 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E1** | Getrennte Pakete: `sd` als Grundpaket (Listen, Merkmal `ticket`, Rollen, Textbausteine, Warteschlangen, Portal-Startseite), dazu `incident`, `request`, `catalog` und `knowledge`. Ein Kunde kann so etwa nur das Wissen nutzen | 2026-10-30 | Umsetzung, aus der Übersicht im Hauptplan (Zeile 05) |
 | **E2** | Kein Sondercode: Kein Typname der SD-Pakete steht in `internal/` oder `web/src` außerhalb von Tests; was dafür fehlt, ist ein Bedarf an den Kern (§2.3) | 2026-10-30 | Hauptplan E7 |
 | **E3** | Matrix der Priorität, Fristen und Servicezeit bekommen vorläufige Werte nach ITIL-Brauch (§2.4), bis die Fachseite Hauptplan V30 und V31 beantwortet | 2026-10-30 | Umsetzung |
+| **E4** | Grundpaket `sd` (SD1, deine Entscheidungen 2026-11-03, Hauptplan E158): **Sichtbarkeit** einer Kategorie über den Knoten des Eintrags im Organisationsbaum: sichtbar für Personen an diesem Knoten und darunter, an der Wurzel für alle (Kern-Bedarf N5). **Rollen** Anforderer, Beobachter, Bearbeiter und Gruppe stehen am Merkmal `ticket`; Paket-Merkmale dürfen dafür Rollen mitbringen (Kern-Bedarf N6). **Startinhalt:** ein kleiner vorläufiger Kategorienbaum (Hardware, Software, Zugang und Berechtigung, Netz und Telefonie, Sonstiges, je mit Unterkategorien), bis die Fachseite Hauptplan V32 beantwortet. **Listen:** Anfragequelle Telefon, Mail, Portal, Vor Ort, Überwachung; Lösungsart Behoben, Anleitung gegeben, Umgehungslösung, Kein Fehler, Duplikat, Nicht lösbar; vorläufig wie E3. Verworfen: Feld mit mehreren Einheiten; Rollen in jedem Typ; leere Liste | 2026-11-03 | Pascal |
+| **E5** | Störung (SD2, deine Entscheidungen 2026-11-03, Hauptplan E159): **Merkmal** mit Paketnamen, `traits: [sd.ticket]` aus installierten Paketen, von denen das Paket abhängt (N7). **Bestätigen und Ablehnen** der Lösung durch den Anforderer über Übergänge, die nur eine Rolle auslösen darf (`by: [requester]`); der Kern prüft die Rolle, das Portal zeigt solche Übergänge als Knöpfe (N8). **Ablehnen** braucht eine Begründung, die als Eintrag am Vorgang steht; der Bearbeiter wird benachrichtigt. **Pflicht:** Gelöst braucht Lösung und Lösungsart, Wartet einen Wartegrund; **Geschlossen** ist endgültig, wiedereröffnet wird nur aus Gelöst. Verworfen: Merkmal kopieren; nur antworten statt bestätigen; Ablehnen ohne Grund; Pflicht Bearbeiter oder Gruppe für „In Arbeit“ | 2026-11-03 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -146,6 +148,10 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | **N2** | Zugang ohne Anmeldung für anonyme Formulare | Ohne Sitzung erreichbar sind nur Version, Anmeldung und Token (`internal/httpapi/auth.go:37`) | ein eigener Endpunkt nur zum Abrufen und Absenden freigegebener Formulare, mit Captcha und Ratenbegrenzung; gebaut in SD15 |
 | **N3** | Gemeinsam lösen in SD5 | Nicht geprüft, ob eine Regel einen Übergang an verknüpften Datensätzen auslösen kann | in SD5 klären; sonst über `:batch` (Hauptplan E126) aus der Oberfläche |
 | **N4** | Mail hinein | Kein Paket im Kern holt Mail ab; Mailpit im Profil `mail` kann nur SMTP (`compose.yaml:135`) | neues Paket `internal/mailin`; IMAP-Bibliothek und Testserver wählt SD11 nach Lizenzprüfung (PL29) |
+| **N5** | Sichtbarkeit von Listeneinträgen je Organisationseinheit (E4) | Listeneinträge darf jeder lesen (implizites Lesen, Kern-Plan PL16); der Ort `org_path` eines Eintrags schränkt nichts ein | beim Lesen von Listen nur Einträge, deren Knoten über oder auf dem Knoten der Person liegt; gebaut in SD1 |
+| **N6** | Rollen an Paket-Merkmalen (E4) | Paket-Merkmale (`traits/*.yaml`, Kern-Plan PL17) bündeln nur Felder; Rollen stehen unter `actors:` am Typ (WF3) | Paket-Merkmale dürfen `actors:` mitbringen, der Typ bekommt sie dazu; gebaut in SD1 |
+| **N7** | Ein Merkmal eines anderen Pakets nutzen (SD2) | Ein Typ findet Merkmale nur im Kern und im eigenen Paket (`meta.expandTraits`, `p.Trait(name)`); `incident` braucht `ticket` aus `sd` | Merkmale mit Paketnamen (`traits: [sd.ticket]`) aus installierten Paketen auflösen, das Paket hängt dann von `sd` ab; bauen in SD2 |
+| **N8** | Übergänge, die nur eine Rolle auslösen darf, und ihre Knöpfe im Portal (E5) | Bedingungen eines Übergangs sehen nur den Datensatz (`record`), nicht die handelnde Person; das Portal zeigt keine Übergänge (`web/src/portal/Portal.tsx`) | `by: [rolle]` am Übergang, der Kern prüft, dass die Person (oder eine ihrer Gruppen) die Rolle hält; ein Übergang mit `comment: required` verlangt einen Eintrag; das Portal zeigt die Übergänge, die die Person auslösen darf; gebaut in SD2 |
 
 ### 2.4 Vorläufige Werte (E3)
 
@@ -183,4 +189,79 @@ Hauptplan H15).
 
 ## 4. Umsetzungsstand
 
-Noch nichts gebaut.
+### SD2 — Störung, 2026-11-03
+
+- **Grundlage:** E3, E5 dieses Plans; Hauptplan E159; deine Entscheidungen vom 2026-11-03.
+- **Gebaut:**
+  - Paket `packages/incident` (hängt von `core` und `sd` ab): Typ `incident.incident` mit dem
+    Merkmal `sd.ticket` (Felder und Rollen aus `sd`), laufende Nummer `INC-` (PL49), Priorität P1
+    bis P4 als berechnetes Feld aus Auswirkung und Dringlichkeit nach §2.4, Lösung (formatiert),
+    Lösungsart, Wartegrund; Status Neu, In Arbeit, Wartet, Gelöst, Geschlossen; Übergänge
+    Beginnen, Warten, Fortsetzen, Lösen, Wieder öffnen (nur aus Gelöst), Schließen, „Lösung
+    bestätigen“ und „Lösung ablehnen“ nur für den Anforderer, Ablehnen mit Pflicht-Begründung;
+    Gelöst braucht Lösung und Lösungsart, Wartet einen Wartegrund, Geschlossen ist schreibgeschützt;
+    im Portal Titel, Beschreibung und Kategorie.
+  - Kern-Bedarf N7: `traits: [sd.ticket]` holt das Merkmal aus einem installierten Paket, von dem das
+    Paket abhängt (`meta.ResolveTraits`, beim Installieren und im Test-Installer); sonst eine klare
+    Meldung, welches Paket fehlt.
+  - Kern-Bedarf N8: Übergänge mit `by: [rolle]` darf nur auslösen, wer (selbst oder über eine
+    Gruppe) die Rolle am Datensatz hält, ohne weiteres Recht am Typ, ohne Felder; sonst 403, die
+    Liste der Übergänge sagt `reason: role`. `comment: required|optional` nimmt einen Text an,
+    der als Eintrag in derselben Schreibaktion entsteht (`comment` im Aufruf `:transition`).
+    Der Arbeitsplatz zeigt Übergänge fremder Rollen nicht; das Portal zeigt die Übergänge der
+    eigenen Rollen unter „Ihre Rückmeldung“ und fragt bei Pflicht-Begründung erst den Text ab.
+- **Belegt:**
+  - Go `TestIncidentOverHTTP` (eigene Datenbank): der Typ hat Kategorie und Rollen aus `sd`;
+    Auswirkung mittel und Dringlichkeit hoch ergeben P2, Nummer 1; „Lösen“ ohne Lösung 422 am Feld
+    `solution`; der Bearbeiter darf nicht bestätigen (403, `reason: role`); die Anforderin sieht
+    Bestätigen und Ablehnen, Ablehnen ohne Grund 422 am Feld `comment`, mit Grund wieder „In Arbeit“
+    und der Grund als Eintrag von ihr; nach erneutem Lösen bestätigt sie, „Geschlossen“; Wieder
+    öffnen danach 409, Ändern 422. `TestAPICoverage` prüft jetzt 21 Typen, darunter
+    `incident.incident` und die drei Listen von `sd`.
+  - Vitest (`portal/PortalSolution.test.tsx`, 2 Fälle): im Portal „Ihre Rückmeldung“ mit beiden
+    Knöpfen, „Lösung ablehnen“ fragt die Begründung ab, ohne Text gesperrt, axe ohne Befund, mit
+    Text wieder „In Arbeit“; im Arbeitsplatz fehlt der Knopf einer fremden Rolle.
+  - Ganze CI am 2026-11-03 grün im ersten Lauf (11:33 min): alle 19 Schritte, 92 Vitest-Fälle,
+    17 Browser-Tests, LZ1 p95 3,58 ms, LZ13 7.832 Zeilen/s.
+- **Nicht geprüft:** Kein Browser-Test: die CI-Instanz installiert `sd` und `incident` noch nicht.
+  Die Benachrichtigung des Bearbeiters bei einer Ablehnung braucht eine Benachrichtigung am Ereignis
+  `comment` (WF15); die Vorlagen bringt SD10. Die Fristen der Störung kommen mit SD3.
+
+### SD1 — Grundpaket `sd`, 2026-11-03
+
+- **Grundlage:** E1, E4 dieses Plans; Hauptplan E158; deine Entscheidungen vom 2026-11-03.
+- **Gebaut:**
+  - Paket `packages/sd`: Listen `sd.category` (Baum, 17 vorläufige Einträge in fünf Bereichen),
+    `sd.channel` (Telefon, Mail, Portal, Vor Ort, Überwachung) und `sd.solution_kind` (Behoben,
+    Anleitung gegeben, Umgehungslösung, Kein Fehler, Duplikat, Nicht lösbar), alle mit deutschen
+    und englischen Namen; Merkmal `ticket` mit Titel, Beschreibung (formatiert), Kategorie,
+    Anfragequelle (`channel`, weil `source` die Systemspalte der Herkunft ist), Auswirkung und
+    Dringlichkeit, dazu die Rollen Anforderer (`requester`, Person), Beobachter (`observer`,
+    Person oder Gruppe), Bearbeiter (`assignee`, Person) und Gruppe (`group`, eine Gruppe).
+  - Kern-Bedarf N5: ein Eintrag einer Auswahlliste ist für Personen an seinem Knoten und darunter
+    sichtbar, an der Wurzel für alle (`authz.Filter` und `Permits`, Knoten der Person oder sonst der
+    Mandant); wer ein eigenes Recht auf die Liste hat, sieht zusätzlich, was das Recht gibt.
+  - Kern-Bedarf N6: Paket-Merkmale dürfen `actors:` mitbringen; der Typ bekommt die Rollen und das
+    Kern-Merkmal `actors`, gleichnamige Rollen stoßen zusammen, die Rollen werden wie die eines Typs
+    geprüft.
+  - Startwerte einer Liste dürfen einen englischen Namen tragen (`name_en`); er wird als
+    Übersetzung des Namens angelegt (Kern-Plan PL21).
+  - N7 neu: Störung (SD2) braucht das Merkmal `ticket` aus einem anderen Paket; das baut SD2.
+- **Belegt:**
+  - Go `TestServiceDeskBaseOverHTTP` (eigene Datenbank): 17 Kategorien, „Hardware > Drucker“,
+    englisch „Printer“; Anfragequelle und Lösungsart da; `/api/v1/traits` zeigt `ticket` mit
+    Rollen; eine dritte Ebene „Hardware > Drucker > Laserdrucker“; eine Kategorie am Knoten Nord:
+    eine Person aus Nord sieht sie, eine aus Süd nicht (Liste 18 statt 19, Einzelabruf 404), der
+    Admin mit eigenem Recht sieht alle 19.
+  - Go `TestTraitBringsRoles`: Rollen vom Merkmal, Kern-Merkmal `actors` dazu, Zusammenstoß,
+    unbekannter Typ einer Rolle.
+  - `authz` `TestTenantBoundary`: der Filter der Listen enthält jetzt den Knoten (angepasst, weil
+    sich der Filter mit N5 absichtlich ändert).
+  - `TestTenantBoundaryOverHTTP`: die Suche nach dem Ereignis blätterte nicht; `Events` gibt höchstens
+    1.000, der Test bat um 100.000 und bekam 100 und fand das Ereignis nicht mehr, sobald mehr als
+    100 davor lagen (angepasst: er blättert jetzt).
+  - Ganze CI am 2026-11-03 grün im ersten Lauf (10:17 min): alle 19 Schritte, 90 Vitest-Fälle,
+    17 Browser-Tests, LZ1 p95 3,14 ms, LZ13 7.954 Zeilen/s.
+- **Nicht geprüft:** Die Oberfläche zeigt nichts Neues; Kategorien legt man über die Liste an, die
+  Sichtbarkeit über „Ablegen in“. Störung und Anfrage, die das Merkmal nutzen, folgen mit SD2 und
+  SD6.

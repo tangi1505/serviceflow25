@@ -97,11 +97,16 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
   Definitionsbausteine wie „hat Verlauf", „hat Dokumente", „ist reservierbar" oder „hat
   Rack-Platz". Ein Typ zieht sie per Name an. Merkmale sind selbst Teil eines Pakets.
 - **B3:** Eine Auswahlliste ist ein Typ mit dem Merkmal „Auswahlliste". Es gibt keine eigene
-  Tabelle je Liste.
+  Tabelle je Liste. Ein Eintrag ist für jede angemeldete Person an seinem Knoten und darunter
+  lesbar, an der Wurzel für alle (SD-Plan N5, seit SD1); wer ein eigenes Recht auf die Liste hat,
+  sieht zusätzlich, was das Recht gibt.
 - **B4:** Alle 34 Regelsammlungen aus GLPI sind Regeln in `internal/rules`. Sie unterscheiden
   sich nur im Auslöser: Anlegen, Ändern, Import, Anmeldung oder Mail.
 - **B5:** Die Feldzustände Pflicht, versteckt, vorbelegt und schreibgeschützt hängen am Status
   und an der Formularvariante. Eigene Vorlagen-Klassen braucht es nicht.
+  Ein Übergang kann einer Rolle am Datensatz vorbehalten sein (`by: [requester]`) und einen Text
+  verlangen, der als Eintrag entsteht (`comment`); so bestätigt oder lehnt der Anforderer eine
+  Lösung im Portal ab (SD-Plan N8, seit SD2).
 - **B6:** Die 48 automatischen Aktionen aus GLPI sind Zeitpläne in `internal/jobs` oder Zeitregeln
   im Statusmodell.
 
@@ -133,10 +138,15 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 | `row_hash` | `bytea` | Prüfsumme der fachlichen Spalten; Bulk schreibt nur bei Änderung |
 | `search` | `tsvector` | erzeugt aus den als durchsuchbar markierten Feldern (E21) |
 | `created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at` | | Lebenslauf, Papierkorb |
+| `sla_due_at`, `sla_warn_at`, `sla_paused` | `timestamptz`, `boolean` | nächste Frist der laufenden SLA-Uhren, ihr 75-%-Punkt im Kalender der Uhr, „nur angehalten“; pflegt `internal/sla` in der Transaktion der Uhren über `records.SetDeadlineTx`, ohne Version und Verlauf; Index `(sla_due_at, id)` für Sortieren und Blättern (UI34, Migration 41) |
 
 - **Fachfelder** sind echte Spalten mit passendem Typ: `text`, `numeric`, `timestamptz`, `date`,
   `boolean`, `uuid` als Verweis auf einen anderen Typ und `jsonb` nur für strukturierte Werte. Ein
-  Mehrfachwert ist eine Beziehung, keine Liste in einer Spalte.
+  Mehrfachwert ist eine Beziehung, keine Liste in einer Spalte. Die **laufende Nummer** (Feldtyp
+  `sequence`, PL49) ist eine `bigint`-Spalte, eindeutig je Mandant; der Kern zieht sie beim Anlegen
+  aus einer PostgreSQL-Sequenz je Typ, Feld und Mandant (Name `seq_<Hash>`, beim ersten Gebrauch
+  unter einer Sperre angelegt), das Präfix steht in der Definition. Lücken nach abgebrochenen
+  Transaktionen sind erlaubt; nur ein Import mit Quelle darf eine Nummer mitbringen.
 - **Beziehungen** liegen in einer Kerntabelle `relation` mit Art, Quelle und Ziel. Sie hat Indexe
   in beide Richtungen. Graph-Abfragen laufen als rekursive CTE mit Tiefengrenze (KF2).
 
@@ -187,6 +197,12 @@ Wirksame Definition  ← im Prozess und in Valkey gecacht, Hash als Version
   (`internal/meta/customer.go`, `internal/customer`): eigene Felder heißen `k_…`, an Feldern
   eines Pakets nur Beschriftung, Pflicht, Vorgabe, Reihenfolge, Optionen und Ausblenden;
   ein Paket-Update mit Konflikten hält an, mit `--force` werden die Änderungen stillgelegt.
+  Die Oberfläche dazu ist der Typ- und Feld-Editor (UI25): jede Aktion eine Änderung, die Liste
+  der Änderungen mit Zurücknehmen und der Export als Datei. Seit UI26.1 ändert die Kundenschicht
+  auch das Statusmodell: eigene Status und Übergänge, Beschriftung und Anfangsstatus der
+  Paketstatus, Übergänge des Pakets umleiten oder stilllegen (`Transition.Disabled`). Seit
+  UI26.2 hält sie auch die Anordnung des Workflow-Graphen (`Type.Layout`, Operation
+  `set_layout`): nur die Oberfläche liest sie, die Engine nie.
 - **Aktualisieren:** Ein neues Basispaket ersetzt nur seine eigene Schicht. Danach baut der Kern die
   wirksame Definition neu. Widersprüche wie ein Feld, das die Kundenschicht umbenannt hat und das
   das Basispaket entfernt, zeigt er vor der Aktivierung an. Daraus folgende Schemaänderungen laufen
@@ -194,7 +210,10 @@ Wirksame Definition  ← im Prozess und in Valkey gecacht, Hash als Version
 - **Merkmale** (B2) sind Definitionsbausteine, die ein Typ per Name einbindet, etwa
   `traits: [history, documents, reservable]`. Die mit Verhalten (`list`, `history`,
   `documents`, `notes`, `reservable`) stehen im Kern; ein Paket bringt eigene als Feldbündel
-  unter `traits/<name>.yaml` mit (E94).
+  unter `traits/<name>.yaml` mit (E94), seit SD1 auch mit Rollen am Datensatz (`actors:`, SD-Plan
+  N6); der Typ bekommt dann das Kern-Merkmal `actors` dazu. Ein Typ darf das Merkmal eines
+  anderen Pakets nennen (`traits: [sd.ticket]`), wenn sein Paket davon abhängt; das Installieren
+  löst es aus den installierten Paketen auf (SD-Plan N7).
 
 ---
 
@@ -212,8 +231,10 @@ E34 und KF9:
     (Kern-Plan E58);
   - **Bedingung** in CEL, etwa „nur nicht geschlossene";
   - **Feldrechte.**
-- **Persönliche Einstellungen** (Sprache an der Person, Zeitzone, Theme, Vorbelegung je Konto,
-  `internal/prefs`) gehen vor den Vorgaben am Baum (`ui.*`, E131).
+- **Persönliche Einstellungen** (Sprache an der Person, Zeitzone, Theme, Darstellung hell, dunkel oder wie das System, Zeilenhöhe der Listen, Vorbelegung je Konto,
+  `internal/prefs`) gehen vor den Vorgaben am Baum (`ui.*`, E131). Nur im Browser liegen je
+  Konto die zuletzt geöffneten Datensätze der Befehlszeile (Typ, ID, Titel; UI31, UI-Plan E36);
+  die Abmeldung löscht sie.
 - **Den Baum selbst** ändern die Sonderrechte `manage_org` (Knoten) und `manage_settings`
   (Einstellungen) am Pseudotyp `core.org`, mit der Reichweite der Zuweisung (Kern-Plan E59).
 - **Zuweisung:** Person oder Gruppe bekommt eine Rolle für einen Knoten des Organisationsbaums.
@@ -221,7 +242,9 @@ E34 und KF9:
 - **Übersetzung:** Je Person und Typ entsteht einmal eine SQL-Bedingung plus eine Liste erlaubter
   Spalten. Sie wird im Prozess und in Valkey gecacht. Jede Rollenänderung invalidiert den Cache
   über Pub/Sub. CEL-Bedingungen werden dafür in SQL übersetzt; was sich nicht übersetzen lässt,
-  lehnt der Editor beim Speichern der Rolle ab.
+  lehnt der Editor beim Speichern der Rolle ab. Der Rollen-Editor (UI27) zeigt die Rechte einer
+  Rolle als Matrix Typen × Aktionen mit der Reichweite je Zelle und pflegt die Zuweisungen;
+  jede Änderung ist ein Aufruf der API und gilt sofort.
 - **Schreiben** prüft dieselben Regeln gegen den Datensatz vor und nach der Änderung.
 - **Keine Row-Level Security** in PostgreSQL. Der Grund ist Connection-Pooling und Bulk (E34). Ein
   Prüftest stellt sicher, dass jede Abfrage über `query` oder `records` läuft. Direktes SQL auf
@@ -531,11 +554,11 @@ web/src/
   api/          aus OpenAPI erzeugter Client (keine Hand-Typen)
   render/       Listen, Formulare, Detailseiten, Zeitleiste aus der wirksamen Definition
   views/        Kalender, Gantt, Kanban, Graph, Matrix, Karte (KF10)
-  editors/      Typ-, Formular-, Workflow- (React Flow), Rollen- und Dashboard-Editor
+  editors/      Typ-, Formular-, Workflow- (React Flow 12 + dagre), Rollen- und Dashboard-Editor
   portal/       Oberfläche für Nutzer (eigene Vorgänge seit UI10; Katalog, Wissen mit SD)
   dashboards/   Widgets (ECharts)
   i18n/         Deutsch und Englisch von Anfang an
-  ui/           shadcn/ui-Bausteine, Theme, Barrierefreiheit
+  ui/           shadcn/ui-Bausteine nach dem Design-Kit „Klartext“ (Tokens hell und dunkel, IBM Plex, Marken für Status, Priorität, Frist), Theme, Barrierefreiheit
 ```
 
 - **Fast alles wird gerendert.** Fachseiten entstehen aus der Definition. Eigener Code je Typ ist

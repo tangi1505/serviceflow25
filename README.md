@@ -13,7 +13,7 @@ steht mit Meta-Modell, Datensätzen, REST-API und OpenAPI, Organisationsbaum, Ro
 OIDC, LDAP, API-Zugängen, Abfragen, Beziehungen, Listen, Dateien, Versionen, Kosten, Übersetzungen,
 Formeln, Jobs, Ereignissen mit Verteiler in Stapeln, Webhooks, Volltextsuche, Sicherheitseinstellungen,
 Bulk und der Zeitleiste am Datensatz (öffentliche und private Einträge). Die Workflow-Engine hat Statusmodell, Feldzustände, Rollen am Datensatz, Regeln,
-Kalender, SLA-Uhren mit Eskalationsstufen, Wartegründe, Zeitregeln, Aufgaben mit Summen am Vorgang, wiederkehrende Vorgänge und Benachrichtigungen als Mail. Die Oberfläche zeigt Liste und Formular aus der Definition (Basis des Pakets und Kundenschicht mit eigenen Feldern `k_…`) und eine Detailseite mit Zeitleiste, Rollen, SLA-Uhren und Aufgaben; Verweise und Rollen wählt man per Namen; Listen lassen sich filtern, als Suche speichern und teilen und als CSV, XLSX oder ODS exportieren; gewählte Datensätze ändert man in einem Schritt; Einträge und markierte Textfelder sind formatierter Text mit Bildern; Listen und Detailseiten aktualisieren sich live und zeigen, wer gerade am Datensatz ist; Sprache, Zeitzone, Theme und Vorbelegung stellt jede Person selbst ein, Vorgaben je Organisationseinheit. Nutzer ohne Bearbeiterrecht sehen ein schlankes Portal mit ihren Vorgängen und den Formularen, die im Baukasten mit Abschnitten, Fragen, Bedingungen und englischen Texten entstehen. Kein Service Desk bisher.
+Kalender, SLA-Uhren mit Eskalationsstufen, Wartegründe, Zeitregeln, Aufgaben mit Summen am Vorgang, wiederkehrende Vorgänge und Benachrichtigungen als Mail. Die Oberfläche zeigt Liste und Formular aus der Definition (Basis des Pakets und Kundenschicht mit eigenen Feldern `k_…`, die ein Admin im Typ- und Feld-Editor anlegt, umbenennt, ausblendet und verschiebt; im Workflow-Editor ergänzt er Status und Übergänge mit Bedingung, legt Übergänge des Pakets still, wählt den Anfangsstatus und sieht das Ganze als Graph mit React Flow, in dem er Übergänge markiert, Verbindungen zieht und die Anordnung speichert; im Rollen-Editor stellt er je Typ und Aktion die Reichweite ein, schränkt mit Bedingung und Feldrechten ein, vergibt Sonderrechte und weist die Rolle Personen und Gruppen an Knoten zu) und eine Detailseite mit Zeitleiste, Rollen, SLA-Uhren und Aufgaben; Verweise und Rollen wählt man per Namen; Listen lassen sich filtern, als Suche speichern und teilen und als CSV, XLSX oder ODS exportieren; gewählte Datensätze ändert man in einem Schritt; Einträge und markierte Textfelder sind formatierter Text mit Bildern; Listen und Detailseiten aktualisieren sich live und zeigen, wer gerade am Datensatz ist; Sprache, Zeitzone, Theme, hell oder dunkel und Vorbelegung stellt jede Person selbst ein, Vorgaben je Organisationseinheit; das Aussehen folgt dem Design-Kit „Klartext“ mit der Schrift IBM Plex, die das Werkzeug selbst ausliefert; die Navigation zeigt Bereiche und gespeicherte Suchen, die Befehlszeile (Strg K oder das Suchfeld im Kopf) findet Datensätze über alle Typen, legt neue an, wechselt die Darstellung und führt zu jeder Seite, die Liste hat eine Vorschau des gewählten Datensatzes, kompakte oder normale Zeilen und bei Typen mit SLA eine Spalte „Frist“, nach der man sortiert und filtert (überschritten, knapp, fällig bis). Nutzer ohne Bearbeiterrecht sehen ein schlankes Portal mit ihren Vorgängen und den Formularen, die im Baukasten mit Abschnitten, Fragen, Bedingungen und englischen Texten entstehen. Ein Typ kann eine laufende Nummer je Mandant haben (etwa `INC-24817`), die der Kern vergibt und die Suche findet. Der Service Desk beginnt mit dem Grundpaket `sd`: Kategorien als Baum, sichtbar je Organisationseinheit, Anfragequelle, Lösungsart und das Merkmal Vorgang mit Feldern und Rollen; Störung und Anfrage folgen.
 
 *Work in progress (details in the main plan): the platform core, the first part of the workflow
 engine and list and form in the web interface are built; no service desk yet.*
@@ -122,8 +122,16 @@ curl -s -b cookies.txt http://localhost:8092/api/v1/auth/me
 Bauen, prüfen und testen im Werkzeug-Container / build, lint and test in the tool container:
 
 ```bash
-docker compose run --rm tools scripts/ci.sh
+scripts/ci-run.sh
 ```
+
+Der Lauf bekommt einen eigenen PostgreSQL und Valkey (Profil `ci`, Daten im Arbeitsspeicher),
+die danach entfernt werden: jeder Lauf beginnt mit demselben Stand, die Instanz auf 8092 bleibt
+unberührt. Die CI bricht nicht beim ersten Fehler ab; am Ende stehen alle Schritte mit Ergebnis
+und die Fehler. *Every run gets a fresh PostgreSQL and Valkey of its own, removed afterwards;
+all steps run, the summary lists every failure.* Einzelne Tests von Hand brauchen die Server:
+`docker compose --profile ci up -d --wait postgres-ci valkey-ci`, danach
+`docker compose run --rm tools go test ./internal/events/`.
 
 Mails der Benachrichtigungen ansehen (Mailpit, Profil `mail`) / see the mails of the
 notifications:

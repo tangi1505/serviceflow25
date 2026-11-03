@@ -44,14 +44,15 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI14** | Statistik und Helpdesk-Dashboard als mitgelieferte Dashboards (Inventar G76, G77) | ⬜ | 1,5 d | Nach Installation des Service-Desk-Pakets ist das Helpdesk-Dashboard da und zeigt die offenen Vorgänge je Status; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI15** | Kalenderansicht für Aufgaben und Termine aller Bearbeiter (trägt KF10; Inventar G73) | ⬜ | 2 d | Aufgaben mit Termin erscheinen im Wochenkalender; Verschieben per Ziehen ändert den Termin; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI16** | Weitere Sprachen als ladbares Sprachpaket (Inventar G247) | ⬜ | 0,5 d | Ein Probe-Sprachpaket „fr" mit drei Texten wird geladen, fehlende Texte fallen auf Deutsch zurück; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI25** | Typ- und Feld-Editor: Kunden ändern Typen in der Oberfläche, Änderungen landen in der Kundenschicht (E37) | ⬜ | 2 d | Feld an einem Typ ergänzen → erscheint in Liste und Formular ohne Neustart; Export der Kundenschicht enthält genau diese Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI25** | Typ- und Feld-Editor: Kunden ändern Typen in der Oberfläche, Änderungen landen in der Kundenschicht (Hauptplan E37; E29) | 🟢 | 2 d | Feld an einem Typ ergänzen → erscheint in Liste und Formular ohne Neustart; Export der Kundenschicht enthält genau diese Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI26** | Workflow-Editor, geteilt am 2026-10-30 in UI26.1 und UI26.2 (E26, §2) | ⬜ | 3,5 d | siehe UI26.1 und UI26.2 |
-| **UI26.1** | Workflow-Editor als Tabelle: Status anlegen, umbenennen, Anfangsstatus wählen; Übergänge mit Von (mehrere), Nach und CEL-Bedingung; Prüfung im Editor, Speichern in die Kundenschicht (E26) | ⬜ | 1,5 d | Im Editor des Typs `probe` nur mit Tastatur einen Status und einen Übergang mit zwei Ausgangsstatus und Bedingung anlegen → per API sofort nutzbar, der Export der Kundenschicht enthält genau diese Änderung; eine ungültige CEL-Bedingung → Fehler am Feld; ein Status ohne eingehenden Übergang wird gemeldet; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI26.2** | Workflow-Editor als Graph mit React Flow neben der Tabelle: Status als Knoten, je Ausgangsstatus eine Kante, ein Übergang wird als Ganzes markiert; Anordnen mit dagre, Knoten verschieben, Übergang per Ziehen als Abkürzung zur Tabelle; Anordnung im Feld `layout` der Kundenschicht, dafür kennt `internal/meta` das Feld (E26, E27) | ⬜ | 2 d | Der Graph zeigt alle Status und Übergänge von `probe`; Klick auf eine Kante markiert alle Kanten ihres Übergangs und die Zeile in der Tabelle; Knoten per Pfeiltaste verschieben und speichern → nach Neuladen an derselben Stelle; „Anordnen“ ordnet neu; ein gezogener Übergang erscheint in der Tabelle; neue Pakete nur unter MIT; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI27** | Rollen-Editor: Berechtigungen, Reichweite, Feldrechte | ⬜ | 1,5 d | Rolle im Editor einschränken → die betroffene Person sieht in der Liste sofort weniger; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI29** | Design-Kit „Klartext“ in die Tokens und Bausteine übernehmen: Werte in `tokens.css`, neue Tokens `--accent`, `--accent-soft`, `--foreground-2`, `--warning-foreground`; IBM Plex Sans und Mono (OFL) im Werkzeug ausgeliefert; Knöpfe in den Varianten des Kits, Bausteine für Status, Priorität und Frist (E22, E25); dunkler Modus mit der Einstellung „Hell, Dunkel, wie das System“ (E24) | ⬜ | 2 d | Im Browser http://localhost:8092 → Schrift IBM Plex, Hauptknopf graphit, Fokusrahmen petrol; das Netzwerkprotokoll zeigt keinen Abruf außerhalb des Werkzeugs; Theme `probe` ändert weiter alle Bausteine; „Dunkel“ in Meine Einstellungen → alle Seiten dunkel, auch nach Neuanmeldung; Playwright mit `axe` (mit Kontrast) in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI30** | Rahmen und Liste nach dem Entwurf (E22): Kopf mit Suchfeld und Mandant, Navigation mit Bereichen und gespeicherten Suchen, Zeilenhöhe kompakt oder normal, Vorschau des gewählten Datensatzes neben der Liste, Fristen auf der Detailseite aus `…/clocks`. Eine Fristspalte in der Liste nur, wenn die API die Restzeit je Zeile liefert, sonst als neue Aufgabe | ⬜ | 2 d | Umschalter „Kompakt“ → Zeilen 36 px, bleibt nach Neuladen; Klick auf eine Zeile zeigt die Vorschau, „Öffnen“ führt zur Detailseite; eine Frist über 75 % erscheint gelb, eine überschrittene rot, beide mit Text; bei 375 px Breite steht die Navigation über der Liste; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI31** | Befehlszeile mit Strg K: Datensätze nach Nummer und Titel finden über `/api/v1/search`, Befehle wie „Neuer Vorgang“ und „Ansicht wechseln“, Kürzel am Knopf angezeigt (E22) | ⬜ | 1,5 d | Strg K, `24817` tippen → der Vorgang erscheint, Enter öffnet ihn; „neu“ tippen → „Neuer Vorgang“; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI26.1** | Workflow-Editor als Tabelle: Status anlegen, umbenennen, Anfangsstatus wählen; Übergänge mit Von (mehrere), Nach und CEL-Bedingung; Prüfung im Editor, Speichern in die Kundenschicht (E26, E30) | 🟢 | 1,5 d | Im Editor des Typs `probe` nur mit Tastatur einen Status und einen Übergang mit zwei Ausgangsstatus und Bedingung anlegen → per API sofort nutzbar, der Export der Kundenschicht enthält genau diese Änderung; eine ungültige CEL-Bedingung → Fehler am Feld; ein Status ohne eingehenden Übergang wird gemeldet; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI26.2** | Workflow-Editor als Graph mit React Flow über den Tabellen, einklappbar (E31): Status als Knoten, je Ausgangsstatus eine Kante, ein Übergang wird als Ganzes markiert; Anordnen mit dagre, Knoten verschieben, Übergang per Ziehen als Abkürzung zur Tabelle; Anordnung im Feld `layout` der Kundenschicht, dafür kennt `internal/meta` das Feld (E26, E27) | 🟢 | 2 d | Der Graph zeigt alle Status und Übergänge von `probe`; Klick auf eine Kante markiert alle Kanten ihres Übergangs und die Zeile in der Tabelle; Knoten per Pfeiltaste verschieben und speichern → nach Neuladen an derselben Stelle; „Anordnen“ ordnet neu; ein gezogener Übergang erscheint in der Tabelle; neue Pakete nur unter MIT; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI27** | Rollen-Editor als Matrix Typen × Aktionen mit Reichweite je Zelle, Bedingung, Feldrechten, Sonderrechten und Zuweisungen (E33) | 🟢 | 2 d | Rolle im Editor einschränken → die betroffene Person sieht in der Liste sofort weniger; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI29** | Design-Kit „Klartext“ in die Tokens und Bausteine übernehmen: Werte und neue Tokens nach §2.1 in `tokens.css`; IBM Plex Sans und Mono (OFL) im Werkzeug ausgeliefert; Knöpfe in den Varianten des Kits, Bausteine für Status, Priorität und Frist (E22, E25); dunkler Modus mit der Einstellung „Hell, Dunkel, wie das System“ (E24, E34) | 🟢 | 2 d | Im Browser http://localhost:8092 → Schrift IBM Plex, Hauptknopf graphit, Fokusrahmen petrol; das Netzwerkprotokoll zeigt keinen Abruf außerhalb des Werkzeugs; Theme `probe` ändert weiter alle Bausteine; „Dunkel“ in Meine Einstellungen → alle Seiten dunkel, auch nach Neuanmeldung; Playwright mit `axe` (mit Kontrast) in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI30** | Rahmen und Liste nach dem Entwurf (E22): Kopf mit Suchfeld und Mandant, Navigation mit Bereichen und gespeicherten Suchen, Zeilenhöhe kompakt oder normal, Vorschau des gewählten Datensatzes rechts neben der Liste (E35), Fristen auf der Detailseite aus `…/clocks`. Eine Fristspalte in der Liste nur, wenn die API die Restzeit je Zeile liefert, sonst als neue Aufgabe | 🟢 | 2 d | Umschalter „Kompakt“ → Zeilen 36 px, bleibt nach Neuladen; Klick auf eine Zeile zeigt die Vorschau, „Öffnen“ führt zur Detailseite; eine Frist über 75 % erscheint gelb, eine überschrittene rot, beide mit Text; bei 375 px Breite steht die Navigation über der Liste; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI31** | Befehlszeile mit Strg K: Datensätze nach Titel finden über `/api/v1/search` (nach Nummer, sobald PL49 sie durchsuchbar macht), Befehle „Neu“ je Typ, „Gehe zu“ und Darstellung, Kürzel am Suchfeld angezeigt (E22, E36) | 🟢 | 1,5 d | Strg K, einen Teil des Titels tippen → der Datensatz erscheint, Enter öffnet ihn; „neu“ tippen → „Neu: Probe“; leer zeigt sie die zuletzt geöffneten Datensätze; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI34** | Fristspalte in der Liste: die Liste und `:query` liefern je Zeile die nächste Frist der SLA-Uhren (Restzeit, Anteil, Zustand), sortier- und filterbar; Spalte mit dem Baustein Frist (E35, aus UI30 ausgelagert; E37) | 🟢 | 1 d | Liste von `probe` mit Spalte „Frist“: eine Frist über 75 % gelb, eine überschrittene rot, beide mit Text; nach Frist sortiert steht die knappste oben; LZ1 ohne Verschlechterung über die Toleranz; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -60,6 +61,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI17** | Graph-Ansicht und Auswirkungsanalyse (Inventar G114) | ⬜ | 2 d | Graph eines CI zeigt abhängige Elemente über zwei Ebenen; Klick öffnet die Detailseite; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI18** | Asset-Dashboard als mitgeliefertes Dashboard (Inventar G32) | ⬜ | 0,5 d | Nach Installation des Asset-Pakets ist das Dashboard da; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI19** | Externe Links und Handbuch-Links an Typen und Datensätzen (Inventar G192, G193) | ⬜ | 1 d | Ein Link mit Platzhalter `{{serial}}` öffnet die Adresse mit der Seriennummer des Datensatzes; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI32** | SLA-Pflegemaske: eine Seite je Service-Level mit Ziel, Kalender oder rund um die Uhr und den Bedingungen gilt, Pause und erfüllt; darunter die Eskalationsstufen (Regeln mit Auslöser `clock`, WF10) und die Wartegründe mit ihren Erinnerungen (WF11), zusammen anlegen und ändern statt über Liste, Formular und Ids (E32, §2.2; IP29) | ⬜ | 2 d | Im Arbeitsplatz unter Verwaltung › Service-Level eine SLA „Lösung P2“ mit 480 Minuten, Kalender „Büro“, Stufe bei 80 % „Priorität hoch“ und Wartegrund „Rückmeldung Anforderer“ anlegen → `GET /api/v1/records/core.sla` und die Regel-API zeigen die drei Datensätze mit den Verweisen; eine Bedingung, die sich nicht übersetzen lässt, erscheint als Fehler am Feld; Playwright mit `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI33** | SLA-Kennzahlen: Einhaltung je Zeitraum, Typ, Service-Level, Gruppe und Kategorie aus den Uhren (erfüllt, verletzt, pausiert, mittlere Restzeit) als Widgets für UI13 und ein mitgeliefertes Dashboard „Service-Level“; die Zahlen kommen über die Abfrage-API, reicht sie nicht, kommt eine Aufgabe im Kern-Plan dazu (E32, §2.2; IP29, KF11) | ⬜ | 2 d | Zehn Störungen mit Testzeit anlegen, vier reißen die Frist → das Dashboard „Service-Level“ zeigt 60 % Einhaltung für den Monat und die Zahlen je Gruppe; ein Filter auf eine Kategorie ändert die Zahlen; der Export der Kennzahl als CSV stimmt mit der Liste der Uhren überein; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### D — Meilenstein 3 und 4
 
@@ -71,11 +74,11 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI23** | Feste Berichte und Export als PDF (Inventar G111, G232) | ⬜ | 2 d | Bericht „Verträge, die in 90 Tagen enden" als PDF exportieren, Inhalt stimmt mit der Liste überein; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI24** | Kartenansicht über Orte mit Koordinaten, mit Kartenmaterial ohne Internet (PMTiles und MapLibre nach E2) (Inventar G233) | ⬜ | 2 d | Orte erscheinen auf der Karte, ohne dass der Browser eine Adresse außerhalb des Werkzeugs aufruft (Netzwerkprotokoll); `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 51,5 d; 43 d geschätzt vor dem Bau (Block A: 4 d), UI28 am 2026-10-29 vor UI4 eingeschoben (Hauptplan E123), UI29 bis UI31 am 2026-10-30 aus dem Designentwurf (E22), UI26 am 2026-10-30 von 2 d auf 3,5 d (E26).
+**Summe:** 57 d; 43 d geschätzt vor dem Bau (Block A: 4 d), UI28 am 2026-10-29 vor UI4 eingeschoben (Hauptplan E123), UI29 bis UI31 am 2026-10-30 aus dem Designentwurf (E22), UI26 am 2026-10-30 von 2 d auf 3,5 d (E26), UI32 und UI33 am 2026-11-02 für das SLA-Management nach Meilenstein 1 (E32), UI27 am 2026-11-02 von 1,5 d auf 2 d für die Zuweisungen (E33), UI34 am 2026-11-02 aus UI30 ausgelagert (E35).
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B der Oberfläche kommt nach Block B der Workflow-Engine. Schon gebaut aus WF2 (WF-Plan E7): Das Formular holt die Feldzustände (`:field-states`), blendet Versteckte aus, markiert Pflichtfelder, zeigt Schreibgeschützte als Text und einen gesperrten Datensatz ohne „Speichern“. Offen für Block B: Rollen am Datensatz (WF3), Regeln (WF4), Kalender (WF8), SLAs (WF9), Eskalationsstufen (WF10, Regeln mit Auslöser `clock`), Wartegründe (WF11) und Zeitregeln (WF12), beide mit SLA und Stufen anzulegen, sowie Aufgaben am Vorgang (WF13; der Kalender UI15 liest sie per `:query` über `planned_start`) wiederkehrende Vorgänge (WF14, Vorlage als JSON-Text) und Benachrichtigungen (WF15, Empfänger und Ereignisse als Text) haben außer Liste und Formular der Typen und der Regel-API noch keine Oberfläche; die Uhren eines Datensatzes (`…/clocks`, Restzeit, verletzt) zeigt die Detailseite noch nicht. Für UI3 liefert PL42 (Hauptplan E121) die Zeitleiste: `GET …/{id}/timeline` mit Einträgen und Verlauf in zeitlicher Reihenfolge samt Namen, `POST …/{id}/timeline` für einen neuen Eintrag (Recht `comment`, privat zusätzlich `read_private`).
 
-**Reihenfolge:** Block A mit dem Durchstich (Hauptplan E59): UI1, dann UI2, sobald PL4 steht. Danach Block B: UI3, UI8 und UI10 zuerst, weil der Service Desk (SD) sie als Erstes braucht; dann die Editoren UI25 bis UI27; Formulare UI11 und UI12 vor SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1. Block C und D mit ihren Meilensteinen. UI29, UI30 und UI31 kommen in dieser Folge nach den Editoren UI25 bis UI27 und vor SD (E23).
+**Reihenfolge:** Block A mit dem Durchstich (Hauptplan E59): UI1, dann UI2, sobald PL4 steht. Danach Block B: UI3, UI8 und UI10 zuerst, weil der Service Desk (SD) sie als Erstes braucht; dann die Editoren UI25 bis UI27; Formulare UI11 und UI12 vor SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1. Block C und D mit ihren Meilensteinen. UI29, UI30 und UI31 kommen in dieser Folge nach den Editoren UI25 bis UI27 und vor SD (E23). UI32 und UI33 stehen in Block C nach Meilenstein 1 (E32).
 
 ---
 
@@ -105,12 +108,22 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E21** | Bedingungen im Portal (Hauptplan E134): `Form` nimmt eine Sichtbarkeit `visibility(values)`, die ausgeblendete Felder und Gruppen nennt; sie werden weder gezeigt noch geprüft noch gesendet. Der Resolver rechnet sie aus den Werten, die er prüft. Dieselbe Auswertung steht im Server (`internal/forms`) und im Portal (`portal/conditions.ts`) | 2026-10-29 | Umsetzung |
 | **E20** | Formulare (Hauptplan E133): der Baukasten ist die Darstellung des Felds `definition` von `core.form` im Formular des Datensatzes; das Portal füllt ein Formular mit demselben `Form`, dessen Felder aus den Fragen gebildet werden (gebundene mit dem Feld des Zieltyps, freie als Feld ohne Spalte), gruppiert nach Abschnitten | 2026-10-29 | Umsetzung |
 | **E19** | Portal (Hauptplan E132): eigene Routen unter `/portal` mit eigenem Rahmen (`portal/Portal.tsx`); der Rahmen des Arbeitsplatzes prüft `me.workplace` im `beforeLoad` und schickt sonst ins Portal. Das Portal nutzt dieselben Bausteine (Formular mit `only`, Zeitleiste mit `portal`) und dieselbe API; „Meine“ ist eine JSON-Abfrage über Anforderer und Ersteller | 2026-10-29 | Umsetzung |
-| **E22** | Gestaltung nach dem Designentwurf „Klartext“ ([Design-Fläche](https://claude.ai/artifact/1TScdXrimrgmFwUWFUdejH), mit erfundenen Beispielen und ohne Kundendaten). Graphit (#15171A) für Text und Hauptaktion, Petrol (#0B6E80) als einziger Akzent für Fokus, Auswahl und Links. Gelb und Rot nur für knappe und überschrittene Fristen, die Priorität ohne Ampel. Nummern und Zeiten in IBM Plex Mono, Text in IBM Plex Sans, beide im Werkzeug ausgeliefert. Neutral im Sinne von Hauptplan E62: ein Kunde tauscht Tokens, nicht Bausteine. Maßgeblich ist nach UI29 `tokens.css`, nicht die Design-Fläche | 2026-10-30 | Pascal |
+| **E22** | Gestaltung nach dem Designentwurf „Klartext“ ([Design-Fläche](https://claude.ai/artifact/1TScdXrimrgmFwUWFUdejH), mit erfundenen Beispielen und ohne Kundendaten). Graphit (#15171A) für Text und Hauptaktion, Petrol (#0B6E80) als einziger Akzent für Fokus, Auswahl und Links. Gelb und Rot nur für knappe und überschrittene Fristen, die Priorität ohne Ampel. Nummern und Zeiten in IBM Plex Mono, Text in IBM Plex Sans, beide im Werkzeug ausgeliefert. Neutral im Sinne von Hauptplan E62: ein Kunde tauscht Tokens, nicht Bausteine. Die Werte stehen in §2.1. Maßgeblich ist nach UI29 `tokens.css`, nicht die Design-Fläche | 2026-10-30 | Pascal |
 | **E23** | Reihenfolge des Designs (V5): UI29 bis UI31 nach den Editoren UI25 bis UI27 und vor SD. Die Editoren entstehen noch im bisherigen Aussehen; UI29 zieht sie über die Tokens nach | 2026-10-30 | Pascal |
 | **E24** | Dunkler Modus (V3): ein zweiter Satz Werte für dieselben Tokens, unabhängig vom Theme des Kunden; ein Theme-Paket liefert seine Werte für hell und dunkel. Gewählt in Meine Einstellungen mit „Hell, Dunkel, wie das System“, Vorgabe „wie das System“ (`prefers-color-scheme`). Werte nach der Design-Fläche, Kontrast nach WCAG 2.1 AA in beiden Modi | 2026-10-30 | Pascal |
 | **E25** | Hauptaktion (V4): standardmäßig Graphit; ein Theme-Paket darf `--primary` auf die Farbe des Kunden setzen, die Fristfarben bleiben | 2026-10-30 | Pascal |
 | **E26** | Workflow-Editor (UI26): bearbeitet wird zuerst in einer Tabelle, die allein mit Tastatur vollständig ist; der Graph mit React Flow (Hauptplan E41) steht daneben zum Ansehen, Prüfen und Anordnen. Automatisches Anordnen mit dagre (MIT), nicht mit elkjs (EPL-2.0). Begründung in §2 | 2026-10-30 | Pascal |
 | **E27** | Anordnung im Workflow-Graph (V6): Feld `layout` am Typ in der Kundenschicht, je Status `x` und `y`; die Engine liest es nicht, `internal/meta` prüft nur, dass jeder Name ein Status des Typs ist. Ohne `layout` ordnet dagre bei jedem Öffnen. Gebaut mit UI26.2, ohne eigene Aufgabe im Kern-Plan | 2026-10-30 | Pascal |
+| **E28** | Rand der Felder (V7): `--input` hell #8A8F98, dunkel #6E737A, damit der Rand eines Felds 3 : 1 gegen `--card` erreicht (WCAG 2.1, 1.4.11; 3,2 und 3,7 : 1). `--border` bleibt hell für Trenner und Karten; Werte in §2.1. Geändert am 2026-11-02; vorher #CFCFC8 und #3A3F45 aus der Design-Fläche (1,6 : 1) | 2026-11-02 | Pascal |
+| **E29** | Typ- und Feld-Editor (UI25): Knopf „Typ anpassen“ an der Liste eines Typs, nur mit dem Recht `customize` an `core.type` an der Wurzel (dafür meldet `auth/me` `customize`); eigene Seite `/types/<typ>/customize`. Jede Aktion ist sofort eine Änderung der Kundenschicht (Hauptplan E37, E135), eine andere Version des Gegenübers ergibt eine Meldung und frisches Laden. Neue eigene Felder `k_…` in allen sieben Feldtypen, Text auch als formatierter Text, Verweis mit Zieltyp. Darunter die Liste der Änderungen mit Wer, Wann, Status und Grund, je mit „Zurücknehmen“, und der Export der Kundenschicht als JSON-Datei. Reihenfolge per Ziehen mit dnd-kit wie im Formular-Builder und mit „hoch“ und „runter“ | 2026-11-02 | Pascal |
+| **E30** | Workflow-Editor als Tabelle (UI26.1, deine Entscheidungen 2026-11-02): eigene Seite `/types/<typ>/workflow` mit Link „Workflow“ an der Liste und im Typ-Editor, nur mit `customize`. Die Kundenschicht (Kern-Plan PL43) bekommt dafür die Operationen `add_state`, `change_state`, `remove_state`, `add_transition`, `change_transition`, `remove_transition`, `disable_transition`, `enable_transition`: eigene Status und Übergänge `k_…` frei; Status des Pakets nur Beschriftung und Anfangsstatus; Übergänge des Pakets Beschriftung, Von, Nach, Bedingung und stilllegen statt löschen; ein Status mit Datensätzen oder mit Übergängen bleibt. Die CEL-Bedingung prüft der Server beim Tippen über `POST /api/v1/types/<typ>:check-condition`; im Browser dazu Hinweise auf Status ohne eingehenden Übergang und stillgelegte Übergänge. Jede Zeile ist eine Änderung wie in UI25 | 2026-11-02 | Pascal |
+| **E31** | Workflow-Graph (UI26.2, deine Entscheidungen 2026-11-02 nach dem Mockup „Workflow-Graph Platz“, [Artifact](https://claude.ai/artifact/FxWG8r1FE6YuuxdqFWp6oR) mit drei Varianten): **Variante A**, der Graph steht oben über den Tabellen in voller Breite und lässt sich einklappen; ob er offen ist, merkt sich der Browser je Konto. Verschieben und „Anordnen“ wirken nur auf dem Bildschirm; **„Anordnung speichern“** schreibt das ganze Feld `layout` als eine Änderung `set_layout` der Kundenschicht (zurücknehmbar), ein ungespeicherter Stand wird beim Verlassen gemeldet. Eine **gezogene Verbindung** von Status A nach B füllt das Formular „Neuer Übergang“ vor (Von = A, Nach = B, Fokus auf der Beschriftung); der Übergang entsteht erst mit „Übergang anlegen“. Verworfen: Graph neben den Tabellen (Tabellen zu eng), eigener Reiter (nie beides zugleich), Speichern nach jedem Verschieben (Liste der Änderungen voller Verschiebungen), Anlegen beim Loslassen mit erzeugter Beschriftung | 2026-11-02 | Pascal |
+| **E37** | Fristspalte (UI34, deine Entscheidungen 2026-11-02): **Speicherung** als Systemspalten am Datensatz (nächste Fälligkeit und 75-%-Punkt der laufenden Uhren) mit Index, gepflegt in derselben Transaktion wie die Uhren, damit Sortieren und Blättern schnell bleiben. **Welche Uhr:** die nächste fällige laufende; überschrittene zuerst; eine pausierte nur, wenn keine läuft, als „pausiert“. **Filter:** überschritten, knapp (ab 75 %), fällig bis … Verworfen: Frist beim Abfragen aus der Uhren-Tabelle; je SLA eine Spalte; Filter „ohne Frist“ | 2026-11-02 | Pascal |
+| **E36** | Befehlszeile (UI31, deine Entscheidungen 2026-11-02 nach dem Mockup „Befehlszeile Strg K“, [Artifact](https://claude.ai/artifact/Y7SKJQGpz8L6cRGy6WfkLX) mit zwei Varianten): **Dialog in der Mitte**, 640 px, Seite dahinter abgedunkelt, Esc gibt den Fokus zurück; das Suchfeld im Kopf öffnet denselben Dialog. **Nummer:** UI31 findet über Titel und Volltext; die Suche nach der laufenden Nummer kommt ohne weitere Arbeit mit PL49, deren Prüfweg den Schritt übernimmt. **Befehle:** „Neu“ je Typ, „Gehe zu“ (Seiten der Navigation, gespeicherte Suchen, Einstellungen, Verwaltung), Darstellung (Hell, Dunkel, System; Kompakt, Normal). **Leer:** die fünf zuletzt geöffneten Datensätze, je Konto im Browser gemerkt. Verworfen: Ausklapper unter dem Suchfeld; PL49 vorziehen; Übergänge des offenen Datensatzes als Befehle; zuletzt Geöffnete am Konto auf dem Server | 2026-11-02 | Pascal |
+| **E35** | Rahmen und Liste (UI30, deine Entscheidungen 2026-11-02 nach dem Mockup „Listen-Vorschau“, [Artifact](https://claude.ai/artifact/QZQNJhazfaMTJ64uB32wV8) mit zwei Varianten): **Vorschau rechts** neben der Liste, 400 px, mit „Schließen“ und „Öffnen“; unter 1100 px Breite führt der Klick direkt zur Detailseite. **Zeilenhöhe** „Kompakt“ (36 px) oder „Normal“ (52 px) je Person in den Einstellungen (`density`, Vorgabe am Baum `ui.density`, sonst „Normal“), Umschalter an der Liste. **Fristspalte** wird eine eigene Aufgabe (UI34), weil die Liste die Restzeit je Zeile noch nicht liefert. Verworfen: Vorschau unter der Liste; Zeilenhöhe nur im Browser; Fristspalte in UI30 | 2026-11-02 | Pascal |
+| **E34** | Design-Kit im Werkzeug (UI29, deine Entscheidungen 2026-11-02): **Schrift** IBM Plex Sans und Mono als npm-Pakete von Fontsource; die SIL Open Font License wird nur für diese zwei Schriftpakete erlaubt (Ausnahmen in `test/licenses/licenses.txt`), für Code bleibt sie gesperrt. Begründung: Eine gleichwertige Schrift unter MIT oder Apache gibt es kaum; die OFL ist von OSI und FSF als freie Lizenz anerkannt, gilt nur für die Schrift selbst und erlaubt die Auslieferung mit kommerzieller Software. **Darstellung** „Hell, Dunkel, wie das System“ je Person in Meine Einstellungen (`color_scheme`), Vorgabe am Organisationsbaum `ui.color_scheme`, sonst „wie das System“; der Browser merkt sich die letzte Wahl, damit eine dunkle Seite nicht hell aufblitzt. Für die Bausteine kennt die Typdefinition zwei optionale Angaben: `category` am Status (open, active, waiting, done) für die Farbe des Punkts und `format: priority` an Zahlfeldern für die Prioritätsmarke; ohne Angabe ist der Anfangsstatus „open“ und jeder andere „active“. Verworfen: Systemschrift ohne eigene Dateien, alte Apache-Fassungen von Roboto oder Open Sans, OFL allgemein erlauben, Darstellung nur im Browser | 2026-11-02 | Pascal |
+| **E33** | Rollen-Editor (UI27, deine Entscheidungen 2026-11-02 nach dem Mockup „Rollen-Editor Aufbau“, [Artifact](https://claude.ai/artifact/437B156YyKtxHdik1AGhsG) mit zwei Varianten): **Matrix** je Typ eine Zeile, Spalten lesen, anlegen, ändern, löschen, in jeder Zelle die Reichweite (– , eigene, Gruppe, beteiligt, Einheit, Unterbaum, alle); „…“ an der Zelle öffnet darunter Bedingung, Feldrechte und weitere Reichweiten. **Jede Änderung gilt sofort** und steht im Sicherheitsprotokoll. **Feldrechte:** „Alle Felder“ als Vorgabe, abgewählt die Felder zum Ankreuzen; je Zelle die Spalte, die für ihre Aktion zählt (lesen bei „lesen“, schreiben bei „anlegen“ und „ändern“, keine bei „löschen“), weil der Kern Feldrechte je Aktion auswertet. **Sonderrechte** als Kästchen mit Reichweite „alle“; was weder Matrix noch Kästchen zeigen (etwa `read_private`, `*`), steht als „Weitere Rechte“ in einer Liste. **Zuweisungen** (Person oder Gruppe mit Knoten) als eigener Abschnitt, +0,5 d. Verworfen: Tabelle je Berechtigung, Entwurf mit „Rolle speichern“, Feldrechte als Liste von Ausnahmen | 2026-11-02 | Pascal |
+| **E32** | SLA-Management nach Meilenstein 1 (deine Entscheidung 2026-11-02): Die Mechanik aus WF8 bis WF12 und die Fristen des Service Desk (SD3, SD6, SD7) reichen für Meilenstein 1. Pflegemaske (UI32) und Kennzahlen (UI33) kommen in Block C; ob OLA und Lieferantenverträge eigene Begriffe werden, fragt der Hauptplan die Fachseite (Hauptplan V39). Befund in §2.2 | 2026-11-02 | Pascal |
 | **E6** | Barrierefreiheit prüft `axe-core` direkt: in Vitest je gerenderter Seite (ohne Kontrast, da jsdom kein Layout hat), in Playwright mit `@axe-core/playwright` nach WCAG 2 A und AA im Browser; ein Befund bricht die CI | 2026-10-20 | Umsetzung |
 
 ## 2. Begründung
@@ -137,17 +150,589 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
     `internal/meta/model.go:150` auf `main`), im Graph also mehrere Kanten für einen Übergang. Ein
     Status hat keine Position (`internal/meta/model.go:139`); gespeicherte Anordnung siehe E27.
 
+### 2.1 Design-Kit „Klartext“: Werte
+
+Die Werte für UI29, übernommen am 2026-10-31 aus der
+[Design-Fläche](https://claude.ai/artifact/1TScdXrimrgmFwUWFUdejH) (Seiten „Ansichten“ und
+„Kit“). Abgenommen hat Pascal den hellen Modus am 2026-10-30 (E22) und den dunklen am 2026-10-31.
+Bis UI29 gilt diese Tabelle, danach `tokens.css` (E22). Die Kontraste sind nach der Formel von
+WCAG 2.1 gerechnet, nicht im Browser gemessen; das tut UI29 mit `axe`.
+
+**Farben.** Die Namen folgen `web/src/ui/tokens.css`. „neu“ heißt: Das Token gibt es dort noch
+nicht. Kontrast ohne Angabe gegen `--card`.
+
+| Token | Wofür | Hell | Dunkel | Kontrast hell · dunkel |
+| --- | --- | --- | --- | --- |
+| `--background` | Grund der Seite | #F6F6F3 | #111315 | |
+| `--card` | Flächen, Tabellen, Felder | #FFFFFF | #181A1D | |
+| `--card-foreground` | wie `--foreground` | | | |
+| `--foreground` | Text | #15171A | #ECEDEA | 18,0 · 14,8 |
+| `--foreground-2` (neu) | Zweittext | #4A4F57 | #B4B8BE | 8,2 · 8,8 |
+| `--muted-foreground` | Beschriftung, Hilfetext | #6B7079 | #8F949B | 5,0 · 5,7; auf `--background` 4,6 · 6,1 |
+| `--muted` | Segmente, Avatare, gesperrte Knöpfe | #ECECE7 | #24272B | |
+| `--border` | Trenner, Karten | #E4E4DF | #2C3035 | |
+| `--border-soft` (neu) | Trenner innerhalb einer Karte | #EFEFEA | #23262A | |
+| `--border-strong` (neu) | Rahmen, der führt: Hinweis, Kachel im Portal | #15171A | #6E737A | |
+| `--input` | Rand von Feldern und umrandeten Knöpfen | #8A8F98 | #6E737A | 3,2 · 3,7 (E28) |
+| `--primary` | Hauptaktion, P1 | #15171A | #A9ADB2 | dunkel 7,7 |
+| `--primary-foreground` | Text auf der Hauptaktion | #FFFFFF | #111315 | 18,0 · 8,3 |
+| `--kbd-on-primary` (neu) | Grund des Kürzels im Hauptknopf | #3A3D44 | #8C9096 | |
+| `--secondary` | umrandeter Knopf | wie `--card` | wie `--card` | |
+| `--secondary-foreground` | wie `--foreground` | | | |
+| `--accent` (neu) | Fokus, Auswahl, Links | #0B6E80 | #71ABB5 | 5,9 · 6,8 |
+| `--accent-soft` (neu) | gewählte Zeile und Option | #E7F1F2 | #2A373B | Text darauf 15,6 · 10,5 |
+| `--ring` | Fokusrahmen | wie `--accent` | wie `--accent` | |
+| `--success` | Frist erfüllt, gelöst | #2E7D4F | #5BC48A | 5,0 · 8,1 |
+| `--warning` | Balken der knappen Frist, Status „Wartet“ | #C77A00 | #E0A030 | 3,4 · 7,7 |
+| `--warning-foreground` (neu) | Text der knappen Frist | #8A5200 | #F2C36B | auf `--warning-background` 5,9 · 8,4 |
+| `--warning-background` (neu) | Grund der knappen Frist und von Hinweisen | #FFF4DE | #3A2A10 | |
+| `--warning-border` (neu) | Rand des Hinweises im Portal | #F0D9A8 | #5A4317 | |
+| `--destructive` | Frist gerissen, Fehler, Löschen | #B42318 | #FF8A80 | 6,6 · 7,6 |
+| `--destructive-foreground` | Text auf rot gefülltem Grund | #FFFFFF | #111315 | 6,6 · 8,2 |
+| `--destructive-background` (neu) | Grund der gerissenen Frist | #FDECEA | #3D1715 | Rot darauf 5,7 · 6,9 |
+| `--surface-subtle` (neu) | Kopf von Tabellen, Unterflächen | #FBFBF9 | #1C1F22 | |
+| `--surface-active` (neu) | aktiver Eintrag der Navigation | #E9E9E4 | #262A2E | |
+| `--row-checked` (neu) | angehakte Zeile der Liste | #FAFAF7 | #1C1F22 | |
+| `--segment-active` (neu) | gewähltes Segment | #FFFFFF | #3A3F45 | |
+| `--clock-running` (neu) | Balken der laufenden Frist | #8A8F98 | #6E737A | auf `--clock-track` 2,7 · 2,9 |
+| `--clock-paused` (neu) | Balken der angehaltenen Frist | #CFCFC8 | #3A3F45 | |
+| `--clock-track` (neu) | Spur des Fristbalkens | #ECECE7 | #2A2E33 | |
+| `--step-done` (neu) | erledigter Schritt im Portal | #15171A | #8F949B | |
+| `--batch-background` (neu) | Leiste der Mehrfachauswahl | #15171A | #2A2E33 | |
+| `--batch-foreground` (neu) | Text der Leiste | #FFFFFF | #ECEDEA | 18,0 · 11,6 |
+| `--batch-border` (neu) | Trenner in der Leiste | #4A4F57 | #4A4F57 | |
+
+**Regeln zu den Farben:**
+
+- **Ein Theme-Paket** setzt `--accent` und, wenn es will, `--primary` (E25). Grund, Linien und
+  Fristfarben bleiben, damit die Bedeutung überall gleich ist. Die Probe auf der Fläche:
+  Akzent #3F4BB8, einmal auch als Hauptaktion.
+- **Abgeleitet, nicht gesetzt:** `--accent` dunkel ist die Farbe des hellen Modus mit 58 %
+  Farbe und 42 % Weiß gemischt. `--accent-soft` ist hell 10 % Akzent auf Weiß, dunkel 20 % Akzent
+  auf `--card`. So bleibt ein Theme-Paket mit einer Farbe in beiden Modi lesbar.
+- **`--muted-foreground` nie als Text auf `--muted`:** hell nur 4,2 : 1. Dort steht
+  `--foreground-2` (7,0 · 7,5).
+- **Der Fristbalken** erreicht keine 3 : 1 gegen seine Spur. Das ist erlaubt, weil die Restzeit
+  immer als Text daneben steht und der Balken nur ergänzt.
+- **Abweichungen der Fläche:** Die Fläche schreibt bei Petrol dunkel #72ABB5 und bei Rot 6,1 : 1.
+  Gerechnet sind es #71ABB5 und 6,6 : 1; es gilt diese Tabelle. Das Portal der Fläche hatte dunkel
+  `--warning-background` #2E2410. Einheitlich gilt jetzt #3A2A10 (Text darauf 8,4 : 1). Der
+  Feldrand `--input` ist nach E28 kräftiger als auf der Fläche.
+
+**Schrift:** IBM Plex Sans (400, 500, 600) und IBM Plex Mono (400, 500), SIL Open Font License.
+Die Dateien liefert das Werkzeug aus, ohne Abruf aus dem Netz; die Fläche lädt sie nur zur
+Ansicht von Google Fonts.
+
+| Rolle | Größe / Zeilenhöhe | Gewicht | Wo |
+| --- | --- | --- | --- |
+| Display | 34 / 1,15, −0,025 em | 600 | Begrüßung im Portal |
+| Titel | 22 / 1,25, −0,015 em | 600 | Seitentitel |
+| Abschnitt | 15 / 1,4 | 600 | Überschriften in Karten |
+| Text | 14 / 1,45 | 400 | Grundschrift |
+| Klein | 12,5 / 1,4 | 400 | Angaben zu Person und Zeit, Hilfetext |
+| Rubrik | 11,5, +0,06 em, Großbuchstaben | 500 | Gruppen der Navigation, Kopf von Bausteinen |
+| Mono | 12,5 bis 13 | 400, 500 | Nummern, Zeiten, Fristen, Kürzel |
+
+**Raster und Ecken:**
+
+- **Raster 4 px:** 4 zwischen Symbol und Text, 8 in Gruppen, 12 zwischen Feldern, 16 innen in
+  Flächen, 24 Seitenrand, 48 zwischen Abschnitten.
+- **Ecken:** 4 px Marke (Priorität, Kürzel), 6 px Feld und Option, 8 px Knopf und Auswahlliste,
+  10 px Fläche, rund für Status und Zähler.
+- **Höhen:** Zeile der Liste 36 px kompakt, 52 px normal. Klickflächen mindestens 24 px,
+  Knöpfe und Felder 36 px, im Portal 44 bis 52 px.
+- **Schatten** nur am gewählten Segment (hell `0 1px 2px rgba(21,23,26,0.12)`, dunkel keiner)
+  und an der aufgeklappten Auswahlliste (`0 6px 20px rgba(21,23,26,0.08)`).
+- **Fokus:** 2 px `--ring` mit 2 px Abstand, immer sichtbar.
+
+**Bausteine:**
+
+- **Knöpfe**, 36 px hoch, Ecke 8 px, Gewicht 500:
+  - **Primär:** Grund `--primary`, Text `--primary-foreground`, Kürzel rechts im Kasten
+    `--kbd-on-primary`. Je Ansicht genau einer.
+  - **Umrandet:** Grund `--card`, Rand `--input`.
+  - **Ruhig:** ohne Grund und Rand.
+  - **Gefahr:** Grund `--card`, Text und Rand `--destructive`.
+  - **Gesperrt:** Grund `--muted`, Text `--muted-foreground`, Rand `--border`.
+  - **Nur Symbol:** 36 × 36 px umrandet, immer mit `aria-label`.
+- **Felder**, 36 px hoch, Ecke 6 px, Rand 1 px `--input`. Beschriftung 13 px, Gewicht 500,
+  Hilfetext „Klein“ in `--muted-foreground`. Pflicht mit rotem Stern. Fehler mit 1,5 px Rand
+  `--destructive`, Symbol und Text darunter (`aria-invalid`, `aria-describedby`). Nur lesbar:
+  Grund `--background`, Rand `--border`. Ankreuzfeld und Optionsfeld 16 px, `accent-color` ist
+  `--accent`.
+- **Auswahlfeld mit Suche** (UI28): Feld mit 2 px `--accent` im Fokus. Die Liste hat Ecke 8 px,
+  Rand `--input` und Schatten. Die gewählte Option ist `--accent-soft`, mit Avatar und Gruppe.
+- **Status:** runde Pille mit Rand `--border`, 8-px-Punkt und Text. Neu ist ein leerer Ring in
+  `--muted-foreground`, In Arbeit `--accent`, Wartet `--warning`, Gelöst `--success`.
+- **Priorität** ohne Ampel: Marke 26 × 20 px, Ecke 4 px, Mono 11,5 und Gewicht 500.
+  - P1: gefüllt `--primary`.
+  - P2: Rand `--foreground`.
+  - P3: Rand `--input`, Text `--foreground-2`.
+  - P4: Rand `--border`, Text `--muted-foreground`, ohne Grund.
+- **Frist:** Restzeit in Mono über einem 4-px-Balken auf `--clock-track`.
+  - Läuft: Balken `--clock-running`.
+  - Knapp ab 75 %: Text `--warning-foreground` auf `--warning-background`, Balken `--warning`.
+  - Gerissen: Text `--destructive` auf `--destructive-background`, negative Zeit wie
+    „−0 h 42 min“.
+  - Angehalten: Text „angehalten“ in `--muted-foreground`, Balken `--clock-paused`.
+  - Erfüllt: `--success`.
+- **Hinweise:**
+  - Konflikt beim Speichern (`role="alert"`): Rand 1,5 px `--border-strong`, Tabelle „Feld,
+    Ihre Eingabe, Jetzt gespeichert“, Knöpfe „Gespeichertes übernehmen“ und „Meine Eingabe
+    trotzdem speichern“.
+  - Ergebnis einer Massenaktion: „48 Vorgänge geändert, 2 abgelehnt“ mit „Ergebnis zeigen“.
+- **Navigation:** aktiver Eintrag `--surface-active`, Zähler in Mono. Dazu das Segment „Kompakt,
+  Normal“, Filter als Chip („Gruppe ist 1st-Level“) und das Kürzel „Strg K“ am Suchfeld (UI31).
+- **Verlauf:** Eine interne Notiz hat einen gestrichelten Rand und die Marke „Intern“, nie nur
+  einen anderen Grund. Eine Änderung steht als eine Zeile („Status Neu → In Arbeit“, Uhrzeit in
+  Mono).
+- **Leiste der Mehrfachauswahl:** `--batch-background`, `--batch-foreground`, `--batch-border`.
+  Auch dunkel bleibt sie eine dunkle Fläche.
+
+**Ansichten auf der Fläche:**
+
+- Vorgangsliste mit Vorschau, Detailseite eines Vorgangs und Portal, je hell und dunkel.
+- Alle Beispiele sind erfunden.
+- Bedienbar: Auswahl der Zeile, Haken mit Leiste, Umschalter für Dichte und Modus.
+
+### 2.2 SLA-Management: was da ist und was nach Meilenstein 1 kommt
+
+Gelesen am 2026-11-02 in den Plänen WF, SD und Hauptplan, nicht am Code nachgesehen. Der
+Hauptplan nennt das Practice IP29 „Service level management“ mit Priorität 1 und ordnet es WF zu.
+
+- **Da, als 🟢 und noch nicht abgenommen** (WF-Plan Block B): Kalender mit Arbeitszeiten und
+  Feiertagen (WF8), Service-Level als Kerntyp `core.sla` für jeden Typ mit Uhren, Pause, Restzeit
+  und Verstoß (WF9), Eskalationsstufen als Regeln mit Auslöser `clock` (WF10), Wartegründe (WF11),
+  Zeitregeln (WF12). Im SD-Plan ⬜: Fristen je Priorität mit Servicezeit (SD3), Fristen der
+  Anfragen (SD6), Suche „SLA-Risiko“ (SD7); die Werte sind vorläufig (SD-Plan E3, Hauptplan V30
+  und V31).
+- **Keine Pflegemaske.** SLAs gibt es nur über Liste und Formular von `core.sla`; Stufen und
+  Wartegründe hängen über CEL-Bedingungen und Ids zusammen (WF-Plan E11, E12). Der
+  Umsetzungsstand zu WF11 sagt selbst: „eine Oberfläche, die das zusammen anlegt, fehlt“. Das
+  schließt UI32.
+- **Kein Bericht zur Einhaltung.** IP29 nennt ihn, keine Aufgabe baut ihn. UI13 und UI14 zeigen
+  Zahlen aus gespeicherten Suchen, UI23 feste Berichte; eine Quote über die Uhren braucht eigene
+  Kennzahlen. Das schließt UI33.
+- **OLA und Lieferantenverträge (UC)** sind technisch nur weitere SLAs, weil `core.sla` für jeden
+  Typ gilt. Es fehlt aber ein Begriff, der SLA, OLA und UC mit Service, Kunde und Vertrag
+  verbindet; Lieferantenverträge sind IP13 im Plan CM. Fachfrage, Hauptplan V39.
+- **Welche SLA gilt,** entscheidet allein die Bedingung `applies` (WF-Plan E10). Eine SLA je
+  Kunde, Service oder Vertrag geht damit, aber nur, wenn jemand die Bedingung schreibt; ein
+  Regelwerk „SLA aus Service und Priorität“ wie in GLPI ist nicht vorgesehen.
+- **Bekannte Grenzen** stehen im WF-Plan unter WF9, „Nicht geprüft“: Pausen vor dem späten Start
+  einer SLA zählen mit; ein entfernter Feiertag wird erst zur alten Frist bemerkt; Bulk mit SLAs
+  läuft Zeile für Zeile; kein Zwischenspeicher für Kalender.
+- **Anzeige der Uhren** am Vorgang kommt mit UI30 (Detailseite aus `…/clocks`; die Fristspalte in
+  der Liste nur, wenn die API die Restzeit je Zeile liefert).
+
 ## 3. Offene Fragen
 
 | # | Frage | Hängt daran |
 | --- | --- | --- |
 Keine offen.
 
-**Beantwortet am 2026-10-20:** V1 (E1), V2 (E2). **Am 2026-10-30:** V3 (E24), V4 (E25), V5 (E23), V6 (E27).
+**Beantwortet am 2026-10-20:** V1 (E1), V2 (E2). **Am 2026-10-30:** V3 (E24), V4 (E25), V5 (E23), V6 (E27). **Am 2026-11-02:** V7 (E28).
 
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI34 — Fristspalte in der Liste, 2026-11-02
+
+- **Grundlage:** E35, E37 dieses Plans; Hauptplan E156; deine Entscheidungen vom 2026-11-02
+  (Systemspalten am Datensatz, die nächste fällige laufende Uhr, Filter überschritten, knapp,
+  fällig bis).
+- **Gebaut:**
+  - Migration 41: jede Typtabelle und `list_entry` bekommen `sla_due_at`, `sla_warn_at` und
+    `sla_paused`, die Typtabellen einen Index `(sla_due_at, id)`; vorhandene Datensätze werden aus
+    den Uhren gefüllt (der 75-%-Punkt dabei als Frist minus ein Viertel des Ziels, genau rund um
+    die Uhr, mit Kalender bis zum nächsten Schreiben oder Job der Uhr zu früh). Neue Typtabellen
+    bekommen die Spalten von `schema.Apply`.
+  - `internal/sla`: nach jedem Bewegen der Uhren (Schreiben des Datensatzes, Job der Frist) die
+    nächste fällige laufende Uhr, ihr 75-%-Punkt im Kalender der Uhr (wie die Eskalationsstufen),
+    sonst „angehalten“, wenn eine Uhr wartet; geschrieben über `records.SetDeadlineTx` in derselben
+    Transaktion, ohne Version, Verlauf und Ereignis. Die Antwort des Schreibens zeigt die Werte.
+  - Liste: `sort=sla_due_at` mit Blättern, Datensätze ohne Frist zuletzt (auch absteigend). Die
+    JSON-Abfrage kennt den Wert `@now` für Systemzeiten, damit eine gespeicherte Suche
+    „überschritten“ richtig bleibt. Typen tragen `timed: true`, wenn auf ihnen Uhren laufen.
+  - Oberfläche: Spalte „Frist“ (`render/DeadlineCell.tsx`) mit dem Baustein Frist aus UI29, bei
+    Typen mit SLA ohne Zutun sichtbar, sonst über „Spalten“; rot „Überfällig seit …“, gelb ab dem
+    75-%-Punkt, sonst „Noch …“ (unter 24 h) oder „fällig …“, „Angehalten“ bei wartenden Uhren; der
+    Balken schätzt den Anteil aus Frist und 75-%-Punkt. Filter „Frist ist überschritten“, „ist knapp
+    (ab 75 %)“ und „fällig bis“ einem Tag; gespeicherte Suchen lesen sie zurück.
+- **Belegt:**
+  - Go: `TestDeadlineOverHTTP`: Frist und 75-%-Punkt in der Antwort, Version bleibt 1; Liste nach
+    Frist, eine Zeile je Seite, auf- und absteigend, zwei Datensätze ohne Frist zuletzt nach id;
+    Abfragen überschritten, knapp, fällig bis und gegen `@now`; der Job der Frist markiert den
+    Verstoß, die Frist bleibt; Warten macht „angehalten“, Fortsetzen gibt die um die Pause
+    verschobene Frist zurück; der Verlauf zeigt die Frist nicht; `/types` meldet `timed`.
+  - Vitest (`render/DeadlineList.test.tsx`, 5 Fälle): Spalte mit „Überfällig seit 15 min“, „Noch …“,
+    „Angehalten“, „–“, axe ohne Befund; keine Spalte ohne Uhren; Filter überschritten und knapp
+    mit `@now`; Rücklesen aus einer gespeicherten Suche; Anteil aus dem 75-%-Punkt.
+  - Playwright (`e2e/deadline.spec.ts`, Konto `load`): mit einem SLA an Probe steht die Spalte
+    „Frist“ da, aufsteigend sortiert führt der neue Datensatz mit „Noch 59/60 min“, axe ohne
+    Befund, „ist überschritten“ lässt ihn weg; das SLA geht am Ende wieder.
+  - Ganze CI am 2026-11-02 (`scripts/ci-run.sh`, 9:24 min, dritter vollständiger Lauf): alle 19
+    Schritte grün, 87 Vitest-Fälle, 16 Browser-Tests, LZ1 p95 5,04 ms, LZ13 7.783 Zeilen/s, LZ9
+    143 ms. Der erste Lauf fand meine Versäumnisse: sqlc- und OpenAPI-Code nicht neu erzeugt,
+    `deadline.spec.ts` nicht formatiert, zwei Schema-Tests zählten die Schritte einer neuen
+    Tabelle (ein Index mehr: 14 statt 13, 8 statt 7 Zeilen, drei Spalten mehr; angepasst, weil
+    der Index der Frist dazukommt) und der Browser-Test erwartete „Noch 59/60 min“, angezeigt
+    wird „Noch 1 h 0 min“. Ein Lauf brach durch einen Neustart ab; im nächsten war nur der
+    Selbsttest des Lastwerkzeugs rot (LZ13 617 Zeilen/s, Lauf drei Stunden statt neun Minuten,
+    der Rechner war in der Zeit nicht frei); ohne Änderung danach grün.
+- **Nicht geprüft:** Gelb und Rot im Browser-Test (die CI kann nicht 45 Minuten warten; belegt in
+  Vitest und Go). LZ1 misst die Liste nach `updated_at`; eine Messung nach Frist gibt es noch nicht.
+  Der Prüfweg-Punkt „LZ1 ohne Verschlechterung“ hängt an der normalen Liste.
+
+### UI31 — Befehlszeile mit Strg K, 2026-11-02
+
+- **Grundlage:** E22, E36 dieses Plans; deine Entscheidungen vom 2026-11-02 nach dem Mockup
+  „Befehlszeile Strg K“ (Dialog in der Mitte, Nummer mit PL49, Befehle Neu/Gehe zu/Darstellung,
+  leer die zuletzt geöffneten Datensätze im Browser).
+- **Gebaut:**
+  - `app/CommandPalette.tsx`: Dialog in der Mitte (640 px, Seite abgedunkelt), Eingabe als
+    Combobox mit Liste in Gruppen „Zuletzt geöffnet“, „Datensätze“, „Befehle“, „Gehe zu“.
+    Pfeiltasten wählen, Enter führt aus, Esc schließt und gibt den Fokus zurück, Tab bleibt im
+    Dialog; ein Klick neben den Dialog schließt ihn.
+  - Datensätze aus `/api/v1/search` über alle lesbaren Typen ab zwei Zeichen, 200 ms nach dem
+    Tippen; die laufende Nummer findet sie, sobald PL49 sie durchsuchbar macht. Die letzte Zeile
+    „Alle Treffer für … in der Suche“ führt zur Suchseite aus UI30.
+  - Befehle: „Neu: <Typ>“ für jeden Typ der Navigation (wie der Knopf „Neu“ an der Liste; ob man
+    anlegen darf, sagt wie bisher das Formular), „Darstellung: Hell/Dunkel/Wie das System“ und
+    „Zeilenhöhe: Kompakt/Normal“, gespeichert wie in Meine Einstellungen. „Gehe zu“: Typen,
+    gespeicherte Suchen, Meine und Globale Einstellungen, Rollen und Typen anpassen (nur mit dem
+    Recht), Portal.
+  - Leer: die fünf zuletzt geöffneten Datensätze, je Konto im Browser (`app/recent.ts`, nur Typ,
+    ID und Titel); die Abmeldung im Arbeitsplatz und im Portal löscht sie.
+  - Strg K (auf dem Mac auch Cmd K) öffnet die Befehlszeile überall, auch aus einem Feld heraus.
+    Das Suchfeld im Kopf ist jetzt ein Knopf „Suchen oder Befehl …“ mit dem Kürzel „Strg K“ und
+    öffnet denselben Dialog.
+- **Belegt:**
+  - Vitest (`app/CommandPalette.test.tsx`, 3 Fälle): Strg K, Fokus in der Eingabe, „berg“ →
+    Person als erste Option, axe ohne Befund, Enter öffnet sie; „neu probe“ → „Neu: Probe“, Enter
+    führt zum Formular, „dunkel“ → Darstellung dunkel und gespeichert; nach dem Öffnen eines
+    Datensatzes steht er leer unter „Zuletzt geöffnet“, Pfeil runter wählt weiter, Esc schließt
+    und der Fokus steht wieder auf dem Knopf im Kopf. `ListPreview.test.tsx`: der Fall „Suchfeld
+    im Kopf“ geht jetzt über die Befehlszeile und „Alle Treffer …“ (angepasst, weil das Suchfeld
+    seit E36 die Befehlszeile öffnet).
+  - Playwright (`e2e/command.spec.ts`, Konto `load`, nur Tastatur): Strg K, ein Wort des Titels →
+    der Datensatz ist gewählt, axe ohne Befund, Enter öffnet ihn; Strg K, „neu probe“, Enter →
+    Formular; Strg K leer zeigt den Datensatz unter „Zuletzt geöffnet“, Esc schließt.
+  - Ganze CI am 2026-11-02 (`scripts/ci-run.sh`, 9:11 min, zweiter Lauf): alle 19 Schritte
+    grün, 82 Vitest-Fälle, 15 Browser-Tests, LZ1 p95 3,48 ms, LZ13 9.159 Zeilen/s, LZ9
+    Seitenwechsel zur Liste 132 ms. Der erste Lauf direkt nach einem Neustart des Rechners war
+    in zwei Schritten rot, beide ohne Bezug zu UI31: LZ9 mit 1.113 ms (Rechner noch unter Last,
+    LZ1 einzelne Läufe p95 8 bis 9 ms) und ein Go-Test, in dem zwei Testpakete gleichzeitig die
+    Tabellen von River auf der frischen Datenbank anlegten; die Sperre dafür kommt als Nachtrag
+    im Kern-Plan (deine Entscheidung 2026-11-02).
+- **Nicht geprüft:** Suche nach der Nummer (kommt mit PL49, dort im Prüfweg). „Neu“ steht wie an
+  der Liste für jeden Typ, auch ohne Anlegerecht; das Formular sagt es dann. Pfeiltasten in der
+  Liste selbst (Nachtrag aus UI30) sind nicht Teil von UI31 geworden.
+
+### UI30 — Rahmen und Liste nach dem Entwurf, 2026-11-02
+
+- **Grundlage:** E22, E35 dieses Plans; deine Entscheidungen vom 2026-11-02 (Vorschau rechts
+  nach dem Mockup, Zeilenhöhe je Person, Fristspalte als UI34).
+- **Gebaut:**
+  - Kopf mit Suchfeld (Enter führt zu `/search?q=…`, Treffer der Volltextsuche über alle
+    lesbaren Typen, `render/SearchPage.tsx`), Mandant, Sprache, Theme wie bisher.
+  - Navigation nach Bereichen (die Typen je Paket unter einer Rubrik, Beschriftung `area.<paket>`)
+    und darunter die gespeicherten Suchen, die man lesen darf (eigene und geteilte), als Link auf
+    die Liste mit `?search=`; Verwaltung wie bisher; aktiver Eintrag auf `--surface-active`.
+    Unter 768 px steht die Navigation über dem Inhalt.
+  - Zeilenhöhe „Kompakt“ (36 px) oder „Normal“ (52 px) als Umschalter an der Liste und in Meine
+    Einstellungen; gespeichert als `density` je Person (`internal/prefs`), Vorgabe am Baum
+    `ui.density`, sonst „Normal“.
+  - Vorschau `render/Preview.tsx` rechts neben der Liste (400 px): Titel, Status mit
+    Übergängen, SLA-Uhren, die ersten sechs Felder (Priorität als Marke), „Öffnen“ und
+    „Vorschau schließen“. Klick oder Enter auf eine Zeile zeigt sie ab 1100 px Breite, darunter
+    öffnet der Klick die Detailseite; Doppelklick öffnet immer. Die gewählte Zeile steht auf
+    `--accent-soft` mit `aria-selected`.
+  - Fristen auf der Detailseite und in der Vorschau: knapp ab 75 % der Zeit (vorher ab 80 %),
+    gelb mit Text, überschritten rot mit Text (Baustein Frist aus UI29).
+- **Belegt:**
+  - Go: `TestSettingsOverHTTP` (+ `density`: Vorgabe „normal“, eigener Wert, ungültiger 422).
+  - Vitest (`render/ListPreview.test.tsx`, 4 Fälle): Zeilenhöhe 52 → „Kompakt“ → 36 px und
+    `density: compact` gespeichert; Klick zeigt die Vorschau mit Titel, Status und Feldern, die
+    Zeile ist gewählt, axe ohne Befund, eine andere Zeile wechselt die Vorschau, „Öffnen“ führt
+    zur Detailseite; „Vorschau schließen“, unter 1100 px öffnet der Klick direkt; Suchfeld im
+    Kopf findet eine Person. `RecordPage.test.tsx`: Schwelle 75 % (50 von 240 Minuten übrig
+    ist knapp, 70 nicht).
+  - Playwright (`e2e/frame.spec.ts`, Konto `gestalter`): Zeile 52 px, „Kompakt“ 36 px, nach
+    Neuladen 36 px; Klick zeigt die Vorschau mit P2, axe ohne Befund, „Öffnen“ führt zur
+    Detailseite; bei 375 px steht die Navigation über der Liste in voller Breite.
+  - Ganze CI am 2026-11-02 (`scripts/ci-run.sh`, 8:56 min, dritter Lauf): alle 19 Schritte
+    grün, 79 Vitest-Fälle, 14 Browser-Tests, LZ1 p95 3,24 ms, LZ13 8.788 Zeilen/s. Der erste
+    Lauf fand drei Browser-Tests, die die Überschrift „Probe“ suchten und jetzt auch den
+    Bereich „Probepaket“ der Navigation trafen; sie suchen die Überschrift jetzt exakt. Im
+    zweiten Lauf stand im Test der Zeitleiste (UI3, UI7) einmal ein frischer Eintrag nicht
+    oben; im dritten Lauf ohne Änderung grün, Ursache nicht gefunden (Zeitleiste und
+    Eintragsfeld hat UI30 nicht berührt).
+- **Nicht geprüft:** Gelb und Rot der Frist im Browser-Test (die CI hat kein SLA an `probe`;
+  belegt in Vitest an `light()` und in UI29 am Baustein). Zähler an den Einträgen der
+  Navigation aus dem Entwurf fehlen, die API zählt nicht. Pfeiltasten in der Liste bewegen den
+  Fokus nicht von Zeile zu Zeile (Tab geht), das kommt mit der Befehlszeile UI31 oder als
+  Nachtrag.
+
+### UI29 — Design-Kit „Klartext“ im Werkzeug, 2026-11-02
+
+- **Grundlage:** E22 bis E25, E28, E34 dieses Plans und §2.1; deine Entscheidungen vom
+  2026-11-02 zu Schrift und Darstellung.
+- **Gebaut:**
+  - `web/src/ui/tokens.css` mit allen Werten aus §2.1, hell unter `:root`, dunkel unter
+    `data-color-scheme="dark"` an `<html>` (Tailwind-Variante `dark` folgt dem Attribut);
+    neue Tokens `--foreground-2`, `--accent`, `--accent-soft`, `--warning-*`,
+    `--destructive-background`, `--surface-*`, `--clock-*`, `--batch-*` und weitere; Ecken 6, 8
+    und 10 px; Fokusrahmen 2 px `--ring` (Petrol) mit 2 px Abstand für alles; Kästchen und
+    Optionsfelder in `--accent`. Theme `probe`: Akzent und Hauptaktion #3F4BB8, dunkel nach der
+    Formel aus §2.1 (#9097D6).
+  - IBM Plex Sans (400, 500, 600) und Mono (400, 500) aus `@fontsource` 5.3.0, von Vite
+    gebündelt; kein Abruf außerhalb des Werkzeugs.
+  - Knöpfe nach dem Kit (36 px, Primär graphit, Umrandet, Ruhig, Gefahr mit rotem Rand auf
+    `--card`, Gesperrt auf `--muted`), Felder 36 px mit Rand `--input`, Fehler 1,5 px rot,
+    Hinweise auf `--warning-background`.
+  - Bausteine `web/src/ui/marks.tsx`: `StatePill` (Punkt je Statusart: Ring, Petrol, Gelb,
+    Grün), `PriorityMark` (P1 gefüllt, P2 Rand, darunter ruhiger), `Deadline` (Restzeit in Mono
+    über 4-px-Balken). Eingesetzt in der Liste (Status, Felder mit `format: priority`), im Kopf
+    der Detailseite (Status) und bei den SLA-Uhren der Seitenleiste.
+  - Kern: `State.Category` und `Field.Format = priority` mit Prüfung in `meta.Validate`;
+    `probe` nutzt beides. Einstellung `color_scheme` in `internal/prefs` mit Vorgabe am Baum
+    `ui.color_scheme`; `web/src/ui/colorScheme.ts` wendet sie an und folgt bei „wie das System“
+    `prefers-color-scheme`, auch während die Seite offen ist. Auswahl „Darstellung“ in Meine
+    Einstellungen und in den globalen Einstellungen.
+  - Lizenzliste: zwei Ausnahmen für die Fontsource-Pakete mit OFL-1.1.
+- **Belegt:**
+  - Go: `TestSettingsOverHTTP` (Vorgabe „system“, Wert vom Baum, eigener Wert, ungültiger 422),
+    `TestValidateNamesFieldAndReason` (`format: priority` nur an Zahlen, Statusart aus der
+    Liste), `TestLoadProbePackageFromRepository`.
+  - Vitest: `ui/marks.test.tsx` (Bausteine mit Text, Breite des Balkens, axe; hell, dunkel,
+    „wie das System“ folgt dem Gerät, „Hell“ hört auf zu folgen), `SettingsPage.test.tsx`
+    (+1: „Dunkel“ gespeichert, Seite sofort dunkel, nach Neustart wieder dunkel).
+  - Playwright (`e2e/design.spec.ts`, Konto `gestalter`): Schrift IBM Plex geladen, Hauptknopf
+    `rgb(21, 23, 26)`, Fokusrahmen `rgb(11, 110, 128)`, P1 als Marke; Theme `probe` färbt den
+    Knopf `rgb(63, 75, 184)`; axe mit Kontrast auf Liste, Detailseite, Workflow, Rollen und
+    Einstellungen hell; „Dunkel“ gespeichert → Grund `rgb(17, 19, 21)`, nach Abmelden und
+    Anmelden dunkel, dieselben Seiten mit axe dunkel; kein Abruf außerhalb des Werkzeugs.
+  - Ganze CI am 2026-11-02 (`scripts/ci-run.sh`, 9:20 min, dritter Lauf): alle 19 Schritte
+    grün, 75 Vitest-Fälle, 13 Browser-Tests, LZ1 p95 4,05 ms, LZ13 8.057 Zeilen/s. Der erste
+    Lauf fand mit Kontrast den grauen Text der Navigation auf dem grauen Grund der Seitenleiste
+    (4,43 : 1, die Regel aus §2.1); die Überschriften nehmen jetzt `--foreground-2`, die
+    Seitenleiste `--surface-subtle`. Dazu ein Unit-Test der Lizenzprüfung, der die echte Liste
+    liest (die Schriftpakete fehlten in seinem Beispiel), und zwei Testfehler im neuen
+    Browser-Test. Der dunkle Modus bestand axe auf allen fünf Seiten im ersten Anlauf.
+  - Die Instanz auf 8092 hat das neue Paket `probe` (Statusart, `format: priority`).
+- **Nicht geprüft:** Das Portal und die Anmeldeseite prüft axe nur hell. Der Graph im
+  Workflow-Editor nimmt die Tokens, aber React Flow selbst hat keinen Test im dunklen Modus
+  außer axe. Rahmen, Navigation und Liste nach dem Entwurf folgen mit UI30, die Befehlszeile
+  mit UI31.
+
+### UI27 — Rollen-Editor, 2026-11-02
+
+- **Grundlage:** E33 dieses Plans; Kern-Plan PL8, PL9 (Rollen, Reichweiten, Bedingungen,
+  Feldrechte), PL27 (Sicherheitsprotokoll); deine Entscheidungen vom 2026-11-02 nach dem Mockup.
+- **Gebaut:**
+  - Kern: nur `me.manage_rights` (Recht `manage_rights` an `core.role`), damit die Oberfläche
+    den Editor anbietet; Rollen, Rechte und Zuweisungen hatte die API schon (PL8).
+  - Oberfläche `render/RolePage.tsx`: Navigation „Verwaltung › Rollen und Rechte“, Seite
+    `/roles` mit allen Rollen (Rechte und Zuweisungen gezählt), „Neue Rolle“ und Entfernen mit
+    Rückfrage (nicht `admin`); Seite `/roles/<name>` mit der Matrix aller Typen (Kästchen „Nur
+    Typen mit Rechten“, eine Zeile „Alle Typen“, wenn die Rolle `*` hat). Eine Reichweite in der
+    Zelle wählen setzt die Zeile, eine andere wählen setzt die neue und nimmt die alte weg
+    (Bedingung und Feldrechte wandern mit), „–“ nimmt alle Zeilen der Zelle weg. Hat eine Zelle
+    mehrere Reichweiten, zeigt sie „Gruppe + beteiligt“ und wird in den Details bearbeitet.
+    „…“ öffnet die Details: je Reichweite Bedingung (CEL, der Server prüft beim Speichern, ob
+    sie sich in SQL übersetzen lässt), „Alle Felder“ oder die Felder zum Ankreuzen, Speichern
+    und Entfernen; „Weitere Reichweite“. Sonderrechte als Kästchen: Arbeitsplatz, Typen und
+    Workflows anpassen, Rollen und Rechte, Organisationsbaum, Einstellungen, Regeln, Webhooks,
+    Hintergrundaufträge, Sicherheitsprotokoll, Auswertungen über Mandanten. „Weitere Rechte“
+    listet den Rest mit Entfernen und legt ein Recht mit freier Aktion an. „Zuweisungen“: Person
+    oder Gruppe per Auswahlfeld mit Suche (UI28) und Knoten aus dem Organisationsbaum.
+- **Belegt:**
+  - Go: `TestCustomerLayerOverHTTP` prüft `manage_rights` in `auth/me` (ohne Recht `false`, als
+    Admin `true`).
+  - Vitest (`render/RolePage.test.tsx`, 4 Fälle): Rolle über die Navigation anlegen, Seite
+    öffnet sich, axe ohne Befund; Probe lesen von „alle“ auf „eigene“ (erst PUT neu, dann DELETE
+    alt), ändern auf „Gruppe“, lesen auf „–“, „Nur Typen mit Rechten“; Details: ungültige
+    Bedingung mit Grund abgelehnt, gültige mit Feldauswahl gespeichert (`fields.read` ohne
+    „Fällig am“), weitere Reichweite „beteiligt“ sperrt die Auswahl der Zelle und zeigt
+    „eingeschränkt“; Sonderrecht erteilt und entzogen; Person per Suche an „IT“ zugewiesen, mit
+    Namen in der Liste, wieder entfernt. Jeder Aufruf genau wie erwartet.
+  - Playwright (`e2e/roles.spec.ts`): Admin und Konto `pruefer` (Rolle `e2e_rollen`, angelegt
+    von `scripts/ci.sh`) in zwei Browsern; `pruefer` sieht Datensätze von Probe; Admin stellt
+    im Editor Probe lesen auf „eigene“ → `pruefer` sieht nach Neuladen 0; zurück auf „alle“ →
+    wieder dieselbe Zahl; axe ohne Befund.
+  - Ganze CI am 2026-11-02 (`scripts/ci-run.sh`, 8:32 min, erster Lauf): alle 19 Schritte
+    grün, 72 Vitest-Fälle, 12 Browser-Tests, LZ1 p95 2,91 ms, LZ13 10.002 Zeilen/s.
+- **Nicht geprüft:** Beschriftung einer Rolle ändern (die API kennt nur Anlegen und Entfernen).
+  Die Bedingung wird nicht beim Tippen geprüft wie im Workflow-Editor, sondern beim Speichern
+  (die Rechte-Bedingung muss sich in SQL übersetzen lassen, das prüft `authz.Translate`). Zwei
+  Admins in derselben Zelle: der letzte gewinnt, es gibt keine Version an Rechten. Die Matrix
+  zeigt alle Typen; bei vielen Paketen wird sie lang (Kästchen „Nur Typen mit Rechten“).
+
+### UI26.2 — Workflow-Editor als Graph, 2026-11-02
+
+- **Grundlage:** E26, E27, E31 dieses Plans; Kern-Plan PL43 (Kundenschicht, Nachtrag
+  2026-11-02 zu `set_layout`); deine Entscheidungen vom 2026-11-02 nach dem Mockup.
+- **Gebaut:**
+  - Kern: `Type.Layout` (`map[string]Point`, nur JSON, nicht im YAML des Pakets) und die
+    Operation `set_layout` der Kundenschicht (Feld `layout`): ersetzt die ganze Anordnung, jeder
+    Name muss ein Status sein, ein entfernter Status verlässt die Anordnung, ein leeres
+    `layout` nimmt sie weg; `validateStates` meldet veraltete Namen. Die Engine liest das Feld
+    nicht.
+  - Oberfläche `render/WorkflowGraph.tsx` über den Tabellen der Workflow-Seite: React Flow
+    12.12 (MIT) mit eigenem Knoten je Status (Beschriftung, technischer Name, „Anfang“;
+    kräftiger Rahmen Anfangsstatus, gestrichelt eigener Status), je Ausgangsstatus eine Kante
+    mit Pfeil und Beschriftung (gestrichelt und grau: stillgelegt). Kante oder Zeile
+    anklicken markiert den Übergang in Graph (alle Kanten) und Tabelle (`aria-selected`, „im
+    Graphen markiert“). Eine Verbindung von Knoten zu Knoten ziehen füllt im Formular „Neuer
+    Übergang“ Von und Nach vor und setzt den Fokus auf die Beschriftung, mit Hinweis „Aus dem
+    Graphen gezogen“. Knoten bewegen mit Maus oder mit Enter und Pfeiltasten (React Flow);
+    „Anordnen“ ordnet mit dagre 3.1 (MIT) von oben nach unten; beides setzt „Anordnung
+    verändert, noch nicht gespeichert“ und warnt beim Verlassen der Seite; „Anordnung
+    speichern“ ist eine Änderung `set_layout` mit der Position jedes Status, in der Liste der
+    Änderungen „Anordnung des Graphen gespeichert“. Ohne gespeicherte Anordnung ordnet dagre
+    beim Öffnen, ein Status ohne Position bekommt seine Stelle aus dagre. „Graph einklappen“
+    merkt sich der Browser je Konto (`localStorage`). Farben aus den Tokens der Oberfläche,
+    Beschriftungen und Hilfetexte von React Flow auf Deutsch (`ariaLabelConfig`).
+- **Belegt:**
+  - Go: `TestApplyLayout` (meta: Anordnung gesetzt, unbekannter Status abgelehnt, entfernter
+    Status verlässt die Anordnung, `nil` abgelehnt, leer nimmt sie weg, `ValidateCustomer`
+    findet einen veralteten Namen), `TestCustomerLayerInsideItsPackage` (`set_layout` über
+    HTTP, in `GET /api/v1/types/probe.probe` sichtbar, unbekannter Status 422).
+  - Vitest (`render/WorkflowPage.test.tsx`, +2 Fälle, React Flow mit den Mess-Ersatzstücken
+    der Bibliothek für jsdom): Knoten je Status, Klick auf die Kante „Erledigen“ markiert die
+    Zeile und nur diese, Klick auf die Zeile „Wieder öffnen“ wechselt die Markierung;
+    „Anordnung speichern“ gesperrt bis „Anordnen“, dann eine Änderung `set_layout` mit genau
+    den drei Status, Hinweis verschwindet, Eintrag in den Änderungen, axe ohne Befund. Graph
+    einklappen entfernt ihn samt Knöpfen, `localStorage` je Konto, nach Neuaufbau zu,
+    aufklappen zeigt ihn wieder.
+  - Playwright (`e2e/workflow.spec.ts`, erweitert): alle Status von Probe im Graphen, Klick
+    auf eine Kante des neuen Übergangs markiert beide Kanten und die Zeile; neuer Status per
+    Enter und fünfmal Pfeil rechts bewegt, gespeichert, nach Neuladen an derselben Stelle
+    (gleicher `transform`); Verbindung vom neuen Status nach „Neu“ gezogen → Formular
+    vorbelegt und fokussiert, Beschriftung getippt, angelegt, Zeile da; „Anordnen“ setzt den
+    Hinweis; der Export hält genau `add_state`, `add_transition`, `set_layout`,
+    `add_transition`; der Datensatz nimmt den gezogenen Übergang zurück nach „Neu“; alles
+    zurückgenommen, auch die Anordnung. Die Kante wählt der Test per Tastatur (Fokus, Enter):
+    ein Mausklick auf die Mitte des Rechtecks um eine gebogene Kante trifft die Linie nicht.
+  - Ganze CI am 2026-11-02 (`scripts/ci-run.sh`, 8:28 min): alle 19 Schritte grün, 68
+    Vitest-Fälle, 11 Browser-Tests, LZ1 p95 2,93 ms, LZ13 9.923 Zeilen/s. Davor sechs rote
+    Läufe, alle an Tests oder Darstellung, keiner am Kern: Ersatz-`ResizeObserver` riss
+    fremde Vitest-Fälle mit; der Herstellerlink von React Flow hatte 2,8 : 1 Kontrast (jetzt
+    ausgeblendet, `proOptions.hideAttribution`, nach MIT erlaubt, und kein Link nach außen
+    aus einem VS-NfD-System); der eigene Knoten braucht sein Aussehen selbst; Zeilen im
+    Browser-Test nur in der Tabelle „Übergänge“ suchen; Position ohne z-index vergleichen;
+    ein doppelter Variablenname. Einmal war `TestSecurityEventLog` rot, ohne Bezug zu UI26.2:
+    der Test sucht mit „seit vor einer Sekunde“, ein Rücksprung der Uhr in WSL (Migration 40)
+    wirft seine Einträge aus dem Filter; im nächsten Lauf grün. Bleibt beobachtet.
+- **Nicht geprüft:** Dunkler Modus des Graphen (Tokens kommen mit UI29). Sehr große
+  Statusmodelle (dagre ordnet, aber die Fläche ist 384 px hoch; Zoom und Einpassen gibt es).
+  Die Pfeiltasten bewegen in Schritten von React Flow, keine Rasterung. Die Lizenzen der neuen
+  Pakete prüft der CI-Schritt `licenses` (React Flow, `@xyflow/system`, zustand, classcat MIT;
+  d3-Teile ISC; dagre und graphlib MIT).
+
+### UI26.1 — Workflow-Editor als Tabelle, 2026-11-02
+
+- **Grundlage:** E26, E30 dieses Plans; Kern-Plan PL43 (Kundenschicht, Nachtrag 2026-11-02);
+  deine Entscheidungen vom 2026-11-02 (Umfang wie bei den Feldern, eigene Seite, Live-Prüfung
+  der Bedingung).
+- **Gebaut:**
+  - Kern: die Kundenschicht kennt Status und Übergänge (acht Operationen, siehe Kern-Plan PL43,
+    Nachtrag); `Transition.Disabled`; `POST /api/v1/types/{typ}:check-condition` sagt, ob eine
+    CEL-Bedingung kompiliert (Recht `customize`).
+  - Oberfläche `render/WorkflowPage.tsx` auf `/types/<typ>/workflow`, Link „Workflow“ an der
+    Liste und im Typ-Editor. Tabelle der Status (Beschriftung, technischer Name mit Herkunft,
+    Anfangsstatus als Auswahlknopf, Bearbeiten mit Beschriftung deutsch und englisch, Entfernen
+    für eigene) und Formular „Neuer Status“; Tabelle der Übergänge (Beschriftung, Von, Nach,
+    Bedingung; Bearbeiten mit Ausgangsstatus als Kästchen, Zielstatus, Bedingung; Stilllegen
+    und Aktivieren; Entfernen für eigene) und Formular „Neuer Übergang“. Die Bedingung wird 300 ms
+    nach der letzten Eingabe geprüft; eine ungültige steht als Fehler am Feld und sperrt
+    „Anlegen“ und „Speichern“. Hinweise: Status, zu dem kein Übergang führt; stillgelegte
+    Übergänge; Typ ohne Statusmodell. Jede Zeile ist eine Änderung mit der gesehenen Version,
+    Konflikt und Ablehnung wie im Typ-Editor; darunter die Änderungen des Workflows mit
+    „Zurücknehmen“ und der Export. Der Typ-Editor und der Workflow-Editor teilen sich
+    `useCustomizer`.
+- **Belegt:**
+  - Go: `TestApplyWorkflow`, `TestCustomerLayerInsideItsPackage` (Kern-Plan PL43, Nachtrag).
+  - Vitest (`render/WorkflowPage.test.tsx`, 3 Fälle): Status „Prüfung“ per Tastatur mit Enter
+    anlegen → Hinweis „Kein Übergang führt nach „Prüfung““; Übergang von Neu und In Arbeit mit
+    Bedingung: `record.priority <` → „Bedingung ungültig“ und Knopf gesperrt, `= 2` dazu → gültig,
+    anlegen → zwei Änderungen genau wie erwartet, Hinweis verschwindet, axe ohne Befund.
+    „Erledigen“ stilllegen → Hinweis und Knopf „aktivieren“, kein „entfernen“ an einem Übergang
+    des Pakets; Anfangsstatus auf „In Arbeit“; Zurücknehmen stellt „Erledigen“ wieder her.
+    „Erledigt“ in „Fertig“ umbenennen und „Beginnen“ zusätzlich von „Fertig“ aus erlauben → je
+    eine Änderung nur mit dem, was sich geändert hat.
+  - Playwright (`e2e/workflow.spec.ts`): Status und Übergang mit zwei Ausgangsstatus und
+    Bedingung nur per Tastatur, ungültige Bedingung am Feld, Hinweis bis der Übergang da ist,
+    axe ohne Befund; ein neuer Datensatz mit Priorität 2 nimmt den Übergang über die API
+    sofort; der Export enthält genau die zwei Änderungen; am Ende alles zurückgenommen.
+  - Ganze CI am 2026-11-02 (zweiter Lauf, `scripts/ci-run.sh`, 8:37 min): alle 19 Schritte
+    grün, 66 Vitest-Fälle, 11 Browser-Tests, LZ1 p95 3,14 ms, LZ13 8.930 Zeilen/s. Der erste
+    Lauf war nur an `gofmt` in `internal/meta/customer_test.go` rot (17 von 19 grün).
+- **Nicht geprüft:** Die Vitest-Prüfung der Bedingung ist nachgebaut (ein Operator am Ende ist
+  ungültig); die echte Prüfung belegt der Browser-Test. Ein Status lässt sich nur dann entfernen,
+  wenn er in keiner Datenbank Datensätze hat; der Editor zeigt die Zahl nicht. Übergänge des
+  Pakets lassen sich umleiten; ob Regeln, SLA und Feldzustände des Pakets dann noch passen,
+  prüft niemand (Hinweis in der Einleitung der Seite fehlt noch). Der Graph kommt mit UI26.2.
+
+### UI25 — Typ- und Feld-Editor, 2026-11-02
+
+- **Grundlage:** Hauptplan E37, E135; Kern-Plan PL43 (Kundenschicht); E29 dieses Plans; deine
+  Entscheidungen vom 2026-11-02 (Knopf an der Liste, jede Aktion sofort, alle sieben Feldtypen,
+  Liste der Änderungen mit Zurücknehmen und Export).
+- **Gebaut:**
+  - Server: `auth/me` meldet `customize` (Recht `customize` an `core.type` an der Wurzel); jede
+    Änderung der Kundenschicht trägt in der Antwort `by_name`, den Namen des Kontos
+    (`internal/customer`, eine Abfrage für alle Namen).
+  - Oberfläche `render/CustomizePage.tsx`: Knopf „Typ anpassen“ an der Liste und „Verwaltung ›
+    Typen anpassen“ in der Navigation, beides nur mit dem Recht. Die Seite
+    `/types/<typ>/customize` zeigt die Felder in ihrer Reihenfolge mit Herkunft (eigenes Feld oder
+    aus dem Paket), Pflicht, ausgeblendet, berechnet, Titel; verschieben per Ziehen (dnd-kit, auch
+    mit der Tastatur) und mit ↑ ↓, ein- und ausblenden, bearbeiten (Beschriftung und
+    Beschreibung deutsch und englisch, Pflicht, Vorgabe, bei eigenen Textfeldern die Höchstlänge,
+    bei Auswahlfeldern weitere Werte), eigene Felder entfernen. „Neues Feld“ legt ein Feld `k_…`
+    an: Text, formatierter Text, Zahl, Ja/Nein, Datum, Zeitpunkt, Auswahl mit Werten je Zeile,
+    Verweis mit Zieltyp; der technische Name folgt der Beschriftung, bis man ihn selbst ändert.
+    Jede Aktion ist eine Änderung mit der gesehenen Version; 409 meldet „Jemand anders hat den
+    Typ gerade geändert“ und lädt neu, 422 nennt den Grund des Servers. Darunter die Änderungen,
+    neueste zuerst, mit Wer, Wann, Status (wirkt, stillgelegt, Konflikt mit Grund) und
+    „Zurücknehmen“; „Kundenschicht exportieren“ lädt `GET /api/v1/customer` als
+    `kundenschicht.json`. Die Übersicht `/customize` zählt die Änderungen je Typ.
+  - Nach jeder Änderung lädt die Oberfläche die Typen neu: Liste und Formular zeigen den neuen
+    Stand ohne Neuladen der Seite.
+  - Befund aus dem Browser-Test, behoben im Kern (Kern-Plan PL43, Nachtrag): Ein Feld an Probe
+    wurde abgelehnt, weil die Kundenschicht den Typ ohne die übrigen Typen und Merkmale seines
+    Pakets prüfte (Merkmal `tagged`, Summen aus `probe.task`). Jetzt prüft
+    `meta.ValidateCustomer` den Typ in seinem Paket, wie bei der Installation.
+- **Belegt:**
+  - Über HTTP (`TestCustomerLayerOverHTTP`, ergänzt): `auth/me` meldet `customize` false ohne und
+    true mit dem Recht; die erste Änderung trägt den Namen des Admins.
+    `TestCustomerLayerInsideItsPackage` (neu): ein Feld an `probe.probe` (mit Merkmal und Summen
+    des Pakets) wird angenommen und wieder zurückgenommen.
+  - Nachtrag aus deiner Prüfung (2026-11-02): Nach „Zurücknehmen“ eines eigenen Felds lehnte die
+    API die Liste mit 422 ab (`"k_dienststelle" is not a field of probe.probe`), weil die Liste
+    ihre Spaltenwahl je Typ im Browser merkt (`localStorage`) und das entfernte Feld weiter
+    anforderte. `render/List.tsx` nimmt aus der gemerkten Wahl jetzt nur Spalten, die der Typ
+    noch hat; Vitest `List.test.tsx` „drops a remembered column the type no longer has“.
+    Ganze CI danach grün am 2026-11-02 im ersten Lauf (8 min 22 s; 63 Vitest-Fälle, 10
+    Playwright-Fälle mit axe, Leistungsgate bestanden; LZ1 p95 2,93 ms, LZ4 8,09 ms).
+  - Vitest (`render/CustomizePage.test.tsx`, 6 Fälle): ohne Recht kein Knopf und kein Eintrag in
+    der Navigation; „Dienststelle“ anlegen → genau eine Änderung `add_field` mit Version 0, das Feld
+    steht im Editor, die Änderung mit „Pascal“, die Spalte in der Liste und das Feld im Formular;
+    ausblenden, mit ↑ verschieben und das Ausblenden zurücknehmen, je eine Änderung mit der
+    richtigen Version; Werte ergänzen und Beschriftung ändern an einem Feld des Pakets; eine
+    Änderung dazwischen meldet den Konflikt, lädt neu und der zweite Versuch gelingt; die
+    Ablehnung des Servers erscheint mit Grund; die Übersicht zählt; axe ohne Befund.
+  - Playwright (`e2e/customize.spec.ts`): Feld per Tastatur anlegen, axe ohne Befund, der Export
+    enthält genau diese Änderung mit dem Namen des Kontos, Spalte in der Liste und Feld im
+    Formular ohne Neuladen, Zurücknehmen entfernt es wieder.
+  - Ganze CI grün am 2026-11-02 im fünften Lauf, dem ersten mit eigenen Servern je Lauf (Kern-Plan PL51, Hauptplan E150): Go und Web (62 Vitest-Fälle, 10 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,19 ms, LZ2 5,26 ms, LZ3 6,99 ms, LZ4 10,34 ms, LZ5 11.120 Zeilen/s, LZ13 10.100 Zeilen/s. Davor viermal rot: einmal Lint (gosec G602, Fehlalarm an einer Schleife über die Änderungen; umgeschrieben), zweimal der Browser-Test des Editors selbst (der Befund an `probe.probe`, oben; dann „Neu“ als Link statt Knopf gesucht, und Reste früherer Läufe; der Test räumt jetzt vorher auf), einmal `TestConcurrentWritersAndHorizon` in `internal/events` ohne Bezug zu UI25 (Ereignis-Grenze unter Last anderer Pakete, Anlass für PL51).
+- **Nicht geprüft:** Das Ziehen mit der Maus ist nur über die Tastatur getestet (wie im
+  Formular-Builder). Ein zurückgenommenes eigenes Feld behält Spalte und Werte in der Datenbank
+  (PL43); der Editor sagt das nicht eigens. Die Vorgabe lässt sich setzen, aber nicht wieder
+  entfernen, weil die Kundenschicht dafür keine Operation hat. Felder von Merkmalen und berechnete
+  Felder bietet der Editor wie alle an; was der Server ablehnt, erscheint mit Grund.
 
 ### UI1 — Rahmen der Anwendung, 2026-10-20
 

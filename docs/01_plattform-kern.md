@@ -69,8 +69,9 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL47d** | Datenbank je Mandant, Betrieb: `ITSM_TENANT_MODE=shared\|database`, je Mandant `ITSM_TENANT_<NAME>_DATABASE_URL` (Zugangsdaten nur in der Konfiguration); `migrate`, `package install` und `tenant create` wirken auf jede Datenbank; Sicherung und Wiederherstellung einer Mandanten-Datenbank (Hauptplan E141, E144) | 🟢 | 1 d | Ein Paket-Update erreicht beide Mandanten-Datenbanken; eine Mandanten-Datenbank lässt sich allein sichern und wiederherstellen; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL47e** | Datenbank je Mandant, Tests: der Grenz-Rundgang aus PL44 bis PL46 läuft in beiden Betriebsarten mit eigenen Datenbanken (Hauptplan E141, E145; architektur.md §5.1) | 🟢 | 1 d | Der Rundgang findet in beiden Betriebsarten keinen Treffer über die Grenze; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL48** | Auswertungen über Mandanten: Sonderrecht für Admins der Installation, JSON-Abfrage mit Gruppierung und Aggregation sowie Listen je Mandant mit dessen Rechten, Zusammenführen mit dem Mandanten als Spalte, Eintrag im Ereignisprotokoll jedes Mandanten; nur lesen (Hauptplan E137, E146) | 🟢 | 1,5 d | Ein Admin mit dem Recht sieht offene Vorgänge je Status für A und B in einer Tabelle, in beiden Betriebsarten; ohne das Recht 403; beide Mandanten haben den Eintrag im Ereignisprotokoll; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL49** | Laufende Nummer je Typ: Feldtyp `sequence` mit Präfix (etwa `INC-24817`), vom Kern beim Anlegen vergeben, fortlaufend je Typ und Mandant in beiden Betriebsarten, danach nicht änderbar, in Liste, Suche und Betreff von Mails nutzbar; Lücken nach abgebrochenen Transaktionen sind erlaubt (aus dem [SD-Plan](05_service-desk.md) §2.3, N1; Hauptplan E137, E141) | ⬜ | 1 d | Typ mit Feld `sequence` und Präfix `INC-` → neue Datensätze `INC-1`, `INC-2`; 100 Anlagen gleichzeitig ergeben 100 verschiedene Nummern; Mandant B beginnt wieder bei `INC-1`; PATCH auf das Feld → 422; `/api/v1/search?q=INC-2` findet den Datensatz; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL49** | Laufende Nummer je Typ: Feldtyp `sequence` mit Präfix (etwa `INC-24817`), vom Kern beim Anlegen vergeben, fortlaufend je Typ und Mandant in beiden Betriebsarten, danach nicht änderbar, in Liste, Suche und Betreff von Mails nutzbar; Lücken nach abgebrochenen Transaktionen sind erlaubt (aus dem [SD-Plan](05_service-desk.md) §2.3, N1; Hauptplan E137, E141; E63) | 🟢 | 1 d | Typ mit Feld `sequence` und Präfix `INC-` → neue Datensätze `INC-1`, `INC-2`; 100 Anlagen gleichzeitig ergeben 100 verschiedene Nummern; Mandant B beginnt wieder bei `INC-1`; PATCH auf das Feld → 422; `/api/v1/search?q=INC-2` findet den Datensatz, ebenso die Befehlszeile (Strg K, `INC-2` tippen, Enter öffnet ihn; UI-Plan E36); `docker compose run --rm tools scripts/ci.sh` grün |
 | ~~**PL50**~~ | ~~Zwei CIs gleichzeitig (Spuren K und O, Hauptplan E147): die festen Namen der Test-Datenbanken aus `dbtest.Isolated` bekommen eine Endung aus einer Umgebungsvariable, ebenso die CI-Datenbank `itsm_ci`; Valkey getrennt je Spur (eigene Valkey-Datenbank oder Präfix der Schlüssel, Entscheidung vor dem Bau); Compose-Projekt und Ports der zweiten WSL-Kopie stören die erste nicht. Bis dahin läuft nie mehr als eine CI~~ — **entfällt am 2026-10-31:** nur noch ein Agent, nie zwei CIs gleichzeitig (Hauptplan E149) | — | 0,5 d | Zwei `scripts/ci.sh` mit verschiedener Endung laufen gleichzeitig und sind beide grün; keine löscht Datenbanken oder Schlüssel der anderen |
+| **PL51** | CI mit eigenem Stand je Lauf: eigener PostgreSQL und Valkey je Lauf, frisch und danach entfernt; zeitkritische Pakete nacheinander; kein Abbruch beim ersten Fehler, alle Fehler gesammelt; Browser-Tests einzeln (Hauptplan E150) | 🟢 | 0,5 d | Zwei Läufe nacheinander finden dieselben Datenbanken vor (nur `itsm_ci` samt Vorlagen); nach dem Lauf gibt es keine Container `postgres-ci` und `valkey-ci` mehr; ein absichtlich roter Schritt hält die übrigen nicht auf und steht in der Zusammenfassung; `scripts/ci-run.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -92,7 +93,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL38** | CalDAV-Server für Planung und Notizen (E26) (Inventar G227) | ⬜ | 2 d | Thunderbird abonniert den Kalender einer Person und zeigt ihre Aufgaben mit Termin; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL39** | Aufbewahrung je Typ: Partitionen im Voraus anlegen, abgelaufene löschen oder auslagern (E47); Verlauf und Vorgänge nach Frist (Inventar G175, G244) | ⬜ | 2 d | Ein Typ mit Monatspartitionen hat nach dem Wartungsjob die nächsten drei Monate angelegt; eine abgelaufene Partition ist gelöscht; `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 80,5 d; 64 d geschätzt vor dem Bau (Block A: 10 d), PL40 am 2026-10-27 aus PL22 abgetrennt, PL41 am 2026-10-28 aus dem Befund von WF4 dazu, PL42 am 2026-10-29 vor UI3 eingeschoben (Hauptplan E121), PL43 am 2026-10-29 vor UI25 eingeschoben (Hauptplan E135), PL44 bis PL48 am 2026-10-29 für die Mandanten (Hauptplan E136, E137), PL47 am 2026-10-30 in PL47a bis PL47e geteilt und von 2,5 d auf 6,5 d geschätzt (Hauptplan E141). Mit PL49 am 2026-10-31 aus dem SD-Plan (§2.3, N1) 81,5 d.
+**Summe:** 80,5 d; 64 d geschätzt vor dem Bau (Block A: 10 d), PL40 am 2026-10-27 aus PL22 abgetrennt, PL41 am 2026-10-28 aus dem Befund von WF4 dazu, PL42 am 2026-10-29 vor UI3 eingeschoben (Hauptplan E121), PL43 am 2026-10-29 vor UI25 eingeschoben (Hauptplan E135), PL44 bis PL48 am 2026-10-29 für die Mandanten (Hauptplan E136, E137), PL47 am 2026-10-30 in PL47a bis PL47e geteilt und von 2,5 d auf 6,5 d geschätzt (Hauptplan E141). Mit PL49 am 2026-10-31 aus dem SD-Plan (§2.3, N1) 81,5 d. PL51 am 2026-11-02 für die CI (Hauptplan E150): 82 d.
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B ist fertig; PL31 und PL32 aus Block C sind vorgezogen gebaut. PL41 (Verteiler in Stapeln, Hauptplan E112) ist auf deine Entscheidung nach dem Befund von WF4 in Block B dazugekommen und vor WF8 gebaut. PL42 (Zeitleiste, Hauptplan E121) ist am 2026-10-29 auf deine Entscheidung vor UI3 eingeschoben, weil die Detailseite Folgemeldungen braucht, die es noch nicht gab. Der Rest von Block C und Block D wartet bis nach Meilenstein 1; vorher kommen WF und UI. PL49 (laufende Nummer) ist am 2026-10-31 aus dem SD-Plan dazugekommen und steht vor SD2. PL50 (zwei CIs gleichzeitig) ist am 2026-10-31 dazugekommen und am selben Tag wieder entfallen, weil nur noch ein Agent arbeitet (Hauptplan E149).
 
@@ -144,6 +145,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E63** | Laufende Nummer (PL49, deine Entscheidungen 2026-11-02, Hauptplan E157): **Zähler** ist eine Postgres-Sequenz je Typ, Feld und Mandant, ohne Sperre; Lücken nach abgebrochenen Transaktionen sind erlaubt. **Gespeichert** wird die Zahl (`bigint`), das Präfix kommt aus der Definition und gilt für alle Datensätze; sortiert numerisch, die Suche findet „INC-24817“ und „24817“. **Bestand:** bekommt ein Typ das Feld später, nummeriert ein Job die vorhandenen Datensätze nach Anlagezeit. **Import:** nur Bulk mit `source` darf eine Nummer mitbringen, die Sequenz springt danach über die höchste; Anlegen und PATCH setzen sie nie. Verworfen: Zählertabelle mit Zeilensperre; fertiger Text; nur neue Datensätze; Altnummern nur als Textfeld | 2026-11-02 | Pascal |
 | **E62** | Nebendaten finden ihren Mandanten auf drei Wegen (PL45): eine eigene Spalte (`rule.tenant`, `webhook.tenant`, `security_event.tenant`), der Knoten des Datensatzes im Ereignis (`payload.org_path`, `delivery_failure.org_path`) oder das Konto (`account.tenant` für API-Clients). Wo das System im Auftrag arbeitet (Regeln, Benachrichtigungen, OIDC), bestimmt `org.TenantOf` den Mandanten aus dem Knoten, und `authz.SystemIn` hält Schreiben und Suchen darin. Jobs tragen den Mandanten als `tenant` in den Argumenten; `/jobs` filtert darüber mit `JobListParams.Where` | 2026-10-30 | Umsetzung |
 | **E61** | Die Grenze des Mandanten (PL44) sitzt in `authz.Access`: Mandant der Anfrage ist der mit `Enter` gewählte, sonst der erste erlaubte, damit Arbeit im Auftrag eines Kontos (Jobs, Webhooks) seine Mandanten nie verlässt. `Filter` hängt `org_path <@ Mandant` an die ganze Bedingung, `Permits` prüft dasselbe; eine Rolle an einem Knoten außerhalb zählt nicht, auch nicht mit `all`. `Tenants` und `Home` stehen im Rechte-Cache, der gewählte Mandant nur in der Sitzung. Ein Konto der Installation ohne Rolle in einem Mandanten arbeitet in `root.NONE`, einem Pfad, den kein Knoten haben kann. Was zur Installation gehört (Rollen, Kundenschicht, Einstellungen der Wurzel), prüft `Installation`: das Recht aus einer Rolle an der Wurzel mit Reichweite `all` oder `subtree` | 2026-10-30 | Umsetzung |
 | **E60** | Die Kundenschicht (PL43) liegt je Typ als ein Dokument mit der Liste der Änderungen in `definition` (Schicht `customer`); `meta.Types` führt sie bei jedem Lesen mit der Basis zusammen, damit Rechte, Datensätze und Oberfläche ohne Neustart die wirksame Definition sehen. `revision` ist der Hash der gespeicherten Schichten, nicht der zusammengeführten Definition, damit das Lesen nichts serialisiert | 2026-10-29 | Umsetzung |
@@ -1415,6 +1417,122 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Fortschrittsanzeige ist nur über die Ausgabe des Jobs belegt, nicht während eines langen
   Laufs beobachtet. Ein Strom über 1 GiB.
 
+### PL49 — Laufende Nummer je Typ und Mandant, 2026-11-02
+
+- **Grundlage:** E63 dieses Plans, Hauptplan E157; SD-Plan §2.3 (N1); deine Entscheidungen vom
+  2026-11-02 (Sequenz je Typ und Mandant, Zahl speichern, Bestand nachnummerieren, Import mit
+  Quelle).
+- **Gebaut:**
+  - Feldtyp `sequence` mit `prefix` (höchstens 20 Zeichen ohne Leerzeichen; kein `required`,
+    `default`, keine Formel). Er zählt zu den berechneten Feldern: Anlegen und PATCH mit einer
+    Nummer sind 422 `read_only`. Spalte `bigint`, eindeutiger Index `(tenant, feld)` ohne Ausnahme
+    für den Papierkorb, damit keine Nummer zweimal vorkommt.
+  - `internal/records/sequence.go`: Sequenz je Typ, Feld und Mandant (`seq_` plus Hash, passt in
+    63 Zeichen), beim ersten Gebrauch unter `pg_advisory_xact_lock` angelegt und danach im
+    Prozess gemerkt; `nextval` in der Transaktion des Anlegens. Der Mandant kommt aus
+    `tenant_of(knoten)`, in beiden Betriebsarten (eigene Datenbank: die Sequenz liegt dort). Eine
+    neue Sequenz beginnt über der höchsten Nummer, die der Mandant schon hat: Datensätze, die ein
+    Mandant beim Anlegen mit `--adopt` von der Wurzel übernimmt, behalten ihre Nummern (Fund aus
+    `TestTenantBoundaryOverHTTP`, der sonst an der Eindeutigkeit scheiterte).
+  - Import: `:bulk` und der Datenstrom mit Quelle dürfen die Nummer mitgeben (Zahl oder Text mit
+    Präfix, etwa `PRB-5000`); die Sequenz springt per `setval` darüber, im selben Stapel auch für
+    die Zeilen ohne Nummer. Dieselbe Zeile wieder mit derselben Nummer ist erlaubt, mit einer
+    anderen ein Fehler der Zeile. Stapel ziehen ihre Nummern in einem Zug in der Reihenfolge der
+    Zeilen.
+  - Suche: die Suchspalte bekommt „PRB-24817 24817“; Filter nehmen die Nummer mit oder ohne
+    Präfix. Export, Mails (`{{feld}}`) und Oberfläche zeigen sie mit Präfix, das Formular nur
+    lesend.
+  - Bestand: bekommt ein Typ das Feld beim Paket-Update, nummeriert der Job `records.recompute`
+    (neu mit `number`) die Datensätze ohne Nummer nach Anlagezeit und füllt die Suchspalte neu;
+    über die Kundenschicht geschieht das gleich in der Anfrage.
+  - Paket `probe`: Feld `number` mit Präfix `PRB-`.
+- **Belegt:**
+  - Go `TestSequenceOverHTTP` (geteilt und eigene Datenbank je Mandant): A bekommt 1 und 2, B
+    beginnt wieder bei 1; 100 Anlagen zugleich ergeben 100 verschiedene Nummern; PATCH und Anlegen
+    mit Nummer 422; die Suche findet `PRB-2` und `2`, der Filter `PRB-2`; ein Import mit `PRB-5000`
+    behält sie, die Zeile ohne Nummer im selben Stapel bekommt 5001, das nächste Anlegen 5002;
+    dieselbe Zeile wieder gilt als geändert, eine andere Nummer dafür als Fehler.
+  - Go `TestSequenceForExistingRecords`: drei Datensätze, dann das Feld über die Kundenschicht
+    (`D-`): sie bekommen 1, 2, 3 in der Reihenfolge des Anlegens, der nächste 4, die Suche findet
+    `D-2`.
+  - `TestBulkStreamOverHTTP` zählt jetzt sechs Verlaufszeilen je Datensatz statt fünf: die
+    Nummer steht im Verlauf des Anlegens (angepasst, weil das so gewollt ist).
+  - Vitest (`render/Sequence.test.tsx`, 3 Fälle): Liste zeigt `K-2`, axe ohne Befund, das
+    Formular zeigt `K-2` nur lesend; Filter schickt `K-3`; das Formular sendet die Nummer nie.
+  - Playwright (`e2e/sequence.spec.ts`, Konto `load`): neuer Datensatz bekommt eine Nummer; Strg K
+    und `PRB-<Nummer>` finden ihn, die Detailseite zeigt die Nummer nur lesend (der Schritt, den die
+    Befehlszeile laut UI-Plan E36 an PL49 abgegeben hat).
+  - Ganze CI am 2026-11-03 (`scripts/ci-run.sh`, 9:08 min, zweiter Lauf): alle 19 Schritte grün,
+    90 Vitest-Fälle, 17 Browser-Tests, LZ1 p95 2,88 ms, LZ5 8.840 Zeilen/s, LZ13 7.881 Zeilen/s.
+    Vorher fand die ganze Go-Suite zwei Fehler: übernommene Datensätze (`--adopt`) stießen mit der
+    neuen Sequenz des Mandanten zusammen (behoben, die Sequenz beginnt über der höchsten Nummer)
+    und ein Wettlauf beim Spiegelkonto (PL47b, eigener Nachtrag). Im ersten CI-Lauf war nur der
+    Test der Zeitleiste (UI3, UI7) rot, zum zweiten Mal nach UI30: ein neuer Eintrag stand unter
+    dem Statuswechsel „Version 2“, dessen Zeit in der Zeitleiste später lag als die des Eintrags,
+    obwohl der Wechsel im Test zwei Sekunden früher geschah; beide Zeiten kommen aus `now()` der
+    Datenbank. Ursache offen, die Spur liegt in WSL unter `~/ci-befunde/zeitleiste-2026-11-02`.
+- **Nicht geprüft:** Der Typ-Editor (UI25) bietet `sequence` noch nicht als Art an; über die API
+  der Kundenschicht geht es. Das Nummerieren des Bestands über die Kundenschicht läuft in der
+  Anfrage, bei sehr vielen Datensätzen dauert sie entsprechend. Übernimmt ein Mandant per `--adopt`
+  Datensätze, nachdem seine Sequenz schon besteht, kann sie unter deren Nummern liegen; der
+  eindeutige Index verhindert doppelte Nummern, das Anlegen scheitert dann, bis jemand die Sequenz
+  per `setval` hochsetzt.
+
+### PL51 — CI mit eigenem Stand je Lauf, 2026-11-02
+
+- **Grundlage:** Hauptplan E150; deine Entscheidung vom 2026-11-02 (Punkte 1 bis 4 aus der
+  Durchsicht der Testsuite: eigene Server, zeitkritische Pakete nacheinander, kein Abbruch,
+  Browser-Tests einzeln; immer derselbe Stand am Anfang, alles aufgeräumt am Ende, alle Fehler
+  gesammelt und bewertet).
+- **Gebaut:**
+  - `compose.yaml`: Dienste `postgres-ci` und `valkey-ci` im Profil `ci`, Daten im
+    Arbeitsspeicher (`tmpfs`, Valkey ohne Persistenz), ohne Ports; der Werkzeug-Container zeigt
+    mit `ITSM_TEST_DATABASE_URL` und `ITSM_TEST_VALKEY_ADDR` auf sie.
+  - `scripts/ci-run.sh` (neu, auf dem Rechner): startet beide mit `--force-recreate` und wartet
+    auf gesund, ruft `scripts/ci.sh` im Werkzeug-Container, entfernt beide danach (auch bei
+    Abbruch, `trap`).
+  - `scripts/ci.sh`: jeder Schritt ist eine Funktion und läuft über `run` in einer Unterschale
+    mit `set -e`; Ausgabe auf den Bildschirm und in ein Protokoll je Schritt; ein Schritt, der
+    einen roten Schritt braucht (`go: build` für die Laststufe, `web: install` für die
+    Web-Schritte, Laststufe und Web-Build für die Browser-Tests), wird übersprungen. Am Ende die
+    Zusammenfassung aller Schritte und je rotem Schritt die Zeilen mit `--- FAIL`, `FAIL`,
+    Testdatei und Zeile, `✘`, `×` oder `Error`; Rückgabe 1 bei einem roten Schritt, sonst
+    `ci: all steps passed`. Der Schritt „Datenbank der CI“ wartet auf den Server und zeigt die
+    Datenbanken, die er vorfindet.
+  - Go-Tests in zwei Phasen: alle Pakete außer `internal/events`, `internal/webhooks`,
+    `internal/jobs`, `internal/httpapi` und `test/load` nebeneinander wie bisher, dann diese
+    fünf mit `-p 1` nacheinander.
+  - `web/playwright.config.ts`: `workers: 1`.
+- **Belegt, 2026-11-02:**
+  - Erster Lauf der neuen Suite grün in einem Durchgang (8 min 48 s, vorher etwa 7 min): der
+    Schritt „Datenbank der CI“ fand auf dem frischen Server nur `itsm_ci` und `postgres`; Go in
+    zwei Phasen (38 Pakete nebeneinander, dann events, httpapi 183 s, jobs, webhooks und das
+    Lastwerkzeug nacheinander); Leistungsgate bestanden (LZ1 p95 3,19 ms, LZ2 5,26 ms, LZ3
+    6,99 ms, LZ4 10,34 ms, LZ5 11.120 Zeilen/s, LZ13 10.100 Zeilen/s); 62 Vitest-Fälle; 10
+    Playwright-Fälle mit axe einzeln in 51 s (vorher 24 bis 31 s nebeneinander). Die
+    Zusammenfassung führt alle 19 Schritte mit `ok`.
+  - Nach dem Lauf: keine Container `postgres-ci` und `valkey-ci` mehr (`docker ps -a`); der
+    Server der Instanz hat unverändert `itsm`, `itsm_ci` (alt, seit E150 ungenutzt),
+    `itsm_mandanten`.
+  - Der Fall „ein roter Schritt hält die übrigen nicht auf“ ist im Lauf nicht vorgekommen; die
+    Mechanik (Unterschale mit `set -e`, Status je Schritt, Überspringen) ist mit `dash -n`
+    geprüft und greift beim nächsten roten Lauf.
+- **Nachtrag 2026-11-02 (Befund aus der CI von UI31, deine Entscheidung):** Im ersten Lauf nach
+  einem Neustart legten zwei Testpakete gleichzeitig die Tabellen von River auf der frischen
+  Datenbank an; einer scheiterte an `pg_type_typname_nsp_index`. Die eigenen Migrationen sperrt
+  goose schon, die von River nicht. Im Betrieb träfe es zwei Server, die gleichzeitig auf einer
+  neuen Datenbank starten (etwa ein neuer Mandant mit eigener Datenbank).
+  - Gebaut: `internal/db/db.go` hält um die River-Migration eine Postgres-Sperre
+    (`pg_advisory_lock`, Schlüssel `riverLock`) auf einer eigenen Verbindung.
+  - Belegt: `TestMigrateRiverAtOnceOnAnEmptyDatabase` startet acht River-Migrationen zugleich auf
+    einer leeren Datenbank (`dbtest.Isolated`): alle gelingen, jede Version steht einmal in
+    `river_migration`. Gegenprobe ohne Sperre: der Test scheitert in beiden Läufen.
+  - Ganze CI am 2026-11-02 grün im ersten Lauf (9:21 min): alle 19 Schritte, 82 Vitest-Fälle,
+    15 Browser-Tests, LZ1 p95 3,38 ms, LZ13 10.015 Zeilen/s.
+- **Nicht geprüft:** Der Lauf dauert durch die zweite Phase und die einzelnen Browser-Tests
+  knapp 2 min länger (8 min 48 s statt etwa 7 min). Die Caches von Go und pnpm und das Volume der Basislinie bleiben zwischen den
+  Läufen, das ist gewollt. Der Werkzeug-Container selbst wird nicht neu gebaut.
+
 ### PL48 — Auswertungen über Mandanten, 2026-10-31
 
 - **Grundlage:** Hauptplan E137, E146; architektur.md §5.1; deine Entscheidungen vom 2026-10-31
@@ -1697,6 +1815,22 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     Rolle), weil eine Rolle in Gebrauch abgelehnt wird. `actors_test` löscht seine Rolle am Ende
     ebenso.
   - Ganze CI grün am 2026-10-30 im dritten Lauf, in der WSL-Kopie: Go und Web (56 Vitest-Fälle, 9 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,33 ms, LZ2 7,70 ms, LZ3 13,84 ms, LZ4 10,95 ms, LZ5 9.488 Zeilen/s, LZ13 7.259 Zeilen/s. Davor: einmal `TestRightsScopesOverHTTP`, weil `DeleteRole` die eingebaute Rolle admin erst nach der Zählung der Zuweisungen abwies (409 statt 422; jetzt zuerst die Prüfung auf admin); einmal das Leistungsgate an LP2, weil ein Lauf der Basislinie während eines Uhrensprungs der WSL 0 Anfragen maß und das Gate den besten Lauf (0,00 ms) als Vergleich nahm; seitdem lässt `measure.Best` Läufe ohne erfolgreiche Anfrage weg (E76 ergänzt, Test `TestBest`).
+- **Nachtrag 2026-11-03 (Befund aus dem Test von PL49, deine Entscheidung):** Mehrere Anfragen
+  eines Installations-Admins gleich nach dem Wechsel in einen Mandanten mit eigener Datenbank
+  legten Spiegelperson und Spiegelkonto zugleich an; die zweite scheiterte an der Eindeutigkeit
+  (500 beim Konto, 409 bei der Person). Der Browser schickt nach dem Wechsel genau solche
+  parallelen Anfragen.
+  - Gebaut: `authn.Mirror` versucht es nach so einem Zusammenstoß einmal neu und findet den
+    Spiegel dann vor. Eine Postgres-Sperre je Konto war der erste Ansatz; sie hielt eine
+    Verbindung des Pools beim Warten und blockierte bei 30 Anfragen den Pool (im Test gesehen,
+    verworfen).
+  - Belegt: `TestMirrorAtOnceOverHTTP` (eigene Datenbanken): dreimal Wechsel A, B, A mit je 30
+    Anfragen zugleich, alle 200, ein Spiegelkonto in A; ohne die Wiederholung scheiterten 22 von
+    30. Dreimal hintereinander grün.
+  - Ebenfalls am 2026-11-03 (Befund aus UI34): der Feldname `tenant` ist reserviert wie die
+    anderen Systemspalten (`meta/validate.go`); `TestValidateNamesFieldAndReason` prüft ihn mit, dazu die Regeln des Feldtyps `sequence`.
+  - Ganze CI am 2026-11-03 grün im ersten Lauf (9:33 min): alle 19 Schritte, 90 Vitest-Fälle,
+    17 Browser-Tests, LZ1 p95 3,97 ms, LZ13 8.092 Zeilen/s.
 - **Nicht geprüft:**
   - Gruppen eines Admins in einem Mandanten bringen ihm keine Rechte. Seine Rechte kommen nur
     aus direkten Zuweisungen; seine Gruppen und Gruppenkollegen liest der Code zentral.
@@ -1984,6 +2118,28 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     Wirkung); `itsm package export-customer <dir>` schreibt `package.yaml` und
     `customer/<typ>.yaml`.
   - Oberfläche: ausgeblendete Felder fehlen in Formular und Liste.
+  - Nachtrag 2026-11-02 (Befund aus UI25): `meta.ValidateCustomer` prüfte den geänderten Typ
+    als Paket mit nur diesem Typ; Merkmale des Pakets und Summen aus anderen Typen des Pakets
+    galten als unbekannt, ein Feld an `probe.probe` wurde abgelehnt. Jetzt prüft es den Typ mit
+    den übrigen Basistypen und Merkmalen seines Pakets, wie bei der Installation; Beleg
+    `TestCustomerLayerInsideItsPackage` (siehe UI-Plan, UI25).
+  - Nachtrag 2026-11-02 (UI26.1, UI-Plan E30): die Kundenschicht ändert auch das Statusmodell.
+    Operationen `add_state`, `change_state` (Beschriftung, Anfangsstatus wandert), `remove_state`
+    (nur eigene, nicht der Anfangsstatus, nicht von einem Übergang benutzt, in keiner Datenbank
+    mit Datensätzen: `records.InState` je Datenbank), `add_transition`, `change_transition`
+    (Beschriftung, Von, Nach, Bedingung), `remove_transition` (nur eigene), `disable_transition`
+    und `enable_transition` (`Transition.Disabled`: bleibt in der Definition, wird weder
+    angeboten noch ausgeführt; 422 `disabled`). `ApplyCustomer` kopiert jetzt auch Status und
+    Übergänge, `Validate` prüft danach wie bei der Installation (genau ein Anfangsstatus,
+    bekannte Status, Bedingung kompiliert). Dazu `POST /api/v1/types/{t}:check-condition` für
+    die Prüfung beim Tippen. Belegt: `TestApplyWorkflow` (meta), `TestCustomerLayerInsideItsPackage`
+    (eigener Status und Übergang mit Bedingung an `probe.probe`, Datensatz läuft hindurch, Bedingung
+    hält einen zweiten zurück, `finish` stillgelegt und wieder aktiv, Status mit Datensatz bleibt).
+  - Nachtrag 2026-11-02 (UI26.2, UI-Plan E27, E31): `Type.Layout` (`map[string]Point`, nur
+    JSON) und die Operation `set_layout` (Feld `layout`) ersetzen die Anordnung des Graphen
+    als eine Änderung; jeder Name muss ein Status sein, `remove_state` nimmt den Status aus der
+    Anordnung, leer entfernt sie, `validateStates` meldet veraltete Namen. Belegt:
+    `TestApplyLayout` (meta), `set_layout` in `TestCustomerLayerInsideItsPackage`.
 - **Belegt, 2026-10-29 im Werkzeug-Container:**
   - Einzeln (`internal/meta`): alle Operationen in Reihenfolge, stillgelegte übersprungen, ein
     Konflikt ändert nichts, die Basis bleibt unberührt; jede Ablehnung; das Präfix im Paket.
