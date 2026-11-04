@@ -38,7 +38,8 @@ import { LanguageSwitch, ThemeSwitch } from "@/app/Switches";
 import { Form } from "@/render/Form";
 
 import { hiddenOf } from "./conditions";
-import { fieldLabel, formatMoment, formatValue, setDisplayTimeZone } from "@/render/fields";
+import { AreaNav, creates, FieldValue } from "./Read";
+import { fieldLabel, formatMoment, setDisplayTimeZone } from "@/render/fields";
 import { Timeline } from "@/render/Timeline";
 import { Transitions } from "@/render/Transitions";
 import { Alert } from "@/ui/alert";
@@ -88,6 +89,7 @@ export function PortalShell() {
         <Link to="/portal" className="text-lg font-semibold text-primary">
           {t("portal.title")}
         </Link>
+        <AreaNav />
         <div className="ml-auto flex flex-wrap items-center gap-4">
           <LanguageSwitch persist />
           <ThemeSwitch persist />
@@ -298,7 +300,7 @@ function Forms() {
 export function PortalHome() {
   const { t } = useTranslation();
   const types = useQuery(typesQuery);
-  const offered = (types.data ?? []).filter((x) => x.portal);
+  const offered = (types.data ?? []).filter(creates);
   // Side by side where each card keeps 22.5 rem, below each other on a phone (SD5).
   return (
     <div className="flex flex-col gap-6">
@@ -317,7 +319,7 @@ export function PortalHome() {
 function usePortalType(typeName: string) {
   const types = useQuery(typesQuery);
   return {
-    type: types.data?.find((x) => qualifiedName(x) === typeName && x.portal),
+    type: types.data?.find((x) => qualifiedName(x) === typeName && creates(x)),
     pending: types.isPending,
   };
 }
@@ -346,7 +348,7 @@ export function PortalNewPage() {
       </h1>
       <Form
         type={type}
-        only={type.portal!.fields}
+        only={type.portal!.fields!}
         withRoles={false}
         extra={requester}
         onSaved={(saved: RecordData) => {
@@ -440,7 +442,7 @@ export function PortalFormPage() {
       onSaved={(saved, target) => {
         const typeName = qualifiedName(target);
         void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
-        if (target.portal) {
+        if (creates(target)) {
           void navigate({
             to: "/portal/$typeName/$id",
             params: { typeName, id: String(saved["id"]) },
@@ -545,12 +547,14 @@ export function PortalRecordPage() {
         </p>
       )}
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-md border bg-card p-4 text-sm">
-        {type.portal!.fields.map((name) => {
+        {type.portal!.fields!.map((name) => {
           const f = type.fields.find((x) => x.name === name);
           return f ? (
             <div key={name} className="contents">
               <dt className="text-muted-foreground">{fieldLabel(f, i18n.language)}</dt>
-              <dd>{formatValue(f, rec[name], i18n.language) || "–"}</dd>
+              <dd>
+                <FieldValue field={f} value={rec[name]} />
+              </dd>
             </div>
           ) : null;
         })}

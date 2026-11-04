@@ -62,9 +62,29 @@ const (
 )
 
 // Portal says how a type appears in the portal (UI10): the fields a user fills when creating
-// and sees on the page of a record.
+// and sees on the page of a record. With Read the type has an area of its own in the head of
+// the portal where users browse and read what they may read (SD16a), such as articles.
 type Portal struct {
+	Fields []string    `json:"fields,omitempty" yaml:"fields"`
+	Read   *PortalRead `json:"read,omitempty" yaml:"read"`
+}
+
+// PortalRead is the reading area of a type in the portal (SD16a): its name in the head, the
+// fields its page shows under the title, and optionally a reference field to a tree list the
+// area is browsed by.
+type PortalRead struct {
+	Label  Label    `json:"label" yaml:"label"`
 	Fields []string `json:"fields" yaml:"fields"`
+	Group  string   `json:"group,omitempty" yaml:"group"`
+}
+
+// Reader is a rule by which signed-in persons read records of a type without a grant (SD16a,
+// SD-Plan N12), as everyone reads the entries of the select lists (N5): the records the
+// condition holds for, at the person's node or above. With Roles only the holders of these
+// roles read them, wherever they are: a person named there or a member of a group named there.
+type Reader struct {
+	When  string   `json:"when,omitempty" yaml:"when"`
+	Roles []string `json:"roles,omitempty" yaml:"roles"`
 }
 
 // FormatRich marks a text field as formatted text (UI7).
@@ -240,6 +260,9 @@ type Type struct {
 	// Portal offers the type in the portal for users (UI10, Hauptplan E132): its records of
 	// one's own, creating them with the fields named here, and answering in the timeline.
 	Portal *Portal `json:"portal,omitempty" yaml:"portal"`
+	// Readers let persons read records without a grant (SD16a): published articles for
+	// everyone, for example. A select list reads like one reader without condition.
+	Readers []Reader `json:"readers,omitempty" yaml:"readers"`
 	// Package is set by the loader; it is not written in types/<name>.yaml.
 	Package string `json:"package" yaml:"-"`
 	// Revision is the hash of the effective definition (PL43): base and customer layer.

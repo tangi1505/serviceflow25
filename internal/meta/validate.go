@@ -153,6 +153,7 @@ func Validate(p Package, known map[string]bool) error {
 		validateTraits(add, where, t, p)
 		validateActors(add, where, t, local, known)
 		validatePortal(add, where, t)
+		validateReaders(add, where, t)
 		validateFieldStates(add, where, t)
 		validateList(add, where, t)
 		validateFormulas(add, where, t)
@@ -322,7 +323,7 @@ func validatePortal(add func(string, string, ...any), where string, t Type) {
 	if t.Portal == nil {
 		return
 	}
-	if len(t.Portal.Fields) == 0 {
+	if len(t.Portal.Fields) == 0 && t.Portal.Read == nil {
 		add(where+", portal", "fields needs at least one field to create with")
 	}
 	seen := map[string]bool{}
@@ -337,6 +338,47 @@ func validatePortal(add func(string, string, ...any), where string, t Type) {
 			add(where+", portal", "field %q is named twice", name)
 		}
 		seen[name] = true
+	}
+	if r := t.Portal.Read; r != nil {
+		// The reading area (SD16a): a name for the head, fields to show, a reference to group by.
+		rw := where + ", portal read"
+		checkLabel(add, rw, "label", r.Label)
+		if len(r.Fields) == 0 {
+			add(rw, "fields needs at least one field to show")
+		}
+		seen := map[string]bool{}
+		for _, name := range r.Fields {
+			if _, ok := t.Field(name); !ok {
+				add(rw, "field %q is not a field of the type", name)
+			} else if seen[name] {
+				add(rw, "field %q is named twice", name)
+			}
+			seen[name] = true
+		}
+		if r.Group != "" {
+			if f, ok := t.Field(r.Group); !ok || f.Type != FieldReference {
+				add(rw, "group %q must be a reference field of the type", r.Group)
+			}
+		}
+	}
+}
+
+// validateReaders checks the rules by which persons read without a grant (SD16a): conditions
+// that compile, roles of the type. Whether a condition translates to SQL decides the access
+// as for permissions; one that does not lets nobody read.
+func validateReaders(add func(string, string, ...any), where string, t Type) {
+	for i, r := range t.Readers {
+		rw := fmt.Sprintf("%s, readers[%d]", where, i)
+		if r.When != "" {
+			if _, err := rules.Compile(r.When); err != nil {
+				add(rw, "when: %v", err)
+			}
+		}
+		for _, role := range r.Roles {
+			if _, ok := t.Actor(role); !ok {
+				add(rw, "role %q is not a role of the type", role)
+			}
+		}
 	}
 }
 

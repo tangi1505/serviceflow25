@@ -320,6 +320,9 @@ export type FakeState = {
   privateRefused?: boolean;
   // extraTypes come after probe in /api/v1/types (the person type for the picker, UI28).
   extraTypes?: TypeDefinition[];
+  // extraRecords are the records of extra types by qualified name, to query, read and search
+  // (the reading areas of the portal and their tree lists, SD16a).
+  extraRecords?: Record<string, RecordData[]>;
   // searches are the saved searches the session may read (UI4); new ones are its own.
   searches?: RecordData[];
   // workplace false makes the session a user of the portal (UI10); personId is its person.
@@ -451,6 +454,23 @@ export function fakeApi(state: FakeState) {
         },
         ...(state.extraTypes ?? []),
       ]);
+    }
+    const extra = url.pathname.match(/^\/api\/v1\/records\/([a-z_]+\.[a-z_]+)(:query|\/[^/:]+)$/);
+    const extraList = extra ? state.extraRecords?.[extra[1]!] : undefined;
+    if (extra && extraList) {
+      if (extra[2] === ":query" && method === "POST") {
+        const body = JSON.parse(bodyText) as { where?: unknown; limit?: number; sort?: string[] };
+        // One sort column, as the server takes it (the second is always the id).
+        if ((body.sort?.length ?? 0) > 1) {
+          return problem(422, "validation");
+        }
+        const items = extraList.filter((r) => matches(r, body.where)).slice(0, body.limit ?? 50);
+        return json(200, { items });
+      }
+      if (method === "GET") {
+        const rec = extraList.find((r) => r["id"] === extra[2]!.slice(1));
+        return rec ? json(200, rec) : problem(404, "not_found");
+      }
     }
     // The condition check of the workflow editor (UI26.1): a condition with a dangling
     // operator is the one the tests use as invalid.
@@ -596,6 +616,21 @@ export function fakeApi(state: FakeState) {
       });
     }
     if (url.pathname === "/api/v1/search") {
+      // In a type with records of its own: the records whose title or text has the words.
+      const within = state.extraRecords?.[url.searchParams.get("types") ?? ""];
+      if (within) {
+        const q = (url.searchParams.get("q") ?? "").toLowerCase();
+        const found = within
+          .filter((r) => `${String(r["title"])} ${String(r["body"])}`.toLowerCase().includes(q))
+          .map((r) => ({
+            type: url.searchParams.get("types")!,
+            id: String(r["id"]),
+            title: String(r["title"]),
+            rank: 1,
+            snippet: String(r["body"]),
+          }));
+        return json(200, found);
+      }
       // The persons whose name contains the text, as the full-text search finds them.
       const q = (url.searchParams.get("q") ?? "").toLowerCase();
       const hits = Object.values(state.persons ?? {})

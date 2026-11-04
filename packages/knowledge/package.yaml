@@ -1,0 +1,13 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Knowledge (SD16a; SD-Plan E1, E8): articles in formatted text, by the categories of the base
+# package sd, published for everyone, only for agents or for some groups; users read them in
+# the area "Wissen" of the portal.
+name: knowledge
+version: 0.1.0
+label:
+  de: Wissen
+  en: Knowledge
+# sd brings the categories; core the groups an article is shared with.
+depends: [core, sd]

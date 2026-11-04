@@ -378,7 +378,15 @@
     "current": "Current",
     "since": "since {{time}}",
     "more": "More",
-    "less": "Less"
+    "less": "Less",
+    "areas": "Areas",
+    "readAll": "All",
+    "readSearch": "Search {{area}}",
+    "readHits": "Results for “{{q}}”",
+    "readNone": "Nothing to read here yet.",
+    "readNoHits": "Nothing found.",
+    "changedOn": "last changed on {{time}}",
+    "readHelp": "Didn't that help?"
   },
   "builder": {
     "section": "Section {{n}}",

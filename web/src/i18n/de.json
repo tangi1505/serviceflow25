@@ -378,7 +378,15 @@
     "current": "Aktuell",
     "since": "seit {{time}}",
     "more": "Mehr",
-    "less": "Weniger"
+    "less": "Weniger",
+    "areas": "Bereiche",
+    "readAll": "Alle",
+    "readSearch": "{{area}} durchsuchen",
+    "readHits": "Treffer für „{{q}}“",
+    "readNone": "Hier gibt es noch nichts zu lesen.",
+    "readNoHits": "Nichts gefunden.",
+    "changedOn": "zuletzt geändert am {{time}}",
+    "readHelp": "Hilft das nicht weiter?"
   },
   "builder": {
     "section": "Abschnitt {{n}}",

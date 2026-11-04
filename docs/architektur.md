@@ -100,7 +100,11 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 - **B3:** Eine Auswahlliste ist ein Typ mit dem Merkmal „Auswahlliste". Es gibt keine eigene
   Tabelle je Liste. Ein Eintrag ist für jede angemeldete Person an seinem Knoten und darunter
   lesbar, an der Wurzel für alle (SD-Plan N5, seit SD1); wer ein eigenes Recht auf die Liste hat,
-  sieht zusätzlich, was das Recht gibt.
+  sieht zusätzlich, was das Recht gibt. Allgemein kann jeder Typ solche Leser-Regeln mitbringen
+  (`readers`, SD-Plan N12, seit SD16a): je Regel eine Bedingung in CEL, die nach SQL übersetzbar
+  ist, und auf Wunsch Rollen. Ohne Rollen lesen Personen an ihrem Knoten und darunter, mit Rollen
+  deren Inhaber und die Mitglieder ihrer Gruppen; so liest jeder einen veröffentlichten Artikel
+  „für alle“. Eine Auswahlliste ist die Regel ohne Bedingung.
 - **B4:** Alle 34 Regelsammlungen aus GLPI sind Regeln in `internal/rules`. Sie unterscheiden
   sich nur im Auslöser: Anlegen, Ändern, Import, Anmeldung oder Mail.
 - **B5:** Die Feldzustände Pflicht, versteckt, vorbelegt und schreibgeschützt hängen am Status
@@ -572,7 +576,8 @@ web/src/
   views/        Kalender, Gantt, Kanban, Graph, Matrix, Karte (KF10)
   editors/      Typ-, Formular-, Workflow- (React Flow 12 + dagre), Rollen- und Dashboard-Editor
   portal/       Oberfläche für Nutzer (eigene Vorgänge seit UI10; Band „Aktuell“ aus
-                core.portal_notice seit SD5; Katalog, Wissen mit SD)
+                core.portal_notice seit SD5; Lesebereiche wie „Wissen“ im Kopf aus der
+                Portal-Option read eines Typs seit SD16a; Katalog mit SD)
   dashboards/   Widgets (ECharts)
   i18n/         Deutsch und Englisch von Anfang an
   ui/           shadcn/ui-Bausteine nach dem Design-Kit „Klartext“ (Tokens hell und dunkel, IBM Plex, Marken für Status, Priorität, Frist), Theme, Barrierefreiheit

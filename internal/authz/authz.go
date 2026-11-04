@@ -126,9 +126,10 @@ type Access struct {
 	// records in that node's subtree. Empty means no narrowing.
 	ActiveRole string `json:"active_role,omitempty"`
 	ActiveOrg  string `json:"active_org,omitempty"`
-	// ReadAll lists the types every signed-in person may read everywhere in the tenant,
-	// whatever the roles and the narrowing say: the select lists (PL16, E93; PL45).
-	ReadAll []string `json:"read_all,omitempty"`
+	// Readers are the rules by which every signed-in person reads records of a type without a
+	// grant, whatever the roles and the narrowing say: the select lists with one rule without
+	// condition (PL16, E93; PL45), types with readers of their own (SD16a).
+	Readers map[string][]meta.Reader `json:"readers,omitempty"`
 	// Home is the tenant the account is bound to (PL44); empty for an account of the
 	// installation.
 	Home string `json:"home,omitempty"`
@@ -259,17 +260,13 @@ func containsString(list []string, v string) bool {
 	return false
 }
 
-// readsAll reports whether the action is reading a type of ReadAll.
-func (a *Access) readsAll(typeName, action string) bool {
+// readers lists the rules by which the access reads a type without a grant; none for an
+// action other than reading.
+func (a *Access) readers(typeName, action string) []meta.Reader {
 	if action != ActionRead {
-		return false
+		return nil
 	}
-	for _, t := range a.ReadAll {
-		if t == typeName {
-			return true
-		}
-	}
-	return false
+	return a.Readers[typeName]
 }
 
 // System is the access of the binary itself: everything, everywhere.
@@ -330,7 +327,7 @@ func (a *Access) involved() []uuid.UUID {
 
 // Allowed reports whether the action on the type is granted at all (for some records).
 func (a *Access) Allowed(typeName, action string) bool {
-	return a.IsSystem() || a.readsAll(typeName, action) || len(a.grantsFor(typeName, action)) > 0
+	return a.IsSystem() || len(a.readers(typeName, action)) > 0 || len(a.grantsFor(typeName, action)) > 0
 }
 
 // Roles lists the roles the access holds in the tenant, for the session to choose from (PL10).
@@ -455,17 +452,12 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 	}
 	b := a.boundary()
 	listVis := ""
-	if a.readsAll(typeName, action) {
-		// A select list (PL16): an entry is there for the persons at its node and below, one at
-		// the root for everyone (SD-Plan N5); the tenant has its own copy (PL45, V28). A grant
-		// of one's own on the list adds what it gives, for those who keep it.
-		args = append(args, a.listNode())
-		listVis = fmt.Sprintf("$%d::ltree <@ org_path", len(args))
-		if b != "" {
-			args = append(args, b)
-			listVis = fmt.Sprintf("(%s AND org_path <@ $%d::ltree)", listVis, len(args))
-		}
+	if rs := a.readers(typeName, action); len(rs) > 0 {
+		listVis, args = a.readerFilter(typeName, rs, args)
 		if len(a.grantsFor(typeName, action)) == 0 {
+			if listVis == "" {
+				return "FALSE", args
+			}
 			return listVis, args
 		}
 	}
@@ -528,6 +520,78 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 	return filter, args
 }
 
+// readerFilter is the SQL condition of the readers of a type (SD16a): a select list (PL16)
+// has one without condition, so an entry is there for the persons at its node and below, one
+// at the root for everyone (SD-Plan N5); a reader with roles reaches the records where the
+// person or one of their groups holds one of them. The tenant bounds it (PL45, V28); a grant
+// of one's own adds what it gives. A condition that does not translate lets nobody read.
+func (a *Access) readerFilter(typeName string, rs []meta.Reader, args []any) (string, []any) {
+	var parts []string
+	for _, r := range rs {
+		cond := ""
+		if r.When != "" {
+			c, newArgs, err := Translate(r.When, args)
+			if err != nil {
+				continue
+			}
+			cond, args = c, newArgs
+		}
+		var part string
+		if len(r.Roles) == 0 {
+			args = append(args, a.listNode())
+			part = fmt.Sprintf("$%d::ltree <@ org_path", len(args))
+		} else {
+			args = append(args, typeName, r.Roles, a.involved())
+			part = fmt.Sprintf("id IN (SELECT act.record_id FROM actor act WHERE act.type_name = $%d AND act.role = ANY($%d::text[]) AND act.target_id = ANY($%d::uuid[]))",
+				len(args)-2, len(args)-1, len(args))
+		}
+		if cond != "" {
+			part = "(" + part + " AND " + cond + ")"
+		}
+		parts = append(parts, part)
+	}
+	if len(parts) == 0 {
+		return "", args
+	}
+	vis := "(" + strings.Join(parts, " OR ") + ")"
+	if b := a.boundary(); b != "" {
+		args = append(args, b)
+		vis = fmt.Sprintf("(%s AND org_path <@ $%d::ltree)", vis, len(args))
+	}
+	return vis, args
+}
+
+// reads reports whether one of the readers of the type reaches the record: the same rules as
+// readerFilter, decided in Go.
+func (a *Access) reads(rs []meta.Reader, rec map[string]any) bool {
+	for _, r := range rs {
+		if len(r.Roles) == 0 {
+			orgPath, _ := rec["org_path"].(string)
+			if !within(a.listNode(), orgPath) {
+				continue
+			}
+		} else if !a.holdsRole(rec, r.Roles...) {
+			continue
+		}
+		if r.When != "" {
+			// Only what the filter would let through: a condition that does not translate
+			// lets nobody read there either.
+			if _, _, err := Translate(r.When, nil); err != nil {
+				continue
+			}
+			c, err := rules.Compile(r.When)
+			if err != nil {
+				continue
+			}
+			if met, err := c.Eval(rec); err != nil || !met {
+				continue
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // listNode is the node from which the entries of the select lists are seen (SD-Plan N5): the
 // node of the person, without one the tenant or the root.
 func (a *Access) listNode() string {
@@ -545,8 +609,9 @@ func (a *Access) Permits(typeName, action string, rec map[string]any) bool {
 		return true
 	}
 	orgPath, _ := rec["org_path"].(string)
-	if a.readsAll(typeName, action) && a.InTenant(orgPath) && within(a.listNode(), orgPath) {
-		// An entry of a select list at the person's node or above (SD-Plan N5).
+	if rs := a.readers(typeName, action); len(rs) > 0 && a.InTenant(orgPath) && a.reads(rs, rec) {
+		// An entry of a select list at the person's node or above (SD-Plan N5), a record one
+		// of the type's readers reaches (SD16a).
 		return true
 	}
 	if !a.InTenant(orgPath) {
@@ -607,7 +672,7 @@ func (a *Access) WritableFields(typeName, action string) (all bool, fields map[s
 }
 
 func (a *Access) fieldRights(typeName, action string, pick func(*Fields) []string) (bool, map[string]bool) {
-	if a.IsSystem() || a.readsAll(typeName, action) {
+	if a.IsSystem() || len(a.readers(typeName, action)) > 0 {
 		return true, nil
 	}
 	set := map[string]bool{}
@@ -654,7 +719,7 @@ func (a *Access) HoldsAnyRole(rec map[string]any, names []string) bool {
 	return false
 }
 
-func (a *Access) holdsRole(rec map[string]any) bool {
+func (a *Access) holdsRole(rec map[string]any, only ...string) bool {
 	roles, _ := rec["actors"].(map[string]any)
 	if len(roles) == 0 {
 		return false
@@ -663,7 +728,10 @@ func (a *Access) holdsRole(rec map[string]any) bool {
 	for _, id := range a.involved() {
 		mine[id.String()] = true
 	}
-	for _, list := range roles {
+	for role, list := range roles {
+		if len(only) > 0 && !slices.Contains(only, role) {
+			continue
+		}
 		refs, _ := list.([]any)
 		for _, r := range refs {
 			ref, _ := r.(map[string]any)
@@ -876,14 +944,23 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 	}
 	// The tenants follow from the grants, which come below; every return passes here.
 	defer func() { a.Tenants = enterable(a, tenants) }()
-	// Select lists are readable by everyone who is signed in (PL16, E93).
+	// Select lists are readable by everyone who is signed in (PL16, E93), other types by
+	// their readers (SD16a).
 	types, err := meta.Types(ctx, s.cq())
 	if err != nil {
 		return nil, err
 	}
 	for _, t := range types {
+		var rs []meta.Reader
 		if t.IsList() {
-			a.ReadAll = append(a.ReadAll, t.QualifiedName())
+			rs = append(rs, meta.Reader{})
+		}
+		rs = append(rs, t.Readers...)
+		if len(rs) > 0 {
+			if a.Readers == nil {
+				a.Readers = map[string][]meta.Reader{}
+			}
+			a.Readers[t.QualifiedName()] = rs
 		}
 	}
 	if !acc.PersonID.Valid {

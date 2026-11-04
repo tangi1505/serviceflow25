@@ -55,9 +55,12 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD13** | Servicekatalog: Paket `catalog` mit Service und Angebot (Formular, Zielgruppe nach Organisationseinheit und Gruppe, Lieferzeit, Kosten, übersetzbar); Katalogseite im Portal mit Kategorien und Suche; eine Bestellung legt eine Anfrage an (Inventar G68, G133; IP24) | 🔒 SD6 | 2 d | Angebot „Zugang Gruppenlaufwerk“ nur für die Dienststelle Nord → nur dort im Katalog; bestellen → Anfrage mit den Antworten; bei englischer Sprache englisch; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD14** | Portal-Startseite: Kacheln (Formular, Katalogseite, Artikel, externer Link) je Zielgruppe; „Aktuell“ zeigt veröffentlichte Hinweise mit Ablauf (Inventar G78; IP28) | ⬜ | 1,5 d | Kachel für eine Gruppe freigeben → nur ihre Mitglieder sehen sie; einen Hinweis veröffentlichen → steht unter „Aktuell“, nach dem Ablauf nicht mehr; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD15** | Anonyme Formulare: Zugang über einen Link ohne Anmeldung, Captcha im Werkzeug ohne fremden Dienst, Ratenbegrenzung, Rückmeldung an eine Mail-Adresse (N2; Inventar G134, G137; Hauptplan E26; trägt KF8 für „anonym“) | 🔒 Hauptplan V34 | 2 d | Formular als anonym freigeben → der Link öffnet es ohne Anmeldung; ohne gelöstes Captcha → 400; 20 Absendungen in einer Minute → 429; Bestätigung per Mail in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD16** | Wissen, Artikel: Paket `knowledge` mit Artikel (formatiert, Kategorien, Sichtbarkeit nach Organisationseinheit, Gruppe, Rolle und Portal), Versionen und Vergleich (PL19), Ablaufdatum mit Erinnerung, Übersetzungen (Inventar G106; IP4) | ⬜ | 2 d | Ein Artikel nur für das Portal → Nutzer sehen ihn; ein abgelaufener verschwindet aus dem Portal, der Autor bekommt eine Mail; zwei Fassungen vergleichen; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16 | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🔒 SD16 | 2 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag; „hat geholfen“ zählt; Artikel an eine Störung verknüpfen → steht in den Bezügen; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16a** | Wissen, Artikel im Portal: Paket `knowledge` mit Artikel (Titel, formatierter Text, Kategorie der Störung, „Sichtbar für“ in drei Stufen mit der Rolle „Gruppen“, Status Entwurf, Veröffentlicht, Abgelaufen); Leser-Regeln im Kern (N12); Bereich „Wissen“ im Kopf des Portals mit Kategorienbaum, Suche und Artikelseite (E8, Variante B des Mockups); dazu der Befund des Klicktests: Verweise zeigen im Portal und in der Zeitleiste den Namen statt der Kennung (Inventar G106; IP4) | 🟢 | 2 d | Ein veröffentlichter Artikel „Alle, auch im Portal“ → ein Portal-Nutzer sieht ihn unter „Wissen“, einen Entwurf und einen „Nur Bearbeiter“ nicht; einer für eine Gruppe → nur ihre Mitglieder; im Portal zeigt eine Störung ihre Kategorie mit Namen; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) auf der Detailseite, zwei Fassungen nebeneinander mit markierten Änderungen, eine ältere wiederherstellen; für jeden Typ (E8; IP4) | ⬜ | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16c** | Wissen, Übersetzungen: übersetzbare Felder im Formular in weiteren Sprachen pflegen (PL21) und im Portal in der Sprache der Person zeigen (E8; IP4) | ⬜ | 1 d | Titel und Text englisch pflegen → mit Sprache Englisch zeigt das Portal die englische Fassung, ohne Übersetzung die deutsche; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16d** | Wissen, Ablauf: Rolle „Autor“; eine tägliche Regel setzt Artikel nach „Gültig bis“ auf Abgelaufen und schreibt dem Autor; dafür kennen Zeitregeln und Bedingungen der Rechte „jetzt“ (E8; IP4) | ⬜ | 1 d | Artikel mit „Gültig bis“ gestern → nach dem Lauf der Regel abgelaufen und aus dem Portal verschwunden, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16b | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🔒 SD16a | 2 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag; „hat geholfen“ zählt; Artikel an eine Störung verknüpfen → steht in den Bezügen; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### D — Zufriedenheit, Einstellungen, Abschluss
 
@@ -69,11 +72,11 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
-SD12 erst, wenn die Fachseite Hauptplan V29 beantwortet hat. Block C mit SD16 und SD18 vor SD13
+SD12 erst, wenn die Fachseite Hauptplan V29 beantwortet hat. Block C mit SD16a bis SD16d und SD18 vor SD13
 und SD14, weil das Portal die Artikel zeigt; SD15 erst nach Hauptplan V34. Block D zum Schluss, SD21 als Abnahme des
 Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 
@@ -90,6 +93,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E5** | Störung (SD2, deine Entscheidungen 2026-11-03, Hauptplan E159): **Merkmal** mit Paketnamen, `traits: [sd.ticket]` aus installierten Paketen, von denen das Paket abhängt (N7). **Bestätigen und Ablehnen** der Lösung durch den Anforderer über Übergänge, die nur eine Rolle auslösen darf (`by: [requester]`); der Kern prüft die Rolle, das Portal zeigt solche Übergänge als Knöpfe (N8). **Ablehnen** braucht eine Begründung, die als Eintrag am Vorgang steht; der Bearbeiter wird benachrichtigt. **Pflicht:** Gelöst braucht Lösung und Lösungsart, Wartet einen Wartegrund; **Geschlossen** ist endgültig, wiedereröffnet wird nur aus Gelöst. Verworfen: Merkmal kopieren; nur antworten statt bestätigen; Ablehnen ohne Grund; Pflicht Bearbeiter oder Gruppe für „In Arbeit“ | 2026-11-03 | Pascal |
 | **E6** | Fristen der Störung (SD3, deine Entscheidungen 2026-11-03, Hauptplan E160): **Startdaten** bringt ein Paket unter `data/` mit: Datensätze und Regeln, beim ersten Installieren je Mandant angelegt, danach gehören sie dem Kunden; ein Update legt nur an, was noch nie angelegt war, und überschreibt nichts, Gelöschtes kommt nicht wieder (Kern-Bedarf N9). **Teamleitung** ist die verantwortliche Person der Gruppe in der Rolle Gruppe, als Empfänger `actors.group.responsible` (N10). **Reaktion** ist erfüllt, sobald die Störung „Neu“ verlässt. **Jedes Warten** hält die Lösungsuhr an. Kalender „Servicezeit“ und Wartegründe liegen im Grundpaket `sd`, weil die Anfrage (SD6) sie auch braucht; Fristen, Eskalation bei 80 % und automatisches Schließen liegen in `incident`. P1 zählt rund um die Uhr (Hauptplan V31, Beta). Verworfen: Startdaten, die jedes Update zurücksetzt; Einrichtung nur per Anleitung; feste Gruppe Teamleitung; Leitung je Organisationseinheit; Reaktion erst mit der ersten Antwort; Haken je Wartegrund | 2026-11-03 | Pascal |
 | **E7** | Betroffene Elemente und Bezüge (SD4, deine Entscheidungen 2026-11-03 nach dem Mockup „Bezüge am Vorgang“, [Artifact](https://claude.ai/artifact/LB9eW2KAQP7HHerk2ZMugJ), Hauptplan E161): **Beziehungsart** „betrifft“ (invers „betroffen von“) einmal im Grundpaket `sd`, von jedem Typ mit dem Merkmal `ticket` zu jedem Typ; Beziehungsarten dürfen dafür ein Merkmal statt eines Typs nennen (`trait:sd.ticket`, Kern-Bedarf N11). **Oberfläche:** die Detailseite bekommt Reiter unter dem Formular, „Bezüge“ zuerst, „Zeitleiste“ zuletzt (später „Dateien“ dazwischen); Bezüge als Tabelle mit Art, Typ, Datensatz, Status und Lösen, darüber Art und Datensatz zum Verknüpfen, die Suche über alle Typen; für jeden Typ, nicht nur Vorgänge. **Portal:** zeigt keine Bezüge, das entscheidet die Portal-Aufgabe. SD4 von 0,5 d auf 1,5 d. Verworfen: je Paket eine eigene Art; „betrifft“ von jedem Typ; Karte in der Seitenleiste; Abschnitt unter dem Formular; Zeitleiste als erster Reiter | 2026-11-03 | Pascal |
+| **E8** | Wissen (SD16, deine Entscheidungen 2026-11-04 nach dem Mockup „Wissen im Portal“, [Artifact](https://claude.ai/artifact/At2t1hm51eJPvdGF1m9jGz), und dem Klicktest im Browser; Hauptplan E168): **Vier Teile** SD16a bis SD16d statt einer Aufgabe mit 2 d. **Sichtbarkeit wie bei Auswahllisten:** ein Typ bringt Leser-Regeln mit (`readers`), nach denen angemeldete Personen ohne eigenes Recht lesen (Kern-Bedarf N12). „Sichtbar für“ hat drei Stufen: „Alle, auch im Portal“ liest jeder an seinem Knoten des Artikels und darunter, sobald er veröffentlicht ist; „Nur bestimmte Gruppen“ lesen die Mitglieder der Gruppen in der Rolle „Gruppen“, wo sie auch sind; „Nur Bearbeiter“ lesen die, denen ihre Rollen es erlauben. **Status** Entwurf, Veröffentlicht, Abgelaufen; „Gültig bis“ bekommt in SD16d eine tägliche Regel. **Kategorien** sind die der Störung (`sd.category`). **Portal** nach Variante B: „Wissen“ als eigener Bereich im Kopf neben „Meine Vorgänge“, mit Kategorienbaum, Suche und Artikelseite; die Startseite bleibt: eine Karte je Vorgangsart, danach „Formulare“, auf dem Handy untereinander. **Befund des Klicktests:** Verweise zeigen im Portal und in der Zeitleiste den Namen, behoben in SD16a. Verworfen: eine Aufgabe; ein Recht je Artikel; eigene Kategorien des Wissens; Karte „Wissen“ auf der Startseite (Variante A); „Formulare“ immer an zweiter Stelle; der Befund als eigene Aufgabe | 2026-11-04 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -99,7 +103,7 @@ Alle 24 Zeilen mit Ziel SD haben eine Aufgabe:
 
 | Inventar | Aufgabe | Inventar | Aufgabe |
 | --- | --- | --- | --- |
-| G36 | SD2, SD6 | G106 | SD16 |
+| G36 | SD2, SD6 | G106 | SD16a |
 | G38 | SD2, SD20 | G108 | SD18 |
 | G39 | SD1 | G133 | SD13 (Change und Problem mit PR) |
 | G42 | SD2 | G134 | SD15 |
@@ -138,9 +142,9 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 
 | Art | Aufgaben |
 | --- | --- |
-| P | SD1, SD2, SD3, SD4, SD6, SD7, SD10, SD16, SD17 |
-| P und O | SD13, SD14, SD18, SD19, SD21 |
-| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD9 (Formulare im Arbeitsplatz, Regelaktion mit `@record` und `@actor`, deine Entscheidungen 2026-11-04), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
+| P | SD1, SD2, SD3, SD4, SD6, SD7, SD10, SD17 |
+| P und O | SD13, SD14, SD16b, SD16c, SD18, SD19, SD21 |
+| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD9 (Formulare im Arbeitsplatz, Regelaktion mit `@record` und `@actor`, deine Entscheidungen 2026-11-04), SD16a (Leser-Regeln im Kern, Lesebereich im Portal, E8), SD16d (Zeitregeln mit „jetzt“), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
 
 ### 2.3 Bedarf an den Kern
 
@@ -157,6 +161,7 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | **N9** | Ein Paket bringt Startdaten mit: Kalender, Fristen, Eskalationsstufen, Wartegründe (E6) | Ein Paket kennt nur Typen, Merkmale, Beziehungsarten und Listeneinträge (`meta.Package`); Kalender, Fristen und Wartegründe sind Datensätze, Eskalationsstufen Regeln | Ordner `data/` mit Einträgen je Schlüssel: ein Datensatz eines Typs oder eine Regel, Verweise `@schlüssel` (auch `@paket.schlüssel`); je Mandant einmal angelegt, gemerkt in der Tabelle `package_seed`, auch für neue Mandanten; gebaut in SD3 |
 | **N10** | Die Teamleitung benachrichtigen (E6) | Empfänger sind Rollen am Vorgang, Gruppen und Personen (`notify.checkRecipient`, Regelaktion `notify`); die verantwortliche Person einer Gruppe (`core.group.responsible`) nutzt niemand | Empfänger `actors.<rolle>.responsible`: die verantwortlichen Personen der Gruppen, die die Rolle halten; in Benachrichtigungen und Regeln; gebaut in SD3 |
 | **N11** | Eine Beziehungsart für alle Vorgänge (E7) | `from` und `to` einer Beziehungsart nennen nur Typen oder `*` (`meta.RelationKind.Allows`) | Einträge `trait:<paket>.<merkmal>` gelten für jeden Typ mit dem Merkmal; das Paket muss das Merkmal selbst haben oder von seinem Paket abhängen; gebaut in SD4 |
+| **N12** | Lesen ohne eigenes Recht nach Regeln des Typs (E8) | Ohne Recht lesen Personen nur die Einträge der Auswahllisten (`authz.Access.ReadAll`, N5) | Typ-Option `readers`: je Regel eine Bedingung in CEL, die nach SQL übersetzbar ist, und auf Wunsch Rollen; ohne Rollen lesen Personen am Knoten des Datensatzes und darunter, mit Rollen ihre Inhaber und die Mitglieder ihrer Gruppen; eine Auswahlliste ist eine Regel ohne Bedingung; gebaut in SD16a |
 
 ### 2.4 Vorläufige Werte (E3)
 
@@ -193,6 +198,64 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD16a — Wissen, Artikel im Portal, 2026-11-04
+
+- **Grundlage:** IP4, Inventar G106; Hauptplan E168, SD-Plan E8; deine Entscheidungen vom
+  2026-11-04 nach dem Mockup „Wissen im Portal“
+  ([Artifact](https://claude.ai/artifact/At2t1hm51eJPvdGF1m9jGz)) und dem Klicktest im Browser:
+  SD16 in vier Teile, Sichtbarkeit wie bei Auswahllisten, Status mit täglicher Regel (SD16d),
+  Kategorien der Störung, Variante B, „Sichtbar für“ in drei Stufen mit der Rolle „Gruppen“;
+  „Formulare“ bleibt hinter den Vorgangsarten; der Befund mit der Kennung statt des Namens
+  kommt in diese Aufgabe; das Paket `probe` bleibt auf 8092 für Tests.
+- **Gebaut:**
+  - Kern, Rechte (N12): Typ-Option `readers` mit Bedingung (`when`) und Rollen (`roles`). Die
+    Rechte laden je Typ die Regeln (`Access.Readers` statt der Liste `ReadAll`); eine Auswahlliste
+    ist eine Regel ohne Bedingung. Ohne Rollen gilt der Knoten der Person im Organisationsbaum
+    wie bei den Auswahllisten, mit Rollen eine Zeile in `actor` für die Person oder ihre Gruppen.
+    Die Suche und die Einzelabfrage halten sich an dieselben Regeln. Eine Bedingung, die sich
+    nicht nach SQL übersetzen lässt, lässt niemanden lesen.
+  - Kern, Typen: die Portal-Option kennt `read` (Name des Bereichs, Felder der Seite, Feld zum
+    Gliedern); `fields` zum Anlegen ist dann nicht mehr Pflicht. Beides wird beim Laden geprüft.
+  - Paket `knowledge` 0.1.0 (neu, hängt von `core` und `sd` ab): Typ `knowledge.article` mit
+    Titel, Text (formatiert, durchsuchbar), Kategorie, „Sichtbar für“ (Alle, auch im Portal; Nur
+    Bearbeiter, voreingestellt; Nur bestimmte Gruppen), „Gültig bis“, Rolle „Gruppen“; Status
+    Entwurf, Veröffentlicht, Abgelaufen mit den Übergängen Veröffentlichen, Ablaufen lassen,
+    Zurück in den Entwurf. Rechte bringt das Paket keine mit: Bearbeiter brauchen eine Rolle
+    mit Lesen, Anlegen und Ändern für `knowledge.article`.
+  - Portal: im Kopf „Meine Vorgänge | Wissen“, sobald ein Typ einen Lesebereich hat; die Seite
+    `/portal/read/<typ>` mit Kategorienbaum (Eintrag und alles darunter), Suche und Liste mit
+    Anriss; die Artikelseite `/portal/read/<typ>/<id>` mit Pfad, Kategorie, Stand und Text und
+    darunter „Hilft das nicht weiter?“ mit „Störung anlegen“. Die Startseite zeigt nur Arten
+    zum Anlegen als Karte.
+  - Befund des Klicktests: ein Verweis (etwa die Kategorie) zeigt im Portal und in der
+    Zeitleiste den Namen des Ziels statt der Kennung, auch im Arbeitsplatz.
+- **Belegt:**
+  - Go `TestReaders`: Regeln mit und ohne Rollen, Knoten darüber und daneben, anderer
+    Mandant, Entwurf, nur für Bearbeiter, nicht übersetzbare Bedingung; Lesen gibt kein Ändern.
+  - Go `TestKnowledgeOverHTTP` (eigene Datenbank): Personen ohne Recht auf Artikel; Nord liest
+    „Für alle“ und „Nur Nord“, Süd als Mitglied der Gruppe „Für alle“ und „Gruppe Netz“; keiner
+    liest den Entwurf und „Nur Bearbeiter“ (einzeln 404), keiner ändert; die Suche nach „VPN“
+    findet für Süd genau seine zwei.
+  - Vitest `Read.test.tsx`: Bereich im Kopf, Kategorienbaum mit Unterkategorie, Suche,
+    Artikelseite mit Kategorie, Pfad und „Meldung anlegen“, die Kategorie einer eigenen Meldung
+    mit Namen; `axe` ohne Befund.
+  - Angepasst: `TestTenantBoundary` erwartet die Regel der Auswahlliste in Klammern, weil
+    mehrere Regeln mit ODER verbunden werden; die Bedeutung ist gleich.
+  - Selbsttest auf 8092 in Chrome: die Störung „Test“ zeigt im Portal die Kategorie
+    „Telefonie“ statt der Kennung, auch in der Zeitleiste. Der Bereich „Wissen“ zeigte zuerst
+    keinen Kategorienbaum: die Abfrage sortierte nach zwei Spalten, der Server nimmt eine (422).
+    Behoben (nach Reihenfolge sortiert, nach Namen im Browser); die Attrappe der Vitest-Fälle
+    lehnt zwei Sortierspalten jetzt ebenso ab, damit der Test den Fehler gefunden hätte.
+  - Ganze CI am 2026-11-04 im ersten Lauf grün (19 Schritte, 103 Vitest-Fälle, 18 Tests im
+    Browser, Lastmessung ohne Verschlechterung über die Toleranz); nach der Korrektur
+    im vierten Lauf grün. Lauf 2 und 3 waren nur in der Lastmessung rot (LZ2 +49 % und LZ13
+    −18 %, dann LZ4 +13 %) bei unverändertem Server-Code; jedes Mal eine andere Messung, darum
+    als Rauschen gewertet.
+- **Nicht geprüft:** Kein Browser-Test in der CI für den Bereich „Wissen“ (die Vitest-Fälle
+  laufen in jsdom; im echten Browser nur der Selbsttest oben, ohne Artikel). Die Suche gilt im ganzen Bereich, nicht nur in der gewählten Kategorie.
+  Die Startdaten bringen keine Artikel mit. „Nur bestimmte Gruppen“ ohne Gruppen lesen nur
+  Bearbeiter; eine Pflicht für die Rolle gibt es nicht, weil Feldzustände keine Rollen kennen.
 
 ### SD9 — Notizen im Arbeitsplatz, 2026-11-04
 

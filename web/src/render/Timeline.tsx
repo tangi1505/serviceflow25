@@ -125,6 +125,10 @@ function ChangeValue({
   }
   const [name] = field.split(".");
   const f = type.fields.find((x) => x.name === name);
+  if (f?.type === "reference" && f.to && typeof value === "string") {
+    // A reference by the name of its record, as a role (the finding of the SD16 click test).
+    return <RefName refTo={{ type: f.to, id: value }} />;
+  }
   return <>{formatValue(f, value, i18n.language) || String(value)}</>;
 }
 

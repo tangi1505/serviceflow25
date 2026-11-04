@@ -1,0 +1,66 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# An article (SD16a; Inventar G106): a title and formatted text under a category of the tree of
+# the base package sd. Who reads it says "Sichtbar für" (SD-Plan E8): everyone, also in the
+# portal, once it is published, from the article's node of the organisation tree downwards;
+# only agents, whom their roles let read; or only the groups named in the role "Gruppen". The
+# expiry date gets its daily rule with SD16d; until then an agent sets an article expired.
+name: article
+label: {de: Artikel, en: Article}
+title_field: title
+traits: [history, actors]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: body
+    type: text
+    label: {de: Text, en: Text}
+    format: rich
+    required: true
+    searchable: true
+  - name: category
+    type: reference
+    label: {de: Kategorie, en: Category}
+    to: sd.category
+  - name: audience
+    type: choice
+    label: {de: Sichtbar für, en: Visible to}
+    required: true
+    default: agents
+    options:
+      - {value: all, label: {de: "Alle, auch im Portal", en: "Everyone, also in the portal"}}
+      - {value: agents, label: {de: Nur Bearbeiter, en: Agents only}}
+      - {value: groups, label: {de: Nur bestimmte Gruppen, en: Certain groups only}}
+  - name: expires_on
+    type: date
+    label: {de: Gültig bis, en: Valid until}
+actors:
+  - name: shared
+    label: {de: Gruppen, en: Groups}
+    to: [core.group]
+states:
+  - {name: draft, label: {de: Entwurf, en: Draft}, initial: true, category: open}
+  - {name: published, label: {de: Veröffentlicht, en: Published}, category: active}
+  - {name: expired, label: {de: Abgelaufen, en: Expired}, category: done}
+transitions:
+  - {name: publish, label: {de: Veröffentlichen, en: Publish}, from: [draft, expired], to: published}
+  - {name: expire, label: {de: Ablaufen lassen, en: Expire}, from: [published], to: expired}
+  - {name: revise, label: {de: Zurück in den Entwurf, en: Back to draft}, from: [published, expired], to: draft}
+# Who reads without a role (SD-Plan E8, N12): a published article for everyone at its node and
+# below, one for some groups their members wherever they are; without groups only agents read
+# it. Agents read by their roles.
+readers:
+  - when: record.state == "published" && record.audience == "all"
+  - when: record.state == "published" && record.audience == "groups"
+    roles: [shared]
+# The area "Wissen" in the head of the portal (SD16a, variant B of the mockup).
+portal:
+  read:
+    label: {de: Wissen, en: Knowledge}
+    fields: [category, body]
+    group: category

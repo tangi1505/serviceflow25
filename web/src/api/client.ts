@@ -133,6 +133,9 @@ export type Transition = {
 export type ActorRole = { name: string; label?: Label; to: string[]; single?: boolean };
 // ActorRef is one holder of a role.
 export type ActorRef = { type: string; id: string };
+// PortalRead is the reading area of a type in the portal (SD16a): its name in the head, the
+// fields its page shows, and the reference field to a tree list it is browsed by.
+export type PortalRead = { label: Label; fields: string[]; group?: string };
 export type TypeDefinition = {
   name: string;
   package?: string;
@@ -145,8 +148,9 @@ export type TypeDefinition = {
   // traits name the building blocks the type pulls in (PL17): history, timeline (PL42), …
   traits?: string[];
   actors?: ActorRole[];
-  // portal offers the type in the portal for users with the fields to create with (UI10).
-  portal?: { fields: string[] };
+  // portal offers the type in the portal for users with the fields to create with (UI10), or
+  // for reading in an area of its own in the head of the portal (SD16a).
+  portal?: { fields?: string[]; read?: PortalRead };
   // revision is the hash of the effective definition, base and customer layer (PL43).
   revision?: string;
   // layout is where the workflow editor draws each state (UI26.2); set by the customer layer.

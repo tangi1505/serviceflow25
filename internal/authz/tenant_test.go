@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/db/queries"
+	"group24.de/itsm/internal/meta"
 )
 
 // The tenant bounds every scope, "all" included; a role in another tenant does not count; a
@@ -63,9 +64,10 @@ func TestTenantBoundary(t *testing.T) {
 
 	// Select lists: the tenant's own copy only (PL45, V28), and of it the entries at or above
 	// the node one sees them from, here the tenant (SD-Plan N5; the filter has the node since).
-	lists := &Access{AccountID: uuid.New(), Tenants: []string{"root.a"}, ReadAll: []string{"core.wait_reason"}}
+	// The rule of the list stands in parentheses since the readers of SD16a join with OR.
+	lists := &Access{AccountID: uuid.New(), Tenants: []string{"root.a"}, Readers: map[string][]meta.Reader{"core.wait_reason": {{}}}}
 	filter, args = lists.Filter("core.wait_reason", ActionRead, nil)
-	if filter != "($1::ltree <@ org_path AND org_path <@ $2::ltree)" || args[0] != "root.a" || args[1] != "root.a" {
+	if filter != "(($1::ltree <@ org_path) AND org_path <@ $2::ltree)" || args[0] != "root.a" || args[1] != "root.a" {
 		t.Fatalf("list filter: %s %v", filter, args)
 	}
 	if !lists.Permits("core.wait_reason", ActionRead, map[string]any{"org_path": "root.a"}) ||
@@ -92,7 +94,7 @@ func TestTenantBoundary(t *testing.T) {
 	if f, _ := System().Filter("p.t", ActionRead, nil); f != "TRUE" {
 		t.Fatalf("system: %s", f)
 	}
-	none := &Access{AccountID: uuid.New(), Tenants: []string{NoTenant}, ReadAll: []string{"core.wait_reason"}}
+	none := &Access{AccountID: uuid.New(), Tenants: []string{NoTenant}, Readers: map[string][]meta.Reader{"core.wait_reason": {{}}}}
 	if none.Permits("core.wait_reason", ActionRead, map[string]any{"org_path": "root.a"}) || none.HomeNode() != "root" {
 		t.Fatal("an account without a tenant reaches into one")
 	}

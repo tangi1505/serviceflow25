@@ -32,6 +32,7 @@ import {
   PortalRecordPage,
   PortalShell,
 } from "@/portal/Portal";
+import { PortalArticlePage, PortalReadPage } from "@/portal/Read";
 import { NewRecordPage, RecordPage } from "@/render/RecordPage";
 import { CustomizeOverview, CustomizePage } from "@/render/CustomizePage";
 import { RolePage, RolesOverview } from "@/render/RolePage";
@@ -134,6 +135,24 @@ const portalRecordRoute = createRoute({
   getParentRoute: () => portalRoute,
   path: "$typeName/$id",
   component: PortalRecordPage,
+});
+
+// A reading area of the portal (SD16a): ?group=<entry> narrows it to an entry of its tree list
+// and what lies below, ?q=… searches it.
+const portalReadRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: "read/$typeName",
+  validateSearch: (search: Record<string, unknown>): { group?: string; q?: string } => ({
+    ...(typeof search["group"] === "string" ? { group: search["group"] } : {}),
+    ...(typeof search["q"] === "string" ? { q: search["q"] } : {}),
+  }),
+  component: PortalReadPage,
+});
+
+const portalArticleRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: "read/$typeName/$id",
+  component: PortalArticlePage,
 });
 
 const indexRoute = createRoute({
@@ -239,6 +258,8 @@ const routeTree = rootRoute.addChildren([
     portalFormRoute,
     portalNewRoute,
     portalRecordRoute,
+    portalReadRoute,
+    portalArticleRoute,
   ]),
   loginRoute,
   shellRoute.addChildren([
