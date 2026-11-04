@@ -103,7 +103,7 @@ func (s *Service) Render(ctx context.Context, snippet uuid.UUID, typeName string
 		Type: t, Record: r, Lang: lang, HTML: true,
 		Link:  fmt.Sprintf("%s/types/%s/%s", s.PublicURL, typeName, id),
 		Actor: s.writer(ctx),
-		Name:  func(to, ref string) string { return s.title(ctx, to, ref) },
+		Name:  func(to, ref string) string { return notify.RefTitle(ctx, s.rec, to, ref) },
 	}), nil
 }
 
@@ -131,28 +131,4 @@ func (s *Service) writer(ctx context.Context) string {
 		return first
 	}
 	return first + " " + last
-}
-
-// title is the title of a referenced record in the language of the request, empty when the
-// caller may not read it.
-func (s *Service) title(ctx context.Context, typeName, ref string) string {
-	id, err := uuid.Parse(ref)
-	if err != nil {
-		return ""
-	}
-	t, err := s.rec.Type(ctx, typeName)
-	if err != nil || t.TitleField == "" {
-		return ""
-	}
-	r, err := s.rec.Get(ctx, typeName, id)
-	if err != nil {
-		return ""
-	}
-	if _, err := s.rec.Localize(ctx, typeName, r); err != nil {
-		return ""
-	}
-	if v := r[t.TitleField]; v != nil {
-		return fmt.Sprint(v)
-	}
-	return ""
 }

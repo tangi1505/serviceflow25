@@ -106,9 +106,19 @@ func TestIncidentMailsOverHTTP(t *testing.T) {
 		return m
 	}
 
+	// A reference in a mail shows its title, not its id (found in SD8).
+	network := ""
+	for _, it := range call(t, api, http.MethodGet, "/api/v1/records/sd.category?limit=100", "", nil).body["items"].([]any) {
+		if c := it.(map[string]any); c["key"] == "network" {
+			network = c["id"].(string)
+		}
+	}
+	create("core.notification", `{"name": "SD10 Kategorie", "target_type": "incident.incident", "events": "create",
+		"recipients": "actors.requester", "notify_actor": true, "subject": "SD10 Kategorie {{record.category}}", "body": "x"}`)
+
 	// Anna reports: the receipt with the number in front.
 	r := call(t, anna.api, http.MethodPost, "/api/v1/records/incident.incident", `{"title": "SD10 Drucker druckt leer", "impact": "low", "urgency": "low",
-		"actors": {"requester": [{"type": "core.person", "id": "`+anna.person+`"}]}}`, nil)
+		"category": "`+network+`", "actors": {"requester": [{"type": "core.person", "id": "`+anna.person+`"}]}}`, nil)
 	if r.code != 201 {
 		t.Fatalf("Anna reports: %d %s", r.code, r.raw)
 	}
@@ -120,6 +130,7 @@ func TestIncidentMailsOverHTTP(t *testing.T) {
 	if m := expect("anna10@example.org", tag+"Ihre Störung ist eingegangen: SD10 Drucker druckt leer"); !strings.Contains(m.Body, number) {
 		t.Fatalf("receipt: %+v", m)
 	}
+	expect("anna10@example.org", "SD10 Kategorie Netz und Telefonie")
 	patch := func(body string) {
 		t.Helper()
 		v := call(t, api, http.MethodGet, inc+"/"+id, "", nil).body["version"]

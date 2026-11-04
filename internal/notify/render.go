@@ -78,7 +78,8 @@ type Data struct {
 	// HTML fills the placeholders of formatted text (the text modules, SD8): the values are
 	// escaped and {{link}} becomes a link.
 	HTML bool
-	// Name gives the title of a referenced record; without it a reference stays its id.
+	// Name gives the title of a referenced record (RefTitle); without it a reference stays
+	// its id.
 	Name func(typeName, id string) string
 }
 

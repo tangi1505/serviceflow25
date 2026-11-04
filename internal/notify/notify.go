@@ -658,7 +658,8 @@ func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 		return "", err
 	}
 	data := Data{Type: t, Record: rec, Lang: lang, Link: fmt.Sprintf("%s/types/%s/%s", s.PublicURL, ev.TypeName, ev.RecordID),
-		Actor: s.actorName(ctx, ev.Actor)}
+		Actor: s.actorName(ctx, ev.Actor),
+		Name:  func(to, ref string) string { return RefTitle(ctx, s.rec, to, ref) }}
 	if ev.Kind == records.EventComment {
 		// The text of the new entry (PL42); an entry gone with its record sends nothing.
 		var payload struct {
@@ -697,6 +698,30 @@ func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 		return to, fmt.Errorf("notify: mail to %s: %w", to, err)
 	}
 	return to, nil
+}
+
+// RefTitle is the title of a referenced record in the language of ctx, as a mail or a text
+// module (SD8) shows a reference; empty when ctx may not read it.
+func RefTitle(ctx context.Context, rec *records.Service, typeName, ref string) string {
+	id, err := uuid.Parse(ref)
+	if err != nil {
+		return ""
+	}
+	t, err := rec.Type(ctx, typeName)
+	if err != nil || t.TitleField == "" {
+		return ""
+	}
+	r, err := rec.Get(ctx, typeName, id)
+	if err != nil {
+		return ""
+	}
+	if _, err := rec.Localize(ctx, typeName, r); err != nil {
+		return ""
+	}
+	if v := r[t.TitleField]; v != nil {
+		return fmt.Sprint(v)
+	}
+	return ""
 }
 
 // actorName is the name of the person behind the account that caused an event.

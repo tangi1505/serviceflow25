@@ -243,6 +243,10 @@ Hauptplan H15).
   sobald ein Aufgabentyp sein Textfeld mit `snippets: task` markiert. Beim Anlegen eines
   Vorgangs gibt es keine Bausteine, weil noch kein Datensatz zum Einsetzen da ist. Kein Test im
   echten Browser (Playwright).
+- **Nachtrag, deine Entscheidung 2026-11-04:** Auch die Mails zeigen einen Verweis jetzt mit
+  seinem Titel statt der Kennung (`notify.RefTitle`, von Mails und Textbausteinen geteilt).
+  Belegt in `TestIncidentMailsOverHTTP`: eine Benachrichtigung mit `{{record.category}}` im
+  Betreff schickt „SD10 Kategorie Netz und Telefonie“.
 
 ### SD10 — Mail hinaus, 2026-11-03
 
