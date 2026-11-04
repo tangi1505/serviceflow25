@@ -24,7 +24,7 @@ import {
   meQuery,
   mySettingsQuery,
   qualifiedName,
-  recordQuery,
+  readQuery,
   typesQuery,
   type Field,
   type FormOffer,
@@ -33,6 +33,7 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
+import { useContentLanguage } from "@/app/contentLanguage";
 import { forget } from "@/app/recent";
 import { LanguageSwitch, ThemeSwitch } from "@/app/Switches";
 import { Form } from "@/render/Form";
@@ -53,6 +54,7 @@ export function PortalShell() {
   const queryClient = useQueryClient();
   const me = useQuery(meQuery);
   const settings = useQuery(mySettingsQuery);
+  useContentLanguage();
   useEffect(() => {
     const s = settings.data;
     if (!s) {
@@ -519,7 +521,7 @@ export function PortalRecordPage() {
   const { t, i18n } = useTranslation();
   const { typeName, id } = useParams({ from: "/portal/$typeName/$id" });
   const { type, pending } = usePortalType(typeName);
-  const record = useQuery(recordQuery(typeName, id));
+  const record = useQuery(readQuery(typeName, id));
   if (pending || record.isPending) {
     return <p>{t("list.loading")}</p>;
   }

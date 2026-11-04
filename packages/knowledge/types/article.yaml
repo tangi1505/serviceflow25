@@ -5,7 +5,9 @@
 # the base package sd. Who reads it says "Sichtbar für" (SD-Plan E8): everyone, also in the
 # portal, once it is published, from the article's node of the organisation tree downwards;
 # only agents, whom their roles let read; or only the groups named in the role "Gruppen". The
-# expiry date gets its daily rule with SD16d; until then an agent sets an article expired.
+# expiry date gets its daily rule with SD16d; until then an agent sets an article expired. Title
+# and text may carry an English translation (SD16c); the form edits the German one, readers see
+# their language where there is one (SD-Plan E10).
 name: article
 label: {de: Artikel, en: Article}
 title_field: title
@@ -16,6 +18,7 @@ fields:
     label: {de: Titel, en: Title}
     required: true
     searchable: true
+    translatable: true
     max_length: 200
   - name: body
     type: text
@@ -23,6 +26,7 @@ fields:
     format: rich
     required: true
     searchable: true
+    translatable: true
   - name: category
     type: reference
     label: {de: Kategorie, en: Category}

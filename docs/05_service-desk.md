@@ -57,7 +57,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD15** | Anonyme Formulare: Zugang über einen Link ohne Anmeldung, Captcha im Werkzeug ohne fremden Dienst, Ratenbegrenzung, Rückmeldung an eine Mail-Adresse (N2; Inventar G134, G137; Hauptplan E26; trägt KF8 für „anonym“) | 🔒 Hauptplan V34 | 2 d | Formular als anonym freigeben → der Link öffnet es ohne Anmeldung; ohne gelöstes Captcha → 400; 20 Absendungen in einer Minute → 429; Bestätigung per Mail in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16a** | Wissen, Artikel im Portal: Paket `knowledge` mit Artikel (Titel, formatierter Text, Kategorie der Störung, „Sichtbar für“ in drei Stufen mit der Rolle „Gruppen“, Status Entwurf, Veröffentlicht, Abgelaufen); Leser-Regeln im Kern (N12); Bereich „Wissen“ im Kopf des Portals mit Kategorienbaum, Suche und Artikelseite (E8, Variante B des Mockups); dazu der Befund des Klicktests: Verweise zeigen im Portal und in der Zeitleiste den Namen statt der Kennung (Inventar G106; IP4) | 🟢 | 2 d | Ein veröffentlichter Artikel „Alle, auch im Portal“ → ein Portal-Nutzer sieht ihn unter „Wissen“, einen Entwurf und einen „Nur Bearbeiter“ nicht; einer für eine Gruppe → nur ihre Mitglieder; im Portal zeigt eine Störung ihre Kategorie mit Namen; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) als Reiter „Fassungen“ auf der Detailseite, zwei Fassungen nebeneinander mit markierten Wörtern, eine ältere wiederherstellen; für jeden Typ mit Verlauf (E8, E9; IP4) | 🟢 | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD16c** | Wissen, Übersetzungen: übersetzbare Felder im Formular in weiteren Sprachen pflegen (PL21) und im Portal in der Sprache der Person zeigen (E8; IP4) | ⬜ | 1 d | Titel und Text englisch pflegen → mit Sprache Englisch zeigt das Portal die englische Fassung, ohne Übersetzung die deutsche; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16c** | Wissen, Sprache: Inhalte in der Sprache der Person zeigen (Listen, Namen, Suche, Portal), Titel und Text des Artikels übersetzbar; das Formular bleibt auf Deutsch, eine Version; automatische Übersetzung später (E10; PL21; IP4) | 🟢 | 1 d | Ein Artikel mit englischem Titel → wer Englisch eingestellt hat, sieht ihn englisch, sonst deutsch; das Formular zeigt immer den deutschen Titel; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16d** | Wissen, Ablauf: Rolle „Autor“; eine tägliche Regel setzt Artikel nach „Gültig bis“ auf Abgelaufen und schreibt dem Autor; dafür kennen Zeitregeln und Bedingungen der Rechte „jetzt“ (E8; IP4) | ⬜ | 1 d | Artikel mit „Gültig bis“ gestern → nach dem Lauf der Regel abgelaufen und aus dem Portal verschwunden, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16b | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🔒 SD16a | 2 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag; „hat geholfen“ zählt; Artikel an eine Störung verknüpfen → steht in den Bezügen; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -72,7 +72,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d. SD16b brauchte dazu im Kern nur den Namen in der Liste der Fassungen.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d. SD16b brauchte dazu im Kern nur den Namen in der Liste der Fassungen. SD16c ohne Editor für Englisch (E10); die automatische Übersetzung wird eine eigene Aufgabe, sobald Hauptplan V40 beantwortet ist.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -95,6 +95,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E7** | Betroffene Elemente und Bezüge (SD4, deine Entscheidungen 2026-11-03 nach dem Mockup „Bezüge am Vorgang“, [Artifact](https://claude.ai/artifact/LB9eW2KAQP7HHerk2ZMugJ), Hauptplan E161): **Beziehungsart** „betrifft“ (invers „betroffen von“) einmal im Grundpaket `sd`, von jedem Typ mit dem Merkmal `ticket` zu jedem Typ; Beziehungsarten dürfen dafür ein Merkmal statt eines Typs nennen (`trait:sd.ticket`, Kern-Bedarf N11). **Oberfläche:** die Detailseite bekommt Reiter unter dem Formular, „Bezüge“ zuerst, „Zeitleiste“ zuletzt (später „Dateien“ dazwischen); Bezüge als Tabelle mit Art, Typ, Datensatz, Status und Lösen, darüber Art und Datensatz zum Verknüpfen, die Suche über alle Typen; für jeden Typ, nicht nur Vorgänge. **Portal:** zeigt keine Bezüge, das entscheidet die Portal-Aufgabe. SD4 von 0,5 d auf 1,5 d. Verworfen: je Paket eine eigene Art; „betrifft“ von jedem Typ; Karte in der Seitenleiste; Abschnitt unter dem Formular; Zeitleiste als erster Reiter | 2026-11-03 | Pascal |
 | **E8** | Wissen (SD16, deine Entscheidungen 2026-11-04 nach dem Mockup „Wissen im Portal“, [Artifact](https://claude.ai/artifact/At2t1hm51eJPvdGF1m9jGz), und dem Klicktest im Browser; Hauptplan E168): **Vier Teile** SD16a bis SD16d statt einer Aufgabe mit 2 d. **Sichtbarkeit wie bei Auswahllisten:** ein Typ bringt Leser-Regeln mit (`readers`), nach denen angemeldete Personen ohne eigenes Recht lesen (Kern-Bedarf N12). „Sichtbar für“ hat drei Stufen: „Alle, auch im Portal“ liest jeder an seinem Knoten des Artikels und darunter, sobald er veröffentlicht ist; „Nur bestimmte Gruppen“ lesen die Mitglieder der Gruppen in der Rolle „Gruppen“, wo sie auch sind; „Nur Bearbeiter“ lesen die, denen ihre Rollen es erlauben. **Status** Entwurf, Veröffentlicht, Abgelaufen; „Gültig bis“ bekommt in SD16d eine tägliche Regel. **Kategorien** sind die der Störung (`sd.category`). **Portal** nach Variante B: „Wissen“ als eigener Bereich im Kopf neben „Meine Vorgänge“, mit Kategorienbaum, Suche und Artikelseite; die Startseite bleibt: eine Karte je Vorgangsart, danach „Formulare“, auf dem Handy untereinander. **Befund des Klicktests:** Verweise zeigen im Portal und in der Zeitleiste den Namen, behoben in SD16a. Verworfen: eine Aufgabe; ein Recht je Artikel; eigene Kategorien des Wissens; Karte „Wissen“ auf der Startseite (Variante A); „Formulare“ immer an zweiter Stelle; der Befund als eigene Aufgabe | 2026-11-04 | Pascal |
 | **E9** | Fassungen (SD16b, deine Entscheidungen 2026-11-04 nach dem Mockup „Fassungen vergleichen“, [Artifact](https://claude.ai/artifact/Nqgtdo42n6L56GMeQNxc1G), Hauptplan E169): **Variante A**, ein Reiter „Fassungen“ zwischen „Bezüge“ und „Zeitleiste“: links die Fassungen (wann, wer, was), zwei angeklickt, rechts nur die Felder, die sich unterscheiden. **Wörter** eines Textes markiert ein eigener kleiner Vergleich im Browser, ohne neue Bibliothek: gestrichen, was nur die ältere hat, unterstrichen, was neu ist. **Jeder Typ mit Verlauf** bekommt den Reiter, im Portal keiner. Wiederherstellen erst nach einer Rückfrage auf der Seite. Verworfen: eigene Seite mit dem ganzen Datensatz zweimal (Variante B); die Bibliothek „diff“; nur alter und neuer Text; nur am Artikel | 2026-11-04 | Pascal |
+| **E10** | Sprache der Inhalte (SD16c, deine Entscheidungen 2026-11-04 nach dem Mockup „Übersetzungen im Formular“, [Artifact](https://claude.ai/artifact/C8r9bReahYm2tT2DgmNGik), Hauptplan E171): **Eine Version:** kein Editor für Englisch im Formular; wo eine Übersetzung nötig wird, soll sie später automatisch entstehen, mit einem Übersetzer im eigenen Rechenzentrum (VS-NfD, kein Cloud-Dienst) als eigene Aufgabe, nachdem die Fachseite gesagt hat, ob Englisch gebraucht wird (Hauptplan V40). **Anzeige** in der Sprache der Person in Listen, Namen, Suche und Portal, sonst Deutsch; das Formular liest und schreibt Deutsch. **Übersetzbar** sind am Artikel Titel und Text. Verworfen: Umschalter „Deutsch | Englisch“ am Formular (Variante A); Englisch je Feld (Variante B); Anzeige nur im Portal; nur der Text übersetzbar; Automatik jetzt | 2026-11-04 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -144,7 +145,7 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | Art | Aufgaben |
 | --- | --- |
 | P | SD1, SD2, SD3, SD4, SD6, SD7, SD10, SD17 |
-| P und O | SD13, SD14, SD16c, SD18, SD19, SD21 |
+| P und O | SD13, SD14, SD16c (Lesen in der Sprache der Person, E10), SD18, SD19, SD21 |
 | K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD9 (Formulare im Arbeitsplatz, Regelaktion mit `@record` und `@actor`, deine Entscheidungen 2026-11-04), SD16a (Leser-Regeln im Kern, Lesebereich im Portal, E8), SD16b (Name in der Liste der Fassungen, E9), SD16d (Zeitregeln mit „jetzt“), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
 
 ### 2.3 Bedarf an den Kern
@@ -199,6 +200,32 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD16c — Wissen, Sprache der Inhalte, 2026-11-04
+
+- **Grundlage:** IP4; Hauptplan E171, V40; SD-Plan E10; deine Entscheidungen vom 2026-11-04
+  nach dem Mockup „Übersetzungen im Formular“
+  ([Artifact](https://claude.ai/artifact/C8r9bReahYm2tT2DgmNGik)): eine Version, Automatik
+  später mit einem Übersetzer im eigenen Rechenzentrum; Anzeige in der Sprache der Person;
+  Titel und Text übersetzbar.
+- **Gebaut:**
+  - Oberfläche: Lesen folgt der Sprache der Person (`Accept-Language` aus der eingestellten
+    Sprache): Listen, Suche, Namen von Verweisen, Vorschau und das Portal. Das Formular liest
+    über `api.get` weiter Deutsch, und geschrieben wird immer Deutsch; Anzeigen nutzen den
+    neuen `readQuery`. Wechselt die Sprache, liest die Oberfläche Datensätze und Treffer neu
+    (`useContentLanguage` in Arbeitsplatz und Portal).
+  - Paket `knowledge` 0.2.0: Titel und Text sind übersetzbar. Eine englische Fassung lässt sich
+    heute nur über die Schnittstelle setzen (`{"title": {"en": …}}`), wie seit PL21.
+- **Belegt:**
+  - Go `TestKnowledgeOverHTTP`: ein englischer Titel kommt mit `Accept-Language: en`, Deutsch
+    ohne; der Text ohne Übersetzung kommt deutsch.
+  - Vitest `Read.test.tsx`: auf Englisch liest das Portal den Artikel mit `en`, das Formular
+    im Arbeitsplatz den Datensatz mit `de`.
+  - Ganze CI am 2026-11-04 im ersten Lauf grün (19 Schritte, kein rotes Paket im Protokoll,
+    109 Vitest-Fälle, 18 Tests im Browser, Lastmessung im Rahmen).
+- **Nicht geprüft:** Kein Selbsttest auf Englisch im Browser, weil das deine Einstellung auf
+  8092 geändert hätte. Die Detailseite im Arbeitsplatz zeigt den Titel aus dem Formular, also
+  Deutsch, auch für eine englische Sitzung.
 
 ### SD16b — Wissen, Fassungen, 2026-11-04
 

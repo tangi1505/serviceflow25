@@ -10,6 +10,7 @@
 // carries the CSRF header (Hauptplan E74); the session is the cookie the browser sends on its
 // own. Errors arrive as ApiError with the Problem Details of the answer (E71).
 import { queryOptions } from "@tanstack/react-query";
+import i18n from "i18next";
 import createClient, { type Middleware } from "openapi-fetch";
 
 import type { components, paths } from "./schema";
@@ -167,10 +168,13 @@ export type FieldStates = components["schemas"]["FieldStates"];
 const csrf: Middleware = {
   onRequest({ request }) {
     request.headers.set("X-Requested-With", "itsm");
-    // The form edits the German value of translatable fields until UI3 brings an editor per
-    // language (PL21, E98): reading and writing both in German keeps an English browser from
-    // saving an English value into the German column.
-    request.headers.set("Accept-Language", "de");
+    // Reading follows the language of the person (SD16c): lists, search, names and the portal
+    // show the translation where there is one, else German. The form edits the German value
+    // (PL21, E98; one version, SD-Plan E10): api.get reads German unless asked to read, and
+    // writing stays German, so an English session never saves English into the German column.
+    if (!request.headers.has("Accept-Language")) {
+      request.headers.set("Accept-Language", i18n.language === "en" ? "en" : "de");
+    }
     request.headers.set("Content-Language", "de");
     return request;
   },
@@ -213,9 +217,14 @@ export const api = {
     unwrap(
       await client.GET("/api/v1/records/{typeName}", { params: { path: { typeName }, query } }),
     ),
-  get: async (typeName: string, id: string) =>
+  // get reads a record to edit, in German; read: true reads it to show, in the person's
+  // language (SD16c).
+  get: async (typeName: string, id: string, read = false) =>
     unwrap(
-      await client.GET("/api/v1/records/{typeName}/{id}", { params: { path: { typeName, id } } }),
+      await client.GET("/api/v1/records/{typeName}/{id}", {
+        params: { path: { typeName, id } },
+        ...(read ? {} : { headers: { "Accept-Language": "de" } }),
+      }),
     ),
   create: async (typeName: string, body: RecordData) =>
     unwrap(
@@ -552,6 +561,13 @@ export const recordQuery = (typeName: string, id: string) =>
   queryOptions({
     queryKey: ["records", typeName, id],
     queryFn: () => api.get(typeName, id),
+  });
+
+// readQuery is a record to show, not to edit: in the person's language (SD16c).
+export const readQuery = (typeName: string, id: string) =>
+  queryOptions({
+    queryKey: ["records", typeName, id, "read"],
+    queryFn: () => api.get(typeName, id, true),
   });
 
 // fieldStatesQuery asks for a record (id) or a new one; under the record's key, so that a

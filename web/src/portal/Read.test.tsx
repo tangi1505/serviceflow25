@@ -176,6 +176,23 @@ describe("Reading area of the portal", () => {
     await expectAccessible(container);
   });
 
+  // SD16c: shown records come in the person's language, the form reads German.
+  it("reads in the language of the person, the form in German", async () => {
+    initI18n("en");
+    const article = renderAt(`/portal/read/knowledge.article/${vpnArticle}`);
+    expect(await screen.findByRole("heading", { name: "VPN verbindet nicht" })).toBeInTheDocument();
+    const read = state.calls.find((c) => c.method === "GET" && c.path.endsWith(vpnArticle!));
+    expect(read?.lang).toBe("en");
+    article.unmount();
+    state.workplace = true;
+    renderAt(`/types/probe.probe/${state.records[0]!.id}`);
+    expect(await screen.findByRole("heading", { name: "Probe 000001" })).toBeInTheDocument();
+    const edit = state.calls.find(
+      (c) => c.method === "GET" && c.path === `/api/v1/records/probe.probe/${state.records[0]!.id}`,
+    );
+    expect(edit?.lang).toBe("de");
+  });
+
   it("shows a reference of one's own record by name", async () => {
     renderAt(`/portal/demo.ticket/${ticket}`);
     expect(await screen.findByRole("heading", { name: "Kein Netz" })).toBeInTheDocument();

@@ -362,7 +362,14 @@ export type FakeState = {
   // exportJob makes an export a job (UI5, more than 100,000 rows); jobState is its state.
   exportJob?: boolean;
   jobState?: string;
-  calls: { method: string; path: string; query: URLSearchParams; body?: string }[];
+  // calls are the requests in order; lang is their Accept-Language (SD16c).
+  calls: {
+    method: string;
+    path: string;
+    query: URLSearchParams;
+    body?: string;
+    lang?: string | null;
+  }[];
 };
 
 export function makeRecords(n: number): RecordData[] {
@@ -398,7 +405,13 @@ export function fakeApi(state: FakeState) {
     const url = new URL(req.url);
     const method = req.method;
     const bodyText = method === "GET" || method === "HEAD" ? "" : await req.text();
-    state.calls.push({ method, path: url.pathname, query: url.searchParams, body: bodyText });
+    state.calls.push({
+      method,
+      path: url.pathname,
+      query: url.searchParams,
+      body: bodyText,
+      lang: req.headers.get("Accept-Language"),
+    });
     const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
       new Response(JSON.stringify(body), {
         status,

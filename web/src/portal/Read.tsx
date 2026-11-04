@@ -19,7 +19,7 @@ import {
   api,
   labelOf,
   qualifiedName,
-  recordQuery,
+  readQuery,
   typesQuery,
   type Field,
   type RecordData,
@@ -301,7 +301,7 @@ export function PortalArticlePage() {
   const { typeName, id } = useParams({ from: "/portal/read/$typeName/$id" });
   const { type, pending } = useReadType(typeName);
   const types = useQuery(typesQuery);
-  const record = useQuery({ ...recordQuery(typeName, id), retry: false });
+  const record = useQuery({ ...readQuery(typeName, id), retry: false });
   if (pending || record.isPending) {
     return <p>{t("list.loading")}</p>;
   }

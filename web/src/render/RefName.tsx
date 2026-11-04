@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import {
   labelOf,
   qualifiedName,
-  recordQuery,
+  readQuery,
   typesQuery,
   type ActorRef,
   type RecordData,
@@ -36,7 +36,7 @@ export function titleOf(type: TypeDefinition | undefined, rec: RecordData): stri
 export function RefName({ refTo, link = false }: { refTo: ActorRef; link?: boolean }) {
   const { i18n } = useTranslation();
   const types = useQuery(typesQuery);
-  const rec = useQuery({ ...recordQuery(refTo.type, refTo.id), retry: false });
+  const rec = useQuery({ ...readQuery(refTo.type, refTo.id), retry: false });
   const type = types.data?.find((t) => qualifiedName(t) === refTo.type);
   if (!rec.data) {
     const typeLabel = labelOf(type?.label, i18n.language, refTo.type);

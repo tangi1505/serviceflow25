@@ -28,6 +28,7 @@ import {
   savedSearchesQuery,
   typesQuery,
 } from "@/api/client";
+import { useContentLanguage } from "@/app/contentLanguage";
 import { setDisplayTimeZone } from "@/render/fields";
 import { applyColorScheme, isColorScheme } from "@/ui/colorScheme";
 import { applyTheme, isTheme } from "@/ui/theme";
@@ -38,6 +39,7 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const me = useQuery(meQuery);
   const types = useQuery(typesQuery);
+  useContentLanguage();
   // The person's settings (UI9): language, theme and time zone, once they are known.
   const settings = useQuery(mySettingsQuery);
   useEffect(() => {

@@ -20,7 +20,7 @@ import {
   api,
   labelOf,
   qualifiedName,
-  recordQuery,
+  readQuery,
   relationKindsQuery,
   relationsQuery,
   typesQuery,
@@ -107,7 +107,7 @@ function Row({
   onCancel: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const rec = useQuery({ ...recordQuery(end.type, end.id), retry: false });
+  const rec = useQuery({ ...readQuery(end.type, end.id), retry: false });
   const type = types.find((x) => qualifiedName(x) === end.type);
   const number = type?.fields.find((f) => f.type === "sequence");
   const title = rec.data ? titleOf(type, rec.data) : end.id.slice(-6);

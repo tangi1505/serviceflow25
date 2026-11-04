@@ -580,7 +580,8 @@ web/src/
                 core.portal_notice seit SD5; Lesebereiche wie „Wissen“ im Kopf aus der
                 Portal-Option read eines Typs seit SD16a; Katalog mit SD)
   dashboards/   Widgets (ECharts)
-  i18n/         Deutsch und Englisch von Anfang an
+  i18n/         Deutsch und Englisch von Anfang an; Inhalte werden in der Sprache der Person
+                gelesen, das Formular liest und schreibt Deutsch (SD16c)
   ui/           shadcn/ui-Bausteine nach dem Design-Kit „Klartext“ (Tokens hell und dunkel, IBM Plex, Marken für Status, Priorität, Frist), Theme, Barrierefreiheit
 ```
 

@@ -118,6 +118,17 @@ func TestKnowledgeOverHTTP(t *testing.T) {
 		t.Fatalf("Nord changes the article: %d %s", r.code, r.raw)
 	}
 
+	// An English title (SD16c): read in English where there is one, else German.
+	if r := call(t, admin, http.MethodPatch, arts+"/"+forAll, `{"title": {"en": "For everyone"}}`, map[string]string{"If-Match": `"2"`}); r.code != 200 {
+		t.Fatalf("English title: %d %s", r.code, r.raw)
+	}
+	if r := call(t, nord.api, http.MethodGet, arts+"/"+forAll, "", map[string]string{"Accept-Language": "en"}); r.code != 200 || r.body["title"] != "For everyone" || !strings.Contains(r.raw, "VPN neu starten") {
+		t.Fatalf("Nord reads in English: %d %s", r.code, r.raw)
+	}
+	if r := call(t, nord.api, http.MethodGet, arts+"/"+forAll, "", map[string]string{"Accept-Language": "de"}); r.body["title"] != "Für alle" {
+		t.Fatalf("Nord reads in German: %d %s", r.code, r.raw)
+	}
+
 	// The search keeps to the readers: every article says VPN, Süd finds two.
 	r := call(t, sued.api, http.MethodGet, "/api/v1/search?q=VPN&types=knowledge.article", "", nil)
 	var hits []map[string]any

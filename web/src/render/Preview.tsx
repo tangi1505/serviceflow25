@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-import { qualifiedName, recordQuery, type TypeDefinition } from "@/api/client";
+import { qualifiedName, readQuery, type TypeDefinition } from "@/api/client";
 import { Button } from "@/ui/button";
 import { PriorityMark } from "@/ui/marks";
 
@@ -35,7 +35,7 @@ export function Preview({
 }) {
   const { t, i18n } = useTranslation();
   const typeName = qualifiedName(type);
-  const record = useQuery(recordQuery(typeName, id));
+  const record = useQuery(readQuery(typeName, id));
   const title = record.data ? titleOf(type, record.data) : "";
   const titleField = type.title_field ?? type.fields[0]?.name;
   const fields = type.fields
