@@ -170,7 +170,9 @@ go_test() {
   fi
   grep -Ev "$quiet_packages" /tmp/pkgs-run > /tmp/pkgs-parallel || true
   grep -E "$quiet_packages" /tmp/pkgs-run | grep -v '/internal/httpapi$' > /tmp/pkgs-quiet || true
-  rc=0
+  # local: httpapi_test has an rc of its own; a shared one let a red package pass when the
+  # API tests after it were green (found 2026-11-04 in SD16b, since PL52).
+  local rc=0
   if [ -s /tmp/pkgs-parallel ]; then
     echo "-- side by side: $(wc -l < /tmp/pkgs-parallel) packages"
     xargs go test -race -count=1 < /tmp/pkgs-parallel || rc=1
@@ -212,7 +214,7 @@ httpapi_test() {
     ) &
   done
   wait
-  rc=0
+  local rc=0
   for k in $(seq 1 "$httpapi_parts"); do
     echo "-- part $k, $(wc -l < "/tmp/httpapi-part-$k") tests: $(tail -n 1 "/tmp/httpapi-part-$k.log")"
     if [ "$(cat "/tmp/httpapi-part-$k.rc")" != 0 ]; then

@@ -1590,6 +1590,15 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     Nebenher zu laufen würde etwa 70 s sparen; das bleibt bei deiner Entscheidung offen.
   - Die Auswahl der Browser-Tests nach Dateien ist eine Liste von Hand; ein neuer Bereich ohne
     Eintrag wählt keinen Browser-Test, bis die ganze CI vor dem Commit läuft.
+- **Nachtrag 2026-11-04 (Befund aus der CI von SD16b, deine Entscheidung):** Die CI verschluckte
+  rote Go-Pakete. `go_test` merkte sich einen Fehler der Pakete nebeneinander in `rc`, dann setzte
+  `httpapi_test` dieselbe Variable auf 0, weil keine der beiden Funktionen sie als `local`
+  führte; waren die API-Tests danach grün, meldete der Schritt „ok“. So blieb der veraltete Test
+  `TestProblems` in `internal/forms` seit SD9 unbemerkt rot (in den Läufen von SD9, SD16a und
+  SD16b); in den aufgehobenen Protokollen seit PL52 ist er das einzige verdeckte Paket.
+  - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
+  - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
+    Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
 
 ### PL48 — Auswertungen über Mandanten, 2026-10-31
 
