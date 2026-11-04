@@ -384,8 +384,10 @@ export const api = {
         params: { path: { typeName, id } },
       }),
     ),
-  // forms are the forms offered to the session (UI11): it may create their target type.
-  forms: async () => unwrap(await client.GET("/api/v1/forms")),
+  // forms are the forms offered to the session at a place (UI11, SD9): portal when none is
+  // named; the session may create their target type.
+  forms: async (place?: "portal" | "workplace") =>
+    unwrap(await client.GET("/api/v1/forms", { params: { query: place ? { place } : {} } })),
   // portalNotices is what the portal shows under "Aktuell" (SD5).
   portalNotices: async () => unwrap(await client.GET("/api/v1/portal/notices")),
   form: async (formId: string) =>

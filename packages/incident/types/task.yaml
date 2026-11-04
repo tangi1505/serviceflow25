@@ -1,0 +1,40 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A task of an incident (SD9; Inventar G41; WF13): its own record with a state, an assignee
+# (person or group) and a time it is due, such as the callback of a phone note. The incident
+# counts its open tasks. The request brings its own with SD6.
+name: task
+label: {de: Aufgabe, en: Task}
+title_field: title
+traits: [history, actors]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: incident
+    type: reference
+    label: {de: Störung, en: Incident}
+    to: incident.incident
+    required: true
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    format: rich
+    snippets: task
+  - name: due_at
+    type: datetime
+    label: {de: Fällig am, en: Due at}
+states:
+  - {name: open, label: {de: Offen, en: Open}, initial: true, category: open}
+  - {name: done, label: {de: Erledigt, en: Done}, category: done}
+transitions:
+  - {name: finish, label: {de: Erledigen, en: Finish}, from: [open], to: done}
+  - {name: reopen, label: {de: Wieder öffnen, en: Reopen}, from: [done], to: open}
+actors:
+  - name: assignee
+    label: {de: Bearbeiter, en: Assignee}
+    to: [core.person, core.group]

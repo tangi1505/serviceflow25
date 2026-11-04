@@ -45,6 +45,8 @@ type ApplyArgs struct {
 	By    string `json:"by,omitempty"`
 	// Rule, when set, is the one rule to run: the escalation level a clock reached (WF10).
 	Rule string `json:"rule,omitempty"`
+	// Actor is the account that made the write, for "@actor" in a record a rule makes (SD9).
+	Actor *uuid.UUID `json:"actor,omitempty"`
 }
 
 // Kind names the job.
@@ -124,7 +126,7 @@ func (e *Engine) argsOf(ctx context.Context, ev records.Event) (ApplyArgs, bool,
 		return ApplyArgs{}, false, nil
 	}
 	return ApplyArgs{Type: ev.TypeName, Record: ev.RecordID, Position: ev.Position, Trigger: trigger,
-		Changed: payload.Changed, Depth: payload.Depth, By: payload.Rule}, true, nil
+		Changed: payload.Changed, Depth: payload.Depth, By: payload.Rule, Actor: ev.Actor}, true, nil
 }
 
 // levelArgs is the job of the escalation level a clock reached (WF10): the event names the
@@ -200,7 +202,7 @@ func (w *applyWorker) run(ctx context.Context, job *river.Job[ApplyArgs]) (strin
 		if path, _ := rec["org_path"].(string); !c.reaches(path) || !w.e.matches(c, rec, a.Changed) {
 			continue
 		}
-		if err := w.e.apply(ctx, c.Rule, a.Type, a.Record, a.Depth+1); err != nil {
+		if err := w.e.apply(withActor(ctx, a.Actor), c.Rule, a.Type, a.Record, a.Depth+1); err != nil {
 			return c.Name, err
 		}
 		fired = append(fired, c.Name)
@@ -240,7 +242,7 @@ func (e *Engine) apply(ctx context.Context, r Rule, typeName string, id uuid.UUI
 	for _, a := range r.Actions {
 		switch {
 		case a.Create != nil:
-			fields, err := e.inTenant(ctx, r, rec, a.Create.Fields)
+			fields, err := e.inTenant(ctx, r, rec, bind(a.Create.Fields, id, e.person(ctx)))
 			if err != nil {
 				return err
 			}
@@ -383,6 +385,26 @@ func (e *Engine) inTenant(ctx context.Context, r Rule, rec map[string]any, field
 	}
 	out["org_path"] = node
 	return out, nil
+}
+
+type actorKey struct{}
+
+// withActor keeps the account that made the write for the actions of the rules.
+func withActor(ctx context.Context, account *uuid.UUID) context.Context {
+	return context.WithValue(ctx, actorKey{}, account)
+}
+
+// person is the person behind the account that made the write; nil for none or the system.
+func (e *Engine) person(ctx context.Context) *uuid.UUID {
+	account, _ := ctx.Value(actorKey{}).(*uuid.UUID)
+	if account == nil || e.Rights == nil {
+		return nil
+	}
+	a, err := e.Rights(ctx, *account)
+	if err != nil || a == nil {
+		return nil
+	}
+	return a.PersonID
 }
 
 // refused cancels the job for a write the record refuses: retrying does not help, the log

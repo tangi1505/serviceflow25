@@ -15,7 +15,7 @@
 // cards of the start page stand side by side where there is room.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -243,7 +243,7 @@ function MyRecords({ type }: { type: TypeDefinition }) {
 }
 
 // formsQuery are the forms offered to the session (UI11).
-const formsQuery = { queryKey: ["forms"], queryFn: api.forms, staleTime: 60_000 };
+const formsQuery = { queryKey: ["forms"], queryFn: () => api.forms(), staleTime: 60_000 };
 
 // inLanguage is a text of a form in the language, else the German one (UI12).
 function inLanguage(label: Label | undefined, language: string, german: string): string {
@@ -363,8 +363,9 @@ export function PortalNewPage() {
 }
 
 // formType is the form as the fields of a type: one field per question, named by the question
-// id; a bound question is its field of the target type with the question's label, a free one a
-// field of its own. The sections group them.
+// id; a bound question is its field of the target type with the question's label, a role
+// question a reference to the role's holders with search (SD9), a free one a field of its own.
+// The sections group them.
 export function formType(form: FormOffer, target: TypeDefinition) {
   const fields: Field[] = [];
   for (const s of form.definition.sections) {
@@ -379,6 +380,18 @@ export function formType(form: FormOffer, target: TypeDefinition) {
             label: own ?? f.label,
             description: both(q.description) ?? f.description,
             required: q.required === true || f.required === true,
+          });
+        }
+      } else if (q.role) {
+        const role = target.actors?.find((a) => a.name === q.role);
+        if (role) {
+          fields.push({
+            name: q.id,
+            type: "reference",
+            to: role.to[0],
+            label: own ?? role.label,
+            description: both(q.description),
+            required: q.required === true,
           });
         }
       } else {
@@ -398,17 +411,70 @@ export function formType(form: FormOffer, target: TypeDefinition) {
 }
 
 export function PortalFormPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { formId } = useParams({ from: "/portal/forms/$formId" });
+  const [sent, setSent] = useState<{ saved: RecordData; target: TypeDefinition } | null>(null);
+  if (sent) {
+    const { saved, target } = sent;
+    return (
+      <Alert>
+        <p>
+          {t("portal.sent", { title: String(saved[target.title_field ?? "id"] ?? saved["id"]) })}
+        </p>
+        <Link to="/portal" className="underline">
+          {t("portal.mine")}
+        </Link>
+      </Alert>
+    );
+  }
+  return (
+    <FormFill
+      formId={formId}
+      crumb={
+        <Link to="/portal" className="underline">
+          {t("portal.title")}
+        </Link>
+      }
+      onSaved={(saved, target) => {
+        const typeName = qualifiedName(target);
+        void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
+        if (target.portal) {
+          void navigate({
+            to: "/portal/$typeName/$id",
+            params: { typeName, id: String(saved["id"]) },
+          });
+        } else {
+          // A type the portal does not show: the record exists, its page is not here.
+          setSent({ saved, target });
+        }
+      }}
+      onCancel={() => void navigate({ to: "/portal" })}
+    />
+  );
+}
+
+// FormFill is a form to fill in, in the portal and in the workplace (SD9): the questions as
+// the fields of a type in their sections, with their conditions.
+export function FormFill({
+  formId,
+  crumb,
+  onSaved,
+  onCancel,
+}: {
+  formId: string;
+  crumb: ReactNode;
+  onSaved: (saved: RecordData, target: TypeDefinition) => void;
+  onCancel: () => void;
+}) {
+  const { t, i18n } = useTranslation();
   const form = useQuery({
     queryKey: ["forms", formId],
     queryFn: () => api.form(formId),
     retry: false,
   });
   const types = useQuery(typesQuery);
-  const [sent, setSent] = useState<RecordData | null>(null);
   if (form.isPending || types.isPending) {
     return <p>{t("list.loading")}</p>;
   }
@@ -416,23 +482,11 @@ export function PortalFormPage() {
   if (!form.data || !target) {
     return <Alert variant="destructive">{t("portal.formUnknown")}</Alert>;
   }
-  if (sent) {
-    return (
-      <Alert>
-        <p>{t("portal.sent", { title: String(sent[target.title_field ?? "id"] ?? sent["id"]) })}</p>
-        <Link to="/portal" className="underline">
-          {t("portal.mine")}
-        </Link>
-      </Alert>
-    );
-  }
   const { type, sections } = formType(form.data, target);
   return (
     <div className="flex flex-col gap-4">
       <nav aria-label="breadcrumb" className="text-sm text-muted-foreground">
-        <Link to="/portal" className="underline">
-          {t("portal.title")}
-        </Link>
+        {crumb}
       </nav>
       <h1 className="text-2xl font-semibold">
         {inLanguage(form.data.definition.title, i18n.language, form.data.name)}
@@ -452,20 +506,8 @@ export function PortalFormPage() {
         }))}
         submit={(answers) => api.submitForm(formId, answers)}
         visibility={(values) => hiddenOf(form.data.definition, values)}
-        onSaved={(saved: RecordData) => {
-          const typeName = qualifiedName(target);
-          void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
-          if (target.portal) {
-            void navigate({
-              to: "/portal/$typeName/$id",
-              params: { typeName, id: String(saved["id"]) },
-            });
-          } else {
-            // A type the portal does not show: the record exists, its page is not here.
-            setSent(saved);
-          }
-        }}
-        onCancel={() => void navigate({ to: "/portal" })}
+        onSaved={(saved: RecordData) => onSaved(saved, target)}
+        onCancel={onCancel}
       />
     </div>
   );

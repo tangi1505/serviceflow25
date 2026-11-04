@@ -163,11 +163,67 @@ type Ref struct {
 	ID   uuid.UUID `json:"id"`
 }
 
-// Create is a record a rule makes.
+// Create is a record a rule makes. "@record" in a reference field stands for the record the
+// rule runs on, "@actor" as the id of a person holding a role for the person who made the
+// write (SD9: the callback task of an incident, assigned to who took the call).
 type Create struct {
 	TypeName string         `json:"type_name"`
 	Fields   map[string]any `json:"fields"`
 }
+
+// The placeholders of a created record.
+const (
+	placeRecord = "@record"
+	placeActor  = "@actor"
+)
+
+// bind fills in the placeholders of the fields of a created record; a holder "@actor" without
+// a person is left out.
+func bind(fields map[string]any, record uuid.UUID, person *uuid.UUID) map[string]any {
+	out := make(map[string]any, len(fields))
+	for k, v := range fields {
+		if k == "actors" {
+			out[k] = bindActors(v, person)
+			continue
+		}
+		if v == placeRecord {
+			v = record.String()
+		}
+		out[k] = v
+	}
+	return out
+}
+
+func bindActors(v any, person *uuid.UUID) any {
+	roles, ok := v.(map[string]any)
+	if !ok {
+		return v
+	}
+	out := make(map[string]any, len(roles))
+	for role, list := range roles {
+		holders, ok := list.([]any)
+		if !ok {
+			out[role] = list
+			continue
+		}
+		kept := []any{}
+		for _, h := range holders {
+			m, _ := h.(map[string]any)
+			if m["id"] != placeActor {
+				kept = append(kept, h)
+				continue
+			}
+			if person != nil {
+				kept = append(kept, map[string]any{"type": m["type"], "id": person.String()})
+			}
+		}
+		out[role] = kept
+	}
+	return out
+}
+
+// Rights loads the access of an account; the engine needs it for the person behind "@actor".
+type Rights func(ctx context.Context, account uuid.UUID) (*authz.Access, error)
 
 // Notify says whom to tell what: "actors.<role>" for the holders of a role at the record,
 // "actors.<role>.responsible" for the responsible persons of its groups (SD-Plan N10), or
@@ -218,6 +274,8 @@ type Engine struct {
 	logger *slog.Logger
 	// Queue is the River queue of the rules after a write; tests use their own.
 	Queue string
+	// Rights finds the person behind an account for "@actor"; nil leaves those holders out.
+	Rights Rights
 
 	mu     sync.Mutex
 	loaded time.Time
@@ -811,8 +869,8 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 				add(where, "invalid", "%v", err)
 			}
 		case a.Create != nil:
-			if err := e.rec.CheckValues(ctx, a.Create.TypeName, a.Create.Fields, true); err != nil {
-				add(where, "invalid", "%v", err)
+			if msg := e.checkCreate(ctx, r.TypeName, a.Create); msg != "" {
+				add(where, "invalid", "%s", msg)
 			}
 		case a.Transition != nil:
 			if _, ok := t.Transition(a.Transition.Name); !ok {
@@ -941,4 +999,54 @@ func (e *Engine) Levels(ctx context.Context, typeName string, sla uuid.UUID) ([]
 		out = append(out, l)
 	}
 	return out, nil
+}
+
+// checkCreate checks the record a rule makes as far as it can before the rule runs: the
+// placeholders where they may stand ("@record" in a reference to the rule's type, "@actor" for
+// a person holder), the rest of the values as they are; a field "@record" fills counts as
+// given.
+func (e *Engine) checkCreate(ctx context.Context, typeName string, c *Create) string {
+	t, err := e.rec.Type(ctx, c.TypeName)
+	if err != nil {
+		return err.Error()
+	}
+	values := map[string]any{}
+	bound := map[string]bool{}
+	for k, v := range c.Fields {
+		if v != placeRecord {
+			values[k] = v
+			continue
+		}
+		if f, ok := t.Field(k); !ok || f.Type != meta.FieldReference || f.To != typeName {
+			return fmt.Sprintf("%s: @record fits only a reference to %s", k, typeName)
+		}
+		bound[k] = true
+	}
+	if roles, ok := values["actors"].(map[string]any); ok {
+		for role, list := range roles {
+			holders, _ := list.([]any)
+			for _, h := range holders {
+				if m, _ := h.(map[string]any); m["id"] == placeActor && m["type"] != "core.person" {
+					return fmt.Sprintf("actors.%s: @actor is a core.person", role)
+				}
+			}
+		}
+		values["actors"] = bindActors(roles, nil)
+	}
+	err = e.rec.CheckValues(ctx, c.TypeName, values, true)
+	verr, ok := records.AsValidationError(err)
+	if !ok {
+		if err != nil {
+			return err.Error()
+		}
+		return ""
+	}
+	var left []string
+	for _, p := range verr.Problems {
+		if bound[p.Field] && p.Code == "required" {
+			continue
+		}
+		left = append(left, p.Field+": "+p.Message)
+	}
+	return strings.Join(left, "; ")
 }

@@ -73,7 +73,10 @@
     "densities": {
       "compact": "Kompakt",
       "normal": "Normal"
-    }
+    },
+    "newMenu": "Neu anlegen",
+    "newFull": "{{type}} (alle Felder)",
+    "forms": "Formulare"
   },
   "form": {
     "newTitle": "Neuer Datensatz",
@@ -439,7 +442,14 @@
         "answered": "ist beantwortet",
         "empty": "ist leer"
       }
-    }
+    },
+    "roleGroup": "Rolle am Vorgang",
+    "roleQuestion": "Rolle am Vorgang, mit Suche",
+    "fixed": "Feste Werte",
+    "fixedHint": "Werte, die der Datensatz ohne Frage bekommt; bei einer Auswahlliste der Schlüssel des Eintrags, etwa phone.",
+    "fixedField": "Feld",
+    "fixedValue": "Wert",
+    "fixedAdd": "Festen Wert hinzufügen"
   },
   "customize": {
     "open": "Typ anpassen",
@@ -762,7 +772,8 @@
       "choose": "↑ ↓ wählen",
       "run": "Enter ausführen",
       "close": "Esc schließen"
-    }
+    },
+    "form": "Formular: {{name}}"
   },
   "area": {
     "core": "Stammdaten",

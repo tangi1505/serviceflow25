@@ -11,7 +11,8 @@
 // the mouse or the keyboard (space picks up, arrows move, space drops), and with the buttons
 // "up" and "down". The value is the JSON the server checks when the form is saved. A switch
 // puts every text of the structure into German or English (UI12, E134); sections and questions
-// carry conditions on earlier questions ("show only when").
+// carry conditions on earlier questions ("show only when"). A question may ask for a role
+// (the requester found by search), and fixed values set fields without a question (SD9).
 import {
   closestCenter,
   DndContext,
@@ -133,15 +134,25 @@ export function FormBuilder({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const bound = new Set(def.sections.flatMap((s) => s.questions.map((q) => q.field ?? "")));
+  // bound are the fields asked or fixed, and the roles asked as "role:<name>".
+  const bound = new Set([
+    ...def.sections.flatMap((s) =>
+      s.questions.map((q) => (q.role ? `role:${q.role}` : (q.field ?? ""))),
+    ),
+    ...Object.keys(def.fixed ?? {}),
+  ]);
 
   const questionName = (q: FormQuestion): string => {
     const own = text(q.label, i18n.language);
     if (own) {
       return own;
     }
+    const role = q.role ? target?.actors?.find((a) => a.name === q.role) : undefined;
+    if (role) {
+      return labelOf(role.label, i18n.language, role.name);
+    }
     const f = q.field ? target?.fields.find((x) => x.name === q.field) : undefined;
-    return f ? fieldLabel(f, i18n.language) : q.field || q.id;
+    return f ? fieldLabel(f, i18n.language) : q.field || q.role || q.id;
   };
   const sectionName = (s: FormSection, i: number): string =>
     text(s.title, i18n.language) || t("builder.section", { n: i + 1 });
@@ -309,7 +320,106 @@ export function FormBuilder({
           {t("builder.addSection")}
         </Button>
       </div>
+      <FixedValues
+        fixed={def.fixed ?? {}}
+        fields={(target?.fields ?? []).filter((f) => !isCalculated(f))}
+        bound={bound}
+        onChange={(fixed) =>
+          set({ ...def, fixed: Object.keys(fixed).length > 0 ? fixed : undefined })
+        }
+      />
     </fieldset>
+  );
+}
+
+// FixedValues are the values the record gets without a question (SD9): a field and its value,
+// for a select list the key of its entry (the channel "phone").
+function FixedValues({
+  fixed,
+  fields,
+  bound,
+  onChange,
+}: {
+  fixed: Record<string, unknown>;
+  fields: Field[];
+  bound: Set<string>;
+  onChange: (fixed: Record<string, unknown>) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const id = useId();
+  const [pick, setPick] = useState("");
+  const [value, setValue] = useState("");
+  const free = fields.filter((f) => !bound.has(f.name));
+  const label = (name: string) => {
+    const f = fields.find((x) => x.name === name);
+    return f ? fieldLabel(f, i18n.language) : name;
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 id={`${id}-h`} className="text-sm font-semibold">
+        {t("builder.fixed")}
+      </h3>
+      <p className="text-sm text-muted-foreground">{t("builder.fixedHint")}</p>
+      {Object.keys(fixed).length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {Object.entries(fixed).map(([name, v]) => (
+            <li key={name} className="flex items-center gap-2 text-sm">
+              <span className="font-medium">{label(name)}</span>
+              <span className="font-mono">{String(v)}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  onChange(Object.fromEntries(Object.entries(fixed).filter(([k]) => k !== name)))
+                }
+              >
+                {t("builder.remove", { name: label(name) })}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${id}-field`}>{t("builder.fixedField")}</Label>
+          <select
+            id={`${id}-field`}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            value={pick}
+            onChange={(e) => setPick(e.target.value)}
+          >
+            <option value="">{t("builder.choose")}</option>
+            {free.map((f) => (
+              <option key={f.name} value={f.name}>
+                {fieldLabel(f, i18n.language)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${id}-value`}>{t("builder.fixedValue")}</Label>
+          <Input id={`${id}-value`} value={value} onChange={(e) => setValue(e.target.value)} />
+        </div>
+        <Button
+          variant="outline"
+          disabled={!pick || value.trim() === ""}
+          onClick={() => {
+            const f = fields.find((x) => x.name === pick);
+            const v: unknown =
+              f?.type === "boolean"
+                ? value.trim() === "true"
+                : f?.type === "number"
+                  ? Number(value)
+                  : value.trim();
+            onChange({ ...fixed, [pick]: v });
+            setPick("");
+            setValue("");
+          }}
+        >
+          {t("builder.fixedAdd")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -465,6 +575,10 @@ function SectionBody({
   const qs = section.questions;
   const setQuestions = (questions: FormQuestion[]) => onChange({ ...section, questions });
   const fields = (target?.fields ?? []).filter((f) => !isCalculated(f) && !bound.has(f.name));
+  // A role with one type of holder can be asked (SD9), each once.
+  const roles = (target?.actors ?? []).filter(
+    (a) => a.to.length === 1 && !bound.has(`role:${a.name}`),
+  );
   const add = () => {
     if (!pick) {
       return;
@@ -473,7 +587,9 @@ function SectionBody({
     const q: FormQuestion =
       kind === "field"
         ? { id: newId("q"), field: name }
-        : { id: newId("q"), type: name as FormQuestion["type"], label: { de: "" } };
+        : kind === "role"
+          ? { id: newId("q"), role: name }
+          : { id: newId("q"), type: name as FormQuestion["type"], label: { de: "" } };
     setQuestions([...qs, q]);
     setPick("");
   };
@@ -551,6 +667,15 @@ function SectionBody({
                 ))}
               </optgroup>
             )}
+            {roles.length > 0 && (
+              <optgroup label={t("builder.roleGroup")}>
+                {roles.map((a) => (
+                  <option key={a.name} value={`role:${a.name}`}>
+                    {labelOf(a.label, i18n.language, a.name)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             <optgroup label={t("builder.freeGroup")}>
               {freeTypes.map((ft) => (
                 <option key={ft} value={`free:${ft}`}>
@@ -602,7 +727,9 @@ function QuestionRow({
   );
   const kind = q.field
     ? t("builder.boundTo", { field: field ? fieldLabel(field, i18n.language) : q.field })
-    : t(`builder.type.${q.type ?? "text"}`);
+    : q.role
+      ? t("builder.roleQuestion")
+      : t(`builder.type.${q.type ?? "text"}`);
   return (
     <li
       ref={setNodeRef}
@@ -628,7 +755,7 @@ function QuestionRow({
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex min-w-60 flex-1 flex-col gap-1">
           <Label htmlFor={`${id}-label`}>
-            {inLang(q.field ? t("builder.labelOptional") : t("builder.label"), lang, t)}
+            {inLang(q.field || q.role ? t("builder.labelOptional") : t("builder.label"), lang, t)}
           </Label>
           <Input
             id={`${id}-label`}

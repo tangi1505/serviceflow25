@@ -71,7 +71,7 @@ export const formTypeDef: TypeDefinition = {
       required: true,
       max_length: 130,
     },
-    { name: "active", type: "boolean", label: { de: "Im Portal angeboten" }, default: false },
+    { name: "active", type: "boolean", label: { de: "Angeboten" }, default: false },
     {
       name: "definition",
       type: "text",
@@ -882,7 +882,12 @@ export function fakeApi(state: FakeState) {
       return json(200, { items });
     }
     if (url.pathname === "/api/v1/forms") {
-      return json(200, state.forms ?? []);
+      // The forms of a place (SD9): portal when none is named, a form for both at either.
+      const place = url.searchParams.get("place") ?? "portal";
+      return json(
+        200,
+        (state.forms ?? []).filter((f) => (f.place ?? "portal") === place || f.place === "both"),
+      );
     }
     if (url.pathname === "/api/v1/portal/notices") {
       return json(200, state.notices ?? []);
@@ -917,9 +922,15 @@ export function fakeApi(state: FakeState) {
       }
       const values: RecordData = {};
       const lines: string[] = [];
+      // A role question names the holder (SD9); otherwise the person submitting is the requester.
+      const actors: Record<string, { type: string; id: string }[]> = state.personId
+        ? { requester: [{ type: "core.person", id: state.personId }] }
+        : {};
       for (const q of questions) {
         const v = answers[q.id];
-        if (q.field) {
+        if (q.role) {
+          actors[q.role] = typeof v === "string" && v ? [{ type: "core.person", id: v }] : [];
+        } else if (q.field) {
           if (v !== null && v !== undefined && v !== "") {
             values[q.field] = v;
           }
@@ -934,9 +945,8 @@ export function fakeApi(state: FakeState) {
         state: "new",
         kind: "question",
         ...values,
-        ...(state.personId
-          ? { actors: { requester: [{ type: "core.person", id: state.personId }] } }
-          : {}),
+        ...f.definition.fixed,
+        ...(Object.keys(actors).length > 0 ? { actors } : {}),
         created_at: stamp,
         updated_at: stamp,
         created_by: me.id,

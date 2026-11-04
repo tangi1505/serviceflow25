@@ -54,7 +54,7 @@ func TestIncidentDeadlinesOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/incident", 36}} {
+	}{{"../../packages/sd", 28}, {"../../packages/incident", 39}} {
 		p := installPackage(t, ctx, api.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -241,7 +241,7 @@ func TestIncidentDeadlinesOverHTTP(t *testing.T) {
 
 	// A new tenant gets its own copy of the start data, rules with its name.
 	res, err := tenant.Create(ctx, api.pool, tenant.Options{Name: "sd3_nord"})
-	if err != nil || res.Started != 64 {
+	if err != nil || res.Started != 67 {
 		t.Fatalf("new tenant: %+v %v", res, err)
 	}
 	var owner string

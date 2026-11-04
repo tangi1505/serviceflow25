@@ -38,6 +38,7 @@ import { RolePage, RolesOverview } from "@/render/RolePage";
 import { SearchPage } from "@/render/SearchPage";
 import { WorkflowPage } from "@/render/WorkflowPage";
 import { TypePage } from "@/render/TypePage";
+import { WorkplaceFormPage } from "@/render/FormPage";
 
 type RouterContext = { queryClient: QueryClient };
 
@@ -142,6 +143,13 @@ const indexRoute = createRoute({
 });
 
 // ?search=<id> opens a saved search (UI4), so that a link shows the same view.
+// A form of the workplace, such as the phone note (SD9).
+const formRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/forms/$formId",
+  component: WorkplaceFormPage,
+});
+
 const typeRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/types/$typeName",
@@ -235,6 +243,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   shellRoute.addChildren([
     indexRoute,
+    formRoute,
     typeRoute,
     newRecordRoute,
     customizeRoute,

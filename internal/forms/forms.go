@@ -14,7 +14,9 @@
 // type; who may create the target type sees the form and submits it. Sections and questions
 // show only when their conditions hold (UI12, E134): the portal hides them, Submit drops their
 // answers and asks for "required" only where shown. Texts carry German and English; the entry
-// is German.
+// is German. A form is offered in the portal, in the workplace or in both (SD9): a note taken
+// by the service desk asks for a role (the requester, found by search) instead of filling it
+// with the one who submits, and sets fixed values no one sees (the channel "phone").
 package forms
 
 import (
@@ -22,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -47,7 +50,17 @@ type Definition struct {
 	Title    meta.Label `json:"title,omitempty"`
 	Intro    meta.Label `json:"intro,omitempty"`
 	Sections []Section  `json:"sections"`
+	// Fixed are values of fields the record gets without a question (SD9); a reference to a
+	// select list may name the key of its entry, e.g. {"channel": "phone"}.
+	Fixed map[string]any `json:"fixed,omitempty"`
 }
+
+// The places a form is offered (the field place of core.form, SD9).
+const (
+	PlacePortal    = "portal"
+	PlaceWorkplace = "workplace"
+	PlaceBoth      = "both"
+)
 
 // Section groups questions under a title.
 type Section struct {
@@ -73,11 +86,15 @@ const (
 	OpEmpty    = "empty"
 )
 
-// Question is bound to a field of the target type (Field) or free (Type).
+// Question is bound to a field of the target type (Field), to a role at the record (Role) or
+// free (Type).
 type Question struct {
 	ID string `json:"id"`
 	// Field names the field of the target type the answer goes to.
 	Field string `json:"field,omitempty"`
+	// Role names the role at the record the answer holds (SD9): the id of a holder of the
+	// role's one type of holder, e.g. the requester found by search.
+	Role string `json:"role,omitempty"`
 	// Type is the type of a free question, one of freeTypes.
 	Type meta.FieldType `json:"type,omitempty"`
 	// Label is the question; for a bound question it replaces the field's label, if set.
@@ -113,7 +130,7 @@ func Problems(d Definition, target meta.Type) []records.Problem {
 	if len(d.Sections) == 0 {
 		add("sections", "required", "a form needs at least one section")
 	}
-	ids, bound := map[string]bool{}, map[string]bool{}
+	ids, bound, roles := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	free := false
 	// earlier are the questions before the element being checked: a condition may only name
 	// those, so the conditions have no circles.
@@ -168,9 +185,29 @@ func Problems(d Definition, target meta.Type) []records.Problem {
 				add(qp+".show_if", "required", fmt.Sprintf("%s is required by %s and cannot be hidden", q.Field, target.QualifiedName()))
 			}
 			earlier[q.ID] = q
+			kinds := 0
+			for _, s := range []string{q.Field, q.Role, string(q.Type)} {
+				if s != "" {
+					kinds++
+				}
+			}
 			switch {
-			case q.Field != "" && q.Type != "":
-				add(qp, "invalid", "is bound to a field or free with a type, not both")
+			case kinds > 1:
+				add(qp, "invalid", "is bound to a field, to a role or free with a type, only one of them")
+			case q.Role != "":
+				role, ok := target.Actor(q.Role)
+				switch {
+				case !ok:
+					add(qp+".role", "unknown", fmt.Sprintf("%s has no role %q", target.QualifiedName(), q.Role))
+				case len(role.To) != 1:
+					add(qp+".role", "invalid", fmt.Sprintf("%s takes %s; a question needs a role with one type of holder", q.Role, strings.Join(role.To, " and ")))
+				case roles[q.Role]:
+					add(qp+".role", "unique", fmt.Sprintf("%s is asked twice", q.Role))
+				}
+				roles[q.Role] = true
+				if len(q.Options) > 0 {
+					add(qp+".options", "invalid", "a role question has no options")
+				}
 			case q.Field != "":
 				f, ok := target.Field(q.Field)
 				switch {
@@ -207,6 +244,19 @@ func Problems(d Definition, target meta.Type) []records.Problem {
 				add(qp, "required", "needs a field of the target type or the type of a free question")
 			}
 		}
+	}
+	// Fixed values go to fields no question asks.
+	for _, name := range slices.Sorted(maps.Keys(d.Fixed)) {
+		f, ok := target.Field(name)
+		switch {
+		case !ok:
+			add("fixed."+name, "unknown", fmt.Sprintf("%s has no field %q", target.QualifiedName(), name))
+		case f.Calculated():
+			add("fixed."+name, "calculated", fmt.Sprintf("%s is calculated and cannot be set", name))
+		case bound[name]:
+			add("fixed."+name, "unique", fmt.Sprintf("%s is asked by a question and cannot be fixed too", name))
+		}
+		bound[name] = true
 	}
 	// What the target type needs to be created must be asked.
 	for _, f := range target.Fields {
@@ -307,8 +357,50 @@ func Check(rec *records.Service) records.RecordCheck {
 		if err != nil {
 			return []records.Problem{{Field: "definition", Code: "type", Message: err.Error()}}
 		}
-		return Problems(d, target)
+		ps := Problems(d, target)
+		if len(ps) == 0 {
+			if _, err := fixedValues(ctx, rec, target, d.Fixed); err != nil {
+				ps = append(ps, records.Problem{Field: "definition", Code: "invalid", Message: "fixed: " + err.Error()})
+			}
+		}
+		return ps
 	}
+}
+
+// fixedValues are the fixed values of a form as the record takes them: the key of a select
+// list's entry becomes its id, read with the rights of the system (lists are read by all,
+// PL16). The values themselves are checked by the record on submitting.
+func fixedValues(ctx context.Context, rec *records.Service, target meta.Type, fixed map[string]any) (map[string]any, error) {
+	out := make(map[string]any, len(fixed))
+	for name, v := range fixed {
+		out[name] = v
+		f, ok := target.Field(name)
+		key, isText := v.(string)
+		if !ok || f.Type != meta.FieldReference || !isText {
+			continue
+		}
+		if _, err := uuid.Parse(key); err == nil {
+			continue
+		}
+		list, err := rec.Type(ctx, f.To)
+		if err != nil || !list.IsList() {
+			return nil, fmt.Errorf("%s: %q is no id, and %s is no select list with keys", name, key, f.To)
+		}
+		where, _ := json.Marshal(map[string]any{"field": "key", "eq": key})
+		sys := authz.WithAccess(ctx, authz.SystemIn(authz.From(ctx).CurrentTenant()))
+		if authz.From(ctx).IsSystem() {
+			sys = ctx
+		}
+		page, _, err := rec.Query(sys, f.To, records.Query{Where: where, Limit: 1})
+		if err != nil {
+			return nil, err
+		}
+		if len(page.Items) == 0 {
+			return nil, fmt.Errorf("%s: %s has no entry with the key %q", name, f.To, key)
+		}
+		out[name] = fmt.Sprint(page.Items[0]["id"])
+	}
+	return out, nil
 }
 
 // Form is a form as the portal gets it.
@@ -318,6 +410,8 @@ type Form struct {
 	Description string     `json:"description,omitempty"`
 	TargetType  string     `json:"target_type"`
 	Definition  Definition `json:"definition"`
+	// Place is where the form is offered: portal, workplace or both (SD9).
+	Place string `json:"place"`
 	// OrgPath is the node of the form: it is offered to whoever may create its target there,
 	// and its records are created there (architektur.md §5.1).
 	OrgPath string `json:"-"`
@@ -345,8 +439,9 @@ func offered(ctx context.Context, f Form) bool {
 	return a.Permits(f.TargetType, authz.ActionCreate, probe)
 }
 
-// List returns the forms offered in the portal whose target type the caller may create.
-func (s *Service) List(ctx context.Context) ([]Form, error) {
+// List returns the forms offered at a place (portal or workplace) whose target type the caller
+// may create.
+func (s *Service) List(ctx context.Context, place string) ([]Form, error) {
 	// The forms themselves are read with the rights of the system: offering one is the
 	// decision of whoever wrote it; the caller's right is the one on the target type.
 	where := json.RawMessage(`{"field": "active", "eq": true}`)
@@ -360,7 +455,7 @@ func (s *Service) List(ctx context.Context) ([]Form, error) {
 		if err != nil {
 			continue // the check refuses it on writing; an old one is not offered
 		}
-		if offered(ctx, f) {
+		if (f.Place == place || f.Place == PlaceBoth) && offered(ctx, f) {
 			out = append(out, f)
 		}
 	}
@@ -394,12 +489,17 @@ func formOf(r records.Record) (Form, error) {
 	desc, _ := r["description"].(string)
 	target, _ := r["target_type"].(string)
 	node, _ := r["org_path"].(string)
-	return Form{ID: id, Name: name, Description: desc, TargetType: target, Definition: d, OrgPath: node}, nil
+	place, _ := r["place"].(string)
+	if place == "" {
+		place = PlacePortal // a form from before SD9
+	}
+	return Form{ID: id, Name: name, Description: desc, TargetType: target, Definition: d, OrgPath: node, Place: place}, nil
 }
 
 // Submit creates the record of a form from the answers, keyed by question id, with the
 // rights of the caller; the person submitting becomes the requester when the type has that
-// role. The free answers are the first entry of the timeline, written with the record.
+// role and no question asks for it. The fixed values go along. The free answers are the
+// first entry of the timeline, written with the record.
 func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]any, actor records.Actor) (records.Record, error) {
 	f, err := s.Get(ctx, id)
 	if err != nil {
@@ -410,10 +510,14 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 		return nil, err
 	}
 	// The record lands at the node of the form, never quietly at the root (architektur.md §5.1).
-	input := map[string]any{}
+	input, err := fixedValues(ctx, s.rec, target, f.Definition.Fixed)
+	if err != nil {
+		return nil, err
+	}
 	if f.OrgPath != "" {
 		input["org_path"] = f.OrgPath
 	}
+	actors := map[string]any{}
 	var ps []records.Problem
 	var lines []string
 	known := map[string]bool{}
@@ -443,6 +547,13 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 				}
 				continue
 			}
+			if q.Role != "" {
+				role, _ := target.Actor(q.Role)
+				if !empty && len(role.To) == 1 {
+					actors[q.Role] = []any{map[string]any{"type": role.To[0], "id": v}}
+				}
+				continue
+			}
 			if empty {
 				continue
 			}
@@ -466,10 +577,13 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 	if len(ps) > 0 {
 		return nil, &records.ValidationError{Problems: ps}
 	}
-	if a := authz.From(ctx); a.PersonID != nil {
+	if a := authz.From(ctx); a.PersonID != nil && !asks(f.Definition, requesterRole) {
 		if role, ok := target.Actor(requesterRole); ok && slices.Contains(role.To, "core.person") {
-			input["actors"] = map[string]any{requesterRole: []any{map[string]any{"type": "core.person", "id": a.PersonID.String()}}}
+			actors[requesterRole] = []any{map[string]any{"type": "core.person", "id": a.PersonID.String()}}
 		}
+	}
+	if len(actors) > 0 {
+		input["actors"] = actors
 	}
 	var entry map[string]any
 	if len(lines) > 0 {
@@ -485,6 +599,9 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 				if q.Field != "" {
 					byField[q.Field] = q.ID
 				}
+				if q.Role != "" {
+					byField["actors."+q.Role] = q.ID
+				}
 			}
 		}
 		for i, p := range verr.Problems {
@@ -494,6 +611,18 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 		}
 	}
 	return rec, err
+}
+
+// asks says whether a question of the form asks for the role.
+func asks(d Definition, role string) bool {
+	for _, sec := range d.Sections {
+		for _, q := range sec.Questions {
+			if q.Role == role {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // freeAnswer checks the answer to a free question and returns it as German text for the entry

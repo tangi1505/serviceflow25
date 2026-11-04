@@ -1919,8 +1919,13 @@ paths:
   /api/v1/forms:
     get:
       operationId: listForms
-      summary: The forms offered in the portal whose target type the session may create (UI11)
+      summary: The forms offered at a place whose target type the session may create (UI11, SD9)
       tags: [forms]
+      parameters:
+        - name: place
+          in: query
+          description: portal (the default) or workplace; a form for both shows at either
+          schema: { type: string, enum: [portal, workplace] }
       responses:
         "200":
           description: forms by name
@@ -3211,6 +3216,7 @@ components:
         description: { type: string }
         target_type: { type: string, description: the type the form creates }
         definition: { $ref: "#/components/schemas/FormDefinition" }
+        place: { type: string, enum: [portal, workplace, both], description: where the form is offered (SD9) }
     FormDefinition:
       type: object
       description: the structure of a form as kept in the field definition of core.form (UI11)
@@ -3227,6 +3233,10 @@ components:
         sections:
           type: array
           items: { $ref: "#/components/schemas/FormSection" }
+        fixed:
+          type: object
+          additionalProperties: true
+          description: 'values of fields set without a question (SD9); a reference to a select list may name the key of its entry, e.g. {"channel": "phone"}'
     FormSection:
       type: object
       required: [id, title, questions]
@@ -3241,11 +3251,12 @@ components:
           items: { $ref: "#/components/schemas/FormQuestion" }
     FormQuestion:
       type: object
-      description: bound to a field of the target type (field) or free with a type of the core (type)
+      description: bound to a field of the target type (field), to a role at the record (role) or free with a type of the core (type)
       required: [id]
       properties:
         id: { type: string }
         field: { type: string }
+        role: { type: string, description: 'a role at the record with one type of holder (SD9); the answer is the id of the holder' }
         type: { type: string, enum: [text, number, boolean, date, datetime, choice] }
         label: { type: object, additionalProperties: { type: string } }
         description: { type: object, additionalProperties: { type: string } }

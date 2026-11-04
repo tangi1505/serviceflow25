@@ -4,7 +4,8 @@
 # A form (UI11; Inventar G130, G131; KF8; Hauptplan E133): sections with questions for one
 # target type, as JSON the package forms checks. A question is bound to a field of the target
 # type or free; the bound answers become the new record, the free ones its first timeline
-# entry. Active forms are offered in the portal to whoever may create the target type.
+# entry. Active forms are offered in the portal, the workplace or both (SD9) to whoever may
+# create the target type.
 name: form
 label: {de: Formular, en: Form}
 title_field: name
@@ -28,8 +29,17 @@ fields:
     max_length: 130
   - name: active
     type: boolean
-    label: {de: Im Portal angeboten, en: Offered in the portal}
+    label: {de: Angeboten, en: Offered}
     default: false
+  - name: place
+    type: choice
+    label: {de: Angeboten im, en: Offered in}
+    description: {de: "Portal für Nutzer, Arbeitsplatz für Bearbeiter (etwa eine Telefonnotiz) oder beides; leer heißt Portal", en: "Portal for users, workplace for agents (e.g. a phone note) or both; empty means portal"}
+    default: portal
+    options:
+      - {value: portal, label: {de: Portal, en: Portal}}
+      - {value: workplace, label: {de: Arbeitsplatz, en: Workplace}}
+      - {value: both, label: {de: Beides, en: Both}}
   - name: definition
     type: text
     label: {de: Aufbau, en: Structure}

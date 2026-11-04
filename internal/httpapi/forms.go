@@ -10,6 +10,7 @@ package httpapi
 import (
 	"net/http"
 
+	"group24.de/itsm/internal/forms"
 	"group24.de/itsm/internal/httpapi/gen"
 )
 
@@ -24,11 +25,15 @@ func (s *server) forms(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (s *server) ListForms(w http.ResponseWriter, r *http.Request) {
+func (s *server) ListForms(w http.ResponseWriter, r *http.Request, p gen.ListFormsParams) {
 	if !s.forms(w, r) {
 		return
 	}
-	list, err := s.o.Forms.List(r.Context())
+	place := forms.PlacePortal
+	if p.Place != nil {
+		place = string(*p.Place)
+	}
+	list, err := s.o.Forms.List(r.Context(), place)
 	if err != nil {
 		writeError(w, r, s.o.Logger, err)
 		return

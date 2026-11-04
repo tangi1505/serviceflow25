@@ -43,7 +43,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | --- | --- | --- | --- | --- |
 | **SD7** | Warteschlangen: mitgelieferte geteilte Suchen „Meine“, „Mein Team“, „Nicht zugewiesen“, „SLA-Risiko“; Zuweisung per Regel nach Kategorie an eine Gruppe (IP28; KF7) | 🟢 | 1 d | Nach der Installation stehen die vier Suchen in der Navigation; Störung mit Kategorie „Netzwerk › VPN“ → Gruppe Netzwerk per Regel, der Verlauf nennt die Regel; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD8** | Textbausteine für Antworten, Aufgaben und Lösungen mit Platzhaltern wie in den Benachrichtigungen (Hauptplan E120), Auswahl über „Textbaustein“ im Editor, sichtbar je Gruppe (Inventar G56) | 🟢 | 1,5 d | Baustein „Protokoll anfordern“ mit `{{record.title}}` wählen → der Text steht mit eingesetztem Titel im Editor, nur mit Tastatur bedienbar; ein Baustein einer Gruppe erscheint nur bei ihren Mitgliedern; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD9** | Telefonnotiz: Störung in einem Schritt anlegen mit Quelle „Telefon“, Anforderer per Suche, Rückruf als Aufgabe (IP28) | ⬜ | 0,5 d | „Telefonnotiz“ im Arbeitsplatz → Formular; mit Anforderer und Text anlegen → Störung mit Quelle „Telefon“ und Aufgabe „Rückruf“; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD9** | Telefonnotiz: Störung in einem Schritt anlegen mit Quelle „Telefon“, Anforderer per Suche, Rückruf als Aufgabe (IP28) | 🟢 | 1,5 d | „Telefonnotiz“ im Arbeitsplatz → Formular; mit Anforderer und Text anlegen → Störung mit Quelle „Telefon“ und Aufgabe „Rückruf“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD10** | Mail hinaus: Vorlagen der Benachrichtigungen für Störung und Anfrage (angelegt, Antwort, Bitte um Bestätigung, gelöst, geschlossen) mit Kennung im Betreff; baut auf WF15 (Inventar G163; KF14) | 🟢 | 1 d | Antwort an den Anforderer → Mail in Mailpit mit der Kennung im Betreff (bis PL49 die Kurzkennung); interne Notiz → keine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD11** | Mail hinein, Abholen: Postfächer per IMAP als Job abholen, Zugangsdaten nur in der Konfiguration; neue Mail → Störung; Antwort mit Kennung → Eintrag am Vorgang; Anhänge und eingebettete Bilder als Dateien; Absender → Person über `core.person_email`; IMAP-Server zum Testen im Compose-Profil `mail` (N4; Inventar G188; trägt KF14) | 🔒 Hauptplan V9, V29 | 2 d | Testmail an das Postfach im Profil `mail` → Störung mit Anhang und Anforderer; Antwort auf die Mail aus SD10 → Eintrag am selben Vorgang; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD12** | Mail hinein, Regeln und Schutz: Regeln für eingehende Mail, Sperrliste für Inhalte wie Signaturen, keine Schleifen bei Abwesenheitsnotizen (`Auto-Submitted`), unverarbeitbare Mails im Protokoll des Postfachs und als Benachrichtigung (Inventar G189, G190, G191) | 🔒 SD11 | 1,5 d | Regel „Absender endet auf @extern.example → Gruppe Netzwerk“ greift; eine Abwesenheitsnotiz erzeugt weder Störung noch Antwort; eine kaputte Mail steht im Protokoll, die Verwaltung bekommt eine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -69,7 +69,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -139,8 +139,8 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | Art | Aufgaben |
 | --- | --- |
 | P | SD1, SD2, SD3, SD4, SD6, SD7, SD10, SD16, SD17 |
-| P und O | SD9, SD13, SD14, SD18, SD19, SD21 |
-| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
+| P und O | SD13, SD14, SD18, SD19, SD21 |
+| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD9 (Formulare im Arbeitsplatz, Regelaktion mit `@record` und `@actor`, deine Entscheidungen 2026-11-04), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
 
 ### 2.3 Bedarf an den Kern
 
@@ -193,6 +193,54 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD9 — Notizen im Arbeitsplatz, 2026-11-04
+
+- **Grundlage:** IP28; Hauptplan E167; deine Entscheidungen vom 2026-11-04: Notizen sollen
+  beliebig sein, nicht nur Telefon, darum Formulare auch im Arbeitsplatz; mitgeliefert
+  Telefonnotiz und Vor-Ort-Notiz; die Rückruf-Aufgabe legt eine Regel an; eine eigene Aufgabe
+  der Störung; Ort nach Variante A des Mockups (Menü „Neu“ an der Liste), die Rückrufnummer als
+  freie Frage.
+- **Gebaut:**
+  - Kern, Formulare: Feld „Angeboten im“ (`place`: Portal, Arbeitsplatz, beides; leer heißt
+    Portal) am Kerntyp `core.form`, `GET /api/v1/forms?place=workplace`. Eine Frage kann eine
+    Rolle erfragen (`role`, nur Rollen mit einer Art von Inhaber, etwa der Anforderer per
+    Suche); dann wird nicht mehr die absendende Person Anforderer. Feste Werte (`fixed`) setzen
+    Felder ohne Frage, bei einer Auswahlliste über den Schlüssel des Eintrags
+    (`{"channel": "phone"}`); geprüft beim Speichern.
+  - Kern, Regeln: die Aktion „anlegen“ setzt `@record` (der Datensatz der Regel, in einem
+    Verweis auf seinen Typ) und `@actor` (die Person, die geschrieben hat, als Inhaber einer
+    Rolle) ein; die Startdaten lesen beides nicht als Verweis auf andere Startdaten.
+  - Paket `incident` 0.7.0: Typ `incident.task` (Aufgabe: Titel, Störung, Beschreibung mit
+    Textbausteinen „Aufgabe“, fällig am, Bearbeiter, offen und erledigt); an der Störung die
+    Felder „Rückruf erbeten“ und „Offene Aufgaben“ (Summe). Startdaten `data/notizen.yaml`:
+    Formulare „Telefonnotiz“ (Quelle Telefon, Rückrufnummer) und „Vor-Ort-Notiz“ (Quelle Vor Ort,
+    Ort), Regel `rueckruf`: legt bei „Rückruf erbeten“ die Aufgabe „Rückruf“ für die Person an,
+    die die Notiz aufnimmt.
+  - Oberfläche: der Knopf „Neu“ einer Liste wird ein Menü, wenn es Formulare des Arbeitsplatzes
+    für den Typ gibt (oben das Formular mit allen Feldern, darunter die Formulare); die
+    Befehlszeile findet sie als „Formular: …“; die Seite `/forms/<id>` im Arbeitsplatz öffnet
+    nach dem Anlegen den neuen Datensatz. Der Baukasten kennt Rollen-Fragen und feste Werte.
+- **Belegt:**
+  - Go `TestPhoneNoteOverHTTP` (eigene Datenbank): die Notizen stehen im Arbeitsplatz, nicht im
+    Portal; Sabine nimmt Annas Anruf auf: Quelle Telefon, Anna als Anforderer, die Nummer im
+    ersten Eintrag, die Aufgabe „Rückruf“ für Sabine, eine offene Aufgabe an der Störung; ohne
+    Rückruf keine Aufgabe; abgelehnt: eine Rolle mit zwei Arten von Inhabern, ein Schlüssel,
+    den die Liste nicht hat, ein Feld zugleich gefragt und fest, eine Frage mit Rolle und Feld,
+    `@record` in einem Feld, das nicht auf die Störung verweist.
+  - Vitest `FormPage.test.tsx`: Menü „Neu“, Telefonnotiz, Anforderer per Suche, fester Wert,
+    neuer Datensatz geöffnet, `axe` ohne Befund; ohne Formulare bleibt der einfache Knopf.
+  - Angepasst: die Tests von SD3, SD5, SD7, SD8 und SD10 zählen 39 statt 36 Startdaten von
+    `incident`, ein neuer Mandant 67 statt 64; der Test des Baukastens zählt Regionen, darum
+    sind die festen Werte keine eigene Region; der Browser-Test des Baukastens sucht die
+    Checkbox jetzt als „Angeboten“ (vorher „Im Portal angeboten“, der Ort steht im neuen Feld).
+  - Ganze CI am 2026-11-04 im dritten Lauf grün (19 Schritte, 100 Vitest-Fälle, 18 Tests im
+    Browser). Lauf 1: der Browser-Test mit dem alten Namen der Checkbox; Lauf 2: LZ13 10,2 %
+    unter der Basislinie bei gleichem ausgeliefertem Code wie Lauf 1, in dem die Messung grün war.
+- **Nicht geprüft:** Die Aufgabe hat noch keine Frist für den Rückruf (das Feld „fällig am“ ist
+  da, die Regel setzt es nicht). Der Baukasten nimmt feste Werte als Text: bei einer
+  Auswahlliste den Schlüssel, ohne Auswahl der Einträge. Die Befehlszeile ist nicht eigens
+  getestet. Kein Test im echten Browser.
 
 ### SD8 — Textbausteine, 2026-11-04
 

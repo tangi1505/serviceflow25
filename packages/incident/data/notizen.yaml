@@ -1,0 +1,66 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Notes the service desk takes (SD9; IP28) as start data each tenant changes in the form
+# builder: forms of the workplace with the requester found by search, the channel as a fixed
+# value and the wish for a callback, which a rule makes a task of the one who took the note.
+# Further notes (a mail passed on, a talk at the counter) are forms of their own.
+- key: telefonnotiz
+  type: core.form
+  values:
+    name: Telefonnotiz
+    description: Legt eine Störung mit der Quelle Telefon an.
+    target_type: incident.incident
+    active: true
+    place: workplace
+    definition: >-
+      {"title": {"en": "Phone note"}, "intro": {"en": "Creates an incident with the channel phone."},
+      "fixed": {"channel": "phone"},
+      "sections": [
+      {"id": "anrufer", "title": {"de": "Anrufer", "en": "Caller"}, "questions": [
+        {"id": "anforderer", "role": "requester", "required": true},
+        {"id": "rueckrufnummer", "type": "text", "label": {"de": "Rückrufnummer", "en": "Number to call back"}}]},
+      {"id": "anliegen", "title": {"de": "Anliegen", "en": "Concern"}, "questions": [
+        {"id": "titel", "field": "title"},
+        {"id": "beschreibung", "field": "description"},
+        {"id": "kategorie", "field": "category"},
+        {"id": "auswirkung", "field": "impact"},
+        {"id": "dringlichkeit", "field": "urgency"},
+        {"id": "rueckruf", "field": "callback"}]}]}
+- key: vor_ort_notiz
+  type: core.form
+  values:
+    name: Vor-Ort-Notiz
+    description: Legt eine Störung mit der Quelle Vor Ort an.
+    target_type: incident.incident
+    active: true
+    place: workplace
+    definition: >-
+      {"title": {"en": "On-site note"}, "intro": {"en": "Creates an incident with the channel on site."},
+      "fixed": {"channel": "on_site"},
+      "sections": [
+      {"id": "person", "title": {"de": "Person", "en": "Person"}, "questions": [
+        {"id": "anforderer", "role": "requester", "required": true},
+        {"id": "ort", "type": "text", "label": {"de": "Ort", "en": "Place"}}]},
+      {"id": "anliegen", "title": {"de": "Anliegen", "en": "Concern"}, "questions": [
+        {"id": "titel", "field": "title"},
+        {"id": "beschreibung", "field": "description"},
+        {"id": "kategorie", "field": "category"},
+        {"id": "auswirkung", "field": "impact"},
+        {"id": "dringlichkeit", "field": "urgency"},
+        {"id": "rueckruf", "field": "callback"}]}]}
+# The callback as a task of the one who took the note.
+- key: rueckruf
+  rule:
+    label: {de: Rückruf als Aufgabe, en: Callback as a task}
+    type_name: incident.incident
+    trigger: create
+    mode: after
+    condition: record.callback == true
+    actions:
+      - create:
+          type_name: incident.task
+          fields:
+            title: Rückruf
+            incident: "@record"
+            actors: {assignee: [{type: core.person, id: "@actor"}]}

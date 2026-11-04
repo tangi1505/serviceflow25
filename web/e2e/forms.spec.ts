@@ -44,7 +44,8 @@ test("a form built by keyboard is filled in in the portal", async ({ page }) => 
   await page.goto("/types/core.form/new");
   await typeInto(page.getByLabel(/^Name/), name);
   await typeInto(page.getByLabel(/^Legt an/), "probe.probe");
-  await page.getByLabel("Im Portal angeboten").focus();
+  // "Angeboten" since SD9; "Angeboten im" beside it says where (portal by default).
+  await page.getByLabel("Angeboten", { exact: true }).focus();
   await page.keyboard.press("Space");
   const builder = page.getByRole("group", { name: "Aufbau" });
 

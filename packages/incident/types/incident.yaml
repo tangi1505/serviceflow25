@@ -56,6 +56,17 @@ fields:
       de: Steht im Portal unter „Aktuell“, solange der Major Incident offen ist.
       en: Shown in the portal under "Aktuell" while the major incident is open.
     max_length: 1000
+  # A phone or on-site note asks for a callback (SD9); a rule of the start data makes it a
+  # task of the one who took the note.
+  - name: callback
+    type: boolean
+    label: {de: Rückruf erbeten, en: Callback requested}
+    default: false
+  # The open tasks of the incident (SD9, WF13).
+  - name: tasks_open
+    type: number
+    label: {de: Offene Aufgaben, en: Open tasks}
+    rollup: {from: incident.task, via: incident, op: count, where: record.state == "open"}
 states:
   - {name: new, label: {de: Neu, en: New}, initial: true, category: open}
   - {name: in_progress, label: {de: In Arbeit, en: In progress}, category: active}

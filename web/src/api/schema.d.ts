@@ -1437,7 +1437,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The forms offered in the portal whose target type the session may create (UI11) */
+        /** The forms offered at a place whose target type the session may create (UI11, SD9) */
         get: operations["listForms"];
         put?: never;
         post?: never;
@@ -2485,6 +2485,11 @@ export interface components {
             /** @description the type the form creates */
             target_type: string;
             definition: components["schemas"]["FormDefinition"];
+            /**
+             * @description where the form is offered (SD9)
+             * @enum {string}
+             */
+            place?: "portal" | "workplace" | "both";
         };
         /** @description the structure of a form as kept in the field definition of core.form (UI11) */
         FormDefinition: {
@@ -2497,6 +2502,10 @@ export interface components {
                 [key: string]: string;
             };
             sections: components["schemas"]["FormSection"][];
+            /** @description values of fields set without a question (SD9); a reference to a select list may name the key of its entry, e.g. {"channel": "phone"} */
+            fixed?: {
+                [key: string]: unknown;
+            };
         };
         FormSection: {
             id: string;
@@ -2506,10 +2515,12 @@ export interface components {
             show_if?: components["schemas"]["FormCondition"][];
             questions: components["schemas"]["FormQuestion"][];
         };
-        /** @description bound to a field of the target type (field) or free with a type of the core (type) */
+        /** @description bound to a field of the target type (field), to a role at the record (role) or free with a type of the core (type) */
         FormQuestion: {
             id: string;
             field?: string;
+            /** @description a role at the record with one type of holder (SD9); the answer is the id of the holder */
+            role?: string;
             /** @enum {string} */
             type?: "text" | "number" | "boolean" | "date" | "datetime" | "choice";
             label?: {
@@ -5974,7 +5985,10 @@ export interface operations {
     };
     listForms: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description portal (the default) or workplace; a form for both shows at either */
+                place?: "portal" | "workplace";
+            };
             header?: never;
             path?: never;
             cookie?: never;

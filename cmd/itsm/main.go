@@ -206,6 +206,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	// Rules "if, then" (WF4): before a write through the hook of records, after it as jobs
 	// the dispatcher queues, on a schedule through a job every minute.
 	ruleEngine := engine.New(rt, rec, js, kv, logger)
+	ruleEngine.Rights = az.Load
 	rec.Before = ruleEngine.Before
 	if err := ruleEngine.Register(js); err != nil {
 		return err

@@ -73,7 +73,10 @@
     "densities": {
       "compact": "Compact",
       "normal": "Normal"
-    }
+    },
+    "newMenu": "Create",
+    "newFull": "{{type}} (all fields)",
+    "forms": "Forms"
   },
   "form": {
     "newTitle": "New record",
@@ -439,7 +442,14 @@
         "answered": "is answered",
         "empty": "is empty"
       }
-    }
+    },
+    "roleGroup": "Role at the record",
+    "roleQuestion": "Role at the record, with search",
+    "fixed": "Fixed values",
+    "fixedHint": "Values the record gets without a question; for a select list the key of its entry, e.g. phone.",
+    "fixedField": "Field",
+    "fixedValue": "Value",
+    "fixedAdd": "Add a fixed value"
   },
   "customize": {
     "open": "Customize type",
@@ -762,7 +772,8 @@
       "choose": "↑ ↓ choose",
       "run": "Enter run",
       "close": "Esc close"
-    }
+    },
+    "form": "Form: {{name}}"
   },
   "area": {
     "core": "Master data",

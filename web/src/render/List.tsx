@@ -20,7 +20,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   type ColumnDef,
   type ColumnOrderState,
@@ -45,13 +45,14 @@ import {
   type TypeDefinition,
 } from "@/api/client";
 import { useLive } from "@/app/live";
-import { Button } from "@/ui/button";
+import { Button, buttonVariants } from "@/ui/button";
 import { PriorityMark, StatePill } from "@/ui/marks";
 import { cn } from "@/ui/utils";
 
 import { BatchBar } from "./Batch";
 import { DeadlineCell } from "./DeadlineCell";
 import { ExportButton } from "./Export";
+import { workplaceFormsQuery } from "./FormPage";
 import { fieldLabel, formatValue, sortableColumns, stateCategory, systemColumns } from "./fields";
 
 const pageSize = 100;
@@ -99,6 +100,48 @@ function loadVisibility(typeName: string, type: TypeDefinition): VisibilityState
   } catch {
     return initial;
   }
+}
+
+// NewMenu is the button "Neu"; with forms of the workplace for the type (SD9, mockup A) it
+// opens a list: the form with all fields first, then the forms such as the phone note.
+function NewMenu({ type }: { type: TypeDefinition }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const typeName = qualifiedName(type);
+  const forms = useQuery(workplaceFormsQuery);
+  const mine = (forms.data ?? []).filter((f) => f.target_type === typeName);
+  if (mine.length === 0) {
+    return (
+      <Button onClick={() => void navigate({ to: "/types/$typeName/new", params: { typeName } })}>
+        {t("list.new")}
+      </Button>
+    );
+  }
+  const item = "block px-3 py-2 hover:bg-secondary focus-visible:bg-secondary";
+  return (
+    <details className="relative">
+      <summary className={cn(buttonVariants(), "cursor-pointer list-none")}>
+        {t("list.new")}
+      </summary>
+      <div
+        role="group"
+        aria-label={t("list.newMenu")}
+        className="absolute z-10 mt-1 flex min-w-64 flex-col rounded-md border bg-card py-1 text-sm shadow"
+      >
+        <Link to="/types/$typeName/new" params={{ typeName }} className={item}>
+          {t("list.newFull", { type: labelOf(type.label, i18n.language, typeName) })}
+        </Link>
+        <span className="px-3 pt-2 pb-1 text-xs font-medium uppercase text-muted-foreground">
+          {t("list.forms")}
+        </span>
+        {mine.map((f) => (
+          <Link key={f.id} to="/forms/$formId" params={{ formId: f.id }} className={item}>
+            {labelOf(f.definition.title, i18n.language, f.name)}
+          </Link>
+        ))}
+      </div>
+    </details>
+  );
 }
 
 export function List({
@@ -411,9 +454,7 @@ export function List({
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => void navigate({ to: "/types/$typeName/new", params: { typeName } })}>
-          {t("list.new")}
-        </Button>
+        <NewMenu type={type} />
         <details className="relative">
           <summary className="cursor-pointer rounded-md border px-3 py-2 text-sm">
             {t("list.columns")}

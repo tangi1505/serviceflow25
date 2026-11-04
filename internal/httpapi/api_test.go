@@ -250,6 +250,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	}
 	ruleJobs := jobs.New(rt, jobs.Options{Logger: quiet, Workers: map[string]int{ruleTestQueue: 2}})
 	ruleEngine := engine.New(rt, recs, ruleJobs, nil, quiet)
+	ruleEngine.Rights = az.Load
 	ruleEngine.Queue = ruleTestQueue
 	ruleEngine.RegisterWorkers(ruleJobs)
 	if err := ruleJobs.Start(runCtx); err != nil {

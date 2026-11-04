@@ -27,6 +27,7 @@ import {
   type SettingsChange,
 } from "@/api/client";
 import { recentRecords } from "@/app/recent";
+import { workplaceFormsQuery } from "@/render/FormPage";
 import { useDebounced } from "@/render/RefPicker";
 import { colorSchemes } from "@/ui/colorScheme";
 
@@ -55,6 +56,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const me = useQuery(meQuery);
   const types = useQuery(typesQuery);
   const saved = useQuery({ ...savedSearchesQuery, enabled: me.data !== undefined });
+  const forms = useQuery({ ...workplaceFormsQuery, enabled: me.data !== undefined });
   const hits = useQuery({
     queryKey: ["search", "command", q],
     queryFn: () => api.search(q, "", 8),
@@ -102,6 +104,13 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     }
   }
   const offered: Item[] = [
+    // The forms of the workplace by name, such as the phone note (SD9).
+    ...(forms.data ?? []).map((f) => ({
+      key: `form:${f.id}`,
+      group: "commands" as const,
+      label: t("command.form", { name: labelOf(f.definition.title, lang, f.name) }),
+      run: () => void navigate({ to: "/forms/$formId", params: { formId: f.id } }),
+    })),
     ...(types.data ?? []).map((ty) => {
       const name = qualifiedName(ty);
       return {
