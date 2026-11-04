@@ -45,7 +45,8 @@ func TestProblems(t *testing.T) {
 		{`{"sections": []}`, "at least one section"},
 		{`{"sections": [{"id": "s", "title": {"de": "A"}, "questions": [{"id": "q", "field": "title", "extra": 1}]}]}`, "unknown field"},
 		{`{"sections": [{"id": "s", "title": {}, "questions": [{"id": "q", "field": "title"}]}]}`, "German title"},
-		{`{"sections": [{"id": "s", "title": {"de": "A"}, "questions": [{"id": "q", "field": "title", "type": "text"}]}]}`, "not both"},
+		// Since SD9 a question may also ask for a role: the message names all three ways.
+		{`{"sections": [{"id": "s", "title": {"de": "A"}, "questions": [{"id": "q", "field": "title", "type": "text"}]}]}`, "only one of them"},
 		{`{"sections": [{"id": "s", "title": {"de": "A"}, "questions": [{"id": "q", "field": "title"}, {"id": "c", "field": "sum"}]}]}`, "calculated"},
 		{`{"sections": [{"id": "s", "title": {"de": "A"}, "questions": [{"id": "q", "field": "title"}, {"id": "s", "field": "kind"}]}]}`, "id of its own"},
 		{`{"sections": [{"id": "s", "title": {"de": "A"}, "questions": [{"id": "q", "field": "title"}, {"id": "c", "type": "choice", "label": {"de": "C"}, "options": [{"value": "x"}, {"value": "x"}]}]}]}`, "value of its own"},

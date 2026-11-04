@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -40,6 +41,8 @@ type VersionInfo struct {
 	Actions []string `json:"actions"`
 	// Changed are the fields the version changed, in order of the type.
 	Changed []string `json:"changed"`
+	// ActorName is the display name of the account that wrote the version (SD16b).
+	ActorName *string `json:"actor_name,omitempty"`
 }
 
 // Change is one field that differs between two versions.
@@ -118,7 +121,40 @@ func (s *Service) Versions(ctx context.Context, typeName string, id uuid.UUID) (
 	if out == nil {
 		out = []VersionInfo{}
 	}
+	if err := s.nameVersions(ctx, out); err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+// nameVersions fills in the display names of the accounts that wrote the versions, with one
+// query, as the timeline does.
+func (s *Service) nameVersions(ctx context.Context, out []VersionInfo) error {
+	var ids []uuid.UUID
+	for _, v := range out {
+		if v.Actor != nil && !slices.Contains(ids, *v.Actor) {
+			ids = append(ids, *v.Actor)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := queries.New(s.db.Tenant(ctx)).AccountNames(ctx, ids)
+	if err != nil {
+		return fmt.Errorf("records: version names: %w", err)
+	}
+	names := make(map[uuid.UUID]string, len(rows))
+	for _, r := range rows {
+		names[r.ID] = r.DisplayName
+	}
+	for i := range out {
+		if a := out[i].Actor; a != nil {
+			if n, ok := names[*a]; ok {
+				out[i].ActorName = &n
+			}
+		}
+	}
+	return nil
 }
 
 // Version returns the record as it was after version n.

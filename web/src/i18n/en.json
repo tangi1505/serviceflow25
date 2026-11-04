@@ -363,6 +363,23 @@
     "color_scheme": "Appearance",
     "density": "Row height of lists"
   },
+  "versions": {
+    "title": "Versions",
+    "one": "There is only one version so far.",
+    "item": "Version {{n}} · {{time}}",
+    "compare": "Version {{from}} and version {{to}}",
+    "hint": "Only the fields that differ. Struck out: only in version {{from}}; underlined: new in version {{to}}.",
+    "same": "No differences in the fields you may read.",
+    "field": "Field",
+    "side": "Version {{n}}",
+    "restore": "Restore version {{n}}",
+    "ask": "Restore version {{n}}?",
+    "askText": "This creates version {{next}} with the fields of version {{n}}. State and place stay, as do fields you may not change. Nothing is lost: the versions so far stay in the list.",
+    "confirm": "Restore",
+    "cancel": "Cancel",
+    "conflict": "Someone changed the record meanwhile. Please reload the page.",
+    "failed": "Restoring failed: {{message}}"
+  },
   "portal": {
     "title": "itsm portal",
     "toWorkplace": "To the workplace",

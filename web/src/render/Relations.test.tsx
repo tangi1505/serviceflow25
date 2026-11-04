@@ -81,9 +81,11 @@ describe("Relations", () => {
     ];
     const view = renderAt(`/types/probe.probe/${one}`);
     const tabs = await screen.findByRole("tablist", { name: "Bereiche des Datensatzes" });
-    const [first, last] = within(tabs).getAllByRole("tab");
+    // Since SD16b a type with history has "Fassungen" between them.
+    const [first, middle, last] = within(tabs).getAllByRole("tab");
     expect(first).toHaveAccessibleName("Bezüge");
     expect(first).toHaveAttribute("aria-selected", "true");
+    expect(middle).toHaveAccessibleName("Fassungen");
     expect(last).toHaveAccessibleName("Zeitleiste");
     const panel = screen.getByRole("tabpanel", { name: "Bezüge" });
     const table = await within(panel).findByRole("table");
@@ -117,9 +119,11 @@ describe("Relations", () => {
       expect(within(panel).queryByRole("link", { name: "Anna Berg" })).toBeNull(),
     );
 
-    // The arrow key moves to the timeline.
+    // The arrow key moves to the versions (SD16b), End to the timeline.
     first!.focus();
     await user.keyboard("{ArrowRight}");
+    expect(middle).toHaveFocus();
+    await user.keyboard("{End}");
     expect(last).toHaveFocus();
     expect(await screen.findByRole("region", { name: "Zeitleiste" })).toBeInTheDocument();
   });

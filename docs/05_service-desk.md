@@ -56,7 +56,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD14** | Portal-Startseite: Kacheln (Formular, Katalogseite, Artikel, externer Link) je Zielgruppe; „Aktuell“ zeigt veröffentlichte Hinweise mit Ablauf (Inventar G78; IP28) | ⬜ | 1,5 d | Kachel für eine Gruppe freigeben → nur ihre Mitglieder sehen sie; einen Hinweis veröffentlichen → steht unter „Aktuell“, nach dem Ablauf nicht mehr; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD15** | Anonyme Formulare: Zugang über einen Link ohne Anmeldung, Captcha im Werkzeug ohne fremden Dienst, Ratenbegrenzung, Rückmeldung an eine Mail-Adresse (N2; Inventar G134, G137; Hauptplan E26; trägt KF8 für „anonym“) | 🔒 Hauptplan V34 | 2 d | Formular als anonym freigeben → der Link öffnet es ohne Anmeldung; ohne gelöstes Captcha → 400; 20 Absendungen in einer Minute → 429; Bestätigung per Mail in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16a** | Wissen, Artikel im Portal: Paket `knowledge` mit Artikel (Titel, formatierter Text, Kategorie der Störung, „Sichtbar für“ in drei Stufen mit der Rolle „Gruppen“, Status Entwurf, Veröffentlicht, Abgelaufen); Leser-Regeln im Kern (N12); Bereich „Wissen“ im Kopf des Portals mit Kategorienbaum, Suche und Artikelseite (E8, Variante B des Mockups); dazu der Befund des Klicktests: Verweise zeigen im Portal und in der Zeitleiste den Namen statt der Kennung (Inventar G106; IP4) | 🟢 | 2 d | Ein veröffentlichter Artikel „Alle, auch im Portal“ → ein Portal-Nutzer sieht ihn unter „Wissen“, einen Entwurf und einen „Nur Bearbeiter“ nicht; einer für eine Gruppe → nur ihre Mitglieder; im Portal zeigt eine Störung ihre Kategorie mit Namen; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) auf der Detailseite, zwei Fassungen nebeneinander mit markierten Änderungen, eine ältere wiederherstellen; für jeden Typ (E8; IP4) | ⬜ | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) als Reiter „Fassungen“ auf der Detailseite, zwei Fassungen nebeneinander mit markierten Wörtern, eine ältere wiederherstellen; für jeden Typ mit Verlauf (E8, E9; IP4) | 🟢 | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16c** | Wissen, Übersetzungen: übersetzbare Felder im Formular in weiteren Sprachen pflegen (PL21) und im Portal in der Sprache der Person zeigen (E8; IP4) | ⬜ | 1 d | Titel und Text englisch pflegen → mit Sprache Englisch zeigt das Portal die englische Fassung, ohne Übersetzung die deutsche; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16d** | Wissen, Ablauf: Rolle „Autor“; eine tägliche Regel setzt Artikel nach „Gültig bis“ auf Abgelaufen und schreibt dem Autor; dafür kennen Zeitregeln und Bedingungen der Rechte „jetzt“ (E8; IP4) | ⬜ | 1 d | Artikel mit „Gültig bis“ gestern → nach dem Lauf der Regel abgelaufen und aus dem Portal verschwunden, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16b | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -72,7 +72,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d. SD16b brauchte dazu im Kern nur den Namen in der Liste der Fassungen.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -94,6 +94,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E6** | Fristen der Störung (SD3, deine Entscheidungen 2026-11-03, Hauptplan E160): **Startdaten** bringt ein Paket unter `data/` mit: Datensätze und Regeln, beim ersten Installieren je Mandant angelegt, danach gehören sie dem Kunden; ein Update legt nur an, was noch nie angelegt war, und überschreibt nichts, Gelöschtes kommt nicht wieder (Kern-Bedarf N9). **Teamleitung** ist die verantwortliche Person der Gruppe in der Rolle Gruppe, als Empfänger `actors.group.responsible` (N10). **Reaktion** ist erfüllt, sobald die Störung „Neu“ verlässt. **Jedes Warten** hält die Lösungsuhr an. Kalender „Servicezeit“ und Wartegründe liegen im Grundpaket `sd`, weil die Anfrage (SD6) sie auch braucht; Fristen, Eskalation bei 80 % und automatisches Schließen liegen in `incident`. P1 zählt rund um die Uhr (Hauptplan V31, Beta). Verworfen: Startdaten, die jedes Update zurücksetzt; Einrichtung nur per Anleitung; feste Gruppe Teamleitung; Leitung je Organisationseinheit; Reaktion erst mit der ersten Antwort; Haken je Wartegrund | 2026-11-03 | Pascal |
 | **E7** | Betroffene Elemente und Bezüge (SD4, deine Entscheidungen 2026-11-03 nach dem Mockup „Bezüge am Vorgang“, [Artifact](https://claude.ai/artifact/LB9eW2KAQP7HHerk2ZMugJ), Hauptplan E161): **Beziehungsart** „betrifft“ (invers „betroffen von“) einmal im Grundpaket `sd`, von jedem Typ mit dem Merkmal `ticket` zu jedem Typ; Beziehungsarten dürfen dafür ein Merkmal statt eines Typs nennen (`trait:sd.ticket`, Kern-Bedarf N11). **Oberfläche:** die Detailseite bekommt Reiter unter dem Formular, „Bezüge“ zuerst, „Zeitleiste“ zuletzt (später „Dateien“ dazwischen); Bezüge als Tabelle mit Art, Typ, Datensatz, Status und Lösen, darüber Art und Datensatz zum Verknüpfen, die Suche über alle Typen; für jeden Typ, nicht nur Vorgänge. **Portal:** zeigt keine Bezüge, das entscheidet die Portal-Aufgabe. SD4 von 0,5 d auf 1,5 d. Verworfen: je Paket eine eigene Art; „betrifft“ von jedem Typ; Karte in der Seitenleiste; Abschnitt unter dem Formular; Zeitleiste als erster Reiter | 2026-11-03 | Pascal |
 | **E8** | Wissen (SD16, deine Entscheidungen 2026-11-04 nach dem Mockup „Wissen im Portal“, [Artifact](https://claude.ai/artifact/At2t1hm51eJPvdGF1m9jGz), und dem Klicktest im Browser; Hauptplan E168): **Vier Teile** SD16a bis SD16d statt einer Aufgabe mit 2 d. **Sichtbarkeit wie bei Auswahllisten:** ein Typ bringt Leser-Regeln mit (`readers`), nach denen angemeldete Personen ohne eigenes Recht lesen (Kern-Bedarf N12). „Sichtbar für“ hat drei Stufen: „Alle, auch im Portal“ liest jeder an seinem Knoten des Artikels und darunter, sobald er veröffentlicht ist; „Nur bestimmte Gruppen“ lesen die Mitglieder der Gruppen in der Rolle „Gruppen“, wo sie auch sind; „Nur Bearbeiter“ lesen die, denen ihre Rollen es erlauben. **Status** Entwurf, Veröffentlicht, Abgelaufen; „Gültig bis“ bekommt in SD16d eine tägliche Regel. **Kategorien** sind die der Störung (`sd.category`). **Portal** nach Variante B: „Wissen“ als eigener Bereich im Kopf neben „Meine Vorgänge“, mit Kategorienbaum, Suche und Artikelseite; die Startseite bleibt: eine Karte je Vorgangsart, danach „Formulare“, auf dem Handy untereinander. **Befund des Klicktests:** Verweise zeigen im Portal und in der Zeitleiste den Namen, behoben in SD16a. Verworfen: eine Aufgabe; ein Recht je Artikel; eigene Kategorien des Wissens; Karte „Wissen“ auf der Startseite (Variante A); „Formulare“ immer an zweiter Stelle; der Befund als eigene Aufgabe | 2026-11-04 | Pascal |
+| **E9** | Fassungen (SD16b, deine Entscheidungen 2026-11-04 nach dem Mockup „Fassungen vergleichen“, [Artifact](https://claude.ai/artifact/Nqgtdo42n6L56GMeQNxc1G), Hauptplan E169): **Variante A**, ein Reiter „Fassungen“ zwischen „Bezüge“ und „Zeitleiste“: links die Fassungen (wann, wer, was), zwei angeklickt, rechts nur die Felder, die sich unterscheiden. **Wörter** eines Textes markiert ein eigener kleiner Vergleich im Browser, ohne neue Bibliothek: gestrichen, was nur die ältere hat, unterstrichen, was neu ist. **Jeder Typ mit Verlauf** bekommt den Reiter, im Portal keiner. Wiederherstellen erst nach einer Rückfrage auf der Seite. Verworfen: eigene Seite mit dem ganzen Datensatz zweimal (Variante B); die Bibliothek „diff“; nur alter und neuer Text; nur am Artikel | 2026-11-04 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -143,8 +144,8 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | Art | Aufgaben |
 | --- | --- |
 | P | SD1, SD2, SD3, SD4, SD6, SD7, SD10, SD17 |
-| P und O | SD13, SD14, SD16b, SD16c, SD18, SD19, SD21 |
-| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD9 (Formulare im Arbeitsplatz, Regelaktion mit `@record` und `@actor`, deine Entscheidungen 2026-11-04), SD16a (Leser-Regeln im Kern, Lesebereich im Portal, E8), SD16d (Zeitregeln mit „jetzt“), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
+| P und O | SD13, SD14, SD16c, SD18, SD19, SD21 |
+| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD9 (Formulare im Arbeitsplatz, Regelaktion mit `@record` und `@actor`, deine Entscheidungen 2026-11-04), SD16a (Leser-Regeln im Kern, Lesebereich im Portal, E8), SD16b (Name in der Liste der Fassungen, E9), SD16d (Zeitregeln mit „jetzt“), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
 
 ### 2.3 Bedarf an den Kern
 
@@ -198,6 +199,45 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD16b — Wissen, Fassungen, 2026-11-04
+
+- **Grundlage:** IP4; Hauptplan E169, SD-Plan E9; deine Entscheidungen vom 2026-11-04 nach dem
+  Mockup „Fassungen vergleichen“ ([Artifact](https://claude.ai/artifact/Nqgtdo42n6L56GMeQNxc1G)):
+  Reiter auf der Detailseite (Variante A), Wörter markieren ohne Bibliothek, jeder Typ mit
+  Verlauf.
+- **Gebaut:**
+  - Kern: die Liste der Fassungen nennt, wer sie geschrieben hat (`actor_name`, wie die
+    Zeitleiste). Liste, Vergleich und Wiederherstellen gab es seit PL19.
+  - Oberfläche: Reiter „Fassungen“ zwischen „Bezüge“ und „Zeitleiste“ an jedem Typ mit dem
+    Merkmal Verlauf. Links die Fassungen, neueste oben, mit Zeit, Person und den geänderten
+    Feldern („Angelegt“ bei der ersten); voreingestellt sind die zwei neuesten, ein Klick
+    tauscht die ältere der beiden. Rechts eine Tabelle nur der Felder, die sich
+    unterscheiden: Text und formatierter Text Wort für Wort (gestrichen und unterstrichen),
+    Auswahl, Status, Verweise und Rollen mit Namen. „Fassung n wiederherstellen“ fragt auf
+    der Seite nach und schickt die gesehene Version mit; hat jemand inzwischen gespeichert,
+    sagt die Seite das.
+  - Wortvergleich `web/src/render/wordDiff.ts`: längste gemeinsame Folge von Wörtern und
+    Leerraum; über 2000 Wörter je Seite wird der Text als Ganzes verglichen.
+- **Belegt:**
+  - Go `TestVersionsOverHTTP` prüft jetzt auch den Namen in der Liste.
+  - Vitest `wordDiff.test.ts` (Wörter, leer, gleich, sehr lang) und `Versions.test.tsx`:
+    Reihenfolge und Personen, die zwei neuesten voreingestellt, Wörter gestrichen und
+    unterstrichen, eine Auswahl mit ihrer Beschriftung, Rückfrage, Wiederherstellen mit
+    `If-Match`, Konflikt mit Hinweis; `axe` ohne Befund.
+  - Nachgezogen aus SD9: `TestProblems` in `internal/forms` erwartet die Meldung „only one of
+    them“ statt „not both“, weil eine Frage seit SD9 auch eine Rolle erfragen kann.
+  - Angepasst: `Relations.test.tsx` erwartete zwei Reiter; `probe` hat Verlauf, darum steht
+    jetzt „Fassungen“ dazwischen, und die Pfeiltaste führt dorthin (Ende zur Zeitleiste).
+  - Selbsttest auf 8092 in Chrome an einem Datensatz von `probe` mit acht Fassungen: Liste mit
+    Namen, Vergleich 7 und 8 mit markiertem Zeitstempel im Titel. Wiederherstellen dort nicht
+    ausprobiert, um keine Daten zu ändern.
+  - Ganze CI am 2026-11-04 grün mit der korrigierten CI (19 Schritte, kein rotes Paket im
+    Protokoll, 108 Vitest-Fälle, 18 Tests im Browser, Lastmessung im Rahmen). Der erste Lauf
+    meldete grün, verbarg aber das rote Paket `internal/forms` (siehe Nachtrag bei SD9).
+- **Nicht geprüft:** Kein Browser-Test in der CI für den Reiter. Felder, die die Person nicht
+  lesen darf, lässt der Server aus; ob das Wiederherstellen solche Felder unverändert lässt,
+  prüft der Test von PL19, nicht dieser.
 
 ### SD16a — Wissen, Artikel im Portal, 2026-11-04
 
@@ -300,6 +340,10 @@ Hauptplan H15).
   - Ganze CI am 2026-11-04 im dritten Lauf grün (19 Schritte, 100 Vitest-Fälle, 18 Tests im
     Browser). Lauf 1: der Browser-Test mit dem alten Namen der Checkbox; Lauf 2: LZ13 10,2 %
     unter der Basislinie bei gleichem ausgeliefertem Code wie Lauf 1, in dem die Messung grün war.
+  - Nachtrag 2026-11-04: Der dritte Lauf war nicht wirklich grün. `TestProblems` in
+    `internal/forms` erwartete noch die alte Meldung „not both“; die CI verschluckte das rote
+    Paket (Fehler im Skript seit PL52, behoben im Commit 327ef18, Kern-Plan PL52). Der Test ist
+    mit SD16b an die neue Meldung angepasst, die Feld, Rolle oder freie Frage nennt.
 - **Nicht geprüft:** Die Aufgabe hat noch keine Frist für den Rückruf (das Feld „fällig am“ ist
   da, die Regel setzt es nicht). Der Baukasten nimmt feste Werte als Text: bei einer
   Auswahlliste den Schlüssel, ohne Auswahl der Einträge. Die Befehlszeile ist nicht eigens

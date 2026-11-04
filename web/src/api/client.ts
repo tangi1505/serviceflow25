@@ -21,6 +21,8 @@ export type RecordData = components["schemas"]["Record"];
 export type Page = components["schemas"]["Page"];
 export type AuditEntry = components["schemas"]["AuditEntry"];
 export type TimelineItem = components["schemas"]["TimelineItem"];
+export type VersionInfo = components["schemas"]["VersionInfo"];
+export type Comparison = components["schemas"]["Comparison"];
 export type TimelineEntry = components["schemas"]["TimelineEntry"];
 export type Clock = components["schemas"]["Clock"];
 export type Relation = components["schemas"]["Relation"];
@@ -371,6 +373,25 @@ export const api = {
     unwrap(
       await client.GET("/api/v1/records/{typeName}/{id}/history", {
         params: { path: { typeName, id } },
+      }),
+    ),
+  // versions, compare and restoreVersion are the versions of a record (PL19, SD16b).
+  versions: async (typeName: string, id: string) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/versions", {
+        params: { path: { typeName, id } },
+      }),
+    ),
+  compare: async (typeName: string, id: string, from: number, to: number) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/compare", {
+        params: { path: { typeName, id }, query: { from, to } },
+      }),
+    ),
+  restoreVersion: async (typeName: string, id: string, n: number, version: number) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}/versions/{n}:restore", {
+        params: { path: { typeName, id, n }, header: { "If-Match": `"${version}"` } },
       }),
     ),
   addEntry: async (typeName: string, id: string, body: string, isPrivate: boolean) =>

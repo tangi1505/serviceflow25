@@ -89,7 +89,7 @@ function isRefList(value: unknown): value is ActorRef[] {
 }
 
 // ChangeValue shows an old or new value: roles by name, states and choices by label.
-function ChangeValue({
+export function ChangeValue({
   type,
   field,
   value,
@@ -134,7 +134,7 @@ function ChangeValue({
 
 // changeField is the label of the field a change names: a translation (title.en) with its
 // language, a role (actors.assigned) by the label of the role.
-function changeField(
+export function changeField(
   type: TypeDefinition,
   field: string,
   language: string,

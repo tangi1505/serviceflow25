@@ -15,6 +15,7 @@ import { hiddenOf } from "@/portal/conditions";
 import type {
   Assignment,
   Clock,
+  Comparison,
   CustomerChange,
   CustomerLayer,
   Field,
@@ -31,6 +32,7 @@ import type {
   Role,
   TimelineItem,
   TypeDefinition,
+  VersionInfo,
 } from "@/api/client";
 
 // The relation kinds of core (PL15) for the relations tab (SD4).
@@ -323,6 +325,11 @@ export type FakeState = {
   // extraRecords are the records of extra types by qualified name, to query, read and search
   // (the reading areas of the portal and their tree lists, SD16a).
   extraRecords?: Record<string, RecordData[]>;
+  // versions and comparisons ("from-to") of the probe records (SD16b); restoring one bumps the
+  // record's version and is answered with 409 while restoreConflict is set.
+  versions?: VersionInfo[];
+  comparisons?: Record<string, Comparison>;
+  restoreConflict?: boolean;
   // searches are the saved searches the session may read (UI4); new ones are its own.
   searches?: RecordData[];
   // workplace false makes the session a user of the portal (UI10); personId is its person.
@@ -454,6 +461,32 @@ export function fakeApi(state: FakeState) {
         },
         ...(state.extraTypes ?? []),
       ]);
+    }
+    const versioned = url.pathname.match(
+      /^\/api\/v1\/records\/probe\.probe\/([^/]+)\/(versions|compare|versions\/(\d+):restore)$/,
+    );
+    if (versioned) {
+      const record = state.records.find((r) => r["id"] === versioned[1]);
+      if (!record) {
+        return problem(404, "not_found");
+      }
+      if (versioned[2] === "versions") {
+        return json(200, state.versions ?? []);
+      }
+      if (versioned[2] === "compare") {
+        const key = `${url.searchParams.get("from")}-${url.searchParams.get("to")}`;
+        return json(200, state.comparisons?.[key] ?? { from: 0, to: 0, changes: [] });
+      }
+      if (method === "POST") {
+        if (
+          state.restoreConflict ||
+          req.headers.get("If-Match") !== `"${String(record["version"])}"`
+        ) {
+          return problem(409, "conflict");
+        }
+        record["version"] = Number(record["version"]) + 1;
+        return json(200, record);
+      }
     }
     const extra = url.pathname.match(/^\/api\/v1\/records\/([a-z_]+\.[a-z_]+)(:query|\/[^/:]+)$/);
     const extraList = extra ? state.extraRecords?.[extra[1]!] : undefined;

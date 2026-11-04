@@ -3404,6 +3404,7 @@ components:
         actor: { type: string, format: uuid }
         actions: { type: array, items: { type: string } }
         changed: { type: array, items: { type: string } }
+        actor_name: { type: string, description: the display name of the account that wrote the version }
     Comparison:
       type: object
       required: [from, to, changes]

@@ -213,7 +213,12 @@ export function RecordPage() {
             }}
             onCancel={back}
           />
-          <RecordTabs type={type} id={id} timeline={timeline === true} />
+          <RecordTabs
+            type={type}
+            id={id}
+            timeline={timeline === true}
+            version={Number(record.data["version"])}
+          />
         </div>
         <Sidebar type={type} record={record.data} />
       </div>

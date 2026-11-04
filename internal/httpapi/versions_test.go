@@ -36,7 +36,8 @@ func TestVersionsOverHTTP(t *testing.T) {
 	r := call(t, admin, http.MethodGet, base+"/versions", "", nil)
 	var versions []map[string]any
 	_ = json.Unmarshal([]byte(r.raw), &versions)
-	if r.code != 200 || len(versions) != 4 || versions[2]["actions"].([]any)[0] != "transition" {
+	// Each version names who wrote it (SD16b).
+	if r.code != 200 || len(versions) != 4 || versions[2]["actions"].([]any)[0] != "transition" || versions[0]["actor_name"] != "API Test" {
 		t.Fatalf("versions: %d %s", r.code, r.raw)
 	}
 	if r := call(t, admin, http.MethodGet, base+"/versions/1", "", nil); r.code != 200 || r.body["title"] != "first" || r.body["state"] != "new" {

@@ -6,7 +6,7 @@
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
 // The tabs under the form of a record page (UI-Plan E38, from SD4): relations first, the
-// timeline last; files will come between. Tabs after the WAI-ARIA pattern: arrow keys, Home
+// versions of a type with history (SD16b), the timeline last; files will come between. Tabs after the WAI-ARIA pattern: arrow keys, Home
 // and End move between them, only the chosen one is in the tab order.
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import { type TypeDefinition } from "@/api/client";
 
 import { Relations } from "./Relations";
 import { Timeline } from "./Timeline";
+import { Versions } from "./Versions";
 
 type Tab = { key: string; label: string };
 
@@ -22,16 +23,20 @@ export function RecordTabs({
   type,
   id,
   timeline,
+  version,
 }: {
   type: TypeDefinition;
   id: string;
   timeline: boolean;
+  // version is the record's current version: restoring sends it as If-Match (SD16b).
+  version: number;
 }) {
   const { t } = useTranslation();
   const base = useId();
   const withEntries = type.traits?.includes("timeline") === true;
   const tabs: Tab[] = [
     { key: "relations", label: t("relations.title") },
+    ...(type.traits?.includes("history") ? [{ key: "versions", label: t("versions.title") }] : []),
     ...(timeline
       ? [{ key: "timeline", label: withEntries ? t("timeline.title") : t("timeline.history") }]
       : []),
@@ -98,6 +103,8 @@ export function RecordTabs({
       >
         {tabs[at]!.key === "relations" ? (
           <Relations type={type} id={id} />
+        ) : tabs[at]!.key === "versions" ? (
+          <Versions key={version} type={type} id={id} version={version} />
         ) : (
           <Timeline type={type} id={id} inTab />
         )}

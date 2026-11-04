@@ -2647,6 +2647,8 @@ export interface components {
             actor?: string;
             actions: string[];
             changed: string[];
+            /** @description the display name of the account that wrote the version */
+            actor_name?: string;
         };
         Comparison: {
             /** Format: int64 */

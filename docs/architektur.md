@@ -230,7 +230,8 @@ Wirksame Definition  ← im Prozess und in Valkey gecacht, Hash als Version
 - **Beziehungsarten** nennen in `from` und `to` Typen, `*` oder seit SD4 ein Merkmal
   (`trait:sd.ticket`, SD-Plan N11): „betrifft“ aus `sd` gilt so für jeden Vorgangstyp. Die
   Detailseite zeigt die Bezüge eines Datensatzes im ersten Reiter unter dem Formular, die
-  Zeitleiste im letzten (UI-Plan E38).
+  Zeitleiste im letzten (UI-Plan E38); dazwischen bei Typen mit Verlauf die Fassungen mit
+  Vergleich Wort für Wort und Wiederherstellen (SD16b).
 
 ---
 

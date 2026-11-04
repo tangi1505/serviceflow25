@@ -363,6 +363,23 @@
     "color_scheme": "Darstellung",
     "density": "Zeilenhöhe der Listen"
   },
+  "versions": {
+    "title": "Fassungen",
+    "one": "Es gibt erst eine Fassung.",
+    "item": "Fassung {{n}} · {{time}}",
+    "compare": "Fassung {{from}} und Fassung {{to}}",
+    "hint": "Nur die Felder, die sich unterscheiden. Gestrichen: nur in Fassung {{from}}; unterstrichen: neu in Fassung {{to}}.",
+    "same": "Keine Unterschiede in den Feldern, die Sie lesen dürfen.",
+    "field": "Feld",
+    "side": "Fassung {{n}}",
+    "restore": "Fassung {{n}} wiederherstellen",
+    "ask": "Fassung {{n}} wiederherstellen?",
+    "askText": "Das legt Fassung {{next}} mit den Feldern von Fassung {{n}} an. Status und Ort bleiben, ebenso Felder, die Sie nicht ändern dürfen. Nichts geht verloren: die bisherigen Fassungen bleiben in der Liste.",
+    "confirm": "Wiederherstellen",
+    "cancel": "Abbrechen",
+    "conflict": "Jemand hat den Datensatz inzwischen geändert. Bitte laden Sie die Seite neu.",
+    "failed": "Wiederherstellen ging nicht: {{message}}"
+  },
   "portal": {
     "title": "itsm Portal",
     "toWorkplace": "Zum Arbeitsplatz",
