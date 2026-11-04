@@ -234,7 +234,7 @@ Hauptplan H15).
     `incident`, ein neuer Mandant 64 statt 62; `coverage_test.go` bekommt ein gültiges Muster
     für `core.snippet` (Für Typ `probe.probe`), weil das erzeugte Muster einen erfundenen Typ
     nennt.
-  - Ganze CI am 2026-11-04 im ersten Lauf grün: 19 Schritte, 99 Vitest-Fälle, 18 Tests im Browser,
+  - Ganze CI am 2026-11-04 im ersten Lauf grün: 19 Schritte, 98 Vitest-Fälle, 18 Tests im Browser,
     die Lastmessung im Rahmen der Basislinie.
 - **Nicht geprüft und Abweichungen:** Über den Bausteinen der Gruppen steht „Meine Gruppen“, nicht
   der Name der Gruppe wie im Mockup. Ohne Typ bleibt ein Platzhalter,
