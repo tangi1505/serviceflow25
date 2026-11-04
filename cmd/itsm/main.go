@@ -55,6 +55,7 @@ import (
 	"group24.de/itsm/internal/search"
 	"group24.de/itsm/internal/seclog"
 	"group24.de/itsm/internal/sla"
+	"group24.de/itsm/internal/snippets"
 	"group24.de/itsm/internal/webhooks"
 )
 
@@ -237,7 +238,10 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		notifySvc.Register(js)
 		ev.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
 	}
-	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec))
+	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec))
+	// The text modules (SD8) fill in their placeholders like the notifications.
+	snippetSvc := snippets.New(rec)
+	snippetSvc.PublicURL = cfg.PublicURL
 	after := rec.AfterWrite
 	rec.AfterWrite = func(ctx context.Context, typeName string) {
 		after(ctx, typeName)
@@ -302,6 +306,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Prefs:      prefs.New(rt, rec, orgSvc.Setting),
 		Forms:      forms.New(rec),
 		Portal:     portal.New(rec),
+		Snippets:   snippetSvc,
 		Customer:   customer.New(rt, rec, logger),
 		Bulk:       bulkAsync,
 		Export:     exportSvc,

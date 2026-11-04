@@ -1,0 +1,27 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Text modules of the incident (SD8; Inventar G56) as start data each tenant changes: the
+# editor offers them under "Textbaustein", the server fills in the placeholders against the
+# incident. One for the answer, shared with the service desk, and one for the solution.
+
+# Shared with the service desk: only its members see it in the editor.
+- key: protokoll
+  type: core.snippet
+  values:
+    name: Protokoll anfordern
+    use: answer
+    body: >-
+      <p>Guten Tag,</p><p>damit wir „{{record.title}}“ eingrenzen können, senden Sie uns bitte das
+      Protokoll der Anwendung. Sie finden es meist unter Hilfe › Protokoll speichern.</p><p>Viele
+      Grüße<br>{{actor}}</p>
+    actors: {shared: [{type: core.group, id: "@sd.service_desk"}]}
+- key: neustart
+  type: core.snippet
+  values:
+    name: Gelöst durch Neustart
+    use: solution
+    target_type: incident.incident
+    body: >-
+      <p>Nach einem Neustart des Geräts funktioniert es wieder. Tritt „{{record.title}}“ erneut
+      auf, antworten Sie bitte auf diese Störung.</p>

@@ -8,6 +8,7 @@
 package notify
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -33,6 +34,24 @@ func TestRender(t *testing.T) {
 	d.Lang = "fr" // no label in that language: German
 	if got := Render("{{type}} {{record.kind}}", d); got != "Vorgang Störung" {
 		t.Fatalf("fallback: %q", got)
+	}
+}
+
+// In formatted text (the text modules, SD8) the values are escaped, {{link}} is a link and a
+// reference shows the title Name gives.
+func TestRenderHTML(t *testing.T) {
+	typ := probe
+	typ.Fields = append(slices.Clone(probe.Fields), meta.Field{Name: "owner", Type: meta.FieldReference, To: "core.person"})
+	d := Data{Type: typ, Record: map[string]any{"title": "Router & <Switch>", "owner": "p1"}, Lang: "de",
+		Link: "http://itsm/x?a=1&b=2", Actor: "Anna", HTML: true,
+		Name: func(to, id string) string { return to + "/" + id }}
+	got := Render("<p>{{title}} {{record.owner}} {{link}}</p>", d)
+	want := `<p>Router &amp; &lt;Switch&gt; core.person/p1 <a href="http://itsm/x?a=1&amp;b=2">http://itsm/x?a=1&amp;b=2</a></p>`
+	if got != want {
+		t.Fatalf("got  %q\nwant %q", got, want)
+	}
+	if msg := CheckPlaceholders("{{record.owner}} {{message}}", []string{"title", "actor"}, "", func(string) bool { return true }); !strings.Contains(msg, "{{title}} or {{actor}}") {
+		t.Fatalf("names: %q", msg)
 	}
 }
 

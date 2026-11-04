@@ -375,6 +375,12 @@ export function Form({
                 invalid={common["aria-invalid"]}
                 value={String(field.value ?? "")}
                 onChange={field.onChange}
+                // The text modules of the field's use (SD8), once there is a record.
+                snippets={
+                  f.snippets && record?.["id"]
+                    ? { use: f.snippets, typeName, recordId: String(record["id"]) }
+                    : undefined
+                }
               />
             )}
           />

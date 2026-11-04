@@ -9,7 +9,7 @@
 // italic, lists, quote, headings, links; an image pasted, dropped or chosen is uploaded as a
 // temporary file of the session and shown from /api/v1/files/{id}; the server sanitizes the
 // HTML and attaches the image when the text is saved. RichText shows saved HTML, which the
-// server cleaned.
+// server cleaned. With snippets the toolbar ends in the text modules (SD8), also on Alt+T.
 import Image from "@tiptap/extension-image";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -20,18 +20,10 @@ import { api } from "@/api/client";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/utils";
 
-const prose =
-  "[&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_h2]:text-lg [&_h2]:font-semibold " +
-  "[&_h3]:font-semibold [&_img]:my-1 [&_img]:max-h-80 [&_img]:max-w-full [&_ol]:list-decimal [&_ol]:pl-6 " +
-  "[&_p]:my-1 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-6";
+import { prose } from "./RichText";
+import { SnippetPicker, type SnippetContext } from "./Snippets";
 
-// RichText shows HTML the server sanitized (richtext.Sanitize): the only place that puts
-// stored HTML into the page.
-export function RichText({ html, className }: { html: string; className?: string }) {
-  return (
-    <div className={cn("text-sm", prose, className)} dangerouslySetInnerHTML={{ __html: html }} />
-  );
-}
+export { RichText } from "./RichText";
 
 async function insertImages(editor: Editor, files: File[], onError: (msg: string) => void) {
   for (const file of files) {
@@ -59,6 +51,7 @@ export function RichEditor({
   onChange,
   describedBy,
   invalid,
+  snippets,
 }: {
   id: string;
   label: string;
@@ -66,11 +59,17 @@ export function RichEditor({
   onChange: (html: string) => void;
   describedBy?: string;
   invalid?: boolean;
+  // snippets offers the text modules of a use, filled in against the record (SD8).
+  snippets?: SnippetContext;
 }) {
   const { t } = useTranslation();
   const fileId = useId();
   const [failure, setFailure] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const editorRef = useRef<Editor | null>(null);
+  // The key handler of the editor is made once; it reads whether text modules are offered here.
+  const offersSnippets = useRef(false);
+  offersSnippets.current = !!snippets;
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -89,6 +88,15 @@ export function RichEditor({
         ...(describedBy ? { "aria-describedby": describedBy } : {}),
         ...(invalid ? { "aria-invalid": "true" } : {}),
         class: cn("min-h-24 px-3 py-2 text-sm focus:outline-none", prose),
+      },
+      handleKeyDown: (_view, event) => {
+        // Alt+T opens the text modules; the key code, since Alt changes the letter on a Mac.
+        if (event.altKey && event.code === "KeyT" && offersSnippets.current) {
+          event.preventDefault();
+          setPicking(true);
+          return true;
+        }
+        return false;
       },
       handlePaste: (_view, event) => {
         const found = images(event.clipboardData?.files);
@@ -191,6 +199,14 @@ export function RichEditor({
             e.target.value = "";
           }}
         />
+        {snippets && (
+          <SnippetPicker
+            editor={editor}
+            context={snippets}
+            open={picking}
+            onOpenChange={setPicking}
+          />
+        )}
       </div>
       <EditorContent editor={editor} />
       {failure && (

@@ -54,6 +54,7 @@ import (
 	"group24.de/itsm/internal/search"
 	"group24.de/itsm/internal/seclog"
 	"group24.de/itsm/internal/sla"
+	"group24.de/itsm/internal/snippets"
 	"group24.de/itsm/internal/webhooks"
 )
 
@@ -296,7 +297,9 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 			t.Fatal(err)
 		}
 	}
-	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs))
+	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs), snippets.Check(recs))
+	snippetSvc := snippets.New(recs)
+	snippetSvc.PublicURL = "http://itsm.test"
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {
 		list, err := ruleEngine.Levels(ctx, typeName, id)
 		out := make([]sla.Level, len(list))
@@ -311,7 +314,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 		slaSvc.Wrote(ctx, typeName)
 	}
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(rt, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs), Portal: portal.New(recs), Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(rt, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
 		Calendars: calendars, SLA: slaSvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

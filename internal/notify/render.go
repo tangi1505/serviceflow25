@@ -9,7 +9,9 @@ package notify
 
 import (
 	"fmt"
+	"html"
 	"regexp"
+	"slices"
 	"strings"
 
 	"group24.de/itsm/internal/meta"
@@ -23,24 +25,42 @@ import (
 // rule's notify, {{entry}} for the text of a new entry of the timeline (PL42).
 var placeholderRe = regexp.MustCompile(`\{\{\s*([a-z_]+(?:\.[a-z_0-9]+)?)\s*\}\}`)
 
-var plain = map[string]bool{"type": true, "title": true, "link": true, "actor": true, "message": true, "entry": true}
+var plain = []string{"type", "title", "link", "actor", "message", "entry"}
 
 // systemNames are the system fields a placeholder may name.
 var systemNames = map[string]bool{"id": true, "version": true, "state": true, "org_path": true, "created_at": true, "updated_at": true}
 
 // checkPlaceholders reports the first placeholder of a text that does not exist.
 func checkPlaceholders(t meta.Type, text string) string {
+	return CheckPlaceholders(text, plain, t.QualifiedName(), func(field string) bool {
+		_, ok := t.Field(field)
+		return ok
+	})
+}
+
+// CheckPlaceholders reports the first placeholder of a text that is neither one of names nor
+// {{record.<field>}} of a field hasField knows or a system field; where names the type in the
+// message, empty for all installed types. The text modules (SD8) take it with their own names.
+func CheckPlaceholders(text string, names []string, where string, hasField func(string) bool) string {
 	for _, m := range placeholderRe.FindAllStringSubmatch(text, -1) {
 		name := m[1]
-		if plain[name] {
+		if slices.Contains(names, name) {
 			continue
 		}
 		field, ok := strings.CutPrefix(name, "record.")
 		if !ok {
-			return fmt.Sprintf("{{%s}} is no placeholder; use {{record.<field>}}, {{type}}, {{title}}, {{link}}, {{actor}}, {{message}} or {{entry}}", name)
+			use := make([]string, len(names))
+			for i, n := range names {
+				use[i] = "{{" + n + "}}"
+			}
+			return fmt.Sprintf("{{%s}} is no placeholder; use {{record.<field>}}, %s or %s",
+				name, strings.Join(use[:len(use)-1], ", "), use[len(use)-1])
 		}
-		if _, ok := t.Field(field); !ok && !systemNames[field] {
-			return fmt.Sprintf("{{%s}}: %s has no field %q", name, t.QualifiedName(), field)
+		if !hasField(field) && !systemNames[field] {
+			if where == "" {
+				return fmt.Sprintf("{{%s}}: no installed type has a field %q", name, field)
+			}
+			return fmt.Sprintf("{{%s}}: %s has no field %q", name, where, field)
 		}
 	}
 	return ""
@@ -55,6 +75,11 @@ type Data struct {
 	Actor   string
 	Message string
 	Entry   string
+	// HTML fills the placeholders of formatted text (the text modules, SD8): the values are
+	// escaped and {{link}} becomes a link.
+	HTML bool
+	// Name gives the title of a referenced record; without it a reference stays its id.
+	Name func(typeName, id string) string
 }
 
 // Render fills in the placeholders of a text; an unknown one (in a translation, which the
@@ -62,30 +87,52 @@ type Data struct {
 func Render(text string, d Data) string {
 	return placeholderRe.ReplaceAllStringFunc(text, func(p string) string {
 		name := placeholderRe.FindStringSubmatch(p)[1]
-		switch name {
-		case "type":
-			if l := d.Type.Label[d.Lang]; l != "" {
-				return l
-			}
-			return d.Type.Label["de"]
-		case "title":
-			return str(d.Record[d.Type.TitleField])
-		case "link":
-			return d.Link
-		case "actor":
-			return d.Actor
-		case "message":
-			return d.Message
-		case "entry":
-			return d.Entry
+		if name == "link" && d.HTML {
+			l := html.EscapeString(d.Link)
+			return `<a href="` + l + `">` + l + `</a>`
 		}
-		if field, ok := strings.CutPrefix(name, "record."); ok {
-			if v, ok := d.Record[field]; ok {
-				return valueText(d.Type, field, v, d.Lang)
-			}
+		v, ok := d.value(name)
+		if !ok {
+			return p
 		}
-		return p
+		if d.HTML {
+			return html.EscapeString(v)
+		}
+		return v
 	})
+}
+
+// value is the text of one placeholder; false for one the record does not have.
+func (d Data) value(name string) (string, bool) {
+	switch name {
+	case "type":
+		if l := d.Type.Label[d.Lang]; l != "" {
+			return l, true
+		}
+		return d.Type.Label["de"], true
+	case "title":
+		return str(d.Record[d.Type.TitleField]), true
+	case "link":
+		return d.Link, true
+	case "actor":
+		return d.Actor, true
+	case "message":
+		return d.Message, true
+	case "entry":
+		return d.Entry, true
+	}
+	field, ok := strings.CutPrefix(name, "record.")
+	if !ok {
+		return "", false
+	}
+	v, ok := d.Record[field]
+	if !ok {
+		return "", false
+	}
+	if f, ok := d.Type.Field(field); ok && f.Type == meta.FieldReference && d.Name != nil && v != nil {
+		return d.Name(f.To, str(v)), true
+	}
+	return valueText(d.Type, field, v, d.Lang), true
 }
 
 // valueText is a value as a mail shows it: the label of a choice in the language, empty for

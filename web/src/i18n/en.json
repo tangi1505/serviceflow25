@@ -298,7 +298,16 @@
     "link": "Link",
     "image": "Insert image",
     "linkPrompt": "Address of the link (empty removes it)",
-    "uploadError": "Image not uploaded: {{detail}}"
+    "uploadError": "Image not uploaded: {{detail}}",
+    "snippet": "Text module",
+    "snippetPick": "Choose a text module",
+    "snippetSearch": "Search text modules",
+    "snippetMine": "My groups",
+    "snippetAll": "For everybody",
+    "snippetNone": "No matching text module.",
+    "snippetPreview": "Preview, filled in",
+    "snippetKeys": "↑↓ choose · Enter insert · Esc close",
+    "snippetError": "Text module not inserted: {{detail}}"
   },
   "live": {
     "allow": "Allow notifications",

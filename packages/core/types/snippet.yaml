@@ -1,0 +1,45 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A text module (SD8; Inventar G56): formatted text the editor inserts for an answer, a solution
+# or a task, with the placeholders of the notifications (Hauptplan E120): {{record.<field>}},
+# {{type}}, {{title}}, {{link}} and {{actor}}, the one who writes. The server fills them in
+# against the record before the text reaches the editor. Without a type it is offered at every
+# record; shared with groups or persons the editor offers it only to them (a filter, not a
+# right: reading follows the role like any type).
+name: snippet
+label: {de: Textbaustein, en: Text module}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    searchable: true
+    max_length: 100
+  - name: use
+    type: choice
+    label: {de: Verwendung, en: Use}
+    required: true
+    default: answer
+    options:
+      - {value: answer, label: {de: Antwort, en: Answer}}
+      - {value: solution, label: {de: Lösung, en: Solution}}
+      - {value: task, label: {de: Aufgabe, en: Task}}
+  - name: target_type
+    type: text
+    label: {de: Für Typ, en: For type}
+    description: {de: "Typ mit Paket, etwa incident.incident; leer für jeden Typ", en: "Type with its package, e.g. incident.incident; empty for every type"}
+    max_length: 130
+  - name: body
+    type: text
+    label: {de: Text, en: Text}
+    description: {de: "Platzhalter: {{record.<feld>}}, {{type}}, {{title}}, {{link}}, {{actor}} (wer schreibt)", en: "Placeholders: {{record.<field>}}, {{type}}, {{title}}, {{link}}, {{actor}} (who writes)"}
+    format: rich
+    required: true
+    searchable: true
+actors:
+  - name: shared
+    label: {de: Sichtbar für, en: Visible to}
+    to: [core.person, core.group]

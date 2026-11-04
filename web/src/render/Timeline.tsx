@@ -223,7 +223,14 @@ function NewEntry({ typeName, id, portal }: { typeName: string; id: string; port
       }}
     >
       <Label htmlFor={`${formId}-body`}>{t("timeline.new")}</Label>
-      <RichEditor id={`${formId}-body`} label={t("timeline.new")} value={body} onChange={setBody} />
+      <RichEditor
+        id={`${formId}-body`}
+        label={t("timeline.new")}
+        value={body}
+        onChange={setBody}
+        // The requester in the portal writes without text modules (SD8).
+        snippets={portal ? undefined : { use: "answer", typeName, recordId: id }}
+      />
       <div className="flex flex-wrap items-center gap-4">
         {!portal && (
           <label className="flex items-center gap-2 text-sm">

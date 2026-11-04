@@ -335,6 +335,9 @@ export type FakeState = {
   // forms are the forms offered to the session (UI11); formRecords the records of core.form.
   forms?: FormOffer[];
   notices?: PortalNotice[];
+  // snippets are the text modules (SD8) the editor lists; filled in, {{record.title}} becomes
+  // the title of the probe.
+  snippets?: RecordData[];
   formRecords?: RecordData[];
   // tenants are the tenants the session may switch between (PL44); tenant the one it is in.
   tenants?: { path: string; label: Record<string, string> }[];
@@ -856,6 +859,22 @@ export function fakeApi(state: FakeState) {
             }
           : {}),
       });
+    }
+    if (url.pathname === "/api/v1/records/core.snippet:query" && method === "POST") {
+      const body = JSON.parse(bodyText) as { where: { and: { eq?: string }[] } };
+      const use = body.where.and[0]?.eq;
+      return json(200, { items: (state.snippets ?? []).filter((s) => s["use"] === use) });
+    }
+    const snippet = url.pathname.match(/^\/api\/v1\/records\/probe\.probe\/([^/]+):snippet$/);
+    if (snippet && method === "POST") {
+      const body = JSON.parse(bodyText) as { snippet: string };
+      const found = (state.snippets ?? []).find((s) => s["id"] === body.snippet);
+      const record = state.records.find((r) => r["id"] === snippet[1]);
+      if (!found || !record) {
+        return problem(404, "not_found");
+      }
+      const title = String(record["title"]).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      return json(200, { body: String(found["body"]).replace("{{record.title}}", title) });
     }
     if (url.pathname === "/api/v1/records/probe.probe:query" && method === "POST") {
       const body = JSON.parse(bodyText) as { where?: unknown; limit?: number };

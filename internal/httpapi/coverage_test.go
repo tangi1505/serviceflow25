@@ -312,6 +312,7 @@ var checkedSamples = map[string]map[string]any{
 	"core.form": {"target_type": "probe.probe", "active": false,
 		"definition": `{"sections": [{"id": "s1", "title": {"de": "Anliegen"}, "questions": [{"id": "q1", "field": "title"}]}]}`},
 	"core.portal_notice": {"target_type": "probe.probe", "query": "", "text_field": "title", "active": false},
+	"core.snippet":       {"target_type": "probe.probe"},
 }
 
 // sampleValue is a valid value of a field that is not a reference.

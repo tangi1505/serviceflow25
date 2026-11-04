@@ -103,6 +103,8 @@ export type Field = {
   // format "rich" makes a text field formatted text (UI7): the editor, HTML the server cleans.
   // rich: formatted text (UI7); priority: a number shown as a mark P1 … (UI29).
   format?: "rich" | "priority";
+  // snippets names the use of the text modules the editor offers (SD8), e.g. "solution".
+  snippets?: string;
   // hidden is set by the customer layer (PL43): left out of forms and lists, kept by the API.
   hidden?: boolean;
   // rollup sums or counts the records of another type that point here (WF13).
@@ -235,6 +237,15 @@ export const api = {
         body: { transition, ...(comment ? { comment } : {}) },
       }),
     ),
+  // renderSnippet is a text module filled in against the record (SD8), formatted text for the
+  // editor; nothing is written.
+  renderSnippet: async (typeName: string, id: string, snippet: string) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}:snippet", {
+        params: { path: { typeName, id } },
+        body: { snippet },
+      }),
+    ).body,
   // timeline lists entries and history, oldest first (PL42); the page turns it round.
   timeline: async (typeName: string, id: string) =>
     unwrap(

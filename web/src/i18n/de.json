@@ -298,7 +298,16 @@
     "link": "Link",
     "image": "Bild einfügen",
     "linkPrompt": "Adresse des Links (leer entfernt ihn)",
-    "uploadError": "Bild nicht hochgeladen: {{detail}}"
+    "uploadError": "Bild nicht hochgeladen: {{detail}}",
+    "snippet": "Textbaustein",
+    "snippetPick": "Textbaustein wählen",
+    "snippetSearch": "Textbaustein suchen",
+    "snippetMine": "Meine Gruppen",
+    "snippetAll": "Für alle",
+    "snippetNone": "Kein passender Textbaustein.",
+    "snippetPreview": "Vorschau, eingesetzt",
+    "snippetKeys": "↑↓ wählen · Enter einfügen · Esc schließen",
+    "snippetError": "Textbaustein nicht eingesetzt: {{detail}}"
   },
   "live": {
     "allow": "Benachrichtigungen erlauben",

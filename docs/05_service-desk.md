@@ -42,7 +42,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
 | **SD7** | Warteschlangen: mitgelieferte geteilte Suchen „Meine“, „Mein Team“, „Nicht zugewiesen“, „SLA-Risiko“; Zuweisung per Regel nach Kategorie an eine Gruppe (IP28; KF7) | 🟢 | 1 d | Nach der Installation stehen die vier Suchen in der Navigation; Störung mit Kategorie „Netzwerk › VPN“ → Gruppe Netzwerk per Regel, der Verlauf nennt die Regel; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD8** | Textbausteine für Antworten, Aufgaben und Lösungen mit Platzhaltern wie in den Benachrichtigungen (Hauptplan E120), Auswahl über „Textbaustein“ im Editor, sichtbar je Gruppe (Inventar G56) | ⬜ | 1,5 d | Baustein „Protokoll anfordern“ mit `{{record.title}}` wählen → der Text steht mit eingesetztem Titel im Editor, nur mit Tastatur bedienbar; ein Baustein einer Gruppe erscheint nur bei ihren Mitgliedern; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD8** | Textbausteine für Antworten, Aufgaben und Lösungen mit Platzhaltern wie in den Benachrichtigungen (Hauptplan E120), Auswahl über „Textbaustein“ im Editor, sichtbar je Gruppe (Inventar G56) | 🟢 | 1,5 d | Baustein „Protokoll anfordern“ mit `{{record.title}}` wählen → der Text steht mit eingesetztem Titel im Editor, nur mit Tastatur bedienbar; ein Baustein einer Gruppe erscheint nur bei ihren Mitgliedern; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD9** | Telefonnotiz: Störung in einem Schritt anlegen mit Quelle „Telefon“, Anforderer per Suche, Rückruf als Aufgabe (IP28) | ⬜ | 0,5 d | „Telefonnotiz“ im Arbeitsplatz → Formular; mit Anforderer und Text anlegen → Störung mit Quelle „Telefon“ und Aufgabe „Rückruf“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD10** | Mail hinaus: Vorlagen der Benachrichtigungen für Störung und Anfrage (angelegt, Antwort, Bitte um Bestätigung, gelöst, geschlossen) mit Kennung im Betreff; baut auf WF15 (Inventar G163; KF14) | 🟢 | 1 d | Antwort an den Anforderer → Mail in Mailpit mit der Kennung im Betreff (bis PL49 die Kurzkennung); interne Notiz → keine Mail; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD11** | Mail hinein, Abholen: Postfächer per IMAP als Job abholen, Zugangsdaten nur in der Konfiguration; neue Mail → Störung; Antwort mit Kennung → Eintrag am Vorgang; Anhänge und eingebettete Bilder als Dateien; Absender → Person über `core.person_email`; IMAP-Server zum Testen im Compose-Profil `mail` (N4; Inventar G188; trägt KF14) | 🔒 Hauptplan V9, V29 | 2 d | Testmail an das Postfach im Profil `mail` → Störung mit Anhang und Anforderer; Antwort auf die Mail aus SD10 → Eintrag am selben Vorgang; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -139,8 +139,8 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | Art | Aufgaben |
 | --- | --- |
 | P | SD1, SD2, SD3, SD4, SD6, SD7, SD10, SD16, SD17 |
-| P und O | SD8, SD9, SD13, SD14, SD18, SD19, SD21 |
-| K | SD5 (wenn N3 eine Regelaktion braucht), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
+| P und O | SD9, SD13, SD14, SD18, SD19, SD21 |
+| K | SD5 (wenn N3 eine Regelaktion braucht), SD8 (der Server setzt die Platzhalter ein, deine Entscheidung 2026-11-04), SD11, SD12, SD15, SD20 (Schlüssel der Einstellungen in `internal/prefs`) |
 
 ### 2.3 Bedarf an den Kern
 
@@ -193,6 +193,56 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD8 — Textbausteine, 2026-11-04
+
+- **Grundlage:** Inventar G56; Hauptplan E166; deine Entscheidungen vom 2026-11-04: der Server
+  setzt die Platzhalter ein, „sichtbar je Gruppe“ ist ein Filter in der Auswahl, ein Feld „Für
+  Typ“ (leer heißt jeder Typ), die Verwendung „Aufgabe“ gibt es schon jetzt; die Auswahl nach
+  Variante A des Mockups (Knopf „Textbaustein“ mit Liste). Damit ist SD8 nicht mehr nur Paket
+  und Oberfläche, sondern hat einen Teil im Kern (§2.2).
+- **Gebaut:**
+  - Kern: Kerntyp `core.snippet` mit Name, Verwendung (Antwort, Lösung, Aufgabe), „Für Typ“,
+    formatiertem Text und der Rolle „Sichtbar für“ (Personen und Gruppen). Das Paket
+    `internal/snippets` prüft beim Speichern den Typ und die Platzhalter: `{{record.<feld>}}`,
+    `{{type}}`, `{{title}}`, `{{link}}` und `{{actor}}` (wer schreibt). Ohne Typ muss das Feld
+    in irgendeinem installierten Typ stehen. Eingesetzt wird mit den Rechten der Person, die
+    schreibt: Werte maskiert, ein Verweis mit seinem Titel, eine Auswahl mit ihrer Bezeichnung,
+    `{{link}}` als Link. `POST /api/v1/records/{typ}/{id}:snippet` schreibt nichts. Die
+    Platzhalter kommen aus den Benachrichtigungen (`notify.Render` mit `HTML` und `Name`,
+    `notify.CheckPlaceholders`).
+  - Feldmerkmal `snippets: <verwendung>` an formatierten Textfeldern: der Editor des Felds bietet
+    die Bausteine dieser Verwendung an. Die Lösung der Störung hat `snippets: solution`, die
+    Einträge der Zeitleiste nehmen `answer`.
+  - Oberfläche: Knopf „Textbaustein“ am Ende der Formatierungsleiste, auch Alt+T im Text. Die
+    Liste hat eine Suche; oben stehen die Bausteine der eigenen Gruppen und die persönlichen,
+    darunter die für alle; rechts die Vorschau, schon eingesetzt. Enter fügt an der Schreibmarke
+    ein, Esc schließt, der Fokus geht in beiden Fällen zurück in den Text. Nur an einem
+    bestehenden Vorgang und nicht im Portal.
+  - Paket `incident` 0.6.0, Startdaten `data/bausteine.yaml`: „Protokoll anfordern“ (Antwort,
+    mit dem Service Desk geteilt) und „Gelöst durch Neustart“ (Lösung, nur für Störungen).
+- **Belegt:**
+  - Go `TestSnippetsOverHTTP` (eigene Datenbank): Lena aus dem Service Desk findet „Protokoll
+    anfordern“, Olaf nicht; eingesetzt mit maskiertem Titel und Lenas Namen; Kategorie mit
+    Namen, Auswirkung „Niedrig“, Typ, Link und Nummer; die Störung bleibt unverändert; ein
+    Baustein für Störungen an einer Person ergibt 422; beim Speichern abgelehnt: ein Feld, das
+    der Typ nicht hat, `{{entry}}`, ein nicht installierter Typ, ohne Typ ein Feld keines Typs.
+  - Go `TestRenderHTML`: Maskieren, Link, Verweis mit Titel.
+  - Vitest `Snippets.test.tsx`: Alt+T, Suche, Reihenfolge, Vorschau, Enter fügt nach der Anrede
+    ein, Esc, Fokus zurück im Text, `axe` ohne Befund; ohne Vorgang kein Knopf.
+  - Angepasst: die Tests von SD3, SD5, SD7 und SD10 zählen 36 statt 34 Startdaten von
+    `incident`, ein neuer Mandant 64 statt 62; `coverage_test.go` bekommt ein gültiges Muster
+    für `core.snippet` (Für Typ `probe.probe`), weil das erzeugte Muster einen erfundenen Typ
+    nennt.
+  - Ganze CI am 2026-11-04 im ersten Lauf grün: 19 Schritte, 99 Vitest-Fälle, 18 Tests im Browser,
+    die Lastmessung im Rahmen der Basislinie.
+- **Nicht geprüft und Abweichungen:** Über den Bausteinen der Gruppen steht „Meine Gruppen“, nicht
+  der Name der Gruppe wie im Mockup. Ohne Typ bleibt ein Platzhalter,
+  dessen Feld der Typ des Vorgangs nicht hat, als `{{record.<feld>}}` im Text stehen, sichtbar
+  zum Nachbessern. Aufgaben an der Störung gibt es noch nicht; die Verwendung „Aufgabe“ wirkt,
+  sobald ein Aufgabentyp sein Textfeld mit `snippets: task` markiert. Beim Anlegen eines
+  Vorgangs gibt es keine Bausteine, weil noch kein Datensatz zum Einsetzen da ist. Kein Test im
+  echten Browser (Playwright).
 
 ### SD10 — Mail hinaus, 2026-11-03
 

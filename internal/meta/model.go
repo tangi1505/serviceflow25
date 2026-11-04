@@ -112,6 +112,10 @@ type Field struct {
 	// Format "rich" makes a text field formatted text (UI7, Hauptplan E127): HTML the server
 	// sanitizes on every write; the form shows the editor, lists and exports the plain text.
 	Format string `json:"format,omitempty" yaml:"format"`
+	// Snippets names the use of the text modules the editor of a formatted text field offers
+	// (SD8): "solution" for the solution, "task" for the text of a task; the entries of the
+	// timeline take "answer".
+	Snippets string `json:"snippets,omitempty" yaml:"snippets"`
 	// Formula makes the field calculated (PL22, E99): CEL over the other fields of the type,
 	// computed on every write and stored; the field cannot be written through the API.
 	Formula string `json:"formula,omitempty" yaml:"formula"`

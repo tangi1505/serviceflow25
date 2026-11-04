@@ -79,6 +79,7 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 | Ablauf | Regeln | `internal/rules`, `internal/rules/engine`, `internal/recurrence` | CEL für Bedingungen (E45); die Regeln „wenn, dann“ vor dem Schreiben und als Job danach, nach Zeitplan (gebaut, E111); wiederkehrende Vorgänge (gebaut, E119) | KF7 | WF |
 | Ablauf | Formulare | `internal/forms` | Kerntyp `core.form`, Prüfung des Aufbaus, Absenden mit erstem Eintrag (UI11), Bedingungen und Übersetzung (UI12); Formularziele (was ein Formular anlegt), Zugriff auch anonym mit Captcha, Umfragen als Formular mit Auswertung | KF8, KF15 | UI, SD |
 | Ablauf | Benachrichtigung | `internal/notify` | Einstellungen mit übersetzbaren Vorlagen, Empfänger aus Rollen, Gruppen, Personen und den Verantwortlichen der Gruppen einer Rolle (`actors.<rolle>.responsible`, SD-Plan N10), Bedingung über den Datensatz und die Rollen des Auslösers (`by`, E165), Mail hinaus über SMTP (gebaut, E120); Mail hinein (IMAP), Browser (SD) | KF14 | WF, SD |
+| Ablauf | Textbausteine | `internal/snippets` | Kerntyp `core.snippet`; Prüfung der Platzhalter beim Speichern, Einsetzen mit den Rechten der schreibenden Person über die Platzhalter der Benachrichtigungen, als formatierter Text (gebaut, E166) | — | SD |
 | Erweiterung | Pakete | `internal/packages` | Paketformat, Installation, Aktualisierung, Export | KF16 | EX |
 | Erweiterung | Sandbox | `internal/sandbox` | WASM per `wazero`, Host-Funktionen, Grenzen (§9) | KF6 | EX |
 | Erweiterung | Discovery | `internal/discovery` | Quellen (Proxmox, VMware, Kubernetes, SNMP, LDAP) als Jobs, liefern an `bulk` | KF12 | CM |
@@ -566,7 +567,8 @@ E5, E41, E42:
 web/src/
   app/          Rahmen, Navigation, Anmeldung, Einstellungen
   api/          aus OpenAPI erzeugter Client (keine Hand-Typen)
-  render/       Listen, Formulare, Detailseiten, Zeitleiste aus der wirksamen Definition
+  render/       Listen, Formulare, Detailseiten, Zeitleiste aus der wirksamen Definition;
+                Editor mit Textbausteinen (SD8)
   views/        Kalender, Gantt, Kanban, Graph, Matrix, Karte (KF10)
   editors/      Typ-, Formular-, Workflow- (React Flow 12 + dagre), Rollen- und Dashboard-Editor
   portal/       Oberfläche für Nutzer (eigene Vorgänge seit UI10; Band „Aktuell“ aus

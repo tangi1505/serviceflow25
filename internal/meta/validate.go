@@ -456,6 +456,9 @@ func validateField(add func(string, string, ...any), fw string, f Field, local, 
 	if f.Type != FieldSequence && f.Prefix != "" {
 		add(fw, "prefix only applies to sequence fields")
 	}
+	if f.Snippets != "" && (!rich || !IsIdent(f.Snippets)) {
+		add(fw, "snippets takes a use like solution on formatted text fields")
+	}
 	if f.Type == FieldSequence {
 		if len(f.Prefix) > 20 || strings.ContainsAny(f.Prefix, " \t\n") {
 			add(fw, "prefix must be at most 20 characters without spaces")

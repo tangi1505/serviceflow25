@@ -248,6 +248,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{typeName}/{id}:snippet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A text module filled in against the record (SD8)
+         * @description The text of a text module (core.snippet) with its placeholders filled in, as formatted text for the editor: values escaped, a reference by its title, {{link}} a link, {{actor}} the caller. Text module and record are read with the rights of the caller; nothing is written. 422 for a text module of another type.
+         */
+        post: operations["renderSnippet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records/{typeName}/{id}/transitions": {
         parameters: {
             query?: never;
@@ -1958,6 +1978,17 @@ export interface components {
             };
             /** @description a text kept as an entry at the record in the same write, for a transition with comment required or optional (SD-Plan N8), e.g. the reason of a refused solution */
             comment?: string;
+        };
+        SnippetRequest: {
+            /**
+             * Format: uuid
+             * @description the text module (core.snippet)
+             */
+            snippet: string;
+        };
+        SnippetText: {
+            /** @description formatted text (HTML) with the placeholders filled in */
+            body: string;
         };
         FieldStatesRequest: {
             /**
@@ -3740,6 +3771,36 @@ export interface operations {
             };
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    renderSnippet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnippetRequest"];
+            };
+        };
+        responses: {
+            /** @description the filled-in text */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SnippetText"];
+                };
+            };
+            404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
         };
     };

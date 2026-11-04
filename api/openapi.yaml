@@ -383,6 +383,32 @@ paths:
         "404": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}:snippet:
+    post:
+      operationId: renderSnippet
+      summary: A text module filled in against the record (SD8)
+      description: >-
+        The text of a text module (core.snippet) with its placeholders filled in, as formatted
+        text for the editor: values escaped, a reference by its title, {{link}} a link, {{actor}}
+        the caller. Text module and record are read with the rights of the caller; nothing is
+        written. 422 for a text module of another type.
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SnippetRequest" }
+      responses:
+        "200":
+          description: the filled-in text
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SnippetText" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
   /api/v1/records/{typeName}/{id}/transitions:
     get:
       operationId: recordTransitions
@@ -2704,6 +2730,17 @@ components:
         comment:
           type: string
           description: "a text kept as an entry at the record in the same write, for a transition with comment required or optional (SD-Plan N8), e.g. the reason of a refused solution"
+    SnippetRequest:
+      type: object
+      required: [snippet]
+      additionalProperties: false
+      properties:
+        snippet: { type: string, format: uuid, description: the text module (core.snippet) }
+    SnippetText:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, description: formatted text (HTML) with the placeholders filled in }
     FieldStatesRequest:
       type: object
       properties:

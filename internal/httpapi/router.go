@@ -48,6 +48,7 @@ import (
 	"group24.de/itsm/internal/search"
 	"group24.de/itsm/internal/seclog"
 	"group24.de/itsm/internal/sla"
+	"group24.de/itsm/internal/snippets"
 	"group24.de/itsm/internal/webhooks"
 )
 
@@ -108,6 +109,8 @@ type Options struct {
 	Forms *forms.Service
 	// Portal reads the notices under "Aktuell" (SD5); nil answers 503.
 	Portal *portal.Service
+	// Snippets fills in the text modules (SD8); nil answers 503.
+	Snippets *snippets.Service
 	// Customer keeps the customer layer of the types (PL43); nil answers 503.
 	Customer *customer.Service
 	// Rules keeps the rules "if, then" (WF4); nil answers 503 on /api/v1/rules.
