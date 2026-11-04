@@ -133,18 +133,20 @@ func TestFieldRightsConditionsAndInvalidation(t *testing.T) {
 	r = call(t, user, http.MethodGet, "/api/v1/types", "", nil)
 	var typeList []map[string]any
 	_ = json.Unmarshal([]byte(r.raw), &typeList)
-	// Select lists are readable by everyone (PL16), so only the other types count.
+	// Select lists are readable by everyone (PL16), so only the other types count; so are the
+	// types with readers (SD-Plan N12, such as the article of knowledge, which the coverage
+	// test installs into the same database when it runs before this one).
 	var plain []string
 	for _, ty := range typeList {
-		isList := false
+		_, everyone := ty["readers"]
 		if traits, _ := ty["traits"].([]any); traits != nil {
 			for _, tr := range traits {
 				if tr == "list" {
-					isList = true
+					everyone = true
 				}
 			}
 		}
-		if !isList {
+		if !everyone {
 			plain = append(plain, ty["name"].(string))
 		}
 	}

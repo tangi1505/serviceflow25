@@ -4,8 +4,9 @@
 # An article (SD16a; Inventar G106): a title and formatted text under a category of the tree of
 # the base package sd. Who reads it says "Sichtbar für" (SD-Plan E8): everyone, also in the
 # portal, once it is published, from the article's node of the organisation tree downwards;
-# only agents, whom their roles let read; or only the groups named in the role "Gruppen". The
-# expiry date gets its daily rule with SD16d; until then an agent sets an article expired. Title
+# only agents, whom their roles let read; or only the groups named in the role "Gruppen". From
+# the day after "Gültig bis" it is gone from the portal; a daily rule sets it expired and writes
+# to its author (SD16d, data/ablauf.yaml). Title
 # and text may carry an English translation (SD16c); the form edits the German one, readers see
 # their language where there is one (SD-Plan E10).
 name: article
@@ -44,6 +45,12 @@ fields:
     type: date
     label: {de: Gültig bis, en: Valid until}
 actors:
+  # Who creates the article, unless the form names another (SD16d); gets the reminder before
+  # it expires and the mail when it has.
+  - name: author
+    label: {de: Autor, en: Author}
+    to: [core.person]
+    single: true
   - name: shared
     label: {de: Gruppen, en: Groups}
     to: [core.group]
@@ -57,10 +64,10 @@ transitions:
   - {name: revise, label: {de: Zurück in den Entwurf, en: Back to draft}, from: [published, expired], to: draft}
 # Who reads without a role (SD-Plan E8, N12): a published article for everyone at its node and
 # below, one for some groups their members wherever they are; without groups only agents read
-# it. Agents read by their roles.
+# it. Agents read by their roles. Valid until yesterday it is gone, before the nightly rule.
 readers:
-  - when: record.state == "published" && record.audience == "all"
-  - when: record.state == "published" && record.audience == "groups"
+  - when: record.state == "published" && record.audience == "all" && (record.expires_on == null || record.expires_on >= today())
+  - when: record.state == "published" && record.audience == "groups" && (record.expires_on == null || record.expires_on >= today())
     roles: [shared]
 # The area "Wissen" in the head of the portal (SD16a, variant B of the mockup).
 portal:

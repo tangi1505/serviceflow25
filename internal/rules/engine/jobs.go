@@ -23,6 +23,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 	"github.com/robfig/cron/v3"
 
+	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/jobs"
@@ -395,8 +396,15 @@ func withActor(ctx context.Context, account *uuid.UUID) context.Context {
 }
 
 // person is the person behind the account that made the write; nil for none or the system.
+// Before the write (a rule "before", SD16d) the request itself still says who writes.
 func (e *Engine) person(ctx context.Context) *uuid.UUID {
-	account, _ := ctx.Value(actorKey{}).(*uuid.UUID)
+	account, kept := ctx.Value(actorKey{}).(*uuid.UUID)
+	if !kept {
+		if a := authz.From(ctx); a != nil {
+			return a.PersonID
+		}
+		return nil
+	}
 	if account == nil || e.Rights == nil {
 		return nil
 	}

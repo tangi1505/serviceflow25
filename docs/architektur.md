@@ -553,7 +553,9 @@ E17, E45:
 
 - **CEL zuerst:** Bedingungen, Formeln, Identifikationsregeln und Rechtebedingungen sind
   CEL-Ausdrücke. Sie werden beim Speichern der Definition kompiliert und typgeprüft und laufen im
-  Mikrosekundenbereich.
+  Mikrosekundenbereich. „Jetzt“ heißt `today()` (Datum in Europe/Berlin) und `now()`
+  (Zeitpunkt), mit Abstand `today(14)` oder `now("-24h")`; in SQL setzt der Übersetzer den Wert
+  als Parameter ein (seit SD16d).
 - **WASM für Logik,** die CEL nicht kann, etwa eine Berechnung über mehrere Datensätze oder eine
   Formatumwandlung. Module gehören zu einem Paket und werden beim Laden einmal kompiliert. Jeder
   Aufruf hat eine Speicher- und eine Zeitgrenze.

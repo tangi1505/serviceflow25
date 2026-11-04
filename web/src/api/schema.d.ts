@@ -3055,7 +3055,7 @@ export interface components {
             set?: {
                 [key: string]: unknown;
             };
-            /** @description the holders in to, or with lookup the one a record of another type names (SD7) */
+            /** @description the holders in to, or with lookup the one a record of another type names (SD7); with actor also the person who made the write (SD16d) */
             assign?: {
                 role: string;
                 /** @description the records of type whose field match names what the same field of this record names give their reference field take, e.g. {"type": "sd.responsibility", "match": "category", "take": "group"}; a tree list without a match asks the entry above */
@@ -3071,6 +3071,8 @@ export interface components {
                 }[];
                 /** @description keep the holders the record has */
                 add?: boolean;
+                /** @description also the person who made the write, e.g. the author of an article (SD16d); a write without a person leaves it out */
+                actor?: boolean;
             };
             create?: {
                 type_name: string;

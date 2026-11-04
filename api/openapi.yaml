@@ -3755,7 +3755,7 @@ components:
         assign:
           type: object
           required: [role]
-          description: "the holders in to, or with lookup the one a record of another type names (SD7)"
+          description: "the holders in to, or with lookup the one a record of another type names (SD7); with actor also the person who made the write (SD16d)"
           properties:
             role: { type: string }
             lookup:
@@ -3778,6 +3778,7 @@ components:
                   type: { type: string }
                   id: { type: string, format: uuid }
             add: { type: boolean, description: keep the holders the record has }
+            actor: { type: boolean, description: "also the person who made the write, e.g. the author of an article (SD16d); a write without a person leaves it out" }
         create:
           type: object
           required: [type_name, fields]

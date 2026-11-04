@@ -9,14 +9,19 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"net/http"
 	"os"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"group24.de/itsm/internal/db/dbtest"
+	"group24.de/itsm/internal/records"
+	"group24.de/itsm/internal/rules"
+	"group24.de/itsm/internal/seed"
 )
 
 // The Prüfweg of SD16a (SD-Plan E8, N12): persons without any grant on articles read the
@@ -141,5 +146,133 @@ func TestKnowledgeOverHTTP(t *testing.T) {
 	}
 	if got := slices.Sorted(maps.Keys(found)); !slices.Equal(got, []string{"Für alle", "Gruppe Netz"}) {
 		t.Fatalf("Süd finds %v", got)
+	}
+}
+
+// The Prüfweg of SD16d (SD-Plan E11): who creates an article becomes its author, unless the
+// request names one; valid until yesterday it is gone from the portal at once; the daily rule
+// sets it expired and the author gets a mail, 14 days before a reminder.
+func TestKnowledgeLifecycleOverHTTP(t *testing.T) {
+	base := os.Getenv("ITSM_TEST_DATABASE_URL")
+	if base == "" {
+		t.Skip("ITSM_TEST_DATABASE_URL not set")
+	}
+	t.Setenv("ITSM_TEST_DATABASE_URL", dbtest.Isolated(t, base, "itsmtest_api_sd16d"))
+	admin := apiServer(t)
+	ctx := t.Context()
+	starter := seed.New(admin.rt, records.New(admin.rt), admin.rules)
+	for _, c := range []struct {
+		dir  string
+		want int
+	}{{"../../packages/sd", 28}, {"../../packages/knowledge", 4}} {
+		p := installPackage(t, ctx, admin.rt, c.dir)
+		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
+			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
+		}
+	}
+	const arts = "/api/v1/records/knowledge.article"
+	for _, role := range []string{"sd16d_author", "sd16d_user"} {
+		if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "SD16d"}}`, nil); r.code != 201 {
+			t.Fatalf("role: %d %s", r.code, r.raw)
+		}
+	}
+	if r := call(t, admin, http.MethodPut, "/api/v1/roles/sd16d_author/permissions", `{"type_name": "knowledge.article", "action": "*", "scope": "all"}`, nil); r.code != 204 {
+		t.Fatalf("permission: %d %s", r.code, r.raw)
+	}
+	author := timelineLogin(t, admin, "apitest_sd16d_author", "sd16d_author", `{"last_name": "Autorin", "email": "autorin16d@example.org", "language": "de"}`)
+	reader := timelineLogin(t, admin, "apitest_sd16d_user", "sd16d_user", `{"last_name": "Leser"}`)
+	authorOf := func(rec map[string]any) string {
+		hs, _ := rec["actors"].(map[string]any)["author"].([]any)
+		if len(hs) != 1 {
+			return fmt.Sprint(hs)
+		}
+		return fmt.Sprint(hs[0].(map[string]any)["id"])
+	}
+	article := func(api *testAPI, title, expires, extra string) string {
+		t.Helper()
+		body := `{"title": "` + title + `", "body": "<p>` + title + `</p>", "audience": "all"`
+		if expires != "" {
+			body += `, "expires_on": "` + expires + `"`
+		}
+		r := call(t, api, http.MethodPost, arts, body+extra+`}`, nil)
+		if r.code != 201 {
+			t.Fatalf("article %s: %d %s", title, r.code, r.raw)
+		}
+		id := r.body["id"].(string)
+		if r := call(t, api, http.MethodPost, arts+"/"+id+":transition", `{"transition": "publish"}`, nil); r.code != 200 {
+			t.Fatalf("publish %s: %d %s", title, r.code, r.raw)
+		}
+		return id
+	}
+
+	// The author is who creates it; a request that names one keeps it.
+	yesterday := article(author.api, "Gestern", rules.Today(-1), "")
+	soon := article(author.api, "In 14 Tagen", rules.Today(14), "")
+	article(author.api, "Ohne Datum", "", "")
+	named := article(admin, "Benannt", "", `, "actors": {"author": [{"type": "core.person", "id": "`+reader.person+`"}]}`)
+	if got := authorOf(call(t, admin, http.MethodGet, arts+"/"+yesterday, "", nil).body); got != author.person {
+		t.Fatalf("the author of the article is %s, want %s", got, author.person)
+	}
+	if got := authorOf(call(t, admin, http.MethodGet, arts+"/"+named, "", nil).body); got != reader.person {
+		t.Fatalf("the author named by the request is %s, want %s", got, reader.person)
+	}
+
+	// Only a role a person may hold takes the one who writes.
+	if r := call(t, admin, http.MethodPut, "/api/v1/rules/sd16d_groups", `{"type_name": "knowledge.article", "trigger": "create", "mode": "before",
+		"actions": [{"assign": {"role": "shared", "actor": true}}]}`, nil); r.code != 422 || !strings.Contains(r.raw, "a person may hold") {
+		t.Fatalf("actor in a role of groups: %d %s", r.code, r.raw)
+	}
+
+	// Valid until yesterday: gone for readers before any rule ran, in the list and one by one.
+	titles := func() []string {
+		t.Helper()
+		r := call(t, reader.api, http.MethodGet, arts+"?limit=50", "", nil)
+		var out []string
+		for _, it := range r.body["items"].([]any) {
+			out = append(out, it.(map[string]any)["title"].(string))
+		}
+		slices.Sort(out)
+		return out
+	}
+	if got := titles(); !slices.Equal(got, []string{"Benannt", "In 14 Tagen", "Ohne Datum"}) {
+		t.Fatalf("the reader reads %v", got)
+	}
+	if r := call(t, reader.api, http.MethodGet, arts+"/"+yesterday, "", nil); r.code != 404 {
+		t.Fatalf("the reader reads the expired article: %d %s", r.code, r.raw)
+	}
+
+	// The daily rules: the one of yesterday expires, the author hears of it and of the one
+	// that expires in 14 days.
+	if _, err := admin.rules.RunSchedules(ctx, time.Now().Add(25*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if r := call(t, admin, http.MethodGet, arts+"/"+yesterday, "", nil); r.body["state"] != "expired" {
+		t.Fatalf("after the daily rule: %v", r.body["state"])
+	}
+	if r := call(t, admin, http.MethodGet, arts+"/"+soon, "", nil); r.body["state"] != "published" {
+		t.Fatalf("the article valid for 14 days: %v", r.body["state"])
+	}
+	mail := func(subject, body string) bool {
+		for _, m := range admin.smtp.Mail() {
+			if slices.Contains(m.To, "autorin16d@example.org") && strings.Contains(m.Subject, subject) && strings.Contains(m.Body, body) {
+				return true
+			}
+		}
+		return false
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	for !mail("Ihr Artikel ist abgelaufen: Gestern", "nicht mehr zu sehen") || !mail("In 14 Tagen", "läuft in 14 Tagen ab") {
+		for _, d := range admin.rt.Databases() {
+			if err := admin.ruleEvents.Dispatch(d.Bind(ctx)); err != nil {
+				t.Fatal(err)
+			}
+			if err := admin.notifyEvents.Dispatch(d.Bind(ctx)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the mails to the author: %v", admin.smtp.Mail())
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
 }

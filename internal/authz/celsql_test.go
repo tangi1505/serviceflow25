@@ -11,6 +11,9 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
+
+	"group24.de/itsm/internal/rules"
 )
 
 func TestTranslate(t *testing.T) {
@@ -45,6 +48,33 @@ func TestTranslate(t *testing.T) {
 	sql, args, err := Translate(`record.state == "open"`, []any{"x", "y"})
 	if err != nil || sql != `"state" = $3` || len(args) != 3 {
 		t.Fatalf("offset: %s %v %v", sql, args, err)
+	}
+}
+
+// SD16d: today() and now() are taken when the condition is translated, as parameters.
+func TestTranslateTodayAndNow(t *testing.T) {
+	rules.Clock = func() time.Time { return time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { rules.Clock = time.Now })
+	for _, c := range []struct {
+		cel  string
+		sql  string
+		args []any
+	}{
+		{`record.expires_on < today()`, `"expires_on" < $1`, []any{"2026-11-04"}},
+		{`today(14) == record.expires_on`, `"expires_on" = $1`, []any{"2026-11-18"}},
+		{`record.expires_on == null || record.expires_on >= today(-1)`, `("expires_on" IS NULL OR "expires_on" >= $1)`, []any{"2026-11-03"}},
+		{`record.updated_at < now("-24h")`, `"updated_at" < $1`, []any{"2026-11-03T10:00:00Z"}},
+		{`record.updated_at <= now()`, `"updated_at" <= $1`, []any{"2026-11-04T10:00:00Z"}},
+	} {
+		sql, args, err := Translate(c.cel, nil)
+		if err != nil || sql != c.sql || !reflect.DeepEqual(args, c.args) {
+			t.Errorf("%q: %s %#v %v, want %s %#v", c.cel, sql, args, err, c.sql, c.args)
+		}
+	}
+	for _, cel := range []string{`record.updated_at < now("gestern")`, `record.a < today(record.n)`, `record.a < today() + "x"`} {
+		if _, _, err := Translate(cel, nil); err == nil {
+			t.Errorf("%q should be refused", cel)
+		}
 	}
 }
 

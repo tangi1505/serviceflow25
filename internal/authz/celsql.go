@@ -23,7 +23,9 @@ import (
 // Conditions of permissions are CEL over `record` (PL9; architektur.md §5) and must translate
 // to SQL, because lists filter in the database. The subset: comparisons of a field with a
 // literal (==, !=, <, <=, >, >=), `in` with a list of literals, `&&`, `||`, `!`, parentheses,
-// `null`. Anything else is refused when the permission is saved.
+// `null`; in place of a literal also today() and now() with a literal offset (SD16d), whose
+// value is taken when the condition is translated. Anything else is refused when the permission
+// is saved.
 
 var identRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
@@ -175,8 +177,11 @@ func column(e ast.Expr) (string, bool) {
 	return pgx.Identifier{sel.FieldName()}.Sanitize(), true
 }
 
-// literal returns the Go value of a CEL literal; isNull for null.
+// literal returns the Go value of a CEL literal, or of today() and now(); isNull for null.
 func literal(e ast.Expr) (any, bool, error) {
+	if e.Kind() == ast.CallKind {
+		return clock(e.AsCall())
+	}
 	if e.Kind() != ast.LiteralKind {
 		return nil, false, fmt.Errorf("the other side must be a literal value, not %v", kindName(e))
 	}
@@ -196,6 +201,30 @@ func literal(e ast.Expr) (any, bool, error) {
 		return bool(v.(types.Bool)), false, nil
 	}
 	return nil, false, fmt.Errorf("literal of type %s is not allowed", v.Type().TypeName())
+}
+
+// clock gives today() and now() at the moment of the translation, the same text the record
+// has for dates and moments.
+func clock(c ast.CallExpr) (any, bool, error) {
+	args := c.Args()
+	if len(args) > 1 || (c.FunctionName() != "today" && c.FunctionName() != "now") {
+		return nil, false, fmt.Errorf("function %s is not allowed", c.FunctionName())
+	}
+	var offset any
+	if len(args) == 1 {
+		v, isNull, err := literal(args[0])
+		if err != nil || isNull {
+			return nil, false, fmt.Errorf("%s takes a literal offset", c.FunctionName())
+		}
+		offset = v
+	}
+	if c.FunctionName() == "today" {
+		n, _ := offset.(int64)
+		return rules.Today(int(n)), false, nil
+	}
+	d, _ := offset.(string)
+	v, err := rules.Now(d)
+	return v, false, err
 }
 
 func kindName(e ast.Expr) string {

@@ -135,11 +135,14 @@ type Related struct {
 }
 
 // Assign names a role and its holders; Add keeps the holders the record has. Lookup finds the
-// holder in a record of another type instead (SD7). Nothing found leaves the role as it is.
+// holder in a record of another type instead (SD7). Actor adds the person who made the write
+// (SD16d: the author of an article is who creates it). Nothing found leaves the role as it is,
+// also a write without a person.
 type Assign struct {
 	Role   string  `json:"role"`
 	To     []Ref   `json:"to,omitempty"`
 	Add    bool    `json:"add,omitempty"`
+	Actor  bool    `json:"actor,omitempty"`
 	Lookup *Lookup `json:"lookup,omitempty"`
 }
 
@@ -493,6 +496,15 @@ func (e *Engine) changes(ctx context.Context, r Rule, rec map[string]any) (map[s
 			}
 			to = []Ref{*ref}
 		}
+		if a.Assign.Actor {
+			p := e.person(ctx)
+			if p == nil && len(to) == 0 {
+				continue
+			}
+			if p != nil {
+				to = append(slices.Clip(to), Ref{Type: "core.person", ID: *p})
+			}
+		}
 		var holders []any
 		if a.Assign.Add {
 			if prev, ok := roles[a.Assign.Role].([]any); ok {
@@ -559,6 +571,12 @@ func (e *Engine) lookup(ctx context.Context, rec map[string]any, l *Lookup) (*Re
 		value, err = uuid.Parse(fmt.Sprint(entry["parent"]))
 	}
 	return nil, nil
+}
+
+// personRole reports whether a person may hold the role, for Assign.Actor.
+func personRole(t meta.Type, name string) bool {
+	role, ok := t.Actor(name)
+	return ok && role.Allows("core.person")
 }
 
 // checkLookup checks an Assign.Lookup: the type is installed, the match is a reference field
@@ -853,6 +871,8 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 			if err := e.rec.CheckValues(ctx, r.TypeName, a.Set, false); err != nil {
 				add(where, "invalid", "%v", err)
 			}
+		case a.Assign != nil && a.Assign.Actor && !personRole(t, a.Assign.Role):
+			add(where, "invalid", "actor: %q is no role of %s that a person may hold", a.Assign.Role, r.TypeName)
 		case a.Assign != nil && a.Assign.Lookup != nil:
 			if len(a.Assign.To) > 0 {
 				add(where, "type", "assign takes either to or lookup")

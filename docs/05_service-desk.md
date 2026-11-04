@@ -58,7 +58,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD16a** | Wissen, Artikel im Portal: Paket `knowledge` mit Artikel (Titel, formatierter Text, Kategorie der Störung, „Sichtbar für“ in drei Stufen mit der Rolle „Gruppen“, Status Entwurf, Veröffentlicht, Abgelaufen); Leser-Regeln im Kern (N12); Bereich „Wissen“ im Kopf des Portals mit Kategorienbaum, Suche und Artikelseite (E8, Variante B des Mockups); dazu der Befund des Klicktests: Verweise zeigen im Portal und in der Zeitleiste den Namen statt der Kennung (Inventar G106; IP4) | 🟢 | 2 d | Ein veröffentlichter Artikel „Alle, auch im Portal“ → ein Portal-Nutzer sieht ihn unter „Wissen“, einen Entwurf und einen „Nur Bearbeiter“ nicht; einer für eine Gruppe → nur ihre Mitglieder; im Portal zeigt eine Störung ihre Kategorie mit Namen; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) als Reiter „Fassungen“ auf der Detailseite, zwei Fassungen nebeneinander mit markierten Wörtern, eine ältere wiederherstellen; für jeden Typ mit Verlauf (E8, E9; IP4) | 🟢 | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16c** | Wissen, Sprache: Inhalte in der Sprache der Person zeigen (Listen, Namen, Suche, Portal), Titel und Text des Artikels übersetzbar; das Formular bleibt auf Deutsch, eine Version; automatische Übersetzung später (E10; PL21; IP4) | 🟢 | 1 d | Ein Artikel mit englischem Titel → wer Englisch eingestellt hat, sieht ihn englisch, sonst deutsch; das Formular zeigt immer den deutschen Titel; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD16d** | Wissen, Ablauf: Rolle „Autor“; eine tägliche Regel setzt Artikel nach „Gültig bis“ auf Abgelaufen und schreibt dem Autor; dafür kennen Zeitregeln und Bedingungen der Rechte „jetzt“ (E8; IP4) | ⬜ | 1 d | Artikel mit „Gültig bis“ gestern → nach dem Lauf der Regel abgelaufen und aus dem Portal verschwunden, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD16d** | Wissen, Ablauf: Rolle „Autor“, die beim Anlegen die anlegende Person bekommt; ab dem Tag nach „Gültig bis“ ist der Artikel im Portal weg, eine tägliche Regel setzt ihn auf Abgelaufen und schreibt dem Autor, 14 Tage vorher erinnert sie ihn; dafür kennen Bedingungen `today()` und `now()` mit Abstand (E8, E11; IP4) | 🟢 | 1 d | Artikel mit „Gültig bis“ gestern → sofort aus dem Portal verschwunden, nach dem Lauf der Regel abgelaufen, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16b | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🔒 SD16a | 2 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag; „hat geholfen“ zählt; Artikel an eine Störung verknüpfen → steht in den Bezügen; `docker compose run --rm tools scripts/ci.sh` grün |
 
@@ -96,6 +96,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E8** | Wissen (SD16, deine Entscheidungen 2026-11-04 nach dem Mockup „Wissen im Portal“, [Artifact](https://claude.ai/artifact/At2t1hm51eJPvdGF1m9jGz), und dem Klicktest im Browser; Hauptplan E168): **Vier Teile** SD16a bis SD16d statt einer Aufgabe mit 2 d. **Sichtbarkeit wie bei Auswahllisten:** ein Typ bringt Leser-Regeln mit (`readers`), nach denen angemeldete Personen ohne eigenes Recht lesen (Kern-Bedarf N12). „Sichtbar für“ hat drei Stufen: „Alle, auch im Portal“ liest jeder an seinem Knoten des Artikels und darunter, sobald er veröffentlicht ist; „Nur bestimmte Gruppen“ lesen die Mitglieder der Gruppen in der Rolle „Gruppen“, wo sie auch sind; „Nur Bearbeiter“ lesen die, denen ihre Rollen es erlauben. **Status** Entwurf, Veröffentlicht, Abgelaufen; „Gültig bis“ bekommt in SD16d eine tägliche Regel. **Kategorien** sind die der Störung (`sd.category`). **Portal** nach Variante B: „Wissen“ als eigener Bereich im Kopf neben „Meine Vorgänge“, mit Kategorienbaum, Suche und Artikelseite; die Startseite bleibt: eine Karte je Vorgangsart, danach „Formulare“, auf dem Handy untereinander. **Befund des Klicktests:** Verweise zeigen im Portal und in der Zeitleiste den Namen, behoben in SD16a. Verworfen: eine Aufgabe; ein Recht je Artikel; eigene Kategorien des Wissens; Karte „Wissen“ auf der Startseite (Variante A); „Formulare“ immer an zweiter Stelle; der Befund als eigene Aufgabe | 2026-11-04 | Pascal |
 | **E9** | Fassungen (SD16b, deine Entscheidungen 2026-11-04 nach dem Mockup „Fassungen vergleichen“, [Artifact](https://claude.ai/artifact/Nqgtdo42n6L56GMeQNxc1G), Hauptplan E169): **Variante A**, ein Reiter „Fassungen“ zwischen „Bezüge“ und „Zeitleiste“: links die Fassungen (wann, wer, was), zwei angeklickt, rechts nur die Felder, die sich unterscheiden. **Wörter** eines Textes markiert ein eigener kleiner Vergleich im Browser, ohne neue Bibliothek: gestrichen, was nur die ältere hat, unterstrichen, was neu ist. **Jeder Typ mit Verlauf** bekommt den Reiter, im Portal keiner. Wiederherstellen erst nach einer Rückfrage auf der Seite. Verworfen: eigene Seite mit dem ganzen Datensatz zweimal (Variante B); die Bibliothek „diff“; nur alter und neuer Text; nur am Artikel | 2026-11-04 | Pascal |
 | **E10** | Sprache der Inhalte (SD16c, deine Entscheidungen 2026-11-04 nach dem Mockup „Übersetzungen im Formular“, [Artifact](https://claude.ai/artifact/C8r9bReahYm2tT2DgmNGik), Hauptplan E171): **Eine Version:** kein Editor für Englisch im Formular; wo eine Übersetzung nötig wird, soll sie später automatisch entstehen, mit einem Übersetzer im eigenen Rechenzentrum (VS-NfD, kein Cloud-Dienst) als eigene Aufgabe, nachdem die Fachseite gesagt hat, ob Englisch gebraucht wird (Hauptplan V40). **Anzeige** in der Sprache der Person in Listen, Namen, Suche und Portal, sonst Deutsch; das Formular liest und schreibt Deutsch. **Übersetzbar** sind am Artikel Titel und Text. Verworfen: Umschalter „Deutsch | Englisch“ am Formular (Variante A); Englisch je Feld (Variante B); Anzeige nur im Portal; nur der Text übersetzbar; Automatik jetzt | 2026-11-04 | Pascal |
+| **E11** | Ablauf des Wissens (SD16d, deine Entscheidungen 2026-11-04, Hauptplan E172): **„Jetzt“ in Bedingungen** als `today()` (Datum in Europe/Berlin) und `now()` (Zeitpunkt), mit Abstand `today(14)`, `today(-30)`, `now("-24h")`; gleich in SQL (Listen, Leser-Regeln, Rechte, Regeln nach Zeitplan) und im Speicher. **Autor** ist eine Rolle am Artikel (eine Person); eine mitgelieferte Regel trägt beim Anlegen die anlegende Person ein, wenn das Formular keinen nennt; dafür kann „Rolle zuweisen“ auch die Person, die schreibt (`actor`). **Mails** an den Autor 14 Tage vor „Gültig bis“ und beim Ablauf, als Startdaten. **Portal:** ab dem Tag nach „Gültig bis“ ist der Artikel weg, über die Leser-Regel, auch bevor die nächtliche Regel ihn auf Abgelaufen setzt. Verworfen: nur `today()` und `now()` ohne Abstand; `"@now"` wie in Abfragen; Autor nur von Hand; Mail an den Ersteller (Systemfeld); nur eine Mail beim Ablauf; Portal erst nach der Regel | 2026-11-04 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -200,6 +201,45 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD16d — Wissen, Ablauf, 2026-11-04
+
+- **Grundlage:** IP4; Hauptplan E172; SD-Plan E8, E11; deine Entscheidungen vom 2026-11-04:
+  `today()` und `now()` mit Abstand, Autor ist wer anlegt und änderbar, Mails 14 Tage vorher
+  und beim Ablauf, im Portal sofort am Tag danach weg.
+- **Gebaut:**
+  - Kern: `internal/rules/now.go` mit `today()`, `today(n)`, `now()`, `now("-24h")` in den
+    Bedingungen über einen Datensatz (Übergänge, Feldzustände, Leser-Regeln, Rechte, Regeln,
+    Benachrichtigungen; nicht in den Anmelderegeln). Sie geben Text in der Form, die der
+    Datensatz für Datum und Zeitpunkt hat; der Übersetzer nach SQL (`authz.Translate`) setzt
+    den Wert beim Übersetzen als Parameter ein. Das Datum gilt in Europe/Berlin.
+  - Regel-Engine: „Rolle zuweisen“ nimmt mit `actor: true` die Person, die schreibt, dazu;
+    vor dem Schreiben aus der Anfrage, danach aus dem Ereignis; ohne Person niemanden. Die
+    Rolle muss eine Person halten dürfen, sonst 422.
+  - Paket `knowledge` 0.3.0: Rolle „Autor“ (eine Person); die Leser-Regeln prüfen „Gültig bis“
+    gegen `today()`; Startdaten `data/ablauf.yaml`: Regel „Autor ist, wer anlegt“ (vor dem
+    Anlegen, nur ohne Autor), „Erinnerung 14 Tage vor Ablauf“ (täglich 7:00), „Abgelaufene
+    Artikel“ (täglich 0:15) und die Mail „Artikel abgelaufen“ an den Autor.
+- **Belegt:**
+  - Go `TestKnowledgeLifecycleOverHTTP`: die Autorin legt an und ist Autorin; ein Autor in der
+    Anfrage bleibt; „Gestern“ ist für den Leser sofort weg, in der Liste und einzeln; nach den
+    Regeln ist er abgelaufen, „In 14 Tagen“ noch veröffentlicht; die Autorin bekommt beide
+    Mails.
+  - Go `TestTodayAndNow` (Datum in Berlin kurz vor Mitternacht UTC, Abstände, falsche Dauer
+    als Fehler) und `TestTranslateTodayAndNow` (Parameter in SQL, Abstand nur als feste Zahl).
+  - Ganze CI am 2026-11-04, drei Läufe. Im ersten war ein alter Test rot:
+    `TestFieldRightsConditionsAndInvalidation` erwartete außer Auswahllisten nur „probe“ als
+    lesbaren Typ; der Abdeckungstest installiert aber alle Pakete in dieselbe Datenbank, und
+    seit SD16a ist der Artikel über seine Leser-Regeln für jeden lesbar. Bisher liefen beide
+    Tests zufällig in verschiedenen Teilen; der neue Test hat die Aufteilung verschoben. Der
+    alte Test zählt Typen mit Leser-Regeln jetzt wie Auswahllisten nicht mit. Im zweiten und
+    dritten Lauf waren alle Go-Pakete, Vitest (109 Fälle) und die Browser-Tests (18) grün; rot
+    war nur das Lasttor, im zweiten LZ1, LZ3 und LZ4, im dritten nur noch LZ1 mit +11 % gegen
+    die Basislinie (3,64 ms statt 3,29 ms; im ersten Lauf +7 %). Offen, siehe Hauptplan „Jetzt“.
+- **Nicht geprüft:** Die Uhrzeit der Regeln nicht im echten Takt (der Test ruft die Regeln
+  nach Zeitplan direkt auf). Fällt der Server an einem Morgen ganz aus, holt er die Erinnerung
+  am selben Tag nach, an einem späteren nicht. Eine Regel-Oberfläche gibt es weiter nicht; die
+  Regeln ändert ein Mandant über die Schnittstelle.
 
 ### SD16c — Wissen, Sprache der Inhalte, 2026-11-04
 

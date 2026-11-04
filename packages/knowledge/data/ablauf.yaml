@@ -1,0 +1,50 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The lifecycle of an article (SD16d; SD-Plan E11) as start data each tenant changes: who
+# creates an article becomes its author; 14 days before "Gültig bis" the author gets a
+# reminder to check it; the day after, the daily rule sets it expired and the author gets a
+# mail. The portal hides it from that day on by itself (the readers in article.yaml).
+
+# The author is who creates the article, unless the form names one.
+- key: author
+  rule:
+    label: {de: Autor ist, wer anlegt, en: The author is who creates it}
+    type_name: knowledge.article
+    trigger: create
+    mode: before
+    condition: '!has(record.actors) || !has(record.actors.author) || size(record.actors.author) == 0'
+    actions:
+      - assign: {role: author, actor: true}
+# Every morning: a reminder to the author 14 days before the article expires.
+- key: remind
+  rule:
+    label: {de: Erinnerung 14 Tage vor Ablauf, en: Reminder 14 days before expiry}
+    type_name: knowledge.article
+    trigger: time
+    mode: after
+    schedule: CRON_TZ=Europe/Berlin 0 7 * * *
+    condition: record.state == "published" && record.expires_on == today(14)
+    actions:
+      - notify: {to: [actors.author], message: "Ihr Artikel läuft in 14 Tagen ab. Bitte prüfen Sie ihn und verlängern Sie „Gültig bis“, wenn er weiter gilt."}
+# Every night: what was valid until yesterday expires.
+- key: expire
+  rule:
+    label: {de: Abgelaufene Artikel, en: Expired articles}
+    type_name: knowledge.article
+    trigger: time
+    mode: after
+    schedule: CRON_TZ=Europe/Berlin 15 0 * * *
+    condition: record.state == "published" && record.expires_on < today()
+    actions:
+      - transition: {name: expire}
+- key: expired_mail
+  type: core.notification
+  values:
+    name: Artikel abgelaufen
+    target_type: knowledge.article
+    events: transition
+    condition: record.state == "expired"
+    recipients: actors.author
+    subject: "Ihr Artikel ist abgelaufen: {{title}}"
+    body: "Ihr Artikel „{{title}}“ ist abgelaufen und im Portal nicht mehr zu sehen. Gilt er weiter, setzen Sie „Gültig bis“ neu und veröffentlichen ihn wieder: {{link}}"

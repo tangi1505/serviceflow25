@@ -481,6 +481,10 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Verteiler arbeitet jedes Ereignis einzeln ab (Valkey-Publish, Webhooks mit eigener Abfrage,
   Regeln); ob er schneller werden muss, ist eine Frage an dich. **Entschieden am 2026-10-28:**
   PL41 im Kern-Plan, gebaut vor WF8 (Hauptplan E112).
+- **Nachtrag SD16d (2026-11-04, Hauptplan E172):** Bedingungen kennen `today()` und `now()` mit
+  Abstand, auch die von Regeln nach Zeitplan in SQL; „Rolle zuweisen“ nimmt mit `actor: true`
+  die Person, die schreibt, dazu (vor dem Schreiben aus der Anfrage). Belegt im SD-Plan, §4
+  SD16d.
 
 ### WF2 — Feldzustände je Status und Formularvariante, 2026-10-28
 

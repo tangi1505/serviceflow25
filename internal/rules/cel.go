@@ -7,7 +7,8 @@
 
 // Package rules evaluates CEL expressions (Hauptplan E16) over a record: the conditions of
 // transitions (WF1), later of rules (WF4) and field states (WF2). An expression sees the
-// record as the map `record` with its fields and system fields, and must yield true or false.
+// record as the map `record` with its fields and system fields, and must yield true or false;
+// today() and now() give the date and the moment (SD16d, now.go).
 package rules
 
 import (
@@ -19,15 +20,15 @@ import (
 )
 
 var (
-	env       = mustEnv("record")
+	env       = mustEnv("record", timeFunctions...)
 	claimsEnv = mustEnv("claims")
 	// ruleEnv is the one of the rules (WF4): the record and the names of the fields a write
 	// changes (changed; empty for a rule on a schedule).
 	ruleEnv = func() *cel.Env {
-		e, err := cel.NewEnv(
+		e, err := cel.NewEnv(append([]cel.EnvOption{
 			cel.Variable("record", cel.MapType(cel.StringType, cel.DynType)),
 			cel.Variable("changed", cel.ListType(cel.StringType)),
-		)
+		}, timeFunctions...)...)
 		if err != nil {
 			panic(err)
 		}
@@ -37,10 +38,10 @@ var (
 	// the one who caused the event holds (by), e.g. `"requester" in by` for an answer of the
 	// requester.
 	notifyEnv = func() *cel.Env {
-		e, err := cel.NewEnv(
+		e, err := cel.NewEnv(append([]cel.EnvOption{
 			cel.Variable("record", cel.MapType(cel.StringType, cel.DynType)),
 			cel.Variable("by", cel.ListType(cel.StringType)),
-		)
+		}, timeFunctions...)...)
 		if err != nil {
 			panic(err)
 		}
@@ -48,10 +49,10 @@ var (
 	}()
 )
 
-func mustEnv(variable string) *cel.Env {
-	e, err := cel.NewEnv(
+func mustEnv(variable string, opts ...cel.EnvOption) *cel.Env {
+	e, err := cel.NewEnv(append([]cel.EnvOption{
 		cel.Variable(variable, cel.MapType(cel.StringType, cel.DynType)),
-	)
+	}, opts...)...)
 	if err != nil {
 		panic(err)
 	}
