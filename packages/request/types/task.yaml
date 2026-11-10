@@ -1,0 +1,43 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A task of the fulfilment of a request (SD6; Inventar G41; WF13): made from the lines of the
+# request's template, or by hand; the request counts its open tasks.
+name: task
+label: {de: Erfüllungsaufgabe, en: Fulfilment task}
+title_field: title
+traits: [history, actors]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: request
+    type: reference
+    label: {de: Anfrage, en: Request}
+    to: request.request
+    required: true
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    format: rich
+    snippets: task
+  - name: position
+    type: number
+    label: {de: Reihenfolge, en: Order}
+    default: 100
+  - name: due_at
+    type: datetime
+    label: {de: Fällig am, en: Due at}
+states:
+  - {name: open, label: {de: Offen, en: Open}, initial: true, category: open}
+  - {name: done, label: {de: Erledigt, en: Done}, category: done}
+transitions:
+  - {name: finish, label: {de: Erledigen, en: Finish}, from: [open], to: done}
+  - {name: reopen, label: {de: Wieder öffnen, en: Reopen}, from: [done], to: open}
+actors:
+  - name: assignee
+    label: {de: Bearbeiter, en: Assignee}
+    to: [core.person, core.group]

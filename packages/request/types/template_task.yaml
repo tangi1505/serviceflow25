@@ -1,0 +1,34 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A task line of a template (SD6): once a request goes "In Erfüllung", the rule of the start data
+# makes one fulfilment task per line, in their order, for the group of the line.
+name: template_task
+label: {de: Aufgabe der Vorlage, en: Task of a template}
+title_field: title
+traits: [history]
+fields:
+  - name: template
+    type: reference
+    label: {de: Erfüllungsvorlage, en: Fulfilment template}
+    to: request.template
+    required: true
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    format: rich
+    snippets: task
+  - name: group
+    type: reference
+    label: {de: Gruppe, en: Group}
+    to: core.group
+  - name: position
+    type: number
+    label: {de: Reihenfolge, en: Order}
+    default: 100

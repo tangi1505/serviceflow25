@@ -110,6 +110,8 @@ type Action struct {
 	Transition *Move `json:"transition,omitempty"`
 	// Related moves the records linked to this one (after the write only; SD5).
 	Related *Related `json:"related,omitempty"`
+	// Approval asks for approval with the stages of a template (after the write only; SD6).
+	Approval *ApprovalAction `json:"approval,omitempty"`
 }
 
 // Move is a transition a rule makes, with the fields it sets on the way (WF2) and the text a
@@ -172,6 +174,9 @@ type Ref struct {
 type Create struct {
 	TypeName string         `json:"type_name"`
 	Fields   map[string]any `json:"fields"`
+	// Each makes one record per line of a template (SD6): "@item.<field>" stands for a value
+	// of the line.
+	Each *Each `json:"each,omitempty"`
 }
 
 // The placeholders of a created record.
@@ -851,12 +856,15 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 		if a.Related != nil {
 			n++
 		}
+		if a.Approval != nil {
+			n++
+		}
 		if n != 1 {
-			add(where, "type", "an action is exactly one of set, assign, create, notify, transition or related")
+			add(where, "type", "an action is exactly one of set, assign, create, notify, transition, related or approval")
 			continue
 		}
-		if r.Mode == ModeBefore && (a.Create != nil || a.Notify != nil || a.Transition != nil || a.Related != nil) {
-			add(where, "type", "before the write a rule can only set and assign; create, notify, transition and related run after")
+		if r.Mode == ModeBefore && (a.Create != nil || a.Notify != nil || a.Transition != nil || a.Related != nil || a.Approval != nil) {
+			add(where, "type", "before the write a rule can only set and assign; create, notify, transition, related and approval run after")
 		}
 		if err != nil {
 			continue
@@ -891,6 +899,10 @@ func (e *Engine) check(ctx context.Context, r *Rule) error {
 		case a.Create != nil:
 			if msg := e.checkCreate(ctx, r.TypeName, a.Create); msg != "" {
 				add(where, "invalid", "%s", msg)
+			}
+		case a.Approval != nil:
+			if msg := e.checkApproval(ctx, r.TypeName, a.Approval); msg != "" {
+				add(where, "invalid", "approval: %s", msg)
 			}
 		case a.Transition != nil:
 			if _, ok := t.Transition(a.Transition.Name); !ok {
@@ -1030,9 +1042,19 @@ func (e *Engine) checkCreate(ctx context.Context, typeName string, c *Create) st
 	if err != nil {
 		return err.Error()
 	}
+	if c.Each != nil {
+		if _, msg := e.checkEach(ctx, typeName, *c.Each); msg != "" {
+			return msg
+		}
+	}
 	values := map[string]any{}
 	bound := map[string]bool{}
 	for k, v := range c.Fields {
+		if c.Each != nil && isItemPlace(v) {
+			// Filled per line (SD6): the line gives it, or it stays out.
+			bound[k] = true
+			continue
+		}
 		if v != placeRecord {
 			values[k] = v
 			continue
@@ -1052,6 +1074,9 @@ func (e *Engine) checkCreate(ctx context.Context, typeName string, c *Create) st
 			}
 		}
 		values["actors"] = bindActors(roles, nil)
+		if c.Each != nil {
+			values["actors"] = bindItemActors(values["actors"], records.Record{})
+		}
 	}
 	err = e.rec.CheckValues(ctx, c.TypeName, values, true)
 	verr, ok := records.AsValidationError(err)

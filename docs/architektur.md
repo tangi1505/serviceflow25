@@ -528,7 +528,10 @@ E8, KF3 bis KF5, KF7:
   Zeitplan oder als Eskalationsstufe einer SLA-Uhr (Auslöser `clock`, E115, nach Anteil oder
   Minuten); Aktionen setzen, zuweisen (auch nachgeschlagen in einem anderen Typ, `lookup`,
   E164), anlegen, benachrichtigen, Übergang (E116), Übergang an den verknüpften Datensätzen
-  einer Beziehungsart (`related`, E163); Systemrechte, die Regel steht im Verlauf.
+  einer Beziehungsart (`related`, E163); Systemrechte, die Regel steht im Verlauf. Seit SD6
+  (E176) legt „anlegen“ auf Wunsch je Zeile einer Vorlage einen Datensatz an (`each`, je Regel,
+  Datensatz und Zeile einmal), und `approval` fordert eine Genehmigung mit den Stufen einer
+  Vorlage an.
 - **Genehmigungen** (gebaut, E175): Merkmal `approvals` mit Kerntabellen (`approval`,
   `approval_stage`, `approval_step`); Stufen nacheinander, in einer Stufe Personen und Gruppen
   gleichzeitig mit „mindestens n“ (eine Gruppe entscheidet durch ihr erstes Mitglied); das

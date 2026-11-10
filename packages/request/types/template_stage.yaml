@@ -1,0 +1,38 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A stage of the approval of a template (SD6, WF6): persons and groups asked at once, of whom at
+# least "Nötige Zustimmungen" agree (0: all). The stages run in their order; a request that names
+# the template asks them by the rule of the start data.
+name: template_stage
+label: {de: Genehmigungsstufe der Vorlage, en: Approval stage of a template}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: template
+    type: reference
+    label: {de: Erfüllungsvorlage, en: Fulfilment template}
+    to: request.template
+    required: true
+  - name: name
+    type: text
+    label: {de: Name der Stufe, en: Name of the stage}
+    required: true
+    max_length: 200
+  - name: need
+    type: number
+    label: {de: Nötige Zustimmungen, en: Approvals needed}
+    description:
+      de: 0 heißt alle.
+      en: 0 means all.
+    min: 0
+    max: 50
+    default: 0
+  - name: position
+    type: number
+    label: {de: Reihenfolge, en: Order}
+    default: 100
+actors:
+  - name: approvers
+    label: {de: Genehmiger, en: Approvers}
+    to: [core.person, core.group]

@@ -1,0 +1,28 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A template of the fulfilment (SD6; SD-Plan E14): the stages of the approval
+# (request.template_stage) and the tasks of the fulfilment (request.template_task) a request
+# gets when it names the template. The catalog (SD13) names a template per offer.
+name: template
+label: {de: Erfüllungsvorlage, en: Fulfilment template}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    searchable: true
+    translatable: true
+    max_length: 200
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    translatable: true
+    max_length: 2000
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true

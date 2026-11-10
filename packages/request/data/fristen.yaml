@@ -1,0 +1,26 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The deadlines of a request (SD6, SD-Plan E14), provisional until the catalog gives each offer
+# its delivery time (SD13): a reaction within one day and the fulfilment within five days of the
+# service time of sd (a day has 11 hours, 660 minutes). The reaction is met once the request
+# leaves "new"; the fulfilment waits while the approval is asked and while the request waits.
+- key: sla_reaction
+  type: core.sla
+  values:
+    name: Anfrage Reaktion
+    target_type: request.request
+    target_minutes: 660
+    calendar: "@sd.servicezeit"
+    applies: "true"
+    stop: record.state != "new"
+- key: sla_fulfilment
+  type: core.sla
+  values:
+    name: Anfrage Erfüllung
+    target_type: request.request
+    target_minutes: 3300
+    calendar: "@sd.servicezeit"
+    applies: record.state != "rejected"
+    pause: record.state in ["approval", "waiting"]
+    stop: record.state in ["done", "closed", "rejected"]

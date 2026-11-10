@@ -242,6 +242,25 @@ func (e *Engine) apply(ctx context.Context, r Rule, typeName string, id uuid.UUI
 	}
 	for _, a := range r.Actions {
 		switch {
+		case a.Create != nil && a.Create.Each != nil:
+			// One record per line of the template (SD6), read as the record is now.
+			now, err := e.rec.Get(ctx, typeName, id)
+			if err != nil {
+				return err
+			}
+			lines, err := e.items(ctx, now, *a.Create.Each)
+			if err != nil {
+				return err
+			}
+			for _, line := range lines {
+				fields, err := e.inTenant(ctx, r, rec, bindItem(bind(a.Create.Fields, id, e.person(ctx)), line))
+				if err != nil {
+					return err
+				}
+				if err := e.createOnce(ctx, r, a.Create.TypeName, id, line, fields); err != nil {
+					return err
+				}
+			}
 		case a.Create != nil:
 			fields, err := e.inTenant(ctx, r, rec, bind(a.Create.Fields, id, e.person(ctx)))
 			if err != nil {
@@ -249,6 +268,14 @@ func (e *Engine) apply(ctx context.Context, r Rule, typeName string, id uuid.UUI
 			}
 			if _, err := e.rec.Create(ctx, a.Create.TypeName, fields, nil); err != nil {
 				return refused(r, err)
+			}
+		case a.Approval != nil:
+			now, err := e.rec.Get(ctx, typeName, id)
+			if err != nil {
+				return err
+			}
+			if err := e.askApproval(ctx, r, typeName, id, now, a.Approval); err != nil {
+				return err
 			}
 		case a.Notify != nil:
 			if rec, err = e.rec.Get(ctx, typeName, id); err != nil {

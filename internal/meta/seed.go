@@ -49,14 +49,15 @@ func SeedRef(v any) (pkg, key string, ok bool) {
 
 // runtimeRefs are values with an "@" that the core fills in when it runs, not names of
 // entries: the record a rule acts on and who made the write (SD9), the person of the session
-// and their groups, the moment of a query.
+// and their groups, the moment of a query. "@item" and "@item.<field>" are the line of a
+// template a rule acts on once each (SD6).
 var runtimeRefs = map[string]bool{"@record": true, "@actor": true, "@me": true, "@my_groups": true, "@now": true}
 
 // seedRef splits a reference into the type before it ("core.group:"; empty for a plain "@")
 // and the name after the "@".
 func seedRef(v any) (prefix, ref string, ok bool) {
 	s, isText := v.(string)
-	if !isText || runtimeRefs[s] {
+	if !isText || runtimeRefs[s] || s == "@item" || strings.HasPrefix(s, "@item.") {
 		return "", "", false
 	}
 	if strings.HasPrefix(s, "@") {

@@ -3405,7 +3405,7 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
-        /** @description exactly one of set, assign, create, notify, transition, related */
+        /** @description exactly one of set, assign, create, notify, transition, related, approval */
         RuleAction: {
             /** @description field values, as in a PATCH */
             set?: {
@@ -3432,8 +3432,17 @@ export interface components {
             };
             create?: {
                 type_name: string;
+                /** @description "@record" for this record in a reference to its type, "@actor" for the person who made the write as a holder; with each "@item" and "@item.<field>" for the line (SD6) */
                 fields: {
                     [key: string]: unknown;
+                };
+                /** @description one record per line of a template (SD6, SD-Plan N17): the records of type_name whose fields in match name what the given fields of this record name (e.g. {"template": "template"}), at most 200, in the order of the field order */
+                each?: {
+                    type_name: string;
+                    match: {
+                        [key: string]: string;
+                    };
+                    order?: string;
                 };
             };
             notify?: {
@@ -3467,6 +3476,21 @@ export interface components {
                     [key: string]: unknown;
                 };
                 comment?: string;
+            };
+            /** @description after the write only (SD6, SD-Plan N18): asks for approval of the record (trait approvals) with one stage per line of stages, its name from the field name, its least number of yes from the field need, its persons and groups from the role approvers of the line; lines without approvers are left out, without any nothing is asked */
+            approval?: {
+                /** @description the records of type_name whose fields in match name what the given fields of this record name (e.g. {"template": "template"}), at most 200, in the order of the field order */
+                stages: {
+                    type_name: string;
+                    match: {
+                        [key: string]: string;
+                    };
+                    order?: string;
+                };
+                name?: string;
+                need?: string;
+                approvers: string;
+                message?: string;
             };
         };
         RuleInput: {

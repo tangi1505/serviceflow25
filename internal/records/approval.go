@@ -326,7 +326,13 @@ func (s *Service) RequestApproval(ctx context.Context, typeName string, id uuid.
 		if err := checkAccess(ctx, t, rec, authz.ActionUpdate); err != nil {
 			return err
 		}
-		if err := s.followable(t, rec, approvalSpec(t).Requested); err != nil {
+		// The transition is checked against the record as it will be: approval pending.
+		will := Record{}
+		for k, v := range rec {
+			will[k] = v
+		}
+		will[meta.FieldApproval] = meta.ApprovalPending
+		if err := s.followable(t, will, approvalSpec(t).Requested); err != nil {
 			return err
 		}
 		var open int

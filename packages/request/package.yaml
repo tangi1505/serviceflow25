@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The request (SD6; SD-Plan E14; IP30): something a person asks for, with the trait ticket of
+# the base package sd, a running number REQ-…, approval in the stages its template names and
+# the tasks of its fulfilment from the same template.
+name: request
+version: 0.1.0
+label:
+  de: Anfragen
+  en: Requests
+# sd brings the trait ticket, the lists, the service time and the service desk; core the
+# persons, groups and reasons to wait.
+depends: [core, sd]

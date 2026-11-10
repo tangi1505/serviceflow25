@@ -1,0 +1,35 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The request in the portal and its mails (SD6, SD-Plan E14): the tile "Etwas anfragen" for
+# everyone of the tenant, the confirmation to the requester and the question to the approvers.
+# Start data each tenant changes.
+- key: tile_request
+  type: core.portal_tile
+  values:
+    name: Etwas anfragen
+    description: Sie brauchen einen Zugang, ein Gerät oder eine Auskunft?
+    kind: create
+    target_type: request.request
+    position: 20
+    audience: all
+    active: true
+- key: received_mail
+  type: core.notification
+  values:
+    name: Anfrage eingegangen
+    target_type: request.request
+    events: create
+    recipients: actors.requester
+    notify_actor: true
+    subject: "[{{record.number}}] Ihre Anfrage ist eingegangen: {{title}}"
+    body: "Ihre Anfrage „{{title}}“ ist bei uns eingegangen und hat die Nummer {{record.number}}. Den Stand sehen Sie hier: {{link}}"
+- key: approval_mail
+  type: core.notification
+  values:
+    name: Genehmigung erbeten
+    target_type: request.request
+    events: approval_request
+    recipients: approvers
+    subject: "[{{record.number}}] Bitte genehmigen: {{title}}"
+    body: "Sie sind gefragt, die Anfrage „{{title}}“ zu genehmigen. Zustimmen oder ablehnen können Sie hier: {{link}}"

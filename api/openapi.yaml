@@ -4145,7 +4145,7 @@ components:
         updated_at: { type: string, format: date-time }
     RuleAction:
       type: object
-      description: exactly one of set, assign, create, notify, transition, related
+      description: exactly one of set, assign, create, notify, transition, related, approval
       properties:
         set:
           type: object
@@ -4186,6 +4186,19 @@ components:
             fields:
               type: object
               additionalProperties: true
+              description: '"@record" for this record in a reference to its type, "@actor" for the person who made the write as a holder; with each "@item" and "@item.<field>" for the line (SD6)'
+            each:
+              type: object
+              required: [type_name, match]
+              description: >-
+                one record per line of a template (SD6, SD-Plan N17): the records of type_name whose fields in match name what the given fields of this
+                record name (e.g. {"template": "template"}), at most 200, in the order of the field order
+              properties:
+                type_name: { type: string }
+                match:
+                  type: object
+                  additionalProperties: { type: string }
+                order: { type: string }
         notify:
           type: object
           required: [to, message]
@@ -4227,6 +4240,31 @@ components:
               type: object
               additionalProperties: true
             comment: { type: string }
+        approval:
+          type: object
+          required: [stages, approvers]
+          description: >-
+            after the write only (SD6, SD-Plan N18): asks for approval of the record (trait
+            approvals) with one stage per line of stages, its name from the field name, its least
+            number of yes from the field need, its persons and groups from the role approvers of
+            the line; lines without approvers are left out, without any nothing is asked
+          properties:
+            stages:
+              type: object
+              required: [type_name, match]
+              description: >-
+                the records of type_name whose fields in match name what the given fields of this
+                record name (e.g. {"template": "template"}), at most 200, in the order of the field order
+              properties:
+                type_name: { type: string }
+                match:
+                  type: object
+                  additionalProperties: { type: string }
+                order: { type: string }
+            name: { type: string }
+            need: { type: string }
+            approvers: { type: string }
+            message: { type: string }
     RuleInput:
       type: object
       required: [type_name, trigger, mode, actions]
