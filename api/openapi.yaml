@@ -1999,7 +1999,8 @@ paths:
       description: >-
         The records the active notices of the tenant (core.portal_notice) name, each with its
         text field, state and times; whoever is signed in reads them, the records themselves
-        stay unreadable otherwise.
+        stay unreadable otherwise. After them the notices written by hand (core.announcement,
+        SD14) the session reads now: published, within their time, for her.
       tags: [forms]
       responses:
         "200":
@@ -3843,12 +3844,15 @@ components:
         error: { type: string }
     PortalNotice:
       type: object
-      required: [notice, type_name, id, text, since, updated_at]
+      required: [type_name, id, text, since, updated_at]
       properties:
-        notice: { type: string, format: uuid, description: the core.portal_notice that shows it }
+        notice: { type: string, format: uuid, description: "the core.portal_notice that shows it; missing for a notice written by hand (core.announcement, SD14)" }
         type_name: { type: string }
         id: { type: string, format: uuid }
-        text: { type: string, description: the value of the text field the notice names }
+        title: { type: string, description: the title of a notice written by hand }
+        text: { type: string, description: "the value of the text field the notice names, or the text of a notice written by hand" }
+        format: { type: string, enum: [html], description: "html: the text is formatted text the server cleaned" }
+        until: { type: string, format: date-time, description: "until when a notice written by hand stands" }
         state: { type: string }
         state_label:
           type: object

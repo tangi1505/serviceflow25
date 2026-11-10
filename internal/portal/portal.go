@@ -10,7 +10,9 @@
 // a type, a condition as a JSON query (E40) and the text field shown; the package incident
 // brings one for the open major incidents as start data, and each tenant changes it. Whoever
 // is signed in reads the notices; the records behind them are read with the rights of the
-// system of the tenant, and only the text, the state and the times leave.
+// system of the tenant, and only the text, the state and the times leave. After them come the
+// notices written by hand (core.announcement, SD14), read with the rights of the person: its
+// reader rules say who sees one and from when to when.
 package portal
 
 import (
@@ -19,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -30,18 +33,25 @@ import (
 // TypeNotice is the core type of the notices.
 const TypeNotice = "core.portal_notice"
 
+// TypeAnnouncement is the core type of the notices written by hand (SD14).
+const TypeAnnouncement = "core.announcement"
+
 // PerNotice bounds the records one notice shows, the newest first.
 const PerNotice = 10
 
-// Item is one record a notice shows.
+// Item is one record a notice shows, or one notice written by hand: then without the notice,
+// with its title, its text as formatted text and until when it stands.
 type Item struct {
-	Notice     uuid.UUID  `json:"notice"`
+	Notice     *uuid.UUID `json:"notice,omitempty"`
 	TypeName   string     `json:"type_name"`
 	ID         uuid.UUID  `json:"id"`
+	Title      string     `json:"title,omitempty"`
 	Text       string     `json:"text"`
+	Format     string     `json:"format,omitempty"`
 	State      string     `json:"state,omitempty"`
 	StateLabel meta.Label `json:"state_label,omitempty"`
 	Since      any        `json:"since"`
+	Until      any        `json:"until,omitempty"`
 	UpdatedAt  any        `json:"updated_at"`
 }
 
@@ -67,7 +77,60 @@ func (s *Service) Notices(ctx context.Context) ([]Item, error) {
 		}
 		out = append(out, items...)
 	}
-	return out, nil
+	return append(out, s.announcements(ctx)...), nil
+}
+
+// PerAnnouncements bounds the notices written by hand, the newest first.
+const PerAnnouncements = 20
+
+// announcements are the notices written by hand the person reads now: the reader rules of the
+// type decide (published, within its time, for her). One who reads more by a grant, as an
+// administrator, still sees only those within their time. Without the type, none.
+func (s *Service) announcements(ctx context.Context) []Item {
+	now := time.Now()
+	q := records.Query{Where: json.RawMessage(`{"field": "state", "eq": "published"}`), Sort: []string{"-updated_at"}, Limit: PerAnnouncements}
+	page, _, err := s.rec.Query(ctx, TypeAnnouncement, q)
+	if err != nil {
+		return nil
+	}
+	out := make([]Item, 0, len(page.Items))
+	for _, r := range page.Items {
+		id, err := uuid.Parse(fmt.Sprint(r["id"]))
+		if err != nil {
+			continue
+		}
+		if !within(r["valid_from"], r["valid_until"], now) {
+			continue
+		}
+		title, _ := r["title"].(string)
+		body, _ := r["body"].(string)
+		since := r["valid_from"]
+		if since == nil {
+			since = r["created_at"]
+		}
+		out = append(out, Item{TypeName: TypeAnnouncement, ID: id, Title: title, Text: body, Format: "html",
+			Since: since, Until: r["valid_until"], UpdatedAt: r["updated_at"]})
+	}
+	return out
+}
+
+// within reports whether now lies from from (if any) to before until (if any).
+func within(from, until any, now time.Time) bool {
+	at := func(v any) (time.Time, bool) {
+		x, ok := v.(string)
+		if !ok {
+			return time.Time{}, false
+		}
+		t, err := time.Parse(time.RFC3339Nano, x)
+		return t, err == nil
+	}
+	if t, ok := at(from); ok && now.Before(t) {
+		return false
+	}
+	if t, ok := at(until); ok && !now.Before(t) {
+		return false
+	}
+	return true
 }
 
 func (s *Service) of(ctx context.Context, n records.Record) ([]Item, error) {
@@ -99,7 +162,7 @@ func (s *Service) of(ctx context.Context, n records.Record) ([]Item, error) {
 		if strings.TrimSpace(text) == "" || err != nil {
 			continue
 		}
-		it := Item{Notice: notice, TypeName: target, ID: id, Text: text, Since: r["created_at"], UpdatedAt: r["updated_at"]}
+		it := Item{Notice: &notice, TypeName: target, ID: id, Text: text, Since: r["created_at"], UpdatedAt: r["updated_at"]}
 		if state, ok := r["state"].(string); ok {
 			it.State = state
 			for _, st := range t.States {

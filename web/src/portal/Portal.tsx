@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   api,
+  formsQuery,
   labelOf,
   meQuery,
   mySettingsQuery,
@@ -41,7 +42,9 @@ import { Form } from "@/render/Form";
 import { hiddenOf } from "./conditions";
 import { AreaNav, creates, FieldValue } from "./Read";
 import { PortalSuggestions } from "./Suggest";
+import { TileGrid, useTiles } from "./Tiles";
 import { fieldLabel, formatMoment, setDisplayTimeZone } from "@/render/fields";
+import { RichText } from "@/render/RichText";
 import { Timeline } from "@/render/Timeline";
 import { Transitions } from "@/render/Transitions";
 import { Alert } from "@/ui/alert";
@@ -141,7 +144,7 @@ function Notices() {
     >
       <ul className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-6 py-2">
         {notices.data.map((n) => (
-          <Notice key={n.notice + n.id} notice={n} />
+          <Notice key={`${n.notice ?? ""}${n.id}`} notice={n} />
         ))}
       </ul>
     </section>
@@ -157,11 +160,23 @@ function Notice({ notice }: { notice: PortalNotice }) {
     : notice.state;
   return (
     <li className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-      <p id={textId} className={open ? "min-w-0 flex-1" : "min-w-0 flex-1 truncate"}>
-        <b className="font-semibold">{t("portal.current")}:</b> {notice.text}
-      </p>
+      {notice.title ? (
+        // A notice written by hand (SD14): its title, its formatted text once opened.
+        <div id={textId} className="min-w-0 flex-1">
+          <p className={open ? "" : "truncate"}>
+            <b className="font-semibold">{t("portal.current")}:</b> {notice.title}
+          </p>
+          {open && <RichText html={notice.text} className="mt-1" />}
+        </div>
+      ) : (
+        <p id={textId} className={open ? "min-w-0 flex-1" : "min-w-0 flex-1 truncate"}>
+          <b className="font-semibold">{t("portal.current")}:</b> {notice.text}
+        </p>
+      )}
       <span className="text-muted-foreground">
-        {t("portal.since", { time: formatMoment(notice.since, i18n.language) })}
+        {notice.until
+          ? t("portal.until", { time: formatMoment(notice.until, i18n.language) })
+          : t("portal.since", { time: formatMoment(notice.since, i18n.language) })}
         {state ? ` · ${state}` : ""}
       </span>
       <button
@@ -248,7 +263,6 @@ function MyRecords({ type }: { type: TypeDefinition }) {
 }
 
 // formsQuery are the forms offered to the session (UI11).
-const formsQuery = { queryKey: ["forms"], queryFn: () => api.forms(), staleTime: 60_000 };
 
 // inLanguage is a text of a form in the language, else the German one (UI12).
 function inLanguage(label: Label | undefined, language: string, german: string): string {
@@ -304,16 +318,24 @@ export function PortalHome() {
   const { t } = useTranslation();
   const types = useQuery(typesQuery);
   const offered = (types.data ?? []).filter(creates);
+  // The tiles first (SD14, SD-Plan E13); they take the place of the card of the forms, which
+  // only a person without any tile still gets.
+  const tiles = useTiles();
+  const withTiles = !tiles.pending && tiles.tiles.length > 0;
+  const Heading = withTiles ? "h2" : "h1";
   // Side by side where each card keeps 22.5 rem, below each other on a phone (SD5).
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t("portal.mine")}</h1>
+      {withTiles && <TileGrid tiles={tiles.tiles} />}
+      <Heading className={withTiles ? "text-xl font-semibold" : "text-2xl font-semibold"}>
+        {t("portal.mine")}
+      </Heading>
       {types.isSuccess && offered.length === 0 && <p>{t("portal.nothing")}</p>}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22.5rem),1fr))] items-start gap-4">
         {offered.map((type) => (
           <MyRecords key={qualifiedName(type)} type={type} />
         ))}
-        <Forms />
+        {!tiles.pending && !withTiles && <Forms />}
       </div>
     </div>
   );

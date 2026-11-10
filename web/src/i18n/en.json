@@ -426,6 +426,12 @@
     "failed": "Restoring failed: {{message}}"
   },
   "portal": {
+    "tilesTitle": "What would you like to do?",
+    "tileForm": "Form",
+    "tileArea": "Area",
+    "tileLink": "Link, opens in a new window",
+    "opensNew": "(opens in a new window)",
+    "until": "until {{time}}",
     "title": "itsm portal",
     "toWorkplace": "To the workplace",
     "mine": "My records",

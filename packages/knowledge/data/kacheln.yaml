@@ -1,0 +1,15 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The tile on the start page of the portal (SD14, SD-Plan E13): the area "Wissen", for everyone
+# of the tenant. Start data each tenant changes.
+- key: tile_knowledge
+  type: core.portal_tile
+  values:
+    name: Wissen
+    description: Anleitungen und Antworten selbst finden.
+    kind: area
+    target_type: knowledge.article
+    position: 50
+    audience: all
+    active: true

@@ -552,6 +552,13 @@ export const mySettingsQuery = queryOptions({
   staleTime: 5 * 60_000,
 });
 
+// formsQuery are the forms offered in the portal (UI11): their card and the tiles (SD14).
+export const formsQuery = queryOptions({
+  queryKey: ["forms"],
+  queryFn: () => api.forms(),
+  staleTime: 60_000,
+});
+
 export const typesQuery = queryOptions({
   queryKey: ["types"],
   queryFn: api.types,

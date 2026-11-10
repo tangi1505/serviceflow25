@@ -588,7 +588,9 @@ web/src/
   editors/      Typ-, Formular-, Workflow- (React Flow 12 + dagre), Rollen- und Dashboard-Editor
   portal/       Oberfläche für Nutzer (eigene Vorgänge seit UI10; Band „Aktuell“ aus
                 core.portal_notice seit SD5; Lesebereiche wie „Wissen“ im Kopf aus der
-                Portal-Option read eines Typs seit SD16a; Katalog mit SD)
+                Portal-Option read eines Typs seit SD16a; Startseite mit Kacheln aus
+                core.portal_tile und Hinweisen von Hand aus core.announcement seit SD14;
+                Katalog mit SD)
   dashboards/   Widgets (ECharts)
   i18n/         Deutsch und Englisch von Anfang an; Inhalte werden in der Sprache der Person
                 gelesen, das Formular liest und schreibt Deutsch (SD16c)

@@ -53,7 +53,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
 | **SD13** | Servicekatalog: Paket `catalog` mit Service und Angebot (Formular, Zielgruppe nach Organisationseinheit und Gruppe, Lieferzeit, Kosten, übersetzbar); Katalogseite im Portal mit Kategorien und Suche; eine Bestellung legt eine Anfrage an (Inventar G68, G133; IP24) | 🔒 SD6 | 2 d | Angebot „Zugang Gruppenlaufwerk“ nur für die Dienststelle Nord → nur dort im Katalog; bestellen → Anfrage mit den Antworten; bei englischer Sprache englisch; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD14** | Portal-Startseite: Kacheln (Formular, Katalogseite, Artikel, externer Link) je Zielgruppe; „Aktuell“ zeigt veröffentlichte Hinweise mit Ablauf (Inventar G78; IP28) | ⬜ | 1,5 d | Kachel für eine Gruppe freigeben → nur ihre Mitglieder sehen sie; einen Hinweis veröffentlichen → steht unter „Aktuell“, nach dem Ablauf nicht mehr; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD14** | Portal-Startseite: Kacheln (Formular, Katalogseite, Artikel, externer Link) je Zielgruppe; „Aktuell“ zeigt veröffentlichte Hinweise mit Ablauf (Inventar G78; IP28) | 🟢 | 1,5 d | Kachel für eine Gruppe freigeben → nur ihre Mitglieder sehen sie; einen Hinweis veröffentlichen → steht unter „Aktuell“, nach dem Ablauf nicht mehr; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD15** | Anonyme Formulare: Zugang über einen Link ohne Anmeldung, Captcha im Werkzeug ohne fremden Dienst, Ratenbegrenzung, Rückmeldung an eine Mail-Adresse (N2; Inventar G134, G137; Hauptplan E26; trägt KF8 für „anonym“) | 🔒 Hauptplan V34 | 2 d | Formular als anonym freigeben → der Link öffnet es ohne Anmeldung; ohne gelöstes Captcha → 400; 20 Absendungen in einer Minute → 429; Bestätigung per Mail in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16a** | Wissen, Artikel im Portal: Paket `knowledge` mit Artikel (Titel, formatierter Text, Kategorie der Störung, „Sichtbar für“ in drei Stufen mit der Rolle „Gruppen“, Status Entwurf, Veröffentlicht, Abgelaufen); Leser-Regeln im Kern (N12); Bereich „Wissen“ im Kopf des Portals mit Kategorienbaum, Suche und Artikelseite (E8, Variante B des Mockups); dazu der Befund des Klicktests: Verweise zeigen im Portal und in der Zeitleiste den Namen statt der Kennung (Inventar G106; IP4) | 🟢 | 2 d | Ein veröffentlichter Artikel „Alle, auch im Portal“ → ein Portal-Nutzer sieht ihn unter „Wissen“, einen Entwurf und einen „Nur Bearbeiter“ nicht; einer für eine Gruppe → nur ihre Mitglieder; im Portal zeigt eine Störung ihre Kategorie mit Namen; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) als Reiter „Fassungen“ auf der Detailseite, zwei Fassungen nebeneinander mit markierten Wörtern, eine ältere wiederherstellen; für jeden Typ mit Verlauf (E8, E9; IP4) | 🟢 | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -98,6 +98,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E10** | Sprache der Inhalte (SD16c, deine Entscheidungen 2026-11-04 nach dem Mockup „Übersetzungen im Formular“, [Artifact](https://claude.ai/artifact/C8r9bReahYm2tT2DgmNGik), Hauptplan E171): **Eine Version:** kein Editor für Englisch im Formular; wo eine Übersetzung nötig wird, soll sie später automatisch entstehen, mit einem Übersetzer im eigenen Rechenzentrum (VS-NfD, kein Cloud-Dienst) als eigene Aufgabe, nachdem die Fachseite gesagt hat, ob Englisch gebraucht wird (Hauptplan V40). **Anzeige** in der Sprache der Person in Listen, Namen, Suche und Portal, sonst Deutsch; das Formular liest und schreibt Deutsch. **Übersetzbar** sind am Artikel Titel und Text. Verworfen: Umschalter „Deutsch | Englisch“ am Formular (Variante A); Englisch je Feld (Variante B); Anzeige nur im Portal; nur der Text übersetzbar; Automatik jetzt | 2026-11-04 | Pascal |
 | **E11** | Ablauf des Wissens (SD16d, deine Entscheidungen 2026-11-04, Hauptplan E172): **„Jetzt“ in Bedingungen** als `today()` (Datum in Europe/Berlin) und `now()` (Zeitpunkt), mit Abstand `today(14)`, `today(-30)`, `now("-24h")`; gleich in SQL (Listen, Leser-Regeln, Rechte, Regeln nach Zeitplan) und im Speicher. **Autor** ist eine Rolle am Artikel (eine Person); eine mitgelieferte Regel trägt beim Anlegen die anlegende Person ein, wenn das Formular keinen nennt; dafür kann „Rolle zuweisen“ auch die Person, die schreibt (`actor`). **Mails** an den Autor 14 Tage vor „Gültig bis“ und beim Ablauf, als Startdaten. **Portal:** ab dem Tag nach „Gültig bis“ ist der Artikel weg, über die Leser-Regel, auch bevor die nächtliche Regel ihn auf Abgelaufen setzt. Verworfen: nur `today()` und `now()` ohne Abstand; `"@now"` wie in Abfragen; Autor nur von Hand; Mail an den Ersteller (Systemfeld); nur eine Mail beim Ablauf; Portal erst nach der Regel | 2026-11-04 | Pascal |
 | **E12** | Wissen am Vorgang und im Portal (SD18, deine Entscheidungen 2026-11-10 nach dem Mockup „Wissen am Vorgang“, [Artifact](https://claude.ai/artifact/BoRXwWtkH91hBXN5gXnkZa), Hauptplan E173): **Vorschläge sagt der Artikel:** ein Typ nennt unter `suggest`, bei welchen Typen er vorgeschlagen wird (auch `trait:sd.ticket`), aus welchen ihrer Felder gesucht wird, mit welcher Beziehungsart „Verknüpfen“ arbeitet und was „Als Lösung übernehmen“ setzt; Störung und Anfrage kennen das Wissen nicht (Kern-Bedarf N13). Gesucht wird mit jedem Wort statt mit allen, beste Treffer zuerst, nur was die Person lesen darf. **Portal (Variante 1A):** beim Anlegen stehen bis zu drei Artikel neben dem Formular, auf dem Telefon darunter; aufklappen zeigt den Text; „Das hat geholfen“ zählt ein Ja und legt keine Störung an, „Hilft nicht“ zählt ein Nein. **Arbeitsplatz:** ein eigener Reiter „Wissen“ an jedem Typ, bei dem etwas vorgeschlagen wird, mit Vorschlägen aus den Feldern des Datensatzes und einer eigenen Suche; je Artikel „Verknüpfen“ und „Als Lösung übernehmen“. **Als Lösung übernehmen** setzt Text und Lösungsart „Anleitung gegeben“ ins Formular (gespeichert erst mit „Speichern“) und verknüpft; welche Felder, legt das Paket fest. **Verknüpfen** mit der Beziehungsart „nutzt Wissen“ (invers „genutzt bei“) aus dem Paket `knowledge`; dafür braucht nur der Vorgang das Recht zum Ändern, am Artikel genügt Lesen (N16). **Hat geholfen** ist ein Merkmal `rating` im Kern: Ja oder Nein je Person, änderbar; Bearbeiter sehen „12 von 15 hilfreich · an 7 Vorgängen genutzt“ (N14). **Kommentare** über die Zeitleiste des Artikels; eine Leser-Regel darf neben dem Lesen auch das Kommentieren erlauben; öffentliche Kommentare sehen alle Leser unter dem Artikel im Portal, interne nur Bearbeiter (N15). Verworfen: der Vorgang nennt die Quelle seiner Vorschläge; ein Suchschritt vor dem Formular (Variante 1B); Vorschläge im Reiter „Bezüge“ oder neben dem Formular; nur ein Verweis oder nur Verknüpfen statt „Als Lösung übernehmen“; eine gelöste Störung bei „Das hat geholfen“; nur ein Zähler ohne Nein; Sterne; Kommentare nur intern oder später | 2026-11-10 | Pascal |
+| **E13** | Startseite des Portals (SD14, deine Entscheidungen 2026-11-10 nach dem Mockup „Startseite des Portals“, [Artifact](https://claude.ai/artifact/55ZVTdBSQhcsQP31sxtk9p), Hauptplan E174): **Anordnung A:** „Aktuell“ als Band über der ganzen Seite, darunter „Was möchten Sie tun?“ mit Kacheln, darunter „Meine Vorgänge“. **Kacheln ersetzen die Karte „Formulare“;** sieht eine Person keine Kachel, zeigt die Startseite die Formulare wie bisher. **Im Kern wie Formulare:** Typ `core.portal_tile` (Titel, Text, führt zu: Anlegen eines Typs, Formular, Bereich, Datensatz oder Link; Reihenfolge; „Sichtbar für“ wie beim Artikel, Alle am Ort der Kachel und darunter oder nur bestimmte Gruppen) und Typ `core.announcement` für Hinweise von Hand (Titel, Text, Gültig ab und bis mit Uhrzeit, „Sichtbar für“, Entwurf, Veröffentlicht, Abgelaufen); der Hinweis ist durchsuchbar, die Kachel nicht (deine Entscheidung nach der CI: eine Kachel sucht man kaum, und jeder durchsuchbare Typ kostet die Suche über alles etwas). Pakete bringen Kacheln als Startdaten mit: `incident` „Störung melden“, `knowledge` „Wissen“. „Aktuell“ zeigt zuerst die automatischen Hinweise (SD5), dann die von Hand, beide minutengenau. Verworfen: Aktuell als Spalte rechts (B); Formulare zusätzlich zu den Kacheln; beide Typen im Paket `sd`; Gültigkeit nur als Datum | 2026-11-10 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -206,6 +207,59 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD14 — Startseite des Portals, 2026-11-10
+
+- **Grundlage:** IP28; Inventar G78; Hauptplan E174; SD-Plan E13; deine Entscheidungen vom
+  2026-11-10 nach dem Mockup: „Aktuell“ als Band oben, Kacheln ersetzen die Karte „Formulare“,
+  Kachel und Hinweis von Hand als Kerntypen, Gültigkeit mit Uhrzeit.
+- **Gebaut:**
+  - Kern, Paket `core` 0.2.0: Typ `core.portal_tile` (Titel, Text, „Führt zu“: neuer Datensatz
+    eines Typs, Formular, Bereich, Datensatz oder Link; Reihenfolge; „Sichtbar für“ mit der Rolle
+    „Gruppen“ und Leser-Regeln wie beim Artikel; „Im Portal gezeigt“); Feldzustände blenden je
+    Art nur das nötige Zielfeld ein und machen es zur Pflicht. Typ `core.announcement` (Titel,
+    formatierter Text, Gültig ab und bis als Zeitpunkt, „Sichtbar für“, Entwurf, Veröffentlicht,
+    Abgelaufen); die Leser-Regeln prüfen die Zeit mit `now()`. Der Hinweis ist durchsuchbar,
+    die Kachel nicht (deine Entscheidung nach der CI, siehe unten); Kacheln findet man über
+    Liste und Filter. Startdaten `data/hinweise.yaml`:
+    alle 15 Minuten setzt eine Regel vorbei gegangene Hinweise auf „Abgelaufen“.
+  - `GET /api/v1/portal/notices` liefert nach den Hinweisen aus Abfragen (SD5) die Hinweise von
+    Hand, mit den Rechten der Person gelesen, mit Titel, Text als formatiertem Text und „bis“;
+    wer mehr lesen darf (Verwaltung), sieht dort trotzdem nur, was gerade gilt.
+  - Startdaten: `incident` 0.8.0 bringt die Kachel „Störung melden“, `knowledge` 0.5.0 die
+    Kachel „Wissen“.
+  - Oberfläche (`web/src/portal/Tiles.tsx`): „Was möchten Sie tun?“ mit den Kacheln in ihrer
+    Reihenfolge; eine Kachel, deren Ziel die Person nicht erreicht (Typ nicht lesbar, Formular
+    nicht angeboten), fehlt; ein Link nur mit `http` oder `https`, in neuem Fenster. Ohne
+    Kachel zeigt die Startseite die Formulare wie bisher. Im Band „Aktuell“ stehen Hinweise von
+    Hand mit Titel und „bis“, „Mehr“ zeigt den Text.
+- **Alte Tests angepasst:** Die Pakete bringen je eine Kachel mehr mit: die Zahl der Startdaten
+  von `incident` von 39 auf 40, von `knowledge` von 4 auf 5 in den Tests, die sie zählen; ein
+  neuer Mandant bekommt in `TestIncidentDeadlinesOverHTTP` 69 statt 67 Startdaten (dazu die
+  Regel der Hinweise aus `core`).
+- **Belegt:**
+  - Go `TestPortalStartOverHTTP`: die Kacheln der Pakete sehen alle, die Kachel einer Gruppe nur
+    ihr Mitglied, eine abgeschaltete niemand; eine Formular-Kachel ohne Formular ist 422; unter
+    „Aktuell“ steht ein Hinweis nur in seiner Zeit, für seine Zielgruppe, ein Entwurf nie, für
+    die Verwaltung nur, was gilt; die Regel setzt den vorbei gegangenen auf „Abgelaufen“.
+  - Vitest `portal/Tiles.test.tsx`: Kacheln in ihrer Reihenfolge mit ihren Zielen, nicht
+    erreichbare und ein Link mit `javascript:` fehlen, keine Karte „Formulare“; ohne Kacheln die
+    Formulare; der Hinweis von Hand mit Titel, „bis“ und Text nach „Mehr“; mit axe.
+  - Ganze CI am 2026-11-10, zwei Läufe: alle Go-Pakete, Vitest (117 Fälle) und die
+    Browser-Tests (18) grün; rot nur das Lasttor, im ersten Lauf LZ3 (Volltextsuche) +22 %,
+    im zweiten, mit Kachel und Hinweis nicht durchsuchbar, LZ3 +19 % und LZ13 −20 %. Meine
+    erste Erklärung (die zwei neuen durchsuchbaren Typen) war damit widerlegt. Ein Vergleich
+    des Programms von SD14 gegen das von SD18 auf derselben Datenbank, deren Server-Code sich
+    nur in `internal/portal/portal.go` unterscheidet, zeigte dieselbe Lücke in fast allen
+    Szenarien (p50 LZ1 2,38 gegen 2,07 ms, LZ2 4,64 gegen 4,28 ms, LZ3 6,96 gegen 5,98 ms):
+    die Abweichung kommt aus der Messung, nicht aus SD14. Deine Entscheidung: committen, die
+    Basislinie erneuerst du; der Hinweis wird wieder durchsuchbar (so lief der erste Lauf), die
+    Kachel nicht. Die Warnungen „now nicht bekannt“ kamen vom Programm der Basislinie, das älter
+    als SD16d ist. Befund für später: Warum lag die neue Seite heute in allen drei Messungen
+    hinten?
+- **Nicht geprüft:** Kein eigener Browser-Test. Kachel und Hinweis legt man im Arbeitsplatz mit
+  dem allgemeinen Formular an; eine Kachel „Datensatz“ nimmt Typ und Kennung als Text, eine
+  Suche über alle Typen fehlt dort noch. Die Katalogseite kommt mit SD13.
 
 ### SD18 — Wissen am Vorgang und im Portal, 2026-11-10
 

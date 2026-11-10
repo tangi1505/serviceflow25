@@ -466,6 +466,11 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Mitgliedschaft möglich, Eindeutigkeit über mehrere Felder kommt mit dem Meta-Modell später);
   Verweisfelder prüfen noch nicht, ob das Ziel existiert (PL3 lässt jede UUID zu); die
   Verknüpfung Konto ↔ Person kommt mit PL8; keine Oberfläche für Mitglieder (UI3).
+- **Nachtrag SD14 (2026-11-10, Hauptplan E174, SD-Plan E13):** Das Paket `core` bringt zwei
+  weitere Typen für die Startseite des Portals: `core.portal_tile` (Kacheln) und
+  `core.announcement` (Hinweise von Hand mit Gültigkeit), beide mit Leser-Regeln wie der
+  Artikel, dazu als erste Startdaten des Kerns eine Regel, die vorbei gegangene Hinweise auf
+  „Abgelaufen“ setzt (`core` 0.2.0).
 
 ### PL8 — Rollen und Rechte, Teil 1, 2026-10-22
 

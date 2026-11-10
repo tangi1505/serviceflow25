@@ -1,0 +1,16 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Notices written by hand (SD14, SD-Plan E13): the portal shows one only within its time; once
+# "Gültig bis" has passed, this rule sets it expired, so that the list of notices tells what
+# still stands. Start data each tenant changes.
+- key: announcement_expire
+  rule:
+    label: {de: Abgelaufene Hinweise, en: Expired announcements}
+    type_name: core.announcement
+    trigger: time
+    mode: after
+    schedule: CRON_TZ=Europe/Berlin */15 * * * *
+    condition: record.state == "published" && record.valid_until != null && record.valid_until <= now()
+    actions:
+      - transition: {name: expire}

@@ -1,0 +1,56 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A notice written by hand (SD14, SD-Plan E13; Inventar G78): it stands under "Aktuell" in the
+# portal from "Gültig ab" to "Gültig bis", to the minute, for whom "Sichtbar für" names, as at
+# the article. Beside it stand the notices a query finds (core.portal_notice, SD5). Once it is
+# over, a rule of the start data sets it expired.
+name: announcement
+label: {de: Hinweis, en: Announcement}
+title_field: title
+traits: [history, actors]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    translatable: true
+    max_length: 200
+  - name: body
+    type: text
+    label: {de: Text, en: Text}
+    format: rich
+    searchable: true
+    translatable: true
+  - name: valid_from
+    type: datetime
+    label: {de: Gültig ab, en: Valid from}
+  - name: valid_until
+    type: datetime
+    label: {de: Gültig bis, en: Valid until}
+  - name: audience
+    type: choice
+    label: {de: Sichtbar für, en: Visible to}
+    required: true
+    default: all
+    options:
+      - {value: all, label: {de: "Alle an diesem Ort und darunter", en: "Everyone at this place and below"}}
+      - {value: groups, label: {de: Nur bestimmte Gruppen, en: Certain groups only}}
+actors:
+  - name: shared
+    label: {de: Gruppen, en: Groups}
+    to: [core.group]
+states:
+  - {name: draft, label: {de: Entwurf, en: Draft}, initial: true, category: open}
+  - {name: published, label: {de: Veröffentlicht, en: Published}, category: active}
+  - {name: expired, label: {de: Abgelaufen, en: Expired}, category: done}
+transitions:
+  - {name: publish, label: {de: Veröffentlichen, en: Publish}, from: [draft, expired], to: published}
+  - {name: expire, label: {de: Ablaufen lassen, en: Expire}, from: [published], to: expired}
+  - {name: revise, label: {de: Zurück in den Entwurf, en: Back to draft}, from: [published, expired], to: draft}
+# Who reads it without a role: published, within its time, as at the article (SD-Plan E8).
+readers:
+  - when: record.state == "published" && record.audience == "all" && (record.valid_from == null || record.valid_from <= now()) && (record.valid_until == null || record.valid_until > now())
+  - when: record.state == "published" && record.audience == "groups" && (record.valid_from == null || record.valid_from <= now()) && (record.valid_until == null || record.valid_until > now())
+    roles: [shared]

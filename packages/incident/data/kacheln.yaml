@@ -1,0 +1,15 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The tile on the start page of the portal (SD14, SD-Plan E13): reporting a fault, for everyone
+# of the tenant. Start data each tenant changes.
+- key: tile_report
+  type: core.portal_tile
+  values:
+    name: Störung melden
+    description: Etwas geht nicht? Wir kümmern uns.
+    kind: create
+    target_type: incident.incident
+    position: 10
+    audience: all
+    active: true

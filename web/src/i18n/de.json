@@ -426,6 +426,12 @@
     "failed": "Wiederherstellen ging nicht: {{message}}"
   },
   "portal": {
+    "tilesTitle": "Was möchten Sie tun?",
+    "tileForm": "Formular",
+    "tileArea": "Bereich",
+    "tileLink": "Link, öffnet in neuem Fenster",
+    "opensNew": "(öffnet in neuem Fenster)",
+    "until": "bis {{time}}",
     "title": "itsm Portal",
     "toWorkplace": "Zum Arbeitsplatz",
     "mine": "Meine Vorgänge",

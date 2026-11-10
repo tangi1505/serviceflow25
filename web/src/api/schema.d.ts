@@ -1491,7 +1491,7 @@ export interface paths {
         };
         /**
          * What the portal shows under "Aktuell" (SD5)
-         * @description The records the active notices of the tenant (core.portal_notice) name, each with its text field, state and times; whoever is signed in reads them, the records themselves stay unreadable otherwise.
+         * @description The records the active notices of the tenant (core.portal_notice) name, each with its text field, state and times; whoever is signed in reads them, the records themselves stay unreadable otherwise. After them the notices written by hand (core.announcement, SD14) the session reads now: published, within their time, for her.
          */
         get: operations["listPortalNotices"];
         put?: never;
@@ -3133,14 +3133,26 @@ export interface components {
         PortalNotice: {
             /**
              * Format: uuid
-             * @description the core.portal_notice that shows it
+             * @description the core.portal_notice that shows it; missing for a notice written by hand (core.announcement, SD14)
              */
-            notice: string;
+            notice?: string;
             type_name: string;
             /** Format: uuid */
             id: string;
-            /** @description the value of the text field the notice names */
+            /** @description the title of a notice written by hand */
+            title?: string;
+            /** @description the value of the text field the notice names, or the text of a notice written by hand */
             text: string;
+            /**
+             * @description html: the text is formatted text the server cleaned
+             * @enum {string}
+             */
+            format?: "html";
+            /**
+             * Format: date-time
+             * @description until when a notice written by hand stands
+             */
+            until?: string;
             state?: string;
             state_label?: {
                 [key: string]: string;
