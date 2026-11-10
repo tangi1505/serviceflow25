@@ -133,7 +133,11 @@ describe("Portal", () => {
     expect(within(timeline).queryByLabelText("Privat (nur für Berechtigte)")).toBeNull();
     await expectAccessible(container);
 
-    await user.click(screen.getByRole("link", { name: "Meine Vorgänge" }));
+    // The head always has the areas since WF6 ("Genehmigungen" for everyone): the link of the
+    // breadcrumb is the one below the head.
+    await user.click(
+      within(screen.getByRole("main")).getByRole("link", { name: "Meine Vorgänge" }),
+    );
     const mine = await screen.findByRole("region", { name: "Probe" });
     expect(await within(mine).findByRole("link", { name: "Drucker im Flur" })).toBeInTheDocument();
   });

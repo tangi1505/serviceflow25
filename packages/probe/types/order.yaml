@@ -1,0 +1,38 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# An order that needs approval (WF6; KF4; Inventar G43, G44): the type of the tests for the
+# trait approvals. Asking moves it to "Wartet auf Genehmigung", the approval to "Genehmigt", a
+# refusal to "Abgelehnt" with the reason as an entry of the timeline.
+name: order
+label: {de: Bestellung, en: Order}
+title_field: title
+traits: [history, actors, timeline, approvals]
+fields:
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    searchable: true
+    max_length: 200
+  - name: reason
+    type: text
+    label: {de: Begründung, en: Reason}
+    max_length: 2000
+states:
+  - {name: draft, label: {de: Neu, en: New}, initial: true, category: open}
+  - {name: waiting, label: {de: Wartet auf Genehmigung, en: Awaiting approval}, category: waiting}
+  - {name: approved, label: {de: Genehmigt, en: Approved}, category: active}
+  - {name: rejected, label: {de: Abgelehnt, en: Rejected}, category: done}
+transitions:
+  - {name: ask, label: {de: Genehmigung anfordern, en: Ask for approval}, from: [draft], to: waiting}
+  - {name: grant, label: {de: Genehmigt, en: Approved}, from: [waiting], to: approved}
+  - {name: refuse, label: {de: Abgelehnt, en: Rejected}, from: [waiting], to: rejected, comment: required}
+approval:
+  requested: ask
+  approved: grant
+  rejected: refuse
+actors:
+  - name: requester
+    label: {de: Anforderer, en: Requester}
+    to: [core.person]

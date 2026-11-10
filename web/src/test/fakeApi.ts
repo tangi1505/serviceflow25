@@ -27,6 +27,10 @@ import type {
   PortalNotice,
   Permission,
   Rating,
+  Approval,
+  ApprovalRequest,
+  MyApproval,
+  Substitute,
   RecordData,
   Relation,
   RelationKind,
@@ -85,6 +89,9 @@ export const formTypeDef: TypeDefinition = {
     },
   ],
 };
+
+// approverPerson is the person the fake answers approvals as (WF6).
+export const approverPerson = "01a15a3c-8545-7691-b780-9b915e555b1d";
 
 export const me = {
   id: "01a15a3c-8545-7691-b780-9b915e555b1c",
@@ -388,6 +395,11 @@ export type FakeState = {
   // values or a text, with linked from relations; ratings are the sums by record id.
   suggest?: SuggestGroup[];
   ratings?: Record<string, Rating>;
+  // approvals are the approvals by record id (WF6), newest first; myApprovals the lists
+  // "Zu genehmigen"; substitutes those of every person.
+  approvals?: Record<string, Approval[]>;
+  myApprovals?: { open?: MyApproval[]; done?: MyApproval[] };
+  substitutes?: Substitute[];
   // exportJob makes an export a job (UI5, more than 100,000 rows); jobState is its state.
   exportJob?: boolean;
   jobState?: string;
@@ -1187,6 +1199,98 @@ export function fakeApi(state: FakeState) {
               })
             : [],
         })),
+      );
+    }
+    const approvalsOf = url.pathname.match(
+      /^\/api\/v1\/records\/[a-z_]+\.[a-z_]+\/([^/]+)\/approvals(?:\/([^/:]+):(decide|withdraw))?$/,
+    );
+    if (approvalsOf) {
+      state.approvals ??= {};
+      const list = (state.approvals[approvalsOf[1]!] ??= []);
+      if (!approvalsOf[2]) {
+        if (method === "POST") {
+          const body = JSON.parse(bodyText) as ApprovalRequest;
+          const now = new Date().toISOString();
+          const created: Approval = {
+            id: `0190a000-0000-7000-8000-${String(list.length + 1).padStart(12, "0")}`,
+            state: "open",
+            stage: 1,
+            message: body.message ?? "",
+            requester: approverPerson,
+            requested_at: now,
+            stages: body.stages.map((st, i) => ({
+              position: i + 1,
+              name: st.name ?? "",
+              need: st.need ?? 0,
+              state: i === 0 ? "open" : "waiting",
+              steps: st.approvers.map((a, j) => ({
+                id: `0190a000-0000-7000-9000-${String(i * 100 + j + 1).padStart(12, "0")}`,
+                approver: a,
+                state: i === 0 ? "open" : "waiting",
+                mine: false,
+              })),
+            })),
+          };
+          list.unshift(created);
+          return json(201, created);
+        }
+        return json(200, list);
+      }
+      const found = list.find((a) => a.id === approvalsOf[2]);
+      if (!found) {
+        return json(404, { title: "Not Found", status: 404 });
+      }
+      if (approvalsOf[3] === "withdraw") {
+        found.state = "withdrawn";
+        return json(200, found);
+      }
+      const body = JSON.parse(bodyText) as { decision: string; comment?: string; step?: string };
+      for (const st of found.stages) {
+        for (const step of st.steps) {
+          if (step.id === body.step) {
+            step.state = body.decision === "approve" ? "approved" : "rejected";
+            step.comment = body.comment;
+            step.decided_by = approverPerson;
+            step.mine = false;
+          }
+        }
+      }
+      return json(200, found);
+    }
+    if (url.pathname === "/api/v1/me/approvals") {
+      const which = url.searchParams.get("state") === "done" ? "done" : "open";
+      return json(200, state.myApprovals?.[which] ?? []);
+    }
+    const substitutesOf = url.pathname.match(
+      /^\/api\/v1\/persons\/([^/]+)\/substitutes(?:\/([^/]+))?$/,
+    );
+    if (substitutesOf) {
+      state.substitutes ??= [];
+      const person = substitutesOf[1]!;
+      if (method === "DELETE") {
+        state.substitutes = state.substitutes.filter((x) => x.id !== substitutesOf[2]);
+        return new Response(null, { status: 204 });
+      }
+      if (method === "POST") {
+        const body = JSON.parse(bodyText) as {
+          substitute: string;
+          valid_from?: string;
+          valid_until?: string;
+        };
+        const created: Substitute = {
+          id: `0190b000-0000-7000-8000-${String(state.substitutes.length + 1).padStart(12, "0")}`,
+          person,
+          substitute: body.substitute,
+          valid_from: body.valid_from ?? new Date().toISOString(),
+          ...(body.valid_until ? { valid_until: body.valid_until } : {}),
+          active: true,
+        };
+        state.substitutes.push(created);
+        return json(201, created);
+      }
+      return json(
+        200,
+        state.substitutes.filter((x) => x.person === person),
       );
     }
     const rating = url.pathname.match(/^\/api\/v1\/records\/[a-z_]+\.[a-z_]+\/([^/]+)\/rating$/);

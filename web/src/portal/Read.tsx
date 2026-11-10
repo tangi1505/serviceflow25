@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import {
   api,
   labelOf,
+  myApprovalsQuery,
   qualifiedName,
   readQuery,
   typesQuery,
@@ -47,15 +48,14 @@ export function FieldValue({ field, value }: { field: Field; value: unknown }) {
   return <>{formatValue(field, value, i18n.language) || "–"}</>;
 }
 
-// AreaNav is "Meine Vorgänge" and one link per reading area in the head; nothing while there
-// is no area.
+// AreaNav is "Meine Vorgänge", one link per reading area and "Genehmigungen" with the number of
+// open questions in the head (WF6, variant 3B).
 export function AreaNav() {
   const { t, i18n } = useTranslation();
   const types = useQuery(typesQuery);
+  const approvals = useQuery(myApprovalsQuery);
   const areas = (types.data ?? []).filter((x) => x.portal?.read);
-  if (areas.length === 0) {
-    return null;
-  }
+  const open = approvals.data?.length ?? 0;
   const link = "rounded-md px-2.5 py-1.5 text-sm";
   const active = { className: "bg-surface-active font-medium" };
   return (
@@ -74,6 +74,17 @@ export function AreaNav() {
           {labelOf(x.portal!.read!.label, i18n.language, qualifiedName(x))}
         </Link>
       ))}
+      <Link to="/portal/approvals" className={link} activeProps={active}>
+        {t("approvals.portalTitle")}
+        {open > 0 && (
+          <span
+            aria-label={t("approvals.openCount", { count: open })}
+            className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11.5px] font-semibold text-primary-foreground"
+          >
+            {open}
+          </span>
+        )}
+      </Link>
     </nav>
   );
 }

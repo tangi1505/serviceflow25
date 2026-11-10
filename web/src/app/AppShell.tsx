@@ -23,6 +23,7 @@ import {
   api,
   labelOf,
   meQuery,
+  myApprovalsQuery,
   mySettingsQuery,
   qualifiedName,
   savedSearchesQuery,
@@ -75,6 +76,7 @@ export function AppShell() {
   }, []);
   // The saved searches one may read, own and shared, in the navigation (UI30).
   const saved = useQuery({ ...savedSearchesQuery, enabled: me.data !== undefined });
+  const approvals = useQuery({ ...myApprovalsQuery, enabled: me.data !== undefined });
   // The types grouped by their package: the areas of the navigation.
   const areas = new Map<string, NonNullable<typeof types.data>>();
   for (const ty of types.data ?? []) {
@@ -135,6 +137,26 @@ export function AppShell() {
             aria-label={t("nav.types")}
             className="w-full border-b bg-surface-subtle p-4 md:w-56 md:flex-none md:border-r md:border-b-0"
           >
+            {/* Zu genehmigen with the open questions (WF6), for everyone signed in. */}
+            <h2 className="mb-2 text-xs font-semibold uppercase text-foreground-2">
+              {t("nav.work")}
+            </h2>
+            <ul className="mb-4 flex flex-col gap-1">
+              <li>
+                <Link
+                  to="/approvals"
+                  className="flex justify-between rounded-md px-2 py-1 text-sm hover:bg-surface-active"
+                  activeProps={{ className: "bg-surface-active font-medium text-foreground" }}
+                >
+                  {t("nav.approvals")}
+                  {approvals.data !== undefined && (
+                    <span className="font-mono text-xs text-foreground-2">
+                      {approvals.data.length}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            </ul>
             {[...areas.entries()].map(([pkg, list]) => (
               <div key={pkg}>
                 <h2 className="mb-2 mt-4 text-xs font-semibold uppercase text-foreground-2 first:mt-0">

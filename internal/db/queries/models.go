@@ -64,6 +64,44 @@ type ApiClient struct {
 	UpdatedBy  uuid.NullUUID
 }
 
+type Approval struct {
+	ID          uuid.UUID
+	TypeName    string
+	RecordID    uuid.UUID
+	State       string
+	Stage       int32
+	Message     string
+	RequestedBy uuid.NullUUID
+	Requester   uuid.NullUUID
+	RequestedAt pgtype.Timestamptz
+	FinishedAt  pgtype.Timestamptz
+}
+
+type ApprovalStage struct {
+	ApprovalID uuid.UUID
+	Position   int32
+	Name       string
+	Need       int32
+	State      string
+}
+
+type ApprovalStep struct {
+	ID           uuid.UUID
+	ApprovalID   uuid.UUID
+	Stage        int32
+	Position     int32
+	TypeName     string
+	RecordID     uuid.UUID
+	ApproverType string
+	ApproverID   uuid.UUID
+	State        string
+	Comment      string
+	DecidedBy    uuid.NullUUID
+	OnBehalf     uuid.NullUUID
+	AskedAt      pgtype.Timestamptz
+	DecidedAt    pgtype.Timestamptz
+}
+
 type Attachment struct {
 	ID        uuid.UUID
 	FileID    uuid.UUID
@@ -438,6 +476,16 @@ type SecurityEvent struct {
 type SecurityEventLast struct {
 	One bool
 	ID  int64
+}
+
+type Substitute struct {
+	ID           uuid.UUID
+	PersonID     uuid.UUID
+	SubstituteID uuid.UUID
+	ValidFrom    pgtype.Timestamptz
+	ValidUntil   pgtype.Timestamptz
+	CreatedBy    uuid.NullUUID
+	CreatedAt    pgtype.Timestamptz
 }
 
 type Translation struct {

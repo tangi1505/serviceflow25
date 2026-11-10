@@ -155,6 +155,7 @@ func Validate(p Package, known map[string]bool) error {
 		validatePortal(add, where, t)
 		validateReaders(add, where, t)
 		validateSuggest(add, where, t, p, local, known, trseen)
+		validateApproval(add, where, t)
 		validateFieldStates(add, where, t)
 		validateList(add, where, t)
 		validateFormulas(add, where, t)

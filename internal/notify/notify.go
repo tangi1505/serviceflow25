@@ -50,8 +50,14 @@ import (
 const TypeNotification = "core.notification"
 
 // Kinds are the events a notification can name; notify is the event of a rule's action and
-// goes to the recipients the rule names. comment is a new entry of the timeline (PL42).
-var Kinds = []string{"create", "update", "transition", "trash", "restore", "breach", "escalation", records.EventComment}
+// goes to the recipients the rule names. comment is a new entry of the timeline (PL42); the
+// approvals bring a stage that asks, a decision and the end of an approval (WF6).
+var Kinds = []string{"create", "update", "transition", "trash", "restore", "breach", "escalation", records.EventComment,
+	records.EventApprovalRequest, records.EventApprovalDecision, records.EventApproval}
+
+// RecipientApprovers names, as a recipient, the persons and groups a stage asks: those of the
+// event approval_request (WF6).
+const RecipientApprovers = "approvers"
 
 // MaxAttempts bounds the attempts of one mail.
 const MaxAttempts = 8
@@ -155,9 +161,15 @@ func checkRecipient(t meta.Type, r string) string {
 	if spec, ok := strings.CutPrefix(r, "actors."); ok {
 		return t.CheckRoleRecipient(spec)
 	}
+	if r == RecipientApprovers {
+		if !t.HasApprovals() {
+			return fmt.Sprintf("recipient %q needs a type with the trait approvals", r)
+		}
+		return ""
+	}
 	typ, id, ok := strings.Cut(r, ":")
 	if _, err := uuid.Parse(id); !ok || err != nil || (typ != "core.group" && typ != "core.person") {
-		return fmt.Sprintf("recipient %q must be actors.<role>, actors.<role>.responsible, core.group:<id> or core.person:<id>", r)
+		return fmt.Sprintf("recipient %q must be actors.<role>, actors.<role>.responsible, approvers, core.group:<id> or core.person:<id>", r)
 	}
 	return ""
 }
@@ -358,7 +370,19 @@ func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, er
 	}
 	for _, target := range targets {
 		var refs []string
-		if spec, ok := strings.CutPrefix(target, "actors."); ok {
+		if target == RecipientApprovers {
+			// The persons and groups the stage of the event asks (WF6).
+			var payload struct {
+				Approvers []struct {
+					Type string    `json:"type"`
+					ID   uuid.UUID `json:"id"`
+				} `json:"approvers"`
+			}
+			_ = json.Unmarshal(ev.Payload, &payload)
+			for _, ref := range payload.Approvers {
+				refs = append(refs, ref.Type+":"+ref.ID.String())
+			}
+		} else if spec, ok := strings.CutPrefix(target, "actors."); ok {
 			role, lead := strings.CutSuffix(spec, meta.LeadSuffix)
 			all, _ := rec["actors"].(map[string]any)
 			holders, _ := all[role].([]any)

@@ -529,8 +529,13 @@ E8, KF3 bis KF5, KF7:
   Minuten); Aktionen setzen, zuweisen (auch nachgeschlagen in einem anderen Typ, `lookup`,
   E164), anlegen, benachrichtigen, Übergang (E116), Übergang an den verknüpften Datensätzen
   einer Beziehungsart (`related`, E163); Systemrechte, die Regel steht im Verlauf.
-- **Genehmigungen** sind Unterdatensätze mit Stufen, in fester Reihenfolge oder parallel, mit
-  Mindestanteil, Vertretung und Erinnerung.
+- **Genehmigungen** (gebaut, E175): Merkmal `approvals` mit Kerntabellen (`approval`,
+  `approval_stage`, `approval_step`); Stufen nacheinander, in einer Stufe Personen und Gruppen
+  gleichzeitig mit „mindestens n“ (eine Gruppe entscheidet durch ihr erstes Mitglied); das
+  berechnete Feld `approval` und die Übergänge, die der Typ unter `approval` nennt, laufen nach
+  der Entscheidung mit den Rechten des Systems. Vertretung an der Person mit Zeitraum (Tabelle
+  `substitute`); wer gefragt ist, auch als Vertretung, liest den Datensatz ohne eigenes Recht
+  (`authz.Access.Asked`). Erinnerung und Vorlagen kommen mit WF7.
 - **Fristen:** Kalender mit Arbeitszeit und Feiertagen sind Typen des Kernpakets (gebaut,
   E113). Ein Service-Level ist ein Datensatz von `core.sla` mit Zieltyp, Ziel, Kalender und
   CEL-Bedingungen für gilt, Pause und erfüllt (gebaut, E114). Eine Uhr ist eine Zeile der

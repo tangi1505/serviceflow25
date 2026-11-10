@@ -32,7 +32,9 @@ import {
   PortalRecordPage,
   PortalShell,
 } from "@/portal/Portal";
+import { PortalApprovalPage } from "@/portal/Approval";
 import { PortalArticlePage, PortalReadPage } from "@/portal/Read";
+import { ApprovalsPage, PortalApprovalsPage } from "@/render/ApprovalList";
 import { NewRecordPage, RecordPage } from "@/render/RecordPage";
 import { CustomizeOverview, CustomizePage } from "@/render/CustomizePage";
 import { RolePage, RolesOverview } from "@/render/RolePage";
@@ -155,6 +157,26 @@ const portalArticleRoute = createRoute({
   component: PortalArticlePage,
 });
 
+// The area "Genehmigungen" of the portal (WF6, variant 3B) and one record to answer there.
+const portalApprovalsRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: "approvals",
+  component: PortalApprovalsPage,
+});
+
+const portalApprovalRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: "approvals/$typeName/$id",
+  component: PortalApprovalPage,
+});
+
+// Zu genehmigen in the workspace (WF6).
+const approvalsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/approvals",
+  component: ApprovalsPage,
+});
+
 const indexRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/",
@@ -260,6 +282,8 @@ const routeTree = rootRoute.addChildren([
     portalRecordRoute,
     portalReadRoute,
     portalArticleRoute,
+    portalApprovalsRoute,
+    portalApprovalRoute,
   ]),
   loginRoute,
   shellRoute.addChildren([
@@ -277,6 +301,7 @@ const routeTree = rootRoute.addChildren([
     passwordRoute,
     settingsRoute,
     globalSettingsRoute,
+    approvalsRoute,
   ]),
 ]);
 

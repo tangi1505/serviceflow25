@@ -29,6 +29,13 @@ export type Clock = components["schemas"]["Clock"];
 export type Relation = components["schemas"]["Relation"];
 export type RelationKind = components["schemas"]["RelationKind"];
 export type Rating = components["schemas"]["Rating"];
+export type Approval = components["schemas"]["Approval"];
+export type ApprovalStage = components["schemas"]["ApprovalStage"];
+export type ApprovalStep = components["schemas"]["ApprovalStep"];
+export type ApprovalRequest = components["schemas"]["ApprovalRequest"];
+export type ApproverRef = components["schemas"]["ApproverRef"];
+export type MyApproval = components["schemas"]["MyApproval"];
+export type Substitute = components["schemas"]["Substitute"];
 export type SuggestGroup = components["schemas"]["SuggestGroup"];
 export type SuggestHit = components["schemas"]["SuggestHit"];
 export type Query = components["schemas"]["Query"];
@@ -404,6 +411,63 @@ export const api = {
         body: { helpful },
       }),
     ),
+  // approvals of a record (trait approvals, WF6), newest first; decide answers a question of
+  // the current stage, as substitute too; withdraw ends an open one.
+  approvals: async (typeName: string, id: string) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/approvals", {
+        params: { path: { typeName, id } },
+      }),
+    ),
+  requestApproval: async (typeName: string, id: string, body: ApprovalRequest) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}/approvals", {
+        params: { path: { typeName, id } },
+        body,
+      }),
+    ),
+  decideApproval: async (
+    typeName: string,
+    id: string,
+    approvalId: string,
+    body: components["schemas"]["ApprovalDecision"],
+  ) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}/approvals/{approvalId}:decide", {
+        params: { path: { typeName, id, approvalId } },
+        body,
+      }),
+    ),
+  withdrawApproval: async (typeName: string, id: string, approvalId: string) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}/approvals/{approvalId}:withdraw", {
+        params: { path: { typeName, id, approvalId } },
+      }),
+    ),
+  // myApprovals is the list "Zu genehmigen": open questions, or those one answered (done).
+  myApprovals: async (state: "open" | "done") =>
+    unwrap(await client.GET("/api/v1/me/approvals", { params: { query: { state } } })),
+  // substitutes of a person at approvals (WF6): her own, or as the administration.
+  substitutes: async (personId: string) =>
+    unwrap(
+      await client.GET("/api/v1/persons/{personId}/substitutes", {
+        params: { path: { personId } },
+      }),
+    ),
+  addSubstitute: async (personId: string, body: components["schemas"]["SubstituteRequest"]) =>
+    unwrap(
+      await client.POST("/api/v1/persons/{personId}/substitutes", {
+        params: { path: { personId } },
+        body,
+      }),
+    ),
+  removeSubstitute: async (personId: string, substituteId: string) => {
+    unwrap(
+      await client.DELETE("/api/v1/persons/{personId}/substitutes/{substituteId}", {
+        params: { path: { personId, substituteId } },
+      }),
+    );
+  },
   relate: async (body: components["schemas"]["RelationCreate"]) =>
     unwrap(await client.POST("/api/v1/relations", { body })),
   unrelate: async (id: string) =>
@@ -550,6 +614,15 @@ export const mySettingsQuery = queryOptions({
   queryFn: api.mySettings,
   retry: false,
   staleTime: 5 * 60_000,
+});
+
+// myApprovalsQuery are the open questions of the session (WF6): the count beside "Zu
+// genehmigen" and the lists in the workspace and the portal.
+export const myApprovalsQuery = queryOptions({
+  queryKey: ["approvals", "mine", "open"],
+  queryFn: () => api.myApprovals("open"),
+  retry: false,
+  staleTime: 30_000,
 });
 
 // formsQuery are the forms offered in the portal (UI11): their card and the tiles (SD14).

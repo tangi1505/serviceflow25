@@ -35,7 +35,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD3** | Fristen der Störung: Reaktion und Lösung je Priorität mit Kalender der Servicezeit, Eskalation an die Teamleitung bei 80 %, Wartegründe halten die Uhr an, automatisch schließen fünf Arbeitstage nach „Gelöst“; baut auf WF8 bis WF12 (E3; IP19) | 🟢 | 2 d | P1 um 08:00 anlegen → Lösungsfrist nach Kalender; „Wartet“ mit Grund „Rückmeldung Anforderer“ hält die Uhr an; mit Testzeit bei 80 % eine Mail an die Teamleitung in Mailpit; nach fünf Arbeitstagen „Gelöst“ → „Geschlossen“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD4** | Betroffene Elemente und Bezüge: Beziehungsart „betrifft“ von Störung und Anfrage zu jedem Typ; „Duplikat von“ und „verwandt“ aus `core`; Verträge kommen mit CM (Inventar G49, G50) | 🟢 | 1,5 d | An einer Störung einen Datensatz eines beliebigen Typs als betroffen verknüpfen → steht in den Bezügen beider Seiten; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD5** | Major Incident: Übergang „zum Major Incident erklären“ mit Begründung, Mail an einen Verteiler, untergeordnete Störungen verknüpfen und mit dem Major Incident gemeinsam lösen, Hinweis im Portal (IP19; N3) | 🟢 | 1,5 d | Störung zum Major Incident erklären → Mail an den Verteiler; drei Störungen unterordnen, den Major Incident lösen → alle drei gelöst mit derselben Lösung, je eine Mail an ihre Anforderer; der Hinweis steht im Portal unter „Aktuell“; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD6** | Paket `request`: Typ Anfrage mit Merkmal `ticket`, Statusmodell mit Genehmigung, Erfüllungsaufgaben aus einer Vorlage, wiederkehrende Anfragen, Fristen wie SD3; baut auf WF6, WF13, WF14 (Inventar G36; IP30) | 🔒 WF6 | 1,5 d | Anfrage mit zweistufiger Genehmigung → nach beiden Zustimmungen entstehen zwei Aufgaben für die Gruppe; eine Ablehnung schließt die Anfrage mit Grund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD6** | Paket `request`: Typ Anfrage mit Merkmal `ticket`, Statusmodell mit Genehmigung, Erfüllungsaufgaben aus einer Vorlage, wiederkehrende Anfragen, Fristen wie SD3; baut auf WF6, WF13, WF14 (Inventar G36; IP30) | ⬜ | 1,5 d | Anfrage mit zweistufiger Genehmigung → nach beiden Zustimmungen entstehen zwei Aufgaben für die Gruppe; eine Ablehnung schließt die Anfrage mit Grund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### B — Arbeitsplatz und Kanäle
 
@@ -59,7 +59,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD16b** | Wissen, Fassungen: die Versionen eines Datensatzes (PL19) als Reiter „Fassungen“ auf der Detailseite, zwei Fassungen nebeneinander mit markierten Wörtern, eine ältere wiederherstellen; für jeden Typ mit Verlauf (E8, E9; IP4) | 🟢 | 1 d | Einen Artikel zweimal ändern → Fassung 1 und 3 vergleichen zeigt beide Änderungen; Fassung 1 wiederherstellen → Fassung 4 mit dem alten Text; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16c** | Wissen, Sprache: Inhalte in der Sprache der Person zeigen (Listen, Namen, Suche, Portal), Titel und Text des Artikels übersetzbar; das Formular bleibt auf Deutsch, eine Version; automatische Übersetzung später (E10; PL21; IP4) | 🟢 | 1 d | Ein Artikel mit englischem Titel → wer Englisch eingestellt hat, sieht ihn englisch, sonst deutsch; das Formular zeigt immer den deutschen Titel; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16d** | Wissen, Ablauf: Rolle „Autor“, die beim Anlegen die anlegende Person bekommt; ab dem Tag nach „Gültig bis“ ist der Artikel im Portal weg, eine tägliche Regel setzt ihn auf Abgelaufen und schreibt dem Autor, 14 Tage vorher erinnert sie ihn; dafür kennen Bedingungen `today()` und `now()` mit Abstand (E8, E11; IP4) | 🟢 | 1 d | Artikel mit „Gültig bis“ gestern → sofort aus dem Portal verschwunden, nach dem Lauf der Regel abgelaufen, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16b | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | ⬜ | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🟢 | 3 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag neben dem Formular; „Das hat geholfen“ zählt und legt keine Störung an; an der Störung im Reiter „Wissen“ einen Artikel verknüpfen → steht in den Bezügen; „Als Lösung übernehmen“ → Lösung und Lösungsart im Formular; ein Portal-Nutzer kommentiert einen Artikel; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### D — Zufriedenheit, Einstellungen, Abschluss
@@ -75,7 +75,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 [UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d. SD16b brauchte dazu im Kern nur den Namen in der Liste der Fassungen. SD16c ohne Editor für Englisch (E10); die automatische Übersetzung wird eine eigene Aufgabe, sobald Hauptplan V40 beantwortet ist. SD18 am 2026-11-10 von 2 d auf 3 d für die Kern-Bedarfe N13 bis N16 (E12): 38 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
-SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
+SD5. SD6 kann seit WF6 (Genehmigungen, 2026-11-10) beginnen. Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
 SD12 erst, wenn die Fachseite Hauptplan V29 beantwortet hat. Block C mit SD16a bis SD16d und SD18 vor SD13
 und SD14, weil das Portal die Artikel zeigt; SD15 erst nach Hauptplan V34. Block D zum Schluss, SD21 als Abnahme des
 Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
@@ -140,7 +140,8 @@ abgenommen:
   Volltextsuche (PL26), Zeitleiste (PL42), Aggregate in `:query` (PL14).
 - **Oberfläche:** Portal (UI10), Formulare mit Bedingungen (UI11, UI12), Detailseite mit
   Zeitleiste (UI3), Einstellungen am Baum (UI9, Hauptplan E131).
-- **Fehlt noch:** Genehmigungen (WF6, WF7), Dashboards (UI13).
+- **Genehmigungen:** in Stufen mit Mindestzahl und Vertretung (WF6, Hauptplan E175).
+- **Fehlt noch:** Vorlagen und Erinnerung für Genehmigungen (WF7), Dashboards (UI13).
 
 Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `packages/`,
 **O** dazu `web/src`, **K** dazu Go-Code, API oder Migration.

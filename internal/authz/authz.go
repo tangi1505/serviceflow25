@@ -130,6 +130,12 @@ type Access struct {
 	// grant, whatever the roles and the narrowing say: the select lists with one rule without
 	// condition (PL16, E93; PL45), types with readers of their own (SD16a).
 	Readers map[string][]meta.Reader `json:"readers,omitempty"`
+	// Approvable are the types with the trait approvals (WF6): whoever is asked to approve a
+	// record of one of them reads it, without a grant.
+	Approvable map[string]bool `json:"approvable,omitempty"`
+	// Represents are the persons the session's person stands in for at approvals (WF6, the
+	// substitute of a person): while it lasts she decides for them and their groups.
+	Represents []Represented `json:"represents,omitempty"`
 	// Home is the tenant the account is bound to (PL44); empty for an account of the
 	// installation.
 	Home string `json:"home,omitempty"`
@@ -451,11 +457,34 @@ func (a *Access) CreateNode(typeName string) (node string, ok bool) {
 // with the given action), and the arguments appended to args. Placeholders continue after
 // len(args). Without a grant the condition is FALSE. The condition of a grant (CEL) joins
 // its scope with AND; untranslatable conditions were refused when the permission was saved.
-// The tenant bounds every scope (PL44): org_path <@ tenant joins the whole condition.
+// The tenant bounds every scope (PL44): org_path <@ tenant joins the whole condition. Whoever
+// is asked to approve a record reads it (WF6).
 func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 	if a.IsSystem() {
 		return "TRUE", args
 	}
+	f, args := a.filter(typeName, action, args)
+	if action != ActionRead || !a.Approvable[typeName] {
+		return f, args
+	}
+	asked := a.Asked(time.Now())
+	if len(asked) == 0 {
+		return f, args
+	}
+	args = append(args, typeName, asked)
+	vis := fmt.Sprintf("id IN (SELECT aps.record_id FROM approval_step aps WHERE aps.type_name = $%d AND aps.state IN ('open', 'approved', 'rejected') AND aps.approver_id = ANY($%d::uuid[]))",
+		len(args)-1, len(args))
+	if b := a.boundary(); b != "" {
+		args = append(args, b)
+		vis = fmt.Sprintf("(%s AND org_path <@ $%d::ltree)", vis, len(args))
+	}
+	if f == "FALSE" {
+		return vis, args
+	}
+	return "(" + f + " OR " + vis + ")", args
+}
+
+func (a *Access) filter(typeName, action string, args []any) (string, []any) {
 	b := a.boundary()
 	listVis := ""
 	if rs := a.readers(typeName, action); len(rs) > 0 {
@@ -679,6 +708,10 @@ func (a *Access) WritableFields(typeName, action string) (all bool, fields map[s
 
 func (a *Access) fieldRights(typeName, action string, pick func(*Fields) []string) (bool, map[string]bool) {
 	if a.IsSystem() || len(a.readers(typeName, action)) > 0 {
+		return true, nil
+	}
+	if action == ActionRead && a.Approvable[typeName] && len(a.grantsFor(typeName, action)) == 0 {
+		// Asked to approve without a grant (WF6): the whole record, it reads no other.
 		return true, nil
 	}
 	set := map[string]bool{}
@@ -957,6 +990,12 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 		return nil, err
 	}
 	for _, t := range types {
+		if t.HasApprovals() {
+			if a.Approvable == nil {
+				a.Approvable = map[string]bool{}
+			}
+			a.Approvable[t.QualifiedName()] = true
+		}
 		var rs []meta.Reader
 		if t.IsList() {
 			rs = append(rs, meta.Reader{})
@@ -985,6 +1024,11 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 	a.Groups = groups
 	if a.PersonNode, err = persons.NodeOfPerson(ctx, person); err != nil {
 		return nil, err
+	}
+	if len(a.Approvable) > 0 {
+		if a.Represents, err = represents(ctx, home, persons, person); err != nil {
+			return nil, err
+		}
 	}
 	rows, err := s.grants(ctx, hq, person, groups)
 	if err != nil {

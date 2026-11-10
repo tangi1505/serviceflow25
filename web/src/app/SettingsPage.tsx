@@ -27,6 +27,7 @@ import {
 import { languages } from "@/i18n";
 import { FieldValue } from "@/render/Batch";
 import { fieldLabel, isCalculated } from "@/render/fields";
+import { Substitutes } from "@/render/Substitutes";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
@@ -338,6 +339,7 @@ export function MySettingsPage() {
           )}
         </div>
       </form>
+      {me.data?.person_id && <Substitutes personId={me.data.person_id} />}
       {me.data?.workplace !== false && (
         <>
           <Presets settings={s} />

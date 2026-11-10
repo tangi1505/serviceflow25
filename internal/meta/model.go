@@ -284,6 +284,8 @@ type Type struct {
 	// Suggest offers the type's records while records of other types are written (SD18):
 	// articles at a ticket, for example.
 	Suggest *Suggest `json:"suggest,omitempty" yaml:"suggest"`
+	// Approval names the transitions that follow an approval (trait approvals, WF6).
+	Approval *ApprovalSpec `json:"approval,omitempty" yaml:"approval"`
 	// Package is set by the loader; it is not written in types/<name>.yaml.
 	Package string `json:"package" yaml:"-"`
 	// Revision is the hash of the effective definition (PL43): base and customer layer.

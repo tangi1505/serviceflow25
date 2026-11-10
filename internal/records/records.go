@@ -133,10 +133,20 @@ func (s *Service) Get(ctx context.Context, typeName string, id uuid.UUID) (Recor
 	if err != nil {
 		return nil, err
 	}
-	if err := checkAccess(ctx, t, rec, authz.ActionRead); err != nil {
+	if err := s.checkRead(ctx, t, rec, id); err != nil {
 		return nil, err
 	}
 	return hideFields(ctx, t, rec), nil
+}
+
+// checkRead applies the right to read; whoever is asked to approve the record reads it too
+// (WF6).
+func (s *Service) checkRead(ctx context.Context, t meta.Type, rec Record, id uuid.UUID) error {
+	err := checkAccess(ctx, t, rec, authz.ActionRead)
+	if err != nil && errors.Is(err, ErrNotFound) && s.asked(ctx, s.db.Tenant(ctx), t, id) {
+		return nil
+	}
+	return err
 }
 
 // Check reads a record (outside the trash) and applies the rights for an action: not
@@ -150,7 +160,12 @@ func (s *Service) Check(ctx context.Context, typeName string, id uuid.UUID, acti
 	if err != nil {
 		return nil, err
 	}
-	if err := checkAccess(ctx, t, rec, action); err != nil {
+	if action == authz.ActionRead {
+		err = s.checkRead(ctx, t, rec, id)
+	} else {
+		err = checkAccess(ctx, t, rec, action)
+	}
+	if err != nil {
 		return nil, err
 	}
 	return rec, nil
@@ -1041,6 +1056,10 @@ func (s *Service) purge(ctx context.Context, typeName string, id uuid.UUID, acto
 		// So do the ratings (SD18).
 		if err := q.DeleteRatingsOfRecord(ctx, queries.DeleteRatingsOfRecordParams{TypeName: t.QualifiedName(), RecordID: id}); err != nil {
 			return fmt.Errorf("records: purge ratings: %w", err)
+		}
+		// And the approvals with their stages and questions (WF6).
+		if _, err := tx.Exec(ctx, `DELETE FROM approval WHERE type_name = $1 AND record_id = $2`, t.QualifiedName(), id); err != nil {
+			return fmt.Errorf("records: purge approvals: %w", err)
 		}
 		if hasActors(t) {
 			// The roles go with the record (WF3); the history keeps them.

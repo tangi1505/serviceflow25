@@ -1266,6 +1266,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{typeName}/{id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The approvals of a record (trait approvals, WF6), newest first, with stages and questions; mine marks the open questions the session may answer */
+        get: operations["recordApprovals"];
+        put?: never;
+        /**
+         * Ask for approval in stages (WF6): needs the right to change the record; one open approval per record
+         * @description The stages run one after the other; in a stage persons and groups are asked at once, and the stage needs need yes (0: all). A group is asked once: the first of its members decides for it. The transition the type names under approval.requested follows and must be possible now (409). 409 too when an approval is open. The record keeps its version; the field approval becomes pending.
+         */
+        post: operations["requestApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{typeName}/{id}/approvals/{approvalId}:decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agree or refuse as one asked in the current stage, as substitute too (WF6); a refusal needs a comment
+         * @description Answers the question named by step, or the first the session may answer: her own, then her group's, then one of a person she stands in for. When the stage has enough yes the next one is asked; when it can no longer get them the approval is refused. With the last stage given or one refused, the transition the type names under approval.approved or approval.rejected follows with the rights of the system (a refusal's comment goes along as its text). 403 when the session is not asked now, 409 when the approval is over.
+         */
+        post: operations["decideApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{typeName}/{id}/approvals/{approvalId}:withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End an open approval (WF6): needs the right to change the record; open and waiting questions are dropped, no transition follows */
+        post: operations["withdrawApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records/{typeName}/{id}/documents": {
         parameters: {
             query?: never;
@@ -1612,6 +1670,58 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The list Zu genehmigen (WF6): open questions the session may answer, as substitute too, or (state done) those she answered */
+        get: operations["myApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/persons/{personId}/substitutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who stands in for a person at approvals (WF6): the person herself, or whoever may change her record */
+        get: operations["personSubstitutes"];
+        put?: never;
+        /** Name a substitute of a person for a time (WF6); valid_from defaults to now, without valid_until for good */
+        post: operations["addSubstitute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/persons/{personId}/substitutes/{substituteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** End a substitution by removing it (WF6) */
+        delete: operations["removeSubstitute"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2812,6 +2922,136 @@ export interface components {
             /** @description true helped, false did not, null takes the vote back */
             helpful: boolean | null;
         };
+        ApproverRef: {
+            /** @enum {string} */
+            type: "core.person" | "core.group";
+            /** Format: uuid */
+            id: string;
+        };
+        ApprovalStep: {
+            /** Format: uuid */
+            id: string;
+            approver: components["schemas"]["ApproverRef"];
+            /** @enum {string} */
+            state: "waiting" | "open" | "approved" | "rejected" | "dropped";
+            comment?: string;
+            /**
+             * Format: uuid
+             * @description the person who decided
+             */
+            decided_by?: string;
+            /**
+             * Format: uuid
+             * @description the person a substitute decided for
+             */
+            on_behalf?: string;
+            /** Format: date-time */
+            asked_at?: string;
+            /** Format: date-time */
+            decided_at?: string;
+            /** @description the session may answer it now */
+            mine: boolean;
+        };
+        ApprovalStage: {
+            position: number;
+            name: string;
+            /** @description the least number of yes; 0 means all */
+            need: number;
+            /** @enum {string} */
+            state: "waiting" | "open" | "approved" | "rejected" | "dropped";
+            steps: components["schemas"]["ApprovalStep"][];
+        };
+        Approval: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            state: "open" | "approved" | "rejected" | "withdrawn";
+            /** @description the current stage */
+            stage: number;
+            message: string;
+            /**
+             * Format: uuid
+             * @description the person who asked
+             */
+            requester?: string;
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            finished_at?: string;
+            stages: components["schemas"]["ApprovalStage"][];
+        };
+        ApprovalRequest: {
+            /** @description the text to the approvers */
+            message?: string;
+            stages: {
+                name?: string;
+                /** @description the least number of yes; 0 or missing means all */
+                need?: number;
+                approvers: components["schemas"]["ApproverRef"][];
+            }[];
+        };
+        ApprovalDecision: {
+            /** @enum {string} */
+            decision: "approve" | "reject";
+            /** @description required with reject */
+            comment?: string;
+            /**
+             * Format: uuid
+             * @description the question to answer; without, the first the session may answer
+             */
+            step?: string;
+        };
+        MyApproval: {
+            /** Format: uuid */
+            approval: string;
+            /** Format: uuid */
+            step: string;
+            type_name: string;
+            /** Format: uuid */
+            record_id: string;
+            title: string;
+            stage: number;
+            stages: number;
+            stage_name: string;
+            approver: components["schemas"]["ApproverRef"];
+            /** @enum {string} */
+            state: "open" | "approved" | "rejected";
+            /**
+             * Format: uuid
+             * @description the person the session stands in for here
+             */
+            on_behalf?: string;
+            /** Format: uuid */
+            requester?: string;
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            decided_at?: string;
+        };
+        Substitute: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            person: string;
+            /** Format: uuid */
+            substitute: string;
+            /** Format: date-time */
+            valid_from: string;
+            /** Format: date-time */
+            valid_until?: string;
+            active: boolean;
+        };
+        SubstituteRequest: {
+            /**
+             * Format: uuid
+             * @description the person who stands in
+             */
+            substitute: string;
+            /** Format: date-time */
+            valid_from?: string;
+            /** Format: date-time */
+            valid_until?: string;
+        };
         SuggestRequest: {
             /** @description the values of the form as far as they are filled; the fields each suggesting type names are searched */
             values?: {
@@ -3392,6 +3632,9 @@ export interface components {
         /** @description qualified type name, package.type */
         typeName: string;
         id: string;
+        approvalId: string;
+        /** @description the id of a core.person */
+        personId: string;
         /** @description a version number of the record, from 1 */
         versionNo: number;
         /** @description all returns every language of a translatable field as an object {de, en} (PL21) */
@@ -5836,6 +6079,124 @@ export interface operations {
             404: components["responses"]["Problem"];
         };
     };
+    recordApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the approvals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"][];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
+    };
+    requestApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description the approval, its first stage asked */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    decideApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+                approvalId: components["parameters"]["approvalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecision"];
+            };
+        };
+        responses: {
+            /** @description the approval after the decision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    withdrawApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+                approvalId: components["parameters"]["approvalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the withdrawn approval */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+        };
+    };
     recordDocuments: {
         parameters: {
             query?: never;
@@ -6434,6 +6795,109 @@ export interface operations {
             };
             401: components["responses"]["Problem"];
             403: components["responses"]["Problem"];
+        };
+    };
+    myApprovals: {
+        parameters: {
+            query?: {
+                state?: "open" | "done";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the questions, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyApproval"][];
+                };
+            };
+            401: components["responses"]["Problem"];
+        };
+    };
+    personSubstitutes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description the id of a core.person */
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the substitutions, those not over first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substitute"][];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    addSubstitute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description the id of a core.person */
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstituteRequest"];
+            };
+        };
+        responses: {
+            /** @description the substitution */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substitute"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    removeSubstitute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description the id of a core.person */
+                personId: components["parameters"]["personId"];
+                substituteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
         };
     };
     mySettings: {

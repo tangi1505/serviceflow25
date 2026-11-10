@@ -20,7 +20,7 @@ import (
 //
 // A trait is a definition building block a type pulls in by name. The core ships the traits
 // with behaviour: list (PL16), history, documents, notes, reservable, costs (PL20), actors
-// (WF3), timeline (PL42) and rating (SD18). A core trait may bring fields of its own (costs brings its sums). A package may add
+// (WF3), timeline (PL42), rating (SD18) and approvals (WF6). A core trait may bring fields of its own (costs brings its sums). A package may add
 // traits of its own below traits/<name>.yaml: bundles of fields every type of the package
 // can take, such as finance data. A type names its traits in "traits: [...]".
 
@@ -34,6 +34,7 @@ const (
 	TraitActors     = "actors"     // roles at the record: requester, observer, assigned, … (WF3)
 	TraitTimeline   = "timeline"   // entries public or private, with the history in order (PL42)
 	TraitRating     = "rating"     // helped or not, once per person (SD18)
+	TraitApprovals  = "approvals"  // approval in stages, with the field approval (WF6)
 )
 
 // The computed fields of the trait costs: the sums of the entries, kept by the core.
@@ -82,6 +83,9 @@ var CoreTraits = []Trait{
 		Description: Label{"de": "Einträge öffentlich oder privat, mit dem Verlauf in zeitlicher Reihenfolge", "en": "Entries public or private, with the history in order of time"}},
 	{Name: TraitRating, Label: Label{"de": "Bewertung", "en": "Rating"}, SubResources: []string{"rating"},
 		Description: Label{"de": "Jede Person sagt einmal, ob der Datensatz geholfen hat, und kann es ändern", "en": "Every person says once whether the record helped, and may change it"}},
+	{Name: TraitApprovals, Label: Label{"de": "Genehmigungen", "en": "Approvals"}, SubResources: []string{"approvals"},
+		Description: Label{"de": "Genehmigung in Stufen nacheinander, in einer Stufe mit Mindestzahl; das Feld Genehmigung zeigt den Stand", "en": "Approval in stages one after the other, each with a least number of yes; the field approval shows the outcome"},
+		Fields:      []Field{approvalField}},
 }
 
 // CoreTrait returns the core trait with that name.

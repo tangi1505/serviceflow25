@@ -31,7 +31,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **WF2** | Feldzustände je Status und Formularvariante: Pflicht, versteckt, vorbelegt, schreibgeschützt (B5) (Inventar G53; Hauptplan E110) | 🟢 | 1,5 d | Übergang nach „gelöst" ohne Pflichtfeld „Lösung" → 422 mit Feldname; im Status „geschlossen" ist das Formular schreibgeschützt; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF3** | Rollen am Datensatz: Anforderer, Beobachter, Bearbeiter, je als Person, Gruppe oder Lieferant; Team je Vorgang; je Typ definierbar (Inventar G37, G79; Hauptplan E109) | 🟢 | 2 d | Vorgang mit Bearbeitergruppe → jedes Mitglied findet ihn unter „meine Gruppen"; Rollen eines anderen Typs sind dort nicht wählbar; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF4** | Regel-Engine: Auslöser Anlegen, Ändern, Zeit; Bedingung in CEL; Aktionen setzen, zuweisen, anlegen, benachrichtigen; synchron vor dem Speichern oder danach als Job (Architektur §6.2) (trägt KF7; Inventar G57; Hauptplan E111) | 🟢 | 2 d | Regel „Kategorie Netz → Gruppe Netz" setzt die Gruppe beim Anlegen in derselben Antwort; eine Folgeregel läuft als Job; LZ4 hält in H11; `docker compose run --rm tools scripts/ci.sh` grün |
-| **WF6** | Genehmigungen: Unterdatensatz mit Stufen in fester Reihenfolge oder parallel, Mindestanteil, Vertretung (trägt KF4; Inventar G43, G44) | ⬜ | 2 d | Zwei Stufen, Stufe 2 erst nach Stufe 1; parallele Stufe mit 2 von 3 ist nach der zweiten Zustimmung erfüllt; Vertretung darf zustimmen; `docker compose run --rm tools scripts/ci.sh` grün |
+| **WF6** | Genehmigungen: Unterdatensatz mit Stufen in fester Reihenfolge oder parallel, Mindestanteil, Vertretung (trägt KF4; Inventar G43, G44); dazu Reiter „Genehmigung“, „Zu genehmigen“ im Arbeitsplatz, Bereich „Genehmigungen“ im Portal und Vertretung unter „Meine Einstellungen“ (E17) | 🟢 | 3 d (vorher 2 d) | Zwei Stufen, Stufe 2 erst nach Stufe 1; parallele Stufe mit 2 von 3 ist nach der zweiten Zustimmung erfüllt; Vertretung darf zustimmen; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF7** | Genehmigungsvorlagen und Erinnerung an offene Genehmigungen (Inventar G45, G67) | ⬜ | 1 d | Vorlage setzt beide Stufen in einem Schritt; nach der eingestellten Zeit geht eine Erinnerung (Testmail); `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF8** | Kalender mit Arbeitszeiten und Feiertagen (Inventar G169; Hauptplan E113) | 🟢 | 1 d | Frist von 8 Stunden ab Freitag 15 Uhr endet am Montag 15 Uhr bei 8–16 Uhr Arbeitszeit; ein Feiertag verschiebt sie um einen Tag; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF9** | Fristen und SLA-Uhren: Uhr als Datensatz mit Start, Pause und Ziel; River-Job auf den nächsten Schwellwert, kein minütlicher Lauf (Architektur §8) (trägt KF5; Inventar G167; Hauptplan E114) | 🟢 | 2 d | Uhr startet beim Anlegen, pausiert im Status „wartet", Restzeit stimmt nach Fortsetzen; bei 100.000 offenen Uhren gibt es keinen Lauf über alle (Messung in H11); `docker compose run --rm tools scripts/ci.sh` grün |
@@ -56,7 +56,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **WF17** | Erinnerungen an geplante Termine (Inventar G75) | ⬜ | 0,5 d | Termin mit Erinnerung 15 Minuten vorher → Benachrichtigung im Browser zur richtigen Zeit (Testzeit); `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF18** | Regel auf eine gespeicherte Suche: benachrichtigen, wenn sie Treffer hat (Inventar G113) | ⬜ | 1 d | Gespeicherte Suche „Vorgänge ohne Bearbeiter" mit Regel → Mail, sobald ein Treffer entsteht; `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 26,5 d, geschätzt vor dem Bau (Block A: 2 d).
+**Summe:** 27,5 d, geschätzt vor dem Bau (Block A: 2 d); WF6 am 2026-11-10 von 2 d auf 3 d für Oberfläche, Bereich im Portal und Vertretung (E17).
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B von WF kommt jetzt, vor Block B der Oberfläche; Block B ist gebaut: WF3, WF2, WF4 und WF8 bis WF15; dazwischen kam PL41 (Verteiler in Stapeln, Kern-Plan) aus dem Befund von WF4. Danach kam PL42 (Zeitleiste, Kern-Plan, Hauptplan E121) mit dem Ereignis `comment` für Benachrichtigungen. Als Nächstes Block B der Oberfläche (UI-Plan), dann SD; WF5 bis WF7 und WF16 folgen in Block C.
 
@@ -74,6 +74,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E8, E19, E45).
 | **E2** | Das Statusmodell steht in der Typdefinition (`states` mit genau einem `initial`, `transitions` mit `from`, `to`, `when`); der Status liegt in der Systemspalte `state`, ein neuer Datensatz startet im Anfangsstatus, PATCH auf `state` wird abgelehnt (422), nur ein Übergang ändert ihn | 2026-10-20 | Umsetzung |
 | **E3** | Übergang per `POST …/{id}:transition` mit `{"transition": name}`: Zeile gesperrt, Status und CEL-Bedingung geprüft, Status mit neuer Version geschrieben, Audit-Zeile `transition` und Ereignis in derselben Transaktion; nicht erlaubt → 409 mit Grund (Status oder Bedingung), unbekannt → 422. `GET …/{id}/transitions` sagt je Übergang, ob er gerade geht und warum nicht | 2026-10-20 | Umsetzung |
 | **E4** | CEL (`internal/rules`, cel.dev/cel-go) sieht den Datensatz als `record` (Felder und Systemfelder) und muss `true`/`false` liefern; die Definition prüft Bedingungen beim Installieren, ein fehlendes Feld zur Laufzeit ist ein Fehler, kein stilles `false` | 2026-10-20 | Umsetzung |
+| **E17** | Genehmigungen (WF6, deine Entscheidungen 2026-11-10 nach dem Mockup „Genehmigungen“, [Artifact](https://claude.ai/artifact/Mez7bLzqU887wXw9s9Mnwk), Hauptplan E175): **Merkmal `approvals` mit Kerntabellen** (`approval`, `approval_stage`, `approval_step`, Migration 00044), wie Bewertung und Zeitleiste; jeder Typ kann es anziehen. **Stufen** laufen nacheinander, in einer Stufe sind Personen und Gruppen gleichzeitig gefragt, die Stufe braucht „mindestens n“ Zustimmungen (0: alle); sie ist erteilt, sobald genug zugestimmt haben, abgelehnt, sobald das nicht mehr erreichbar ist; dann entfallen die offenen Fragen. **Eine Gruppe** ist einmal gefragt, das erste Mitglied entscheidet für sie. **Wirkung:** das berechnete Feld `approval` (offen, erteilt, abgelehnt, zurückgezogen) und die Übergänge, die der Typ unter `approval` nennt (`requested`, `approved`, `rejected`); sie laufen nach dem Schreiben mit den Rechten des Systems und dem Entscheider als Auslöser, der Grund einer Ablehnung geht als Text mit. **Vertretung** an der Person mit „von“ und „bis“ (Tabelle `substitute`), eingetragen von der Person selbst oder von der Verwaltung an der Person (Recht zum Ändern der Person); in der Zeit entscheidet die Vertretung für die Person und ihre Gruppen, im Verlauf steht „für“. **Lesen:** wer gefragt ist oder entschieden hat, liest den Datensatz ohne eigenes Recht (`authz.Access.Asked`). **Ablehnen** braucht immer einen Grund. **Oberfläche:** Reiter „Genehmigung“ nach „Bezüge“, links „Zu genehmigen“ mit Anzahl, im Portal ein eigener Bereich „Genehmigungen“ im Kopf (Variante 3B) mit Seite zum Lesen und Entscheiden, Vertretungen unter „Meine Einstellungen“ und als Reiter an der Person. Benachrichtigungen kennen die Ereignisse `approval_request`, `approval_decision`, `approval` und den Empfänger `approvers`. Verworfen: Kerntyp „Genehmigung“ als Datensatz; nur Feld und Ereignis ohne Übergänge; jedes Gruppenmitglied einzeln; Weiterleiten je Genehmigung; „Zu genehmigen“ auf der Startseite des Portals (3A); Abschnitt über dem Formular; nur die Person selbst trägt Vertretungen ein | 2026-11-10 | Pascal |
 | **E16** | `internal/notify`: `HandleBatch` (Abnehmer `notify`, nur wo ein Mailserver gesetzt ist) liest die aktiven Benachrichtigungen einmal je Stapel über `records.Query` und legt je passendem Ereignis einen Job `notify.fanout` an, je notify-Ereignis einer Regel ebenso. `notify.fanout` liest Ereignis und Datensatz (wie er jetzt ist), prüft die Bedingung, löst die Empfänger auf (Rollen aus `actors`, Gruppen über `core.group_member`, Personen), zieht doppelte und den Auslöser ab (Konto → Person über `authz`) und legt je Person einen Job `notify.send` an, eindeutig nach seinen Argumenten (River `UniqueOpts.ByArgs`), damit ein wiederholter Lauf keine Mail doppelt legt. `notify.send` liest Person (Adresse, Sprache, sonst Deutsch), Benachrichtigung und Datensatz mit `records.Localize` in ihrer Sprache, rendert und schickt mit `net/smtp` (STARTTLS und Anmeldung wählbar, Anmeldung nur mit STARTTLS); 8 Versuche, danach `delivery_failure` mit der Art `mail`. Platzhalter prüft die Prüfung beim Speichern (`CheckRecord`); ein unbekannter in einer Übersetzung bleibt im Text stehen. Für Tests gibt es `internal/notify/smtptest`, einen SMTP-Empfänger im Prozess | 2026-10-29 | Umsetzung |
 | **E15** | `internal/recurrence`: `Run(ctx, now)` fragt über `records.Query` nur die aktiven Vorgänge mit leerem oder erreichtem `next_run` ab (kein Lauf über alle), legt den Datensatz des Termins mit `records.Sync` und dem Schlüssel `recurrence:<id>` / Termin an (der eindeutige Index `(source, external_key)` aus PL31 macht es genau einmal; eine zweite Instanz bekommt einen Konflikt oder „unverändert“) und schreibt `next_run` (nächster Termin nach jetzt, in der Zeitzone, auch über die Zeitumstellung), `last_run` und `last_error` über `records.Update`, also mit Verlauf. Ein leeres `next_run` wird nur gesetzt, ohne anzulegen. Die Prüfung beim Speichern (`CheckRecord`, mehrere über `records.Checks`) füllt die Vorlage für einen Beispieltermin und prüft sie mit `CheckValues` gegen den Zieltyp. Der Job `recurrence.run` läuft jede Minute auf der Standard-Warteschlange | 2026-10-29 | Umsetzung |
 | **E14** | Ein Summenfeld ist ein Zahlfeld mit `rollup: {from, via, op, field, where}`; `from` muss ein Typ desselben Pakets sein, `via` ein Referenzfeld von `from` auf diesen Typ, `sum` braucht ein Zahlfeld, `count` keines. Der Lader setzt es auf `computed` wie die Kostensummen (Spalte mit Vorgabe 0, nicht schreibbar, ohne Version). `internal/records/rollup.go`: Nach jedem Schreiben eines gezählten Datensatzes (Anlegen, Ändern, Übergang, Papierkorb, Wiederherstellen) sperrt `rollupsWritten` die Zeilen der Vorgänge vorher und nachher in der Reihenfolge der Ids und zählt danach in einer eigenen Anweisung (READ COMMITTED sieht dann, was vorher festgeschrieben wurde), schreibt geänderte Summen mit Verlaufszeile und Ereignis `update` zur aktuellen Version und gibt den Uhren des Vorgangs Bescheid. `where` wird mit `authz.Translate` nach SQL übersetzt; geht das nicht, wird das Schreiben der Aufgabe abgelehnt (`meta` prüft beim Laden nur, dass CEL es versteht, weil `authz` von `meta` abhängt). Bulk-Zeilen eines gezählten Typs gehen den Weg von Sync | 2026-10-29 | Umsetzung |
@@ -141,6 +142,58 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Feldzustände je Status mit WF2, Rechte je Übergang mit PL8; der Ereignisstrom hat weder
   Aufbewahrung noch SSE noch Verteiler (PL24); Übergänge laufen nur über die API, nicht per
   Bulk (PL31); die Bedingung sieht nur den Datensatz, nicht die Person (kommt mit PL8).
+
+### WF6 — Genehmigungen, 2026-11-10
+
+- **Grundlage:** Hauptplan E175, KF4; Inventar G43, G44; E17 dieses Plans; deine Entscheidungen
+  vom 2026-11-10 (Merkmal mit Kerntabellen, der Typ nennt die Übergänge, ein Mitglied für die
+  Gruppe, Vertretung an der Person; nach dem Mockup: eigener Bereich im Portal, Reiter, „Zu
+  genehmigen“ mit Anzahl, Vertretung durch die Person und die Verwaltung).
+- **Gebaut:**
+  - Kern: Merkmal `approvals` mit dem berechneten Feld `approval` und Typ-Option `approval`
+    (`internal/meta/approval.go`); Migration `00044_approval.sql` (Genehmigung, Stufe, Frage,
+    Vertretung, Verlaufsaktion `approval`); `internal/records/approval.go` (anfordern, entscheiden,
+    zurückziehen, „Zu genehmigen“, Übergang danach) und `substitute.go`; in `internal/authz`
+    liest, wer gefragt ist (`Asked`, auch als Vertretung), in Listen und einzeln; beim
+    endgültigen Löschen gehen die Genehmigungen mit.
+  - API: `GET`/`POST …/{id}/approvals`, `POST …/approvals/{approvalId}:decide` und `:withdraw`,
+    `GET /api/v1/me/approvals`, `GET`/`POST`/`DELETE /api/v1/persons/{personId}/substitutes`.
+  - Benachrichtigungen: Ereignisse `approval_request`, `approval_decision`, `approval`, Empfänger
+    `approvers` (wen die Stufe fragt); Paket `core` 0.3.0 mit den Beschreibungen dazu.
+  - Paket `probe` 0.2.0: Typ `probe.order` (Bestellung) mit Genehmigung, Übergänge `ask`,
+    `grant`, `refuse` (mit Grund).
+  - Oberfläche: `render/Approvals.tsx` (Reiter mit Stufen, Entscheidung, Anfordern,
+    Zurückziehen), `render/ApprovalList.tsx` („Zu genehmigen“ und Bereich im Portal),
+    `portal/Approval.tsx` (lesen und entscheiden im Portal), `render/Substitutes.tsx` (unter
+    „Meine Einstellungen“ und als Reiter „Vertretungen“ an der Person).
+- **Alte Tests angepasst:** `portal/Portal.test.tsx` klickt „Meine Vorgänge“ jetzt im Inhalt:
+  der Kopf des Portals zeigt die Bereiche immer, weil „Genehmigungen“ für jeden dort steht, und
+  hat damit einen zweiten Link „Meine Vorgänge“.
+- **Belegt:**
+  - Go `TestApprovalsOverHTTP` (Prüfweg): zwei Stufen; die Bestellung wartet nach dem Anfordern;
+    eine zweite offene Genehmigung ist 409; Stufe 2 fragt erst nach Stufe 1 (vorher 404 beim
+    Lesen und Entscheiden); die Leitung trägt eine Vertretung ein, die Vertretung entscheidet
+    „für“ sie; Ablehnen ohne Grund ist 422; in „mindestens 2 von 3“ lehnt die Gruppe ab, zwei
+    Personen stimmen zu, dann ist die Bestellung genehmigt; eine Ablehnung schließt die zweite
+    Bestellung mit dem Grund in der Zeitleiste; Zurückziehen lässt die Fragen entfallen und das
+    Lesen enden; falsche Anfragen 422; ein Typ ohne Merkmal 404; Verlauf und Ereignisse.
+  - Go `TestApprovalSpec`: Feld, Prüfung des Blocks `approval`.
+  - Vitest `render/Approvals.test.tsx`: Reiter mit Stufen und „für“, Ablehnen nur mit Grund,
+    Zustimmen schickt die Frage; Anfordern in Stufen; „Zu genehmigen“ mit Anzahl und im Portal
+    als Bereich mit Seite zum Entscheiden; Vertretung an der Person eintragen und entfernen; mit
+    axe.
+  - Gefunden im ersten CI-Lauf, beides aus WF6: der Abdeckungstest (PL30) fand bei einer neuen
+    Bestellung im Feld `approval` den Wert „0“. Der Kern gab jedem berechneten Feld die Vorgabe 0
+    und beschrieb es als nie leer, gedacht für Summen (PL20). Jetzt gilt das nur für Zahlenfelder
+    (`internal/schema`, Beschreibung in `internal/httpapi/api.go`); eine berechnete Auswahl ist
+    leer, bis der Kern sie setzt. Der Prüfweg prüft das jetzt auch. Der Browser-Test des Portals
+    fand „Meine Vorgänge“ zweimal (wie oben bei Vitest) und klickt jetzt den Pfad.
+  - Ganze CI grün am 2026-11-10 im zweiten Lauf (der erste fand die Befunde oben): Go und Web (121 Vitest-Fälle, 18 Playwright-Fälle mit axe), Leistungsgate bestanden; LZ1 p95 3,10 ms (−3 % zur Basislinie im selben Lauf), LZ2 5,15 ms (+2 %), LZ3 7,51 ms (+9 %), LZ4 11,46 ms (+6 %), LZ5 9.489 Zeilen/s, LZ13 8.502 Ereignisse/s.
+- **Nicht geprüft:** Kein eigener Browser-Test. Kommt der Übergang nach der Entscheidung nicht
+  durch (der Datensatz steht inzwischen woanders), bleibt die Genehmigung stehen und der Verlauf
+  sagt es; zwischen dem Schreiben der Entscheidung und dem Übergang liegt ein eigener Schritt.
+  Benachrichtigt werden nur die Gefragten, nicht ihre Vertretungen. Namen von Personen zeigt das
+  Portal nur, wo die Person sie lesen darf. Vorlagen und Erinnerungen kommen mit WF7.
 
 ### WF15 — Benachrichtigungen als Mail, 2026-10-29
 

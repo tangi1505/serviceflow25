@@ -44,7 +44,12 @@ test("a user stays in the portal and creates there", async ({ page }) => {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
 
-  await page.getByRole("link", { name: "Meine Vorgänge" }).click();
+  // The head always has the areas since WF6 ("Genehmigungen" for everyone); the breadcrumb leads
+  // back as before.
+  await page
+    .getByRole("navigation", { name: "breadcrumb" })
+    .getByRole("link", { name: "Meine Vorgänge" })
+    .click();
   await expect(
     page.getByRole("region", { name: "Probe" }).getByRole("link", { name: title }),
   ).toBeVisible();
