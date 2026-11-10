@@ -8,11 +8,13 @@
 # the day after "Gültig bis" it is gone from the portal; a daily rule sets it expired and writes
 # to its author (SD16d, data/ablauf.yaml). Title
 # and text may carry an English translation (SD16c); the form edits the German one, readers see
-# their language where there is one (SD-Plan E10).
+# their language where there is one (SD-Plan E10). While a ticket is written it is suggested,
+# in the portal beside the form and in the tab "Wissen" of the ticket; readers say whether it
+# helped and comment on it in its timeline (SD18, SD-Plan E12).
 name: article
 label: {de: Artikel, en: Article}
 title_field: title
-traits: [history, actors]
+traits: [history, actors, timeline, rating]
 fields:
   - name: title
     type: text
@@ -65,10 +67,25 @@ transitions:
 # Who reads without a role (SD-Plan E8, N12): a published article for everyone at its node and
 # below, one for some groups their members wherever they are; without groups only agents read
 # it. Agents read by their roles. Valid until yesterday it is gone, before the nightly rule.
+# Who reads it may comment on it (SD18).
 readers:
   - when: record.state == "published" && record.audience == "all" && (record.expires_on == null || record.expires_on >= today())
+    actions: [read, comment]
   - when: record.state == "published" && record.audience == "groups" && (record.expires_on == null || record.expires_on >= today())
     roles: [shared]
+    actions: [read, comment]
+# Suggested for every ticket by its title and description (SD18, SD-Plan E12): "Verknüpfen"
+# links with uses, "Als Lösung übernehmen" sets the text and the kind "Anleitung gegeben".
+suggest:
+  label: {de: Wissen, en: Knowledge}
+  for: ["trait:sd.ticket"]
+  from: [title, description]
+  relation: knowledge.uses
+  apply:
+    label: {de: Als Lösung übernehmen, en: Use as solution}
+    set:
+      solution: "@body"
+      solution_kind: instructed
 # The area "Wissen" in the head of the portal (SD16a, variant B of the mockup).
 portal:
   read:

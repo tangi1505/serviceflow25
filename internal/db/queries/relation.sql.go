@@ -12,6 +12,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countRelationsTo = `-- name: CountRelationsTo :many
+SELECT to_id, count(*)::bigint AS uses
+FROM relation
+WHERE kind = $1 AND to_type = $2 AND to_id = ANY($3::uuid[])
+GROUP BY to_id
+`
+
+type CountRelationsToParams struct {
+	Kind   string
+	ToType string
+	ToIds  []uuid.UUID
+}
+
+type CountRelationsToRow struct {
+	ToID uuid.UUID
+	Uses int64
+}
+
+// How many records link to each of the targets with one kind (SD18: "used at 7 tickets").
+func (q *Queries) CountRelationsTo(ctx context.Context, arg CountRelationsToParams) ([]CountRelationsToRow, error) {
+	rows, err := q.db.Query(ctx, countRelationsTo, arg.Kind, arg.ToType, arg.ToIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRelationsToRow
+	for rows.Next() {
+		var i CountRelationsToRow
+		if err := rows.Scan(&i.ToID, &i.Uses); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteRelation = `-- name: DeleteRelation :execrows
 DELETE FROM relation WHERE id = $1
 `

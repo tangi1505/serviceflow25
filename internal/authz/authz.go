@@ -260,13 +260,19 @@ func containsString(list []string, v string) bool {
 	return false
 }
 
-// readers lists the rules by which the access reads a type without a grant; none for an
-// action other than reading.
+// readers lists the rules by which the access reads a type without a grant, or does another
+// action a rule lets do (comment, SD18).
 func (a *Access) readers(typeName, action string) []meta.Reader {
-	if action != ActionRead {
-		return nil
+	if action == ActionRead {
+		return a.Readers[typeName]
 	}
-	return a.Readers[typeName]
+	var out []meta.Reader
+	for _, r := range a.Readers[typeName] {
+		if r.Lets(action) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // System is the access of the binary itself: everything, everywhere.

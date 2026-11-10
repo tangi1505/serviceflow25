@@ -28,6 +28,9 @@ export type TimelineEntry = components["schemas"]["TimelineEntry"];
 export type Clock = components["schemas"]["Clock"];
 export type Relation = components["schemas"]["Relation"];
 export type RelationKind = components["schemas"]["RelationKind"];
+export type Rating = components["schemas"]["Rating"];
+export type SuggestGroup = components["schemas"]["SuggestGroup"];
+export type SuggestHit = components["schemas"]["SuggestHit"];
 export type Query = components["schemas"]["Query"];
 export type Job = components["schemas"]["Job"];
 export type MySettings = components["schemas"]["MySettings"];
@@ -139,6 +142,15 @@ export type ActorRef = { type: string; id: string };
 // PortalRead is the reading area of a type in the portal (SD16a): its name in the head, the
 // fields its page shows, and the reference field to a tree list it is browsed by.
 export type PortalRead = { label: Label; fields: string[]; group?: string };
+// Suggest says where the records of a type are suggested while others are written (SD18):
+// for types or traits ("trait:sd.ticket"), searched with the fields from.
+export type Suggest = {
+  label: Label;
+  for: string[];
+  from: string[];
+  relation?: string;
+  apply?: { label: Label; set: Record<string, string> };
+};
 export type TypeDefinition = {
   name: string;
   package?: string;
@@ -160,6 +172,10 @@ export type TypeDefinition = {
   layout?: Record<string, { x: number; y: number }>;
   // timed tells that SLA clocks run on the records: the list shows their deadline (UI34).
   timed?: boolean;
+  // suggest offers the type's records while records of other types are written (SD18).
+  suggest?: Suggest;
+  // readers let persons read without a grant (SD16a), some also comment (SD18).
+  readers?: { when?: string; roles?: string[]; actions?: string[] }[];
 };
 export type TransitionInfo = components["schemas"]["TransitionInfo"];
 // FieldStates is what the field states of the type (WF2) say for a record or a new one.
@@ -365,6 +381,29 @@ export const api = {
       }),
     ),
   relationKinds: async () => unwrap(await client.GET("/api/v1/relations/kinds")),
+  // suggest finds the suggestions for a record being written (SD18): from the values of its
+  // form, or from a text of its own; with the id the hits linked to the record say so.
+  suggest: async (typeName: string, body: components["schemas"]["SuggestRequest"]) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}:suggest", {
+        params: { path: { typeName } },
+        body,
+      }),
+    ),
+  // rating is whether a record helped (trait rating, SD18); rate sets or takes back the vote.
+  rating: async (typeName: string, id: string) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/rating", {
+        params: { path: { typeName, id } },
+      }),
+    ),
+  rate: async (typeName: string, id: string, helpful: boolean | null) =>
+    unwrap(
+      await client.PUT("/api/v1/records/{typeName}/{id}/rating", {
+        params: { path: { typeName, id } },
+        body: { helpful },
+      }),
+    ),
   relate: async (body: components["schemas"]["RelationCreate"]) =>
     unwrap(await client.POST("/api/v1/relations", { body })),
   unrelate: async (id: string) =>

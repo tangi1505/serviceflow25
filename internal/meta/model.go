@@ -82,9 +82,27 @@ type PortalRead struct {
 // SD-Plan N12), as everyone reads the entries of the select lists (N5): the records the
 // condition holds for, at the person's node or above. With Roles only the holders of these
 // roles read them, wherever they are: a person named there or a member of a group named there.
+// Actions may let them also comment (SD18, SD-Plan N15); reading is always among them.
 type Reader struct {
-	When  string   `json:"when,omitempty" yaml:"when"`
-	Roles []string `json:"roles,omitempty" yaml:"roles"`
+	When    string   `json:"when,omitempty" yaml:"when"`
+	Roles   []string `json:"roles,omitempty" yaml:"roles"`
+	Actions []string `json:"actions,omitempty" yaml:"actions"`
+}
+
+// ReaderActions are what a reader rule may let do.
+var ReaderActions = []string{"read", "comment"}
+
+// Lets reports whether the rule lets do the action: read always, comment when named.
+func (r Reader) Lets(action string) bool {
+	if action == "read" {
+		return true
+	}
+	for _, a := range r.Actions {
+		if a == action {
+			return true
+		}
+	}
+	return false
 }
 
 // FormatRich marks a text field as formatted text (UI7).
@@ -263,6 +281,9 @@ type Type struct {
 	// Readers let persons read records without a grant (SD16a): published articles for
 	// everyone, for example. A select list reads like one reader without condition.
 	Readers []Reader `json:"readers,omitempty" yaml:"readers"`
+	// Suggest offers the type's records while records of other types are written (SD18):
+	// articles at a ticket, for example.
+	Suggest *Suggest `json:"suggest,omitempty" yaml:"suggest"`
 	// Package is set by the loader; it is not written in types/<name>.yaml.
 	Package string `json:"package" yaml:"-"`
 	// Revision is the hash of the effective definition (PL43): base and customer layer.
@@ -409,7 +430,9 @@ type Package struct {
 
 // RelationKind is a kind of link between records (relations/<name>.yaml): what it is called
 // in both directions, which types it links ("*" for any) and whether a problem at the target
-// affects the source (impact analysis, E92).
+// affects the source (impact analysis, E92). Update says at which end linking needs the right
+// to update: both (empty) or only from, where reading suffices at the target (SD18, SD-Plan
+// N16): an agent links an article to an incident without the right to change the article.
 type RelationKind struct {
 	Package     string   `json:"package,omitempty" yaml:"-"`
 	Name        string   `json:"name" yaml:"name"`
@@ -419,7 +442,11 @@ type RelationKind struct {
 	From        []string `json:"from" yaml:"from"`
 	To          []string `json:"to" yaml:"to"`
 	Impact      bool     `json:"impact,omitempty" yaml:"impact"`
+	Update      string   `json:"update,omitempty" yaml:"update"`
 }
+
+// RelationUpdateFrom is the value of Update for a kind that needs the right only at from.
+const RelationUpdateFrom = "from"
 
 // QualifiedName is package.name.
 func (k RelationKind) QualifiedName() string { return k.Package + "." + k.Name }

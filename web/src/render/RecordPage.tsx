@@ -116,6 +116,8 @@ export function RecordPage() {
   // while the form held changes.
   const [dirty, setDirty] = useState(false);
   const [staleBy, setStaleBy] = useState<string | null>(null);
+  // Values a tab puts into the form, unsaved (SD18: "Als Lösung übernehmen").
+  const [applied, setApplied] = useState<{ n: number; values: Record<string, unknown> }>();
   const me = useQuery(meQuery);
   const others = usePresence(typeName, id, dirty);
   useLive((e) => {
@@ -200,6 +202,7 @@ export function RecordPage() {
             record={record.data}
             states={states.data}
             onDirtyChange={setDirty}
+            apply={applied}
             onSaved={(saved: RecordData) => {
               queryClient.setQueryData(recordQuery(typeName, id).queryKey, saved);
               setSavedAt(Number(saved["version"]));
@@ -218,6 +221,8 @@ export function RecordPage() {
             id={id}
             timeline={timeline === true}
             version={Number(record.data["version"])}
+            record={record.data}
+            onApply={(values) => setApplied((a) => ({ n: (a?.n ?? 0) + 1, values }))}
           />
         </div>
         <Sidebar type={type} record={record.data} />

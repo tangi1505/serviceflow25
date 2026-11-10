@@ -20,7 +20,7 @@ import (
 //
 // A trait is a definition building block a type pulls in by name. The core ships the traits
 // with behaviour: list (PL16), history, documents, notes, reservable, costs (PL20), actors
-// (WF3) and timeline (PL42). A core trait may bring fields of its own (costs brings its sums). A package may add
+// (WF3), timeline (PL42) and rating (SD18). A core trait may bring fields of its own (costs brings its sums). A package may add
 // traits of its own below traits/<name>.yaml: bundles of fields every type of the package
 // can take, such as finance data. A type names its traits in "traits: [...]".
 
@@ -33,6 +33,7 @@ const (
 	TraitCosts      = "costs"      // cost and time entries with sums on the record (PL20)
 	TraitActors     = "actors"     // roles at the record: requester, observer, assigned, … (WF3)
 	TraitTimeline   = "timeline"   // entries public or private, with the history in order (PL42)
+	TraitRating     = "rating"     // helped or not, once per person (SD18)
 )
 
 // The computed fields of the trait costs: the sums of the entries, kept by the core.
@@ -79,6 +80,8 @@ var CoreTraits = []Trait{
 		Description: Label{"de": "Personen, Gruppen oder Lieferanten in den Rollen, die der Typ unter actors nennt", "en": "Persons, groups or suppliers in the roles the type names under actors"}},
 	{Name: TraitTimeline, Label: Label{"de": "Zeitleiste", "en": "Timeline"}, SubResources: []string{"timeline"},
 		Description: Label{"de": "Einträge öffentlich oder privat, mit dem Verlauf in zeitlicher Reihenfolge", "en": "Entries public or private, with the history in order of time"}},
+	{Name: TraitRating, Label: Label{"de": "Bewertung", "en": "Rating"}, SubResources: []string{"rating"},
+		Description: Label{"de": "Jede Person sagt einmal, ob der Datensatz geholfen hat, und kann es ändern", "en": "Every person says once whether the record helped, and may change it"}},
 }
 
 // CoreTrait returns the core trait with that name.

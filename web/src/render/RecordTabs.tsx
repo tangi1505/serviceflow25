@@ -5,15 +5,24 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// The tabs under the form of a record page (UI-Plan E38, from SD4): relations first, the
-// versions of a type with history (SD16b), the timeline last; files will come between. Tabs after the WAI-ARIA pattern: arrow keys, Home
+// The tabs under the form of a record page (UI-Plan E38, from SD4): relations first, then one
+// tab for each type suggested here (SD18, "Wissen"), the versions of a type with history
+// (SD16b), the timeline last; files will come between. Tabs after the WAI-ARIA pattern: arrow keys, Home
 // and End move between them, only the chosen one is in the tab order.
+import { useQuery } from "@tanstack/react-query";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type TypeDefinition } from "@/api/client";
+import {
+  labelOf,
+  qualifiedName,
+  typesQuery,
+  type RecordData,
+  type TypeDefinition,
+} from "@/api/client";
 
 import { Relations } from "./Relations";
+import { SuggestionTab, suggesters } from "./Suggestions";
 import { Timeline } from "./Timeline";
 import { Versions } from "./Versions";
 
@@ -24,18 +33,30 @@ export function RecordTabs({
   id,
   timeline,
   version,
+  record,
+  onApply,
 }: {
   type: TypeDefinition;
   id: string;
   timeline: boolean;
   // version is the record's current version: restoring sends it as If-Match (SD16b).
   version: number;
+  // record and onApply serve the tabs of suggestions (SD18): their search starts from the
+  // record's fields, using a hit puts values into the form.
+  record: RecordData;
+  onApply: (values: Record<string, unknown>) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const base = useId();
+  const types = useQuery(typesQuery);
+  const suggested = suggesters(types.data ?? [], type);
   const withEntries = type.traits?.includes("timeline") === true;
   const tabs: Tab[] = [
     { key: "relations", label: t("relations.title") },
+    ...suggested.map((s) => ({
+      key: `suggest:${qualifiedName(s)}`,
+      label: labelOf(s.suggest?.label, i18n.language, qualifiedName(s)),
+    })),
     ...(type.traits?.includes("history") ? [{ key: "versions", label: t("versions.title") }] : []),
     ...(timeline
       ? [{ key: "timeline", label: withEntries ? t("timeline.title") : t("timeline.history") }]
@@ -103,6 +124,13 @@ export function RecordTabs({
       >
         {tabs[at]!.key === "relations" ? (
           <Relations type={type} id={id} />
+        ) : tabs[at]!.key.startsWith("suggest:") ? (
+          <SuggestionTab
+            type={type}
+            record={record}
+            from={suggested.find((s) => `suggest:${qualifiedName(s)}` === tabs[at]!.key)!}
+            onApply={onApply}
+          />
         ) : tabs[at]!.key === "versions" ? (
           <Versions key={version} type={type} id={id} version={version} />
         ) : (

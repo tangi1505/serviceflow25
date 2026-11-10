@@ -1038,6 +1038,10 @@ func (s *Service) purge(ctx context.Context, typeName string, id uuid.UUID, acto
 		if err := q.DeleteEntriesOfRecord(ctx, queries.DeleteEntriesOfRecordParams{TypeName: t.QualifiedName(), RecordID: id}); err != nil {
 			return fmt.Errorf("records: purge entries: %w", err)
 		}
+		// So do the ratings (SD18).
+		if err := q.DeleteRatingsOfRecord(ctx, queries.DeleteRatingsOfRecordParams{TypeName: t.QualifiedName(), RecordID: id}); err != nil {
+			return fmt.Errorf("records: purge ratings: %w", err)
+		}
 		if hasActors(t) {
 			// The roles go with the record (WF3); the history keeps them.
 			if err := q.DeleteActorsOfRecord(ctx, queries.DeleteActorsOfRecordParams{TypeName: t.QualifiedName(), RecordID: id}); err != nil {

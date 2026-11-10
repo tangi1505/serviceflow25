@@ -154,6 +154,7 @@ func Validate(p Package, known map[string]bool) error {
 		validateActors(add, where, t, local, known)
 		validatePortal(add, where, t)
 		validateReaders(add, where, t)
+		validateSuggest(add, where, t, p, local, known, trseen)
 		validateFieldStates(add, where, t)
 		validateList(add, where, t)
 		validateFormulas(add, where, t)
@@ -171,6 +172,9 @@ func Validate(p Package, known map[string]bool) error {
 		rseen[k.Name] = true
 		checkLabel(add, where, "label", k.Label)
 		checkLabel(add, where, "inverse", k.Inverse)
+		if k.Update != "" && k.Update != RelationUpdateFrom {
+			add(where, "update must be %q or left out (both ends), not %q", RelationUpdateFrom, k.Update)
+		}
 		for _, side := range []struct {
 			what  string
 			types []string
@@ -377,6 +381,14 @@ func validateReaders(add func(string, string, ...any), where string, t Type) {
 		for _, role := range r.Roles {
 			if _, ok := t.Actor(role); !ok {
 				add(rw, "role %q is not a role of the type", role)
+			}
+		}
+		for _, a := range r.Actions {
+			if !slices.Contains(ReaderActions, a) {
+				add(rw, "action %q must be one of %s", a, strings.Join(ReaderActions, ", "))
+			}
+			if a == "comment" && !t.HasTrait(TraitTimeline) {
+				add(rw, "action comment needs the trait timeline")
 			}
 		}
 	}

@@ -9,6 +9,7 @@ package records
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -200,4 +201,41 @@ func (s *Service) SeedListsInto(ctx context.Context, types []meta.Type, scope st
 		}
 	}
 	return created, nil
+}
+
+// ListKeys gives the values for a record of t with the key of a select list's entry in a
+// reference field turned into the entry's id, read with the rights of the system (lists are
+// read by all, PL16): fixed values of forms (SD9) and what using a suggestion sets (SD18).
+// Ids and other values stay as they are; the record checks them when it is written.
+func (s *Service) ListKeys(ctx context.Context, t meta.Type, values map[string]any) (map[string]any, error) {
+	out := make(map[string]any, len(values))
+	for name, v := range values {
+		out[name] = v
+		f, ok := t.Field(name)
+		key, isText := v.(string)
+		if !ok || f.Type != meta.FieldReference || !isText {
+			continue
+		}
+		if _, err := uuid.Parse(key); err == nil {
+			continue
+		}
+		list, err := s.Type(ctx, f.To)
+		if err != nil || !list.IsList() {
+			return nil, fmt.Errorf("%s: %q is no id, and %s is no select list with keys", name, key, f.To)
+		}
+		where, _ := json.Marshal(map[string]any{"field": "key", "eq": key})
+		sys := authz.WithAccess(ctx, authz.SystemIn(authz.From(ctx).CurrentTenant()))
+		if authz.From(ctx).IsSystem() {
+			sys = ctx
+		}
+		page, _, err := s.Query(sys, f.To, Query{Where: where, Limit: 1})
+		if err != nil {
+			return nil, err
+		}
+		if len(page.Items) == 0 {
+			return nil, fmt.Errorf("%s: %s has no entry with the key %q", name, f.To, key)
+		}
+		out[name] = fmt.Sprint(page.Items[0]["id"])
+	}
+	return out, nil
 }

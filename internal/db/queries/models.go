@@ -346,6 +346,14 @@ type Permission struct {
 	Fields    []byte
 }
 
+type Rating struct {
+	TypeName string
+	RecordID uuid.UUID
+	PersonID uuid.UUID
+	Helpful  bool
+	RatedAt  pgtype.Timestamptz
+}
+
 type Relation struct {
 	ID        uuid.UUID
 	Kind      string

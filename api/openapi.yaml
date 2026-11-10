@@ -219,6 +219,28 @@ paths:
                   - $ref: "#/components/schemas/Rows"
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}:suggest:
+    post:
+      operationId: suggestRecords
+      summary: "Suggestions for a record being written (SD18, SD-Plan N13): every type whose suggest names this type is searched with the text of the fields it names, any word counts, best first, only what the session may read. One group per suggesting type, with the relation kind that links and what applying sets"
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SuggestRequest" }
+      responses:
+        "200":
+          description: the groups of suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SuggestGroup" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
   /api/v1/tenants:query:
     post:
       operationId: queryTenants
@@ -1673,6 +1695,41 @@ paths:
         "403": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}/rating:
+    get:
+      operationId: recordRating
+      summary: "Whether a record helped (trait rating, SD18): the yes and no of all persons and the vote of the session's person"
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: the sums
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rating" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: rateRecord
+      summary: "Say whether the record helped, once per person and changeable; null takes the vote back. Needs reading the record and a person linked to the account; the record keeps its version"
+      tags: [records]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RatingVote" }
+      responses:
+        "200":
+          description: the sums after the vote
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rating" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/v1/records/{typeName}/{id}/documents:
     get:
       operationId: recordDocuments
@@ -3501,6 +3558,56 @@ components:
         sub_resources:
           type: array
           items: { type: string }
+    Rating:
+      type: object
+      required: [yes, no, mine]
+      properties:
+        yes: { type: integer, format: int64 }
+        no: { type: integer, format: int64 }
+        mine: { type: boolean, nullable: true, description: "the vote of the session's person, null without one" }
+    RatingVote:
+      type: object
+      required: [helpful]
+      properties:
+        helpful: { type: boolean, nullable: true, description: "true helped, false did not, null takes the vote back" }
+    SuggestRequest:
+      type: object
+      properties:
+        values:
+          type: object
+          additionalProperties: true
+          description: the values of the form as far as they are filled; the fields each suggesting type names are searched
+        text: { type: string, maxLength: 200, description: "searched instead of the values: an own search in the tab" }
+        id: { type: string, format: uuid, description: "the record, when it exists: hits linked to it carry the relation" }
+        limit: { type: integer, minimum: 1, maximum: 20, description: "hits per group, default 5" }
+    SuggestGroup:
+      type: object
+      required: [type, label, hits]
+      properties:
+        type: { type: string }
+        label: { type: object, additionalProperties: { type: string } }
+        relation: { type: string, description: 'the relation kind "link" creates, from the record to the hit' }
+        apply:
+          type: object
+          required: [label, set]
+          description: "what applying a hit sets in the form: a value \"@<field>\" is the field of the hit, a reference to a select list is already the id of its entry; left out where the record lacks a field of it"
+          properties:
+            label: { type: object, additionalProperties: { type: string } }
+            set: { type: object, additionalProperties: true }
+        hits:
+          type: array
+          items: { $ref: "#/components/schemas/SuggestHit" }
+    SuggestHit:
+      type: object
+      required: [id, title, snippet, rank]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        snippet: { type: string, description: "the place found, marked with <mark>" }
+        rank: { type: number }
+        rating: { $ref: "#/components/schemas/Rating" }
+        uses: { type: integer, format: int64, description: how many records are linked to the hit with the group's relation kind }
+        linked: { type: string, format: uuid, description: "the relation that links the record to the hit, if any" }
     RelationKind:
       type: object
       required: [package, name, label, inverse, from, to]
@@ -3517,6 +3624,10 @@ components:
           type: array
           items: { type: string }
         impact: { type: boolean }
+        update:
+          type: string
+          enum: [from]
+          description: "from: linking needs update only at the source, read at the target (SD18); left out: update at both ends"
     GraphNode:
       type: object
       required: [type, id, depth]

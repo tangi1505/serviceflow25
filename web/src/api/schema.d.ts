@@ -158,6 +158,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{typeName}:suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suggestions for a record being written (SD18, SD-Plan N13): every type whose suggest names this type is searched with the text of the fields it names, any word counts, best first, only what the session may read. One group per suggesting type, with the relation kind that links and what applying sets */
+        post: operations["suggestRecords"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants:query": {
         parameters: {
             query?: never;
@@ -1225,6 +1242,24 @@ export interface paths {
          * @description An entry never changes; a correction is a new entry. It keeps the record's version and leaves the event comment, which notifications can name (WF15).
          */
         post: operations["addTimelineEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{typeName}/{id}/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether a record helped (trait rating, SD18): the yes and no of all persons and the vote of the session's person */
+        get: operations["recordRating"];
+        /** Say whether the record helped, once per person and changeable; null takes the vote back. Needs reading the record and a person linked to the account; the record keeps its version */
+        put: operations["rateRecord"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2765,6 +2800,70 @@ export interface components {
             }[];
             sub_resources?: string[];
         };
+        Rating: {
+            /** Format: int64 */
+            yes: number;
+            /** Format: int64 */
+            no: number;
+            /** @description the vote of the session's person, null without one */
+            mine: boolean | null;
+        };
+        RatingVote: {
+            /** @description true helped, false did not, null takes the vote back */
+            helpful: boolean | null;
+        };
+        SuggestRequest: {
+            /** @description the values of the form as far as they are filled; the fields each suggesting type names are searched */
+            values?: {
+                [key: string]: unknown;
+            };
+            /** @description searched instead of the values: an own search in the tab */
+            text?: string;
+            /**
+             * Format: uuid
+             * @description the record, when it exists: hits linked to it carry the relation
+             */
+            id?: string;
+            /** @description hits per group, default 5 */
+            limit?: number;
+        };
+        SuggestGroup: {
+            type: string;
+            label: {
+                [key: string]: string;
+            };
+            /** @description the relation kind "link" creates, from the record to the hit */
+            relation?: string;
+            /** @description what applying a hit sets in the form: a value "@<field>" is the field of the hit, a reference to a select list is already the id of its entry; left out where the record lacks a field of it */
+            apply?: {
+                label: {
+                    [key: string]: string;
+                };
+                set: {
+                    [key: string]: unknown;
+                };
+            };
+            hits: components["schemas"]["SuggestHit"][];
+        };
+        SuggestHit: {
+            /** Format: uuid */
+            id: string;
+            title: string | null;
+            /** @description the place found, marked with <mark> */
+            snippet: string;
+            rank: number;
+            rating?: components["schemas"]["Rating"];
+            /**
+             * Format: int64
+             * @description how many records are linked to the hit with the group's relation kind
+             */
+            uses?: number;
+            /**
+             * Format: uuid
+             * @description the relation that links the record to the hit, if any
+             */
+            linked?: string;
+        };
         RelationKind: {
             package: string;
             name: string;
@@ -2780,6 +2879,11 @@ export interface components {
             from: string[];
             to: string[];
             impact?: boolean;
+            /**
+             * @description from: linking needs update only at the source, read at the target (SD18); left out: update at both ends
+             * @enum {string}
+             */
+            update?: "from";
         };
         GraphNode: {
             type: string;
@@ -3558,6 +3662,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page"] | components["schemas"]["Rows"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    suggestRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestRequest"];
+            };
+        };
+        responses: {
+            /** @description the groups of suggestions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestGroup"][];
                 };
             };
             404: components["responses"]["Problem"];
@@ -5634,6 +5767,61 @@ export interface operations {
             403: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
+        };
+    };
+    recordRating: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the sums */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rating"];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
+    };
+    rateRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatingVote"];
+            };
+        };
+        responses: {
+            /** @description the sums after the vote */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rating"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
         };
     };
     recordDocuments: {

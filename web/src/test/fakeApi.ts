@@ -26,10 +26,12 @@ import type {
   FormOffer,
   PortalNotice,
   Permission,
+  Rating,
   RecordData,
   Relation,
   RelationKind,
   Role,
+  SuggestGroup,
   TimelineItem,
   TypeDefinition,
   VersionInfo,
@@ -145,6 +147,29 @@ export const probeType: TypeDefinition = {
       when: "record.priority <= 3",
     },
   ],
+};
+
+// articleType is suggested for the probe (SD18): linked with knowledge.uses, used by taking
+// its title and the kind fault; rated and commented on by its readers.
+export const articleType: TypeDefinition = {
+  name: "article",
+  package: "knowledge",
+  label: { de: "Artikel" },
+  title_field: "title",
+  traits: ["timeline", "rating"],
+  fields: [
+    { name: "title", type: "text", label: { de: "Titel" } },
+    { name: "body", type: "text", format: "rich", label: { de: "Text" } },
+  ],
+  readers: [{ actions: ["read", "comment"] }],
+  portal: { read: { label: { de: "Wissen" }, fields: ["body"] } },
+  suggest: {
+    label: { de: "Wissen", en: "Knowledge" },
+    for: ["probe.probe"],
+    from: ["title"],
+    relation: "knowledge.uses",
+    apply: { label: { de: "Als Titel übernehmen" }, set: { title: "@title", kind: "fault" } },
+  },
 };
 
 // customized applies a customer layer to a type the way the server does (PL43), for the
@@ -359,6 +384,10 @@ export type FakeState = {
   manageRights?: boolean;
   roles?: Role[];
   assignments?: Assignment[];
+  // suggest are the groups of suggestions (SD18), answered for any type when the request has
+  // values or a text, with linked from relations; ratings are the sums by record id.
+  suggest?: SuggestGroup[];
+  ratings?: Record<string, Rating>;
   // exportJob makes an export a job (UI5, more than 100,000 rows); jobState is its state.
   exportJob?: boolean;
   jobState?: string;
@@ -1110,7 +1139,9 @@ export function fakeApi(state: FakeState) {
       const p = state.persons?.[person[1]!];
       return p ? json(200, p) : problem(404, "not_found");
     }
-    const timeline = url.pathname.match(/^\/api\/v1\/records\/probe\.probe\/([^/]+)\/timeline$/);
+    const timeline = url.pathname.match(
+      /^\/api\/v1\/records\/[a-z_]+\.[a-z_]+\/([^/]+)\/timeline$/,
+    );
     if (timeline) {
       const id = timeline[1]!;
       state.timeline ??= {};
@@ -1133,6 +1164,44 @@ export function fakeApi(state: FakeState) {
       };
       items.push({ kind: "entry", at, actor: me.id, actor_name: me.display_name, entry });
       return json(201, entry);
+    }
+    const suggest = url.pathname.match(/^\/api\/v1\/records\/([a-z_]+\.[a-z_]+):suggest$/);
+    if (suggest && method === "POST") {
+      const body = JSON.parse(bodyText) as {
+        values?: Record<string, unknown>;
+        text?: string;
+        id?: string;
+      };
+      const asked =
+        !!body.text || Object.values(body.values ?? {}).some((v) => String(v ?? "").trim() !== "");
+      return json(
+        200,
+        (state.suggest ?? []).map((g) => ({
+          ...g,
+          hits: asked
+            ? g.hits.map((h) => {
+                const rel = (state.relations ?? []).find(
+                  (r) => r.kind === g.relation && r.from.id === body.id && r.to.id === h.id,
+                );
+                return { ...h, ...(rel ? { linked: rel.id } : {}) };
+              })
+            : [],
+        })),
+      );
+    }
+    const rating = url.pathname.match(/^\/api\/v1\/records\/[a-z_]+\.[a-z_]+\/([^/]+)\/rating$/);
+    if (rating) {
+      state.ratings ??= {};
+      const sum = (state.ratings[rating[1]!] ??= { yes: 0, no: 0, mine: null });
+      if (method === "PUT") {
+        const helpful = (JSON.parse(bodyText) as { helpful: boolean | null }).helpful;
+        if (sum.mine === true) sum.yes--;
+        if (sum.mine === false) sum.no--;
+        if (helpful === true) sum.yes++;
+        if (helpful === false) sum.no++;
+        sum.mine = helpful;
+      }
+      return json(200, sum);
     }
     if (url.pathname === "/api/v1/relations/kinds") {
       return json(200, state.relationKinds ?? defaultKinds);

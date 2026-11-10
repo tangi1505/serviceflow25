@@ -1,0 +1,16 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Which knowledge a ticket used (SD18, SD-Plan E12; Inventar G52): "Verknüpfen" and "Als
+# Lösung übernehmen" in the tab "Wissen" link a ticket to an article. An agent changes the
+# ticket, not the article: reading the article suffices (update: from, N16). The article
+# counts the tickets it was used at.
+name: uses
+label: {de: nutzt Wissen, en: uses knowledge}
+inverse: {de: genutzt bei, en: used at}
+description:
+  de: Der Vorgang nutzt diesen Artikel, etwa als Lösung.
+  en: The ticket uses this article, as its solution for example.
+from: ["trait:sd.ticket"]
+to: [knowledge.article]
+update: from

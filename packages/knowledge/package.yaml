@@ -3,9 +3,10 @@
 #
 # Knowledge (SD16a; SD-Plan E1, E8): articles in formatted text, by the categories of the base
 # package sd, published for everyone, only for agents or for some groups; users read them in
-# the area "Wissen" of the portal; an author, and a daily rule for "Gültig bis" (SD16d).
+# the area "Wissen" of the portal; an author, and a daily rule for "Gültig bis" (SD16d);
+# suggested at tickets, rated and commented on (SD18).
 name: knowledge
-version: 0.3.0
+version: 0.4.0
 label:
   de: Wissen
   en: Knowledge

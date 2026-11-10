@@ -104,7 +104,15 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
   (`readers`, SD-Plan N12, seit SD16a): je Regel eine Bedingung in CEL, die nach SQL übersetzbar
   ist, und auf Wunsch Rollen. Ohne Rollen lesen Personen an ihrem Knoten und darunter, mit Rollen
   deren Inhaber und die Mitglieder ihrer Gruppen; so liest jeder einen veröffentlichten Artikel
-  „für alle“. Eine Auswahlliste ist die Regel ohne Bedingung.
+  „für alle“. Eine Auswahlliste ist die Regel ohne Bedingung. Eine Regel kann außer dem Lesen
+  auch das Kommentieren erlauben (`actions: [read, comment]`, SD-Plan N15, seit SD18).
+- **Vorschläge (seit SD18, SD-Plan N13):** Ein Typ sagt unter `suggest`, bei welchen Typen er
+  vorgeschlagen wird (auch über ein Merkmal), aus welchen ihrer Felder gesucht wird, mit welcher
+  Beziehungsart „Verknüpfen“ arbeitet und was „Übernehmen“ ins Formular setzt. Der Kern sucht
+  mit „jedes Wort zählt“ und den Rechten der Person (`POST /api/v1/records/{typ}:suggest`); der
+  vorgeschlagene Typ kennt den anderen, nicht umgekehrt. Ein Artikel schlägt sich so für jeden
+  Vorgang vor, ohne dass Störung oder Anfrage das Wissen kennen. Das Merkmal `rating` hält
+  „hat geholfen“ je Person.
 - **B4:** Alle 34 Regelsammlungen aus GLPI sind Regeln in `internal/rules`. Sie unterscheiden
   sich nur im Auslöser: Anlegen, Ändern, Import, Anmeldung oder Mail.
 - **B5:** Die Feldzustände Pflicht, versteckt, vorbelegt und schreibgeschützt hängen am Status

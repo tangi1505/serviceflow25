@@ -146,7 +146,8 @@ func toRelation(r queries.Relation) Relation {
 }
 
 // Create links two records. The kind must allow the types, and the session must be allowed
-// to update both records (a relation changes both). Both ends get an audit row and an event.
+// to update both records (a relation changes both), or only the source where the kind says
+// so (SD18). Both ends get an audit row and an event.
 func (s *Service) Create(ctx context.Context, kind string, from, to End, actor records.Actor) (Relation, error) {
 	k, err := s.Kind(ctx, kind)
 	if err != nil {
@@ -160,10 +161,8 @@ func (s *Service) Create(ctx context.Context, kind string, from, to End, actor r
 	if from == to {
 		return Relation{}, fmt.Errorf("%w: a record cannot relate to itself", ErrInvalid)
 	}
-	for _, e := range []End{from, to} {
-		if _, err := s.rec.Check(ctx, e.Type, e.ID, authz.ActionUpdate); err != nil {
-			return Relation{}, err
-		}
+	if err := s.checkEnds(ctx, k, from, to); err != nil {
+		return Relation{}, err
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -184,6 +183,20 @@ func (s *Service) Create(ctx context.Context, kind string, from, to End, actor r
 		return Relation{}, err
 	}
 	return rel, nil
+}
+
+// checkEnds checks the rights a relation of the kind needs: update at both ends, or at the
+// source only and read at the target (meta.RelationUpdateFrom, SD-Plan N16).
+func (s *Service) checkEnds(ctx context.Context, k meta.RelationKind, from, to End) error {
+	target := authz.ActionUpdate
+	if k.Update == meta.RelationUpdateFrom {
+		target = authz.ActionRead
+	}
+	if _, err := s.rec.Check(ctx, from.Type, from.ID, authz.ActionUpdate); err != nil {
+		return err
+	}
+	_, err := s.rec.Check(ctx, to.Type, to.ID, target)
+	return err
 }
 
 // trace writes audit and event at both ends of a relation.
@@ -218,21 +231,36 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (Relation, error) {
 	return rel, nil
 }
 
-// Delete removes a relation; the session must be allowed to update both ends.
+// Delete removes a relation; the session needs the rights Create needs. A kind no package
+// brings any more asks for both ends.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID, actor records.Actor) error {
 	rel, err := s.Get(ctx, id)
 	if err != nil {
 		return err
 	}
-	for _, e := range []End{rel.From, rel.To} {
-		if _, err := s.rec.Check(ctx, e.Type, e.ID, authz.ActionUpdate); err != nil {
-			return err
-		}
+	k, _ := s.Kind(ctx, rel.Kind)
+	if err := s.checkEnds(ctx, k, rel.From, rel.To); err != nil {
+		return err
 	}
 	if _, err := queries.New(s.db.Tenant(ctx)).DeleteRelation(ctx, id); err != nil {
 		return fmt.Errorf("relations: delete: %w", err)
 	}
 	return s.trace(ctx, rel, "unrelate", actor)
+}
+
+// UsesOf counts the records linked to each target with one kind (SD18: "used at 7
+// tickets"): a number, no record behind it is shown, so rights do not narrow it. The caller
+// has read the targets.
+func (s *Service) UsesOf(ctx context.Context, kind, toType string, ids []uuid.UUID) (map[uuid.UUID]int64, error) {
+	rows, err := queries.New(s.db.Tenant(ctx)).CountRelationsTo(ctx, queries.CountRelationsToParams{Kind: kind, ToType: toType, ToIds: ids})
+	if err != nil {
+		return nil, fmt.Errorf("relations: uses: %w", err)
+	}
+	out := make(map[uuid.UUID]int64, len(ids))
+	for _, r := range rows {
+		out[r.ToID] = r.Uses
+	}
+	return out, nil
 }
 
 // Of lists the relations of a record (direction out, in or both; kind optional), only those

@@ -225,7 +225,14 @@ type SearchQuery struct {
 	Text  string
 	Types []string // empty: every type the session may read
 	Limit int      // default 20, at most 100
+	// Any lets every word count instead of all (suggestions, SD18): the text of a form is
+	// long, a record that shares some of its words is still worth showing, the more the
+	// better. The text may then be longer; past MaxAnyText it is cut.
+	Any bool
 }
+
+// MaxAnyText is the length of the text a search with Any takes.
+const MaxAnyText = 2000
 
 // SearchHit is one record found.
 type SearchHit struct {
@@ -242,7 +249,9 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) ([]SearchHit, error
 	if text == "" {
 		return []SearchHit{}, nil
 	}
-	if len([]rune(text)) > 200 {
+	if r := []rune(text); q.Any && len(r) > MaxAnyText {
+		text = string(r[:MaxAnyText])
+	} else if !q.Any && len(r) > 200 {
 		return nil, &ValidationError{Problems: []Problem{{Field: "q", Code: "max_length", Message: "must have at most 200 characters"}}}
 	}
 	limit := q.Limit
@@ -270,7 +279,16 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) ([]SearchHit, error
 	rest, last := prefixParts(text)
 	args := []any{text}
 	tsq := "(websearch_to_tsquery('german', $1) || websearch_to_tsquery('english', $1)"
-	if last != "" {
+	switch {
+	case q.Any:
+		// Every word: the AND of plainto_tsquery turned into OR; the last word also as the
+		// start of a word, as it is being typed.
+		tsq = "(" + anyWords("german") + " || " + anyWords("english")
+		if last != "" {
+			args = append(args, last)
+			tsq += " || to_tsquery('german', $2)"
+		}
+	case last != "":
 		args = append(args, rest, last)
 		tsq += " || (websearch_to_tsquery('german', $2) && to_tsquery('german', $3))"
 	}
@@ -350,6 +368,11 @@ LIMIT %d`, tsq, strings.Join(subs, " UNION ALL "), limit)
 // prefixParts splits the search text for type-ahead: the text before the last word and the
 // last word as a prefix query ("druck:*"). A last word in quotes, after a minus or with other
 // characters than letters and digits is no prefix.
+// anyWords is the query of the words of $1 in a dictionary, any of them matching.
+func anyWords(dict string) string {
+	return "replace(plainto_tsquery('" + dict + "', $1)::text, ' & ', ' | ')::tsquery"
+}
+
 func prefixParts(text string) (rest, last string) {
 	fields := strings.Fields(text)
 	if len(fields) == 0 || strings.Count(text, `"`)%2 == 1 || strings.HasSuffix(text, `"`) {

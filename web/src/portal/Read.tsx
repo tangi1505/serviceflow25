@@ -30,6 +30,8 @@ import { RefName } from "@/render/RefName";
 import { RichText } from "@/render/RichText";
 import { Alert } from "@/ui/alert";
 
+import { Comments, mayComment, RatingBox } from "./Feedback";
+
 // creates tells a type users create in the portal (UI10), as against one they only read.
 export function creates(type: TypeDefinition): boolean {
   return (type.portal?.fields?.length ?? 0) > 0;
@@ -360,6 +362,7 @@ export function PortalArticlePage() {
           </p>
         ),
       )}
+      {type.traits?.includes("rating") && <RatingBox type={type} id={id} />}
       {report.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">{t("portal.readHelp")}</span>
@@ -375,6 +378,7 @@ export function PortalArticlePage() {
           ))}
         </div>
       )}
+      {mayComment(type) && <Comments type={type} id={id} />}
     </div>
   );
 }

@@ -40,6 +40,7 @@ import { Form } from "@/render/Form";
 
 import { hiddenOf } from "./conditions";
 import { AreaNav, creates, FieldValue } from "./Read";
+import { PortalSuggestions } from "./Suggest";
 import { fieldLabel, formatMoment, setDisplayTimeZone } from "@/render/fields";
 import { Timeline } from "@/render/Timeline";
 import { Transitions } from "@/render/Transitions";
@@ -333,6 +334,10 @@ export function PortalNewPage() {
   const { typeName } = useParams({ from: "/portal/$typeName/new" });
   const { type, pending } = usePortalType(typeName);
   const me = useQuery(meQuery);
+  // What the form holds so far, for the suggestions beside it (SD18); a suggestion that
+  // helped ends the report, the form stays behind it for "Doch melden".
+  const [values, setValues] = useState<Record<string, unknown>>({});
+  const [helped, setHelped] = useState<string | null>(null);
   if (pending || me.isPending) {
     return <p>{t("list.loading")}</p>;
   }
@@ -348,20 +353,46 @@ export function PortalNewPage() {
       <h1 className="text-2xl font-semibold">
         {t("portal.newTitle", { type: labelOf(type.label, i18n.language, typeName) })}
       </h1>
-      <Form
-        type={type}
-        only={type.portal!.fields!}
-        withRoles={false}
-        extra={requester}
-        onSaved={(saved: RecordData) => {
-          void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
-          void navigate({
-            to: "/portal/$typeName/$id",
-            params: { typeName, id: String(saved["id"]) },
-          });
-        }}
-        onCancel={() => void navigate({ to: "/portal" })}
-      />
+      {helped !== null && (
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-md border border-success bg-card p-4"
+        >
+          <p className="font-semibold">{t("suggest.doneTitle")}</p>
+          <p className="text-sm">{t("suggest.doneText", { title: helped })}</p>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/portal" className="rounded-md border px-3 py-1.5 text-sm">
+              {t("portal.mine")}
+            </Link>
+            <Button size="sm" variant="ghost" onClick={() => setHelped(null)}>
+              {t("suggest.doneUndo")}
+            </Button>
+          </div>
+        </div>
+      )}
+      <div
+        hidden={helped !== null}
+        className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
+      >
+        <Form
+          type={type}
+          only={type.portal!.fields!}
+          withRoles={false}
+          extra={requester}
+          onValuesChange={(v) =>
+            setValues((prev) => (JSON.stringify(prev) === JSON.stringify(v) ? prev : { ...v }))
+          }
+          onSaved={(saved: RecordData) => {
+            void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
+            void navigate({
+              to: "/portal/$typeName/$id",
+              params: { typeName, id: String(saved["id"]) },
+            });
+          }}
+          onCancel={() => void navigate({ to: "/portal" })}
+        />
+        <PortalSuggestions type={type} values={values} onHelped={setHelped} />
+      </div>
     </div>
   );
 }

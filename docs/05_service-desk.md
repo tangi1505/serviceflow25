@@ -60,7 +60,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | **SD16c** | Wissen, Sprache: Inhalte in der Sprache der Person zeigen (Listen, Namen, Suche, Portal), Titel und Text des Artikels übersetzbar; das Formular bleibt auf Deutsch, eine Version; automatische Übersetzung später (E10; PL21; IP4) | 🟢 | 1 d | Ein Artikel mit englischem Titel → wer Englisch eingestellt hat, sieht ihn englisch, sonst deutsch; das Formular zeigt immer den deutschen Titel; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD16d** | Wissen, Ablauf: Rolle „Autor“, die beim Anlegen die anlegende Person bekommt; ab dem Tag nach „Gültig bis“ ist der Artikel im Portal weg, eine tägliche Regel setzt ihn auf Abgelaufen und schreibt dem Autor, 14 Tage vorher erinnert sie ihn; dafür kennen Bedingungen `today()` und `now()` mit Abstand (E8, E11; IP4) | 🟢 | 1 d | Artikel mit „Gültig bis“ gestern → sofort aus dem Portal verschwunden, nach dem Lauf der Regel abgelaufen, Mail an den Autor in Mailpit; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD17** | Wissen, Freigabe: eine neue Fassung ist erst nach der Genehmigung sichtbar; baut auf WF6 (IP4; KF4) | 🔒 WF6, SD16b | 0,5 d | Fassung 2 bleibt im Portal unsichtbar, bis die Freigabe erteilt ist; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🔒 SD16a | 2 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag; „hat geholfen“ zählt; Artikel an eine Störung verknüpfen → steht in den Bezügen; `docker compose run --rm tools scripts/ci.sh` grün |
+| **SD18** | Wissen am Vorgang und im Portal: Vorschläge beim Anlegen im Portal und an der Störung aus der Volltextsuche (PL26), Artikel verknüpfen, „hat geholfen“, Kommentare (Inventar G52, G108; IP4) | 🟢 | 3 d | Im Portal „VPN bricht ab“ tippen → ein passender Artikel als Vorschlag neben dem Formular; „Das hat geholfen“ zählt und legt keine Störung an; an der Störung im Reiter „Wissen“ einen Artikel verknüpfen → steht in den Bezügen; „Als Lösung übernehmen“ → Lösung und Lösungsart im Formular; ein Portal-Nutzer kommentiert einen Artikel; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### D — Zufriedenheit, Einstellungen, Abschluss
 
@@ -72,7 +72,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
-[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d. SD16b brauchte dazu im Kern nur den Namen in der Liste der Fassungen. SD16c ohne Editor für Englisch (E10); die automatische Übersetzung wird eine eigene Aufgabe, sobald Hauptplan V40 beantwortet ist.
+[UI-Plan](02_oberflaeche.md) und kommt nach SD7. SD2 am 2026-11-03 von 2 d auf 3 d für die Kern-Bedarfe N7 und N8 (E5): 31 d. SD3 am 2026-11-03 von 1 d auf 2 d für die Kern-Bedarfe N9 und N10 (E6): 32 d. SD4 am 2026-11-03 von 0,5 d auf 1,5 d für N11 und den Reiter Bezüge (E7): 33 d. SD9 am 2026-11-04 von 0,5 d auf 1,5 d, weil Notizen beliebig sein sollen: Formulare auch im Arbeitsplatz (Hauptplan E167): 34 d. SD16 am 2026-11-04 in SD16a bis SD16d geteilt, von 2 d auf 5 d (E8, Hauptplan E168): 37 d. SD16b brauchte dazu im Kern nur den Namen in der Liste der Fassungen. SD16c ohne Editor für Englisch (E10); die automatische Übersetzung wird eine eigene Aufgabe, sobald Hauptplan V40 beantwortet ist. SD18 am 2026-11-10 von 2 d auf 3 d für die Kern-Bedarfe N13 bis N16 (E12): 38 d.
 
 **Reihenfolge:** Block A zuerst, weil alles andere die Typen braucht: SD1, SD2, SD3, SD4, dann
 SD5. SD6 wartet auf WF6 (Genehmigungen). Danach Block B mit SD7, SD10, SD8 und SD9; SD11 und
@@ -97,6 +97,7 @@ Meilensteins. Wer parallel arbeiten will, findet in §2.2 die Art jeder Aufgabe.
 | **E9** | Fassungen (SD16b, deine Entscheidungen 2026-11-04 nach dem Mockup „Fassungen vergleichen“, [Artifact](https://claude.ai/artifact/Nqgtdo42n6L56GMeQNxc1G), Hauptplan E169): **Variante A**, ein Reiter „Fassungen“ zwischen „Bezüge“ und „Zeitleiste“: links die Fassungen (wann, wer, was), zwei angeklickt, rechts nur die Felder, die sich unterscheiden. **Wörter** eines Textes markiert ein eigener kleiner Vergleich im Browser, ohne neue Bibliothek: gestrichen, was nur die ältere hat, unterstrichen, was neu ist. **Jeder Typ mit Verlauf** bekommt den Reiter, im Portal keiner. Wiederherstellen erst nach einer Rückfrage auf der Seite. Verworfen: eigene Seite mit dem ganzen Datensatz zweimal (Variante B); die Bibliothek „diff“; nur alter und neuer Text; nur am Artikel | 2026-11-04 | Pascal |
 | **E10** | Sprache der Inhalte (SD16c, deine Entscheidungen 2026-11-04 nach dem Mockup „Übersetzungen im Formular“, [Artifact](https://claude.ai/artifact/C8r9bReahYm2tT2DgmNGik), Hauptplan E171): **Eine Version:** kein Editor für Englisch im Formular; wo eine Übersetzung nötig wird, soll sie später automatisch entstehen, mit einem Übersetzer im eigenen Rechenzentrum (VS-NfD, kein Cloud-Dienst) als eigene Aufgabe, nachdem die Fachseite gesagt hat, ob Englisch gebraucht wird (Hauptplan V40). **Anzeige** in der Sprache der Person in Listen, Namen, Suche und Portal, sonst Deutsch; das Formular liest und schreibt Deutsch. **Übersetzbar** sind am Artikel Titel und Text. Verworfen: Umschalter „Deutsch | Englisch“ am Formular (Variante A); Englisch je Feld (Variante B); Anzeige nur im Portal; nur der Text übersetzbar; Automatik jetzt | 2026-11-04 | Pascal |
 | **E11** | Ablauf des Wissens (SD16d, deine Entscheidungen 2026-11-04, Hauptplan E172): **„Jetzt“ in Bedingungen** als `today()` (Datum in Europe/Berlin) und `now()` (Zeitpunkt), mit Abstand `today(14)`, `today(-30)`, `now("-24h")`; gleich in SQL (Listen, Leser-Regeln, Rechte, Regeln nach Zeitplan) und im Speicher. **Autor** ist eine Rolle am Artikel (eine Person); eine mitgelieferte Regel trägt beim Anlegen die anlegende Person ein, wenn das Formular keinen nennt; dafür kann „Rolle zuweisen“ auch die Person, die schreibt (`actor`). **Mails** an den Autor 14 Tage vor „Gültig bis“ und beim Ablauf, als Startdaten. **Portal:** ab dem Tag nach „Gültig bis“ ist der Artikel weg, über die Leser-Regel, auch bevor die nächtliche Regel ihn auf Abgelaufen setzt. Verworfen: nur `today()` und `now()` ohne Abstand; `"@now"` wie in Abfragen; Autor nur von Hand; Mail an den Ersteller (Systemfeld); nur eine Mail beim Ablauf; Portal erst nach der Regel | 2026-11-04 | Pascal |
+| **E12** | Wissen am Vorgang und im Portal (SD18, deine Entscheidungen 2026-11-10 nach dem Mockup „Wissen am Vorgang“, [Artifact](https://claude.ai/artifact/BoRXwWtkH91hBXN5gXnkZa), Hauptplan E173): **Vorschläge sagt der Artikel:** ein Typ nennt unter `suggest`, bei welchen Typen er vorgeschlagen wird (auch `trait:sd.ticket`), aus welchen ihrer Felder gesucht wird, mit welcher Beziehungsart „Verknüpfen“ arbeitet und was „Als Lösung übernehmen“ setzt; Störung und Anfrage kennen das Wissen nicht (Kern-Bedarf N13). Gesucht wird mit jedem Wort statt mit allen, beste Treffer zuerst, nur was die Person lesen darf. **Portal (Variante 1A):** beim Anlegen stehen bis zu drei Artikel neben dem Formular, auf dem Telefon darunter; aufklappen zeigt den Text; „Das hat geholfen“ zählt ein Ja und legt keine Störung an, „Hilft nicht“ zählt ein Nein. **Arbeitsplatz:** ein eigener Reiter „Wissen“ an jedem Typ, bei dem etwas vorgeschlagen wird, mit Vorschlägen aus den Feldern des Datensatzes und einer eigenen Suche; je Artikel „Verknüpfen“ und „Als Lösung übernehmen“. **Als Lösung übernehmen** setzt Text und Lösungsart „Anleitung gegeben“ ins Formular (gespeichert erst mit „Speichern“) und verknüpft; welche Felder, legt das Paket fest. **Verknüpfen** mit der Beziehungsart „nutzt Wissen“ (invers „genutzt bei“) aus dem Paket `knowledge`; dafür braucht nur der Vorgang das Recht zum Ändern, am Artikel genügt Lesen (N16). **Hat geholfen** ist ein Merkmal `rating` im Kern: Ja oder Nein je Person, änderbar; Bearbeiter sehen „12 von 15 hilfreich · an 7 Vorgängen genutzt“ (N14). **Kommentare** über die Zeitleiste des Artikels; eine Leser-Regel darf neben dem Lesen auch das Kommentieren erlauben; öffentliche Kommentare sehen alle Leser unter dem Artikel im Portal, interne nur Bearbeiter (N15). Verworfen: der Vorgang nennt die Quelle seiner Vorschläge; ein Suchschritt vor dem Formular (Variante 1B); Vorschläge im Reiter „Bezüge“ oder neben dem Formular; nur ein Verweis oder nur Verknüpfen statt „Als Lösung übernehmen“; eine gelöste Störung bei „Das hat geholfen“; nur ein Zähler ohne Nein; Sterne; Kommentare nur intern oder später | 2026-11-10 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -165,6 +166,10 @@ Die Art sagt, welche Dateien eine Aufgabe anfasst: **P** nur Paketinhalt unter `
 | **N10** | Die Teamleitung benachrichtigen (E6) | Empfänger sind Rollen am Vorgang, Gruppen und Personen (`notify.checkRecipient`, Regelaktion `notify`); die verantwortliche Person einer Gruppe (`core.group.responsible`) nutzt niemand | Empfänger `actors.<rolle>.responsible`: die verantwortlichen Personen der Gruppen, die die Rolle halten; in Benachrichtigungen und Regeln; gebaut in SD3 |
 | **N11** | Eine Beziehungsart für alle Vorgänge (E7) | `from` und `to` einer Beziehungsart nennen nur Typen oder `*` (`meta.RelationKind.Allows`) | Einträge `trait:<paket>.<merkmal>` gelten für jeden Typ mit dem Merkmal; das Paket muss das Merkmal selbst haben oder von seinem Paket abhängen; gebaut in SD4 |
 | **N12** | Lesen ohne eigenes Recht nach Regeln des Typs (E8) | Ohne Recht lesen Personen nur die Einträge der Auswahllisten (`authz.Access.ReadAll`, N5) | Typ-Option `readers`: je Regel eine Bedingung in CEL, die nach SQL übersetzbar ist, und auf Wunsch Rollen; ohne Rollen lesen Personen am Knoten des Datensatzes und darunter, mit Rollen ihre Inhaber und die Mitglieder ihrer Gruppen; eine Auswahlliste ist eine Regel ohne Bedingung; gebaut in SD16a |
+| **N13** | Vorschläge aus einem anderen Typ (E12) | Die Volltextsuche (Kern-Plan PL26) verlangt alle Wörter (`websearch_to_tsquery`); kein Typ kann sagen, wo er vorgeschlagen wird | Typ-Option `suggest` mit `for` (Typen oder `trait:`), `from` (Felder des Zieltyps), `relation` und `apply` (Felder des Zieltyps aus Feldern des Vorschlags oder Schlüsseln einer Auswahlliste); Endpunkt `POST /api/v1/records/{typeName}:suggest` mit den Werten des Formulars, Suche mit jedem Wort; gebaut in SD18 |
+| **N14** | Hat geholfen (E12) | Es gibt keine Bewertung je Person | Merkmal `rating`: Ja oder Nein je Person und Datensatz, änderbar; `PUT` und `GET /api/v1/records/{typeName}/{id}/rating`; lesen darf, wer den Datensatz liest; gebaut in SD18 |
+| **N15** | Leser kommentieren (E12) | Leser-Regeln (N12) erlauben nur das Lesen; ein Eintrag in der Zeitleiste braucht das Recht `comment` | Leser-Regeln nennen auf Wunsch `actions: [read, comment]`; private Einträge bleiben bei `read_private`; gebaut in SD18 |
+| **N16** | Verknüpfen ohne Recht am Ziel (E12) | Eine Beziehung braucht das Recht zum Ändern an beiden Enden (`relations.Service.Create`) | Beziehungsart mit `update: from`: Ändern am Ausgang, Lesen am Ziel genügt; gebaut in SD18 |
 
 ### 2.4 Vorläufige Werte (E3)
 
@@ -201,6 +206,63 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD18 — Wissen am Vorgang und im Portal, 2026-11-10
+
+- **Grundlage:** IP4; Inventar G52, G108; Hauptplan E173; SD-Plan E12; deine Entscheidungen
+  vom 2026-11-10 nach dem Mockup: Vorschläge sagt der Artikel, im Portal neben dem Formular,
+  an der Störung ein eigener Reiter „Wissen“, „Als Lösung übernehmen“ setzt Text und
+  Lösungsart und verknüpft, „Das hat geholfen“ legt nichts an, Ja oder Nein je Person,
+  Kommentare über die Zeitleiste.
+- **Gebaut:**
+  - Kern, Vorschläge (N13): Typ-Option `suggest` mit `label`, `for` (Typen oder `trait:`),
+    `from`, `relation` und `apply` (`internal/meta/suggest.go`, geprüft beim Installieren);
+    Endpunkt `POST /api/v1/records/{typeName}:suggest` (`internal/suggest`) mit den Werten des
+    Formulars oder einem eigenen Text, je vorschlagendem Typ eine Gruppe mit Treffern, ihrer
+    Bewertung, wie oft sie verknüpft sind und ob der Datensatz schon mit ihnen verknüpft ist.
+    Die Volltextsuche kennt dafür „jedes Wort zählt“ (`SearchQuery.Any`, bis 2.000 Zeichen,
+    das letzte Wort auch als Wortanfang); Rechte und Leser-Regeln gelten wie bei jeder Suche.
+    Listen-Schlüssel in `apply` (`instructed`) löst der Kern in die Kennung des Eintrags auf,
+    wie bei festen Werten der Formulare (`records.Service.ListKeys`).
+  - Kern, Bewertung (N14): Merkmal `rating`, Tabelle `rating` (Migration 43), `GET` und `PUT
+    /api/v1/records/{typeName}/{id}/rating`; Ja oder Nein je Person, änderbar, `null` nimmt
+    zurück; braucht Lesen und eine Person; geht beim endgültigen Löschen mit.
+  - Kern, Kommentare (N15): Leser-Regeln nennen auf Wunsch `actions: [read, comment]`; private
+    Einträge bleiben bei `read_private`.
+  - Kern, Verknüpfen (N16): Beziehungsart mit `update: from`; Anlegen und Lösen brauchen dann
+    Ändern nur am Ausgang, am Ziel genügt Lesen.
+  - Paket `knowledge` 0.4.0: Artikel mit `timeline` und `rating`, Leser dürfen kommentieren,
+    `suggest` für `trait:sd.ticket` aus Titel und Beschreibung, Beziehungsart „nutzt Wissen“
+    (invers „genutzt bei“) mit `update: from`, „Als Lösung übernehmen“ setzt `solution` aus
+    dem Text und `solution_kind` „Anleitung gegeben“.
+  - Oberfläche: Reiter je vorschlagendem Typ auf der Detailseite nach „Bezüge“
+    (`web/src/render/Suggestions.tsx`) mit Vorschlägen aus den Feldern, eigener Suche,
+    „Verknüpfen“, „Lösen“ und „Als Lösung übernehmen“, das die Werte ungespeichert ins Formular
+    setzt (`Form` nimmt `apply`); im Portal beim Anlegen bis zu drei Vorschläge neben dem
+    Formular, auf dem Telefon darunter (`web/src/portal/Suggest.tsx`), aufklappbar, „Das hat
+    geholfen“ zählt Ja und beendet ohne Meldung, „Doch melden“ holt das Formular mit dem
+    Geschriebenen zurück; unter dem Artikel im Portal „Hat Ihnen das geholfen?“ und die
+    öffentlichen Kommentare mit Eingabe (`web/src/portal/Feedback.tsx`).
+- **Abweichung vom Mockup:** Auf dem Telefon stehen die Vorschläge unter dem Formular, nicht
+  unter dem Titel; sonst würde das Formular beim Tippen nach unten springen.
+- **Belegt:**
+  - Go `TestKnowledgeAtTicketOverHTTP`: die Nutzerin bekommt aus Titel und Beschreibung nur
+    den veröffentlichten VPN-Artikel, nicht den Entwurf; eigene Suche; Bewertung Ja, Nein,
+    zurücknehmen, je Person; Kommentar öffentlich ja, privat 403, am Entwurf 404; der
+    Bearbeiter verknüpft mit nur Lesen am Artikel, die Nutzerin nicht; der Vorschlag zeigt
+    die Verknüpfung und „1-mal genutzt“, nach dem Lösen nicht mehr.
+  - Go `TestSuggestReadersAndRelationUpdate`: die Prüfungen von `suggest`, `actions` und
+    `update` beim Installieren.
+  - Vitest `Suggestions.test.tsx` (Reiter, Verknüpfen, Übernehmen ins Formular, eigene Suche,
+    Markierungen ohne Markup) und `portal/Suggest.test.tsx` (Vorschläge beim Tippen, „Das hat
+    geholfen“ ohne Anlegen, Bewerten und Kommentieren unter dem Artikel), je mit axe.
+  - Ganze CI am 2026-11-10 im ersten Lauf grün: alle Go-Pakete, Vitest (114 Fälle), die
+    Browser-Tests (18) und das Lasttor (LZ1 +7 %, LZ2 +7 %, LZ3 +1 %, LZ4 −2 % gegen die
+    Basislinie im selben Lauf).
+- **Nicht geprüft:** Kein Browser-Test eigens für SD18; der Durchgang von Meilenstein 1 (SD21)
+  nimmt den Wissensartikel als Lösung mit. Die Güte der Treffer bei vielen Artikeln nicht
+  gemessen. Eine Auswertung „durch Wissen vermieden“ gibt es noch nicht, die Zahlen liegen in
+  der Tabelle `rating`.
 
 ### SD16d — Wissen, Ablauf, 2026-11-04
 

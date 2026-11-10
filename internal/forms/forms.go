@@ -368,39 +368,10 @@ func Check(rec *records.Service) records.RecordCheck {
 }
 
 // fixedValues are the fixed values of a form as the record takes them: the key of a select
-// list's entry becomes its id, read with the rights of the system (lists are read by all,
-// PL16). The values themselves are checked by the record on submitting.
+// list's entry becomes its id (records.Service.ListKeys). The values themselves are checked by
+// the record on submitting.
 func fixedValues(ctx context.Context, rec *records.Service, target meta.Type, fixed map[string]any) (map[string]any, error) {
-	out := make(map[string]any, len(fixed))
-	for name, v := range fixed {
-		out[name] = v
-		f, ok := target.Field(name)
-		key, isText := v.(string)
-		if !ok || f.Type != meta.FieldReference || !isText {
-			continue
-		}
-		if _, err := uuid.Parse(key); err == nil {
-			continue
-		}
-		list, err := rec.Type(ctx, f.To)
-		if err != nil || !list.IsList() {
-			return nil, fmt.Errorf("%s: %q is no id, and %s is no select list with keys", name, key, f.To)
-		}
-		where, _ := json.Marshal(map[string]any{"field": "key", "eq": key})
-		sys := authz.WithAccess(ctx, authz.SystemIn(authz.From(ctx).CurrentTenant()))
-		if authz.From(ctx).IsSystem() {
-			sys = ctx
-		}
-		page, _, err := rec.Query(sys, f.To, records.Query{Where: where, Limit: 1})
-		if err != nil {
-			return nil, err
-		}
-		if len(page.Items) == 0 {
-			return nil, fmt.Errorf("%s: %s has no entry with the key %q", name, f.To, key)
-		}
-		out[name] = fmt.Sprint(page.Items[0]["id"])
-	}
-	return out, nil
+	return rec.ListKeys(ctx, target, fixed)
 }
 
 // Form is a form as the portal gets it.

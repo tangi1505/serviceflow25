@@ -15,7 +15,7 @@
 // editor of its own (the structure of a form, UI11); a form of the portal groups its questions
 // in sections and sends them its own way (UI11).
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Controller, get, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
@@ -120,6 +120,11 @@ export type FormProps = {
   // visibility names the fields and groups hidden for the values (the conditions of a form,
   // UI12): hidden ones are not shown, not checked and not sent.
   visibility?: (values: Record<string, unknown>) => { fields: Set<string>; groups: Set<string> };
+  // onValuesChange hears every change of the values: the portal looks for suggestions (SD18).
+  onValuesChange?: (values: Record<string, unknown>) => void;
+  // apply sets values from outside, unsaved, each time its n changes: "Als Lösung
+  // übernehmen" from the tab "Wissen" (SD18).
+  apply?: { n: number; values: Record<string, unknown> };
   onCancel: () => void;
 };
 
@@ -168,6 +173,8 @@ export function Form({
   groups,
   submit,
   visibility,
+  onValuesChange,
+  apply,
 }: FormProps) {
   const { t, i18n } = useTranslation();
   const id = useId();
@@ -194,6 +201,7 @@ export function Form({
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<Record<string, unknown>>({
     // Read-only fields are not checked: the form does not send them; nor hidden ones (UI12),
@@ -210,6 +218,24 @@ export function Form({
 
   const dirty = isDirty || changedRoles(rolesOf(base), roles) !== undefined;
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useEffect(() => onValuesChange?.(values), [values, onValuesChange]);
+  // Values from outside (SD18) for the fields the form shows and may write; a form drawn anew
+  // after a save takes only an n it has not seen.
+  const applied = apply?.n;
+  const seen = useRef(applied);
+  useEffect(() => {
+    if (!apply || apply.n === seen.current) {
+      return;
+    }
+    seen.current = apply.n;
+    for (const [name, value] of Object.entries(apply.values)) {
+      if (type.fields.some((f) => f.name === name) && !readOnly.has(name)) {
+        setValue(name, value, { shouldDirty: true });
+      }
+    }
+    // Only a new n applies; the values of one n stay as they were given.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applied]);
 
   const save = async (values: Record<string, unknown>, version?: number) => {
     setFailure(null);

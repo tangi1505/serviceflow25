@@ -837,6 +837,10 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   eine fehlende ID zurück, die der Graph als unlesbar ausblendet; Aufräumen beim Purge
   folgt); keine Kardinalitäten je Art; Sichtbarkeit je Knoten per Einzelabruf (E40); keine
   Messung mit großen Graphen (H11).
+- **Nachtrag SD18 (2026-11-10, Hauptplan E173, SD-Plan N16):** Eine Beziehungsart kann mit
+  `update: from` sagen, dass Anlegen und Lösen das Recht zum Ändern nur am Ausgang brauchen; am
+  Ziel genügt Lesen (ein Bearbeiter verknüpft einen Artikel mit seiner Störung, ohne den
+  Artikel ändern zu dürfen). Ohne Angabe bleibt es bei beiden Enden.
 
 ### PL16 — Auswahllisten, 2026-10-27
 
@@ -914,6 +918,9 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   PL35, Reservierungspaket); keine Merkmale über Paketgrenzen; keine Oberfläche, die
   Merkmale zeigt (das Formular zeigt die Felder wie alle anderen); Merkmale mit Verhalten
   aus Paketen (Go-Erweiterungspunkt) sind nicht vorgesehen.
+- **Nachtrag SD18 (2026-11-10, Hauptplan E173, SD-Plan N14):** Neues Kern-Merkmal `rating`:
+  Ja oder Nein je Person und Datensatz in der Tabelle `rating` (Migration 43), änderbar,
+  `GET` und `PUT /api/v1/records/{typ}/{id}/rating`; der Datensatz behält seine Version.
 
 ### PL18 — Dateien, 2026-10-27
 
@@ -1193,6 +1200,11 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Datenbestand in Prod-Größe (kommt mit PL31 bis PL33); der Titel im Treffer ist deutsch, auch
   bei englischem `Accept-Language`; Gewichtung und Ähnlichkeitsschwelle sind nicht
   einstellbar.
+- **Nachtrag SD18 (2026-11-10, Hauptplan E173, SD-Plan N13):** Die Suche kennt „jedes Wort
+  zählt“ (`SearchQuery.Any`): die Wörter eines langen Texts mit ODER statt UND, bis 2.000
+  Zeichen, das letzte Wort auch als Wortanfang. Sie dient den Vorschlägen
+  (`POST /api/v1/records/{typ}:suggest`), die ein Typ mit `suggest` für andere Typen anbietet;
+  `/api/v1/search` bleibt bei allen Wörtern.
 
 ### PL27 — Ereignisprotokoll, 2026-10-27
 
