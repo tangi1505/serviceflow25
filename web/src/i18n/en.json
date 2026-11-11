@@ -861,6 +861,11 @@
   "approvals": {
     "title": "Approval",
     "portalTitle": "Approvals",
+    "changes": "Requested change",
+    "held": "A change of {{fields}} waits for approval. Until then readers see the previous version, and these fields are locked.",
+    "heldShow": "Show",
+    "heldWithdraw": "Withdraw the change",
+    "heldFailed": "The change could not be withdrawn.",
     "loading": "Loading …",
     "error": "That did not work: {{detail}}",
     "none": "No approval asked for yet.",

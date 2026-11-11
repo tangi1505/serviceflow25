@@ -10,7 +10,8 @@
 // yes and its questions: who is asked, the decision, who decided (a substitute "for" the
 // person), when, the comment. Whoever is asked now answers below; a refusal needs a reason.
 // Whoever may change the record asks for approval in stages, or withdraws an open one. The
-// portal shows the same without asking and withdrawing.
+// portal shows the same without asking and withdrawing. A change that waits for the approval
+// (SD17, SD-Plan N22) shows field by field, text word by word as in the versions.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,6 +24,7 @@ import {
   type Approval,
   type ApprovalStage,
   type ApprovalStep,
+  type RecordData,
   type TypeDefinition,
 } from "@/api/client";
 import { Alert } from "@/ui/alert";
@@ -30,9 +32,12 @@ import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 
-import { formatMoment } from "./fields";
+import { fieldLabel, formatMoment } from "./fields";
 import { RefName } from "./RefName";
 import { RefPicker } from "./RefPicker";
+import { ChangeValue } from "./Timeline";
+import { plain, Words } from "./Versions";
+import { wordDiff } from "./wordDiff";
 
 export const approvalsKey = (typeName: string, id: string) => [
   "records",
@@ -66,10 +71,13 @@ function useRefresh(typeName: string, id: string) {
 export function Approvals({
   type,
   id,
+  record,
   manage = true,
 }: {
   type: TypeDefinition;
   id: string;
+  // record is the record as it is: a change that waits shows against it (SD17).
+  record?: RecordData;
   // manage offers asking and withdrawing (the workspace); the portal only answers.
   manage?: boolean;
 }) {
@@ -141,24 +149,34 @@ export function Approvals({
         <p className="text-sm text-muted-foreground">{t("approvals.none")}</p>
       )}
       {approvals.map((a, i) => (
-        <ApprovalView key={a.id} typeName={typeName} id={id} approval={a} latest={i === 0} />
+        <ApprovalView
+          key={a.id}
+          type={type}
+          id={id}
+          record={record}
+          approval={a}
+          latest={i === 0}
+        />
       ))}
     </section>
   );
 }
 
 function ApprovalView({
-  typeName,
+  type,
   id,
+  record,
   approval,
   latest,
 }: {
-  typeName: string;
+  type: TypeDefinition;
   id: string;
+  record?: RecordData;
   approval: Approval;
   latest: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const typeName = qualifiedName(type);
   const mine = approval.stages.flatMap((s) => s.steps).filter((s) => s.mine);
   return (
     <article
@@ -183,10 +201,82 @@ function ApprovalView({
       {approval.stages.map((stage) => (
         <StageView key={stage.position} stage={stage} count={approval.stages.length} />
       ))}
+      {approval.changes && <ChangeView type={type} record={record} changes={approval.changes} />}
       {mine.length > 0 && (
         <DecisionForm typeName={typeName} id={id} approvalId={approval.id} step={mine[0]!} />
       )}
     </article>
+  );
+}
+
+// ChangeView is the change that waits for an approval (SD17, picture 1 of the mockup "Freigabe
+// von Wissen"): each field with what it is and what it would be; a text word by word, a
+// translation with its language.
+function ChangeView({
+  type,
+  record,
+  changes,
+}: {
+  type: TypeDefinition;
+  record?: RecordData;
+  changes: Record<string, unknown>;
+}) {
+  const { t, i18n } = useTranslation();
+  const rows: { key: string; label: string; field: string; from: unknown; to: unknown }[] = [];
+  for (const [name, value] of Object.entries(changes)) {
+    const f = type.fields.find((x) => x.name === name);
+    const label = f ? fieldLabel(f, i18n.language) : name;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      // Values in other languages (SD16c): {"de": …, "en": …}.
+      for (const [lang, v] of Object.entries(value as Record<string, unknown>)) {
+        const from = lang === "de" ? record?.[name] : undefined;
+        rows.push({
+          key: `${name}.${lang}`,
+          label: `${label} (${lang})`,
+          field: name,
+          from,
+          to: v,
+        });
+      }
+    } else {
+      rows.push({ key: name, label, field: name, from: record?.[name], to: value });
+    }
+  }
+  return (
+    <section aria-label={t("approvals.changes")} className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold">{t("approvals.changes")}</h3>
+      <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+        {rows.map((r) => {
+          const f = type.fields.find((x) => x.name === r.field);
+          const words =
+            f?.type === "text"
+              ? wordDiff(plain(r.from, f.format === "rich"), plain(r.to, f.format === "rich"))
+              : null;
+          return (
+            <div key={r.key} className="contents">
+              <dt className="text-foreground-2">{r.label}</dt>
+              <dd className="break-words">
+                {words ? (
+                  <>
+                    <Words segments={words.old.filter((s) => s.kind === "del")} />{" "}
+                    <Words segments={words.new} />
+                  </>
+                ) : (
+                  <>
+                    <del className="text-foreground-2">
+                      <ChangeValue type={type} field={r.field} value={r.from} />
+                    </del>{" "}
+                    <ins className="bg-surface-active underline decoration-2">
+                      <ChangeValue type={type} field={r.field} value={r.to} />
+                    </ins>
+                  </>
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </section>
   );
 }
 

@@ -37,7 +37,7 @@ func TestKnowledgeAtTicketOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/incident", 40}, {"../../packages/knowledge", 5}} {
+	}{{"../../packages/sd", 28}, {"../../packages/incident", 40}, {"../../packages/knowledge", 9}} {
 		p := installPackage(t, ctx, admin.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -60,6 +60,8 @@ func TestKnowledgeAtTicketOverHTTP(t *testing.T) {
 	}
 	agent := timelineLogin(t, admin, "apitest_sd18_agent", "sd18_agent", `{"last_name": "Bearbeiter"}`)
 	user := timelineLogin(t, admin, "apitest_sd18_user", "sd18_user", `{"last_name": "Nutzerin"}`)
+	// Since SD17 an article is published once an editor approved it.
+	editor := timelineLogin(t, admin, "apitest_sd18_editor", "sd18_user", `{"last_name": "Redaktion"}`)
 	article := func(title, body string, publish bool) string {
 		t.Helper()
 		r := call(t, admin, http.MethodPost, arts, `{"title": "`+title+`", "body": "<p>`+body+`</p>", "audience": "all"}`, nil)
@@ -68,9 +70,7 @@ func TestKnowledgeAtTicketOverHTTP(t *testing.T) {
 		}
 		id := r.body["id"].(string)
 		if publish {
-			if r := call(t, admin, http.MethodPost, arts+"/"+id+":transition", `{"transition": "publish"}`, nil); r.code != 200 {
-				t.Fatalf("publish %s: %d %s", title, r.code, r.raw)
-			}
+			publishArticle(t, admin, admin, editor, arts, id)
 		}
 		return id
 	}

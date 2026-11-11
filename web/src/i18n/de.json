@@ -861,6 +861,11 @@
   "approvals": {
     "title": "Genehmigung",
     "portalTitle": "Genehmigungen",
+    "changes": "Beantragte Änderung",
+    "held": "Eine Änderung an {{fields}} wartet auf Freigabe. Bis dahin sehen Leser die bisherige Fassung, und diese Felder sind gesperrt.",
+    "heldShow": "Ansehen",
+    "heldWithdraw": "Änderung zurückziehen",
+    "heldFailed": "Die Änderung ließ sich nicht zurückziehen.",
     "loading": "Wird geladen …",
     "error": "Nicht geklappt: {{detail}}",
     "none": "Noch keine Genehmigung angefordert.",

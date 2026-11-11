@@ -42,11 +42,15 @@ type Each struct {
 // its name from the field Name, its least number of yes from the field Need (empty: all), its
 // approvers from the role Approvers. Lines without approvers are left out; without any line
 // nothing is asked.
+//
+// With Role instead of Stages the holders of that role at the record itself approve, in one
+// stage where one yes is enough (SD17: the editors of an article).
 type ApprovalAction struct {
 	Stages    Each   `json:"stages"`
 	Name      string `json:"name,omitempty"`
 	Need      string `json:"need,omitempty"`
-	Approvers string `json:"approvers"`
+	Approvers string `json:"approvers,omitempty"`
+	Role      string `json:"role,omitempty"`
 	Message   string `json:"message,omitempty"`
 }
 
@@ -194,6 +198,15 @@ func (e *Engine) checkApproval(ctx context.Context, typeName string, a *Approval
 	if !t.HasApprovals() {
 		return typeName + " has no approvals (trait approvals)"
 	}
+	if a.Role != "" {
+		if a.Stages.TypeName != "" || a.Approvers != "" {
+			return "role: either role, or stages with approvers"
+		}
+		if role, ok := t.Actor(a.Role); !ok || (!role.Allows("core.person") && !role.Allows("core.group")) {
+			return fmt.Sprintf("role: %q is no role of %s for persons or groups", a.Role, typeName)
+		}
+		return ""
+	}
 	row, msg := e.checkEach(ctx, typeName, a.Stages)
 	if msg != "" {
 		return "stages: " + msg
@@ -246,11 +259,26 @@ func (e *Engine) askApproval(ctx context.Context, r Rule, typeName string, id uu
 	if rec[meta.FieldApproval] == meta.ApprovalPending {
 		return nil
 	}
-	lines, err := e.items(ctx, rec, a.Stages)
-	if err != nil {
-		return err
-	}
 	req := records.ApprovalRequest{Message: a.Message}
+	var lines []records.Record
+	if a.Role != "" {
+		// The holders of a role of the record itself (SD17): one stage, one yes is enough.
+		var approvers []records.Ref
+		for _, h := range holdersOf(rec, a.Role) {
+			m, _ := h.(map[string]any)
+			if hid, err := uuid.Parse(fmt.Sprint(m["id"])); err == nil {
+				approvers = append(approvers, records.Ref{Type: fmt.Sprint(m["type"]), ID: hid})
+			}
+		}
+		if len(approvers) > 0 {
+			req.Stages = append(req.Stages, records.StageRequest{Need: 1, Approvers: approvers})
+		}
+	} else {
+		var err error
+		if lines, err = e.items(ctx, rec, a.Stages); err != nil {
+			return err
+		}
+	}
 	for _, line := range lines {
 		var approvers []records.Ref
 		for _, h := range holdersOf(line, a.Approvers) {
@@ -278,7 +306,7 @@ func (e *Engine) askApproval(ctx context.Context, r Rule, typeName string, id uu
 	if len(req.Stages) == 0 {
 		return nil
 	}
-	_, err = e.rec.RequestApproval(ctx, typeName, id, req, nil)
+	_, err := e.rec.RequestApproval(ctx, typeName, id, req, nil)
 	if errors.Is(err, records.ErrConflict) && strings.Contains(err.Error(), "open approval") {
 		// Asked meanwhile by the other job.
 		return nil

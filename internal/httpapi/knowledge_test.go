@@ -56,6 +56,8 @@ func TestKnowledgeOverHTTP(t *testing.T) {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}
 	nord := timelineLogin(t, admin, "apitest_sd16_nord", "sd16_user", `{"last_name": "Nord", "org_path": "root.nord"}`)
+	// Since SD17 an article is published once an editor approved it.
+	editor := timelineLogin(t, admin, "apitest_sd16_editor", "sd16_user", `{"last_name": "Redaktion"}`)
 	sued := timelineLogin(t, admin, "apitest_sd16_sued", "sd16_user", `{"last_name": "Süd", "org_path": "root.sued"}`)
 	g := call(t, admin, http.MethodPost, "/api/v1/records/core.group", `{"name": "Netz SD16"}`, nil)
 	if g.code != 201 {
@@ -78,9 +80,7 @@ func TestKnowledgeOverHTTP(t *testing.T) {
 		}
 		id := r.body["id"].(string)
 		if publish {
-			if r := call(t, admin, http.MethodPost, arts+"/"+id+":transition", `{"transition": "publish"}`, nil); r.code != 200 || r.body["state"] != "published" {
-				t.Fatalf("publish %s: %d %s", title, r.code, r.raw)
-			}
+			publishArticle(t, admin, admin, editor, arts, id)
 		}
 		return id
 	}
@@ -124,9 +124,11 @@ func TestKnowledgeOverHTTP(t *testing.T) {
 	}
 
 	// An English title (SD16c): read in English where there is one, else German.
-	if r := call(t, admin, http.MethodPatch, arts+"/"+forAll, `{"title": {"en": "For everyone"}}`, map[string]string{"If-Match": `"2"`}); r.code != 200 {
+	// Since SD17 the title of a published article changes once the editor approved it.
+	if r := call(t, admin, http.MethodPatch, arts+"/"+forAll, `{"title": {"en": "For everyone"}}`, map[string]string{"If-Match": versionOf(t, admin, arts+"/"+forAll)}); r.code != 200 {
 		t.Fatalf("English title: %d %s", r.code, r.raw)
 	}
+	approveOpen(t, editor, arts, forAll)
 	if r := call(t, nord.api, http.MethodGet, arts+"/"+forAll, "", map[string]string{"Accept-Language": "en"}); r.code != 200 || r.body["title"] != "For everyone" || !strings.Contains(r.raw, "VPN neu starten") {
 		t.Fatalf("Nord reads in English: %d %s", r.code, r.raw)
 	}
@@ -164,7 +166,7 @@ func TestKnowledgeLifecycleOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/knowledge", 5}} {
+	}{{"../../packages/sd", 28}, {"../../packages/knowledge", 9}} {
 		p := installPackage(t, ctx, admin.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -181,6 +183,8 @@ func TestKnowledgeLifecycleOverHTTP(t *testing.T) {
 	}
 	author := timelineLogin(t, admin, "apitest_sd16d_author", "sd16d_author", `{"last_name": "Autorin", "email": "autorin16d@example.org", "language": "de"}`)
 	reader := timelineLogin(t, admin, "apitest_sd16d_user", "sd16d_user", `{"last_name": "Leser"}`)
+	// Since SD17 an article is published once an editor approved it.
+	editor := timelineLogin(t, admin, "apitest_sd16d_editor", "sd16d_user", `{"last_name": "Redaktion"}`)
 	authorOf := func(rec map[string]any) string {
 		hs, _ := rec["actors"].(map[string]any)["author"].([]any)
 		if len(hs) != 1 {
@@ -199,9 +203,7 @@ func TestKnowledgeLifecycleOverHTTP(t *testing.T) {
 			t.Fatalf("article %s: %d %s", title, r.code, r.raw)
 		}
 		id := r.body["id"].(string)
-		if r := call(t, api, http.MethodPost, arts+"/"+id+":transition", `{"transition": "publish"}`, nil); r.code != 200 {
-			t.Fatalf("publish %s: %d %s", title, r.code, r.raw)
-		}
+		publishArticle(t, api, admin, editor, arts, id)
 		return id
 	}
 
@@ -275,4 +277,50 @@ func TestKnowledgeLifecycleOverHTTP(t *testing.T) {
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
+}
+
+// publishArticle publishes an article as SD17 asks (SD-Plan E16): the editor holds the role
+// editors, the article is submitted and the editor approves. Before SD17 the tests took the
+// transition "publish" themselves; now it follows the approval only.
+func publishArticle(t *testing.T, api, admin *testAPI, editor timelineUser, arts, id string) {
+	t.Helper()
+	url := arts + "/" + id
+	if r := call(t, admin, http.MethodPatch, url, `{"actors": {"editors": [{"type": "core.person", "id": "`+editor.person+`"}]}}`,
+		map[string]string{"If-Match": versionOf(t, admin, url)}); r.code != 200 {
+		t.Fatalf("editors of %s: %d %s", id, r.code, r.raw)
+	}
+	if r := call(t, api, http.MethodPost, url+":transition", `{"transition": "submit"}`, nil); r.code != 200 || r.body["state"] != "review" {
+		t.Fatalf("submit %s: %d %s", id, r.code, r.raw)
+	}
+	if r := call(t, admin, http.MethodPost, url+"/approvals", `{"stages": [{"approvers": [{"type": "core.person", "id": "`+editor.person+`"}]}]}`, nil); r.code != 201 {
+		t.Fatalf("ask the editor for %s: %d %s", id, r.code, r.raw)
+	}
+	approveOpen(t, editor, arts, id)
+	if r := call(t, admin, http.MethodGet, url, "", nil); r.body["state"] != "published" {
+		t.Fatalf("publish %s: %v", id, r.body["state"])
+	}
+}
+
+// approveOpen lets the editor approve the open approval of an article.
+func approveOpen(t *testing.T, editor timelineUser, arts, id string) {
+	t.Helper()
+	url := arts + "/" + id
+	r := call(t, editor.api, http.MethodGet, url+"/approvals", "", nil)
+	var list []map[string]any
+	if r.code != 200 || json.Unmarshal([]byte(r.raw), &list) != nil || len(list) == 0 || list[0]["state"] != "open" {
+		t.Fatalf("approvals of %s: %d %s", id, r.code, r.raw)
+	}
+	if r := call(t, editor.api, http.MethodPost, url+"/approvals/"+list[0]["id"].(string)+":decide", `{"decision": "approve"}`, nil); r.code != 200 {
+		t.Fatalf("approve %s: %d %s", id, r.code, r.raw)
+	}
+}
+
+// versionOf is the ETag of a record as If-Match wants it.
+func versionOf(t *testing.T, api *testAPI, url string) string {
+	t.Helper()
+	r := call(t, api, http.MethodGet, url, "", nil)
+	if r.code != 200 {
+		t.Fatalf("read %s: %d %s", url, r.code, r.raw)
+	}
+	return fmt.Sprintf(`"%v"`, r.body["version"])
 }

@@ -34,7 +34,10 @@ fields:
   - {name: title, type: text, label: {de: T, en: T}}
 states:
   - {name: draft, label: {de: N, en: N}, initial: true}
-approval: {approved: grant, rejected: nothing}
+approval:
+  approved: grant
+  rejected: nothing
+  hold: {fields: [missing], approvers: nobody, when: "record.("}
 `
 	p, err := LoadFS(fstest.MapFS{
 		"package.yaml":     {Data: []byte(manifest)},
@@ -49,6 +52,10 @@ approval: {approved: grant, rejected: nothing}
 		`type bad, approval: needs the trait approvals`,
 		`type bad, approval: approved "grant" is not a transition of this type`,
 		`type bad, approval: rejected "nothing" is not a transition of this type`,
+		// SD17: what a hold names (SD-Plan N22).
+		`type bad, approval, hold: field "missing" is not a field of the type that one writes`,
+		`type bad, approval, hold: approvers "nobody" is no role of the type for persons or groups`,
+		`type bad, approval, hold: when: `,
 	} {
 		if !strings.Contains(all, want) {
 			t.Errorf("missing %q in\n%s", want, all)

@@ -23,7 +23,7 @@ import { ChangeValue, changeField } from "./Timeline";
 import { wordDiff, type Segment } from "./wordDiff";
 
 // plain is the text of a value of a text field; formatted text without its tags.
-function plain(value: unknown, rich: boolean): string {
+export function plain(value: unknown, rich: boolean): string {
   if (value === null || value === undefined) {
     return "";
   }
@@ -31,7 +31,7 @@ function plain(value: unknown, rich: boolean): string {
   return rich ? (new DOMParser().parseFromString(s, "text/html").body.textContent ?? "") : s;
 }
 
-function Words({ segments }: { segments: Segment[] }) {
+export function Words({ segments }: { segments: Segment[] }) {
   if (segments.length === 0) {
     return <span className="text-muted-foreground">–</span>;
   }

@@ -184,6 +184,70 @@ describe("Approvals", () => {
     });
   });
 
+  // SD17 (SD-Plan N22): a change that waits shows as a band, its fields are locked, the tab
+  // shows it word by word, and the band withdraws it.
+  it("shows a change that waits for approval, locks its fields and withdraws it", async () => {
+    state.extraTypes = [
+      { ...orderType, approval: { hold: { fields: ["title"], approvers: "editors" } } },
+      personType,
+    ];
+    state.extraRecords!["probe.order"]![0]!["title"] = "VPN verbindet nicht";
+    state.approvals = {
+      [order]: [
+        {
+          id: "0190a000-0000-7000-8000-000000000017",
+          state: "open",
+          stage: 1,
+          message: "Bitte geben Sie diese Änderung frei.",
+          requester: approverPerson,
+          requested_at: "2026-11-11T08:00:00Z",
+          changes: { title: "VPN verbindet nicht oder bricht ab" },
+          stages: [
+            {
+              position: 1,
+              name: "",
+              need: 1,
+              state: "open",
+              steps: [
+                {
+                  id: "0190a000-0000-7000-9000-000000000171",
+                  approver: { type: "core.group", id: group },
+                  state: "open",
+                  mine: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const user = userEvent.setup();
+    const { container } = renderAt(`/types/probe.order/${order}`);
+    const band = await screen.findByText(/Eine Änderung an Titel wartet auf Freigabe/);
+    expect(screen.getByLabelText(/^Titel/)).toHaveAttribute("readonly");
+    expect(screen.getByLabelText(/^Begründung/)).not.toHaveAttribute("readonly");
+    await expectAccessible(container);
+
+    await user.click(screen.getByRole("button", { name: "Ansehen" }));
+    expect(screen.getByRole("tab", { name: "Genehmigung" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const change = await within(screen.getByRole("tabpanel")).findByRole("region", {
+      name: "Beantragte Änderung",
+    });
+    expect(
+      within(change).getByText("oder bricht ab", { exact: false, selector: "ins" }),
+    ).toBeVisible();
+
+    await user.click(
+      within(band.closest("[role=status]") as HTMLElement).getByRole("button", {
+        name: "Änderung zurückziehen",
+      }),
+    );
+    await waitFor(() => expect(state.calls.some((c) => c.path.endsWith(":withdraw"))).toBe(true));
+  });
+
   it("asks for approval in stages", async () => {
     const user = userEvent.setup();
     renderAt(`/types/probe.order/${order}`);

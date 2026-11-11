@@ -38,6 +38,7 @@ export function RecordTabs({
   version,
   record,
   onApply,
+  show,
 }: {
   type: TypeDefinition;
   id: string;
@@ -48,6 +49,8 @@ export function RecordTabs({
   // record's fields, using a hit puts values into the form.
   record: RecordData;
   onApply: (values: Record<string, unknown>) => void;
+  // show opens a tab from outside, each time its n changes (SD17: the change that waits).
+  show?: { n: number; key: string };
 }) {
   const { t, i18n } = useTranslation();
   const base = useId();
@@ -73,6 +76,11 @@ export function RecordTabs({
       : []),
   ];
   const [current, setCurrent] = useState(tabs[0]!.key);
+  const [shown, setShown] = useState(0);
+  if (show && show.n !== shown) {
+    setShown(show.n);
+    setCurrent(show.key);
+  }
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const at = Math.max(
     0,
@@ -135,7 +143,7 @@ export function RecordTabs({
         {tabs[at]!.key === "relations" ? (
           <Relations type={type} id={id} />
         ) : tabs[at]!.key === "approvals" ? (
-          <Approvals type={type} id={id} />
+          <Approvals type={type} id={id} record={record} />
         ) : tabs[at]!.key === "substitutes" ? (
           <Substitutes personId={id} />
         ) : tabs[at]!.key.startsWith("suggest:") ? (

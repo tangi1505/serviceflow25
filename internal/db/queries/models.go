@@ -75,6 +75,7 @@ type Approval struct {
 	Requester   uuid.NullUUID
 	RequestedAt pgtype.Timestamptz
 	FinishedAt  pgtype.Timestamptz
+	Changes     []byte
 }
 
 type ApprovalStage struct {

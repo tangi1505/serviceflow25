@@ -538,7 +538,11 @@ E8, KF3 bis KF5, KF7:
   berechnete Feld `approval` und die Übergänge, die der Typ unter `approval` nennt, laufen nach
   der Entscheidung mit den Rechten des Systems. Vertretung an der Person mit Zeitraum (Tabelle
   `substitute`); wer gefragt ist, auch als Vertretung, liest den Datensatz ohne eigenes Recht
-  (`authz.Access.Asked`). Erinnerung und Vorlagen kommen mit WF7.
+  (`authz.Access.Asked`). Erinnerung und Vorlagen kommen mit WF7. Seit SD17 (E178) kann ein Typ
+  Änderungen an Feldern zurückhalten (`approval.hold`): solange eine Bedingung gilt, wartet die
+  Änderung an einer Genehmigung (Spalte `approval.changes`), gefragt sind die Inhaber einer Rolle
+  des Datensatzes; erteilt, schreibt der Kern sie mit Systemrechten als neue Fassung
+  (`internal/records/hold.go`).
 - **Fristen:** Kalender mit Arbeitszeit und Feiertagen sind Typen des Kernpakets (gebaut,
   E113). Ein Service-Level ist ein Datensatz von `core.sla` mit Zieltyp, Ziel, Kalender und
   CEL-Bedingungen für gilt, Pause und erfüllt (gebaut, E114). Eine Uhr ist eine Zeile der

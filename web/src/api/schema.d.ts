@@ -2999,6 +2999,10 @@ export interface components {
             /** Format: date-time */
             finished_at?: string;
             stages: components["schemas"]["ApprovalStage"][];
+            /** @description a change of the record that waits for this approval (SD17, SD-Plan N22): the fields as they were sent; written as a new version once the approval is given, dropped else */
+            changes?: {
+                [key: string]: unknown;
+            };
         };
         ApprovalRequest: {
             /** @description the text to the approvers */
@@ -3497,10 +3501,10 @@ export interface components {
                 };
                 comment?: string;
             };
-            /** @description after the write only (SD6, SD-Plan N18): asks for approval of the record (trait approvals) with one stage per line of stages, its name from the field name, its least number of yes from the field need, its persons and groups from the role approvers of the line; lines without approvers are left out, without any nothing is asked */
+            /** @description after the write only (SD6, SD-Plan N18): asks for approval of the record (trait approvals) with one stage per line of stages, its name from the field name, its least number of yes from the field need, its persons and groups from the role approvers of the line; lines without approvers are left out, without any nothing is asked. With role instead (SD17) the holders of that role of the record itself approve, in one stage where one yes is enough */
             approval?: {
                 /** @description the records of type_name whose fields in match name what the given fields of this record name (e.g. {"template": "template"}), at most 200, in the order of the field order */
-                stages: {
+                stages?: {
                     type_name: string;
                     match: {
                         [key: string]: string;
@@ -3509,7 +3513,9 @@ export interface components {
                 };
                 name?: string;
                 need?: string;
-                approvers: string;
+                approvers?: string;
+                /** @description a role of the record itself whose holders approve (SD17) */
+                role?: string;
                 message?: string;
             };
         };

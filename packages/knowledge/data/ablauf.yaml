@@ -47,4 +47,4 @@
     condition: record.state == "expired"
     recipients: actors.author
     subject: "Ihr Artikel ist abgelaufen: {{title}}"
-    body: "Ihr Artikel „{{title}}“ ist abgelaufen und im Portal nicht mehr zu sehen. Gilt er weiter, setzen Sie „Gültig bis“ neu und veröffentlichen ihn wieder: {{link}}"
+    body: "Ihr Artikel „{{title}}“ ist abgelaufen und im Portal nicht mehr zu sehen. Gilt er weiter, setzen Sie „Gültig bis“ neu und legen ihn wieder zur Freigabe vor: {{link}}"

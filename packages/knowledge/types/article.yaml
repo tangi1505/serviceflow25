@@ -10,11 +10,14 @@
 # and text may carry an English translation (SD16c); the form edits the German one, readers see
 # their language where there is one (SD-Plan E10). While a ticket is written it is suggested,
 # in the portal beside the form and in the tab "Wissen" of the ticket; readers say whether it
-# helped and comment on it in its timeline (SD18, SD-Plan E12).
+# helped and comment on it in its timeline (SD18, SD-Plan E12). Nothing goes into the portal
+# unchecked (SD17, SD-Plan E16): a draft is submitted and published once the editors agreed;
+# a change of title, text or "Sichtbar für" of a published article waits for their approval,
+# readers keep seeing the article as it was until then (SD-Plan N22).
 name: article
 label: {de: Artikel, en: Article}
 title_field: title
-traits: [history, actors, timeline, rating]
+traits: [history, actors, timeline, rating, approvals]
 fields:
   - name: title
     type: text
@@ -56,18 +59,52 @@ actors:
   - name: shared
     label: {de: Gruppen, en: Groups}
     to: [core.group]
+  # Who approves (SD17): the group "Wissensredaktion" of the start data, set when the article
+  # is created; one member decides for the group.
+  - name: editors
+    label: {de: Redaktion, en: Editors}
+    to: [core.group, core.person]
 states:
   - {name: draft, label: {de: Entwurf, en: Draft}, initial: true, category: open}
+  - {name: review, label: {de: In Prüfung, en: In review}, category: waiting}
   - {name: published, label: {de: Veröffentlicht, en: Published}, category: active}
   - {name: expired, label: {de: Abgelaufen, en: Expired}, category: done}
 transitions:
-  - {name: publish, label: {de: Veröffentlichen, en: Publish}, from: [draft, expired], to: published}
+  # Published only once the editors agreed (SD17): submitted, the rule of the start data asks
+  # them; their yes publishes, their no takes it back to draft with the reason.
+  - {name: submit, label: {de: Zur Freigabe vorlegen, en: Submit for approval}, from: [draft, expired], to: review}
+  - name: publish
+    label: {de: Freigegeben, en: Approved}
+    from: [review]
+    to: published
+    when: record.approval == "approved"
+  - name: refuse
+    label: {de: Nicht freigegeben, en: Not approved}
+    from: [review]
+    to: draft
+    comment: required
+    when: record.approval == "rejected"
   - {name: expire, label: {de: Ablaufen lassen, en: Expire}, from: [published], to: expired}
-  - {name: revise, label: {de: Zurück in den Entwurf, en: Back to draft}, from: [published, expired], to: draft}
+  # Back to draft; in review only once the approval was withdrawn.
+  - name: revise
+    label: {de: Zurück in den Entwurf, en: Back to draft}
+    from: [published, expired, review]
+    to: draft
+    when: record.state != "review" || record.approval != "pending"
 # Who reads without a role (SD-Plan E8, N12): a published article for everyone at its node and
 # below, one for some groups their members wherever they are; without groups only agents read
 # it. Agents read by their roles. Valid until yesterday it is gone, before the nightly rule.
 # Who reads it may comment on it (SD18).
+# The approval (WF6, SD17): its yes publishes, its no refuses. A change of what readers see of
+# a published article waits for the editors (SD-Plan N22).
+approval:
+  approved: publish
+  rejected: refuse
+  hold:
+    fields: [title, body, audience]
+    when: record.state == "published"
+    approvers: editors
+    message: Bitte geben Sie diese Änderung frei.
 readers:
   - when: record.state == "published" && record.audience == "all" && (record.expires_on == null || record.expires_on >= today())
     actions: [read, comment]

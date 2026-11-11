@@ -1,0 +1,40 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The approval of articles (SD17, SD-Plan E16): the group "Wissensredaktion", which every new
+# article gets as its editors, the rule that asks them when an article is submitted, and the
+# mail to them. A change of a published article asks them by itself (approval.hold of the
+# type). Start data each tenant changes; the tenant adds the members.
+- key: editors_group
+  type: core.group
+  values:
+    name: Wissensredaktion
+- key: editors
+  rule:
+    label: {de: Redaktion ist die Wissensredaktion, en: The editors are the knowledge editors}
+    type_name: knowledge.article
+    trigger: create
+    mode: before
+    condition: '!has(record.actors) || !has(record.actors.editors) || size(record.actors.editors) == 0'
+    actions:
+      - assign: {role: editors, to: [{type: core.group, id: "@editors_group"}]}
+- key: submitted
+  rule:
+    label: {de: Freigabe bei Vorlage, en: Approval when submitted}
+    type_name: knowledge.article
+    trigger: update
+    mode: after
+    condition: '"state" in changed && record.state == "review" && record.approval != "pending"'
+    actions:
+      - approval:
+          role: editors
+          message: Bitte geben Sie diesen Artikel frei.
+- key: approval_mail
+  type: core.notification
+  values:
+    name: Freigabe erbeten
+    target_type: knowledge.article
+    events: approval_request
+    recipients: approvers
+    subject: "Bitte freigeben: {{title}}"
+    body: "Sie sind gefragt, den Artikel „{{title}}“ oder eine Änderung daran freizugeben. Zustimmen oder ablehnen können Sie hier: {{link}}"

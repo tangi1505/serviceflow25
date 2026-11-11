@@ -194,6 +194,14 @@ export type TypeDefinition = {
   readers?: { when?: string; roles?: string[]; actions?: string[] }[];
   // order makes the records orderable, offers of the catalog (SD13).
   order?: OrderSpec;
+  // approval names the transitions after an approval (WF6) and the fields whose changes wait
+  // for approval (hold, SD17).
+  approval?: {
+    requested?: string;
+    approved?: string;
+    rejected?: string;
+    hold?: { fields: string[]; when?: string; approvers: string; message?: string };
+  };
 };
 export type TransitionInfo = components["schemas"]["TransitionInfo"];
 // FieldStates is what the field states of the type (WF2) say for a record or a new one.

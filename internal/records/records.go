@@ -712,6 +712,7 @@ func (s *Service) Update(ctx context.Context, typeName string, id uuid.UUID, exp
 // condition are checked against the record as it will be, the state changes in the same
 // version, and the event is the transition. expectedVersion below 0 takes any version.
 func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expectedVersion int64, patch map[string]any, actor Actor, key *SyncKey, move *meta.Transition) (Record, error) {
+	raw := patch
 	patch, rawActors, setsActors := splitActors(patch)
 	patch, tr, tps := splitTranslations(ctx, t, patch)
 	actors, aps, err := s.actorsOf(ctx, t, rawActors, setsActors)
@@ -731,6 +732,7 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 	}
 	var rec Record
 	var by map[string]string
+	heldBack := false
 	err = s.tx(ctx, func(tx pgx.Tx) error {
 		old, err := s.read(ctx, tx, t, id, false, true)
 		if err != nil {
@@ -753,6 +755,10 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 		}
 		if old["version"].(int64) != expectedVersion {
 			return fmt.Errorf("%w: record %s is at version %d, you sent %d", ErrConflict, id, old["version"], expectedVersion)
+		}
+		// Changes that wait for approval (SD17, SD-Plan N22) leave values here.
+		if heldBack, err = s.holdBack(ctx, tx, t, id, old, raw, values, tr, actor); err != nil {
+			return err
 		}
 		after := apiShape(t, old, values)
 		if move != nil {
@@ -935,6 +941,12 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 	})
 	if err == nil {
 		s.afterWrite(ctx, t.QualifiedName())
+	}
+	if err == nil && heldBack {
+		// The record as it is now, with the approval asked for the change that waits.
+		if fresh, rerr := s.read(ctx, s.db.Tenant(ctx), t, id, false, false); rerr == nil {
+			rec = fresh
+		}
 	}
 	return rec, err
 }

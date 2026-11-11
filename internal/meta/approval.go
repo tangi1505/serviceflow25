@@ -7,6 +7,8 @@
 
 package meta
 
+import "group24.de/itsm/internal/rules"
+
 // --- approvals (WF6, WF-Plan E17; KF4; Inventar G43, G44) ---
 //
 // A type with the trait approvals can ask for approval in stages: one after the other, in a
@@ -45,6 +47,19 @@ type ApprovalSpec struct {
 	Requested string `json:"requested,omitempty" yaml:"requested"`
 	Approved  string `json:"approved,omitempty" yaml:"approved"`
 	Rejected  string `json:"rejected,omitempty" yaml:"rejected"`
+	// Hold keeps changes of some fields back until they are approved (SD17, SD-Plan N22).
+	Hold *ApprovalHold `json:"hold,omitempty" yaml:"hold"`
+}
+
+// ApprovalHold keeps a change of Fields back while When holds for the record (a published
+// article): the change waits at an approval the holders of the role Approvers decide, in one
+// stage where one yes is enough, and becomes a new version once it is given. Other fields
+// change at once. While such a change waits, the held fields cannot be changed again.
+type ApprovalHold struct {
+	Fields    []string `json:"fields" yaml:"fields"`
+	When      string   `json:"when,omitempty" yaml:"when"`
+	Approvers string   `json:"approvers" yaml:"approvers"`
+	Message   string   `json:"message,omitempty" yaml:"message"`
 }
 
 // HasApprovals reports whether records of the type can be approved.
@@ -67,6 +82,25 @@ func validateApproval(add func(string, string, ...any), where string, t Type) {
 		}
 		if _, ok := t.Transition(x.name); !ok {
 			add(w, "%s %q is not a transition of this type", x.key, x.name)
+		}
+	}
+	if h := a.Hold; h != nil {
+		hw := w + ", hold"
+		if len(h.Fields) == 0 {
+			add(hw, "fields needs at least one field whose changes wait")
+		}
+		for _, name := range h.Fields {
+			if f, ok := t.Field(name); !ok || f.Calculated() {
+				add(hw, "field %q is not a field of the type that one writes", name)
+			}
+		}
+		if role, ok := t.Actor(h.Approvers); !ok || (!role.Allows("core.person") && !role.Allows("core.group")) {
+			add(hw, "approvers %q is no role of the type for persons or groups", h.Approvers)
+		}
+		if h.When != "" {
+			if _, err := rules.Compile(h.When); err != nil {
+				add(hw, "when: %v", err)
+			}
 		}
 	}
 }

@@ -3830,6 +3830,12 @@ components:
         stages:
           type: array
           items: { $ref: "#/components/schemas/ApprovalStage" }
+        changes:
+          type: object
+          additionalProperties: true
+          description: >-
+            a change of the record that waits for this approval (SD17, SD-Plan N22): the fields as
+            they were sent; written as a new version once the approval is given, dropped else
     ApprovalRequest:
       type: object
       required: [stages]
@@ -4279,12 +4285,13 @@ components:
             comment: { type: string }
         approval:
           type: object
-          required: [stages, approvers]
           description: >-
             after the write only (SD6, SD-Plan N18): asks for approval of the record (trait
             approvals) with one stage per line of stages, its name from the field name, its least
             number of yes from the field need, its persons and groups from the role approvers of
-            the line; lines without approvers are left out, without any nothing is asked
+            the line; lines without approvers are left out, without any nothing is asked. With
+            role instead (SD17) the holders of that role of the record itself approve, in one
+            stage where one yes is enough
           properties:
             stages:
               type: object
@@ -4301,6 +4308,7 @@ components:
             name: { type: string }
             need: { type: string }
             approvers: { type: string }
+            role: { type: string, description: "a role of the record itself whose holders approve (SD17)" }
             message: { type: string }
     RuleInput:
       type: object

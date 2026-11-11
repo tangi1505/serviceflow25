@@ -9,6 +9,7 @@ package records
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -75,6 +76,11 @@ type Approval struct {
 	RequestedAt time.Time       `json:"requested_at"`
 	FinishedAt  *time.Time      `json:"finished_at,omitempty"`
 	Stages      []ApprovalStage `json:"stages"`
+	// Changes is a change of the record that waits for this approval (SD17, SD-Plan N22): the
+	// fields as they were sent; written once the approval is given.
+	Changes map[string]any `json:"changes,omitempty"`
+	// requestedBy is the account that asked: the actor of the change once it is written.
+	requestedBy *uuid.UUID
 }
 
 // ApprovalStage is one stage: its questions and how many yes it needs (0: all).
@@ -138,7 +144,7 @@ func (s *Service) Approvals(ctx context.Context, typeName string, id uuid.UUID) 
 
 // approvalsOf reads the approvals of a record, or the one approval only.
 func (s *Service) approvalsOf(ctx context.Context, db querier, t meta.Type, id, only uuid.UUID) ([]Approval, error) {
-	rows, err := db.Query(ctx, `SELECT id, state, stage, message, requester, requested_at, finished_at FROM approval
+	rows, err := db.Query(ctx, `SELECT id, state, stage, message, requester, requested_at, finished_at, changes, requested_by FROM approval
 WHERE type_name = $1 AND record_id = $2 AND ($3::uuid = '00000000-0000-0000-0000-000000000000' OR id = $3)
 ORDER BY requested_at DESC, id DESC`, t.QualifiedName(), id, only)
 	if err != nil {
@@ -146,7 +152,11 @@ ORDER BY requested_at DESC, id DESC`, t.QualifiedName(), id, only)
 	}
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Approval, error) {
 		var a Approval
-		err := row.Scan(&a.ID, &a.State, &a.Stage, &a.Message, &a.Requester, &a.RequestedAt, &a.FinishedAt)
+		var changes []byte
+		err := row.Scan(&a.ID, &a.State, &a.Stage, &a.Message, &a.Requester, &a.RequestedAt, &a.FinishedAt, &changes, &a.requestedBy)
+		if err == nil && len(changes) > 0 {
+			err = json.Unmarshal(changes, &a.Changes)
+		}
 		return a, err
 	})
 	if err != nil {
@@ -313,10 +323,7 @@ func (s *Service) RequestApproval(ctx context.Context, typeName string, id uuid.
 	if err := s.checkApprovalRequest(ctx, req); err != nil {
 		return Approval{}, err
 	}
-	aid, err := uuid.NewV7()
-	if err != nil {
-		return Approval{}, err
-	}
+	var aid uuid.UUID
 	var asked []Ref
 	err = s.tx(ctx, func(tx pgx.Tx) error {
 		rec, err := s.read(ctx, tx, t, id, false, true)
@@ -343,30 +350,8 @@ func (s *Service) RequestApproval(ctx context.Context, typeName string, id uuid.
 		if open > 0 {
 			return fmt.Errorf("%w: %s %s has an open approval; withdraw it first", ErrConflict, t.QualifiedName(), id)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO approval (id, type_name, record_id, state, stage, message, requested_by, requester)
-VALUES ($1, $2, $3, 'open', 1, $4, $5, $6)`, aid, t.QualifiedName(), id, strings.TrimSpace(req.Message), nullActor(actor), authz.From(ctx).Me()); err != nil {
-			return fmt.Errorf("records: approval: %w", err)
-		}
-		for i, st := range req.Stages {
-			state := stepWaiting
-			if i == 0 {
-				state = approvalOpen
-			}
-			if _, err := tx.Exec(ctx, `INSERT INTO approval_stage (approval_id, position, name, need, state) VALUES ($1, $2, $3, $4, $5)`,
-				aid, i+1, strings.TrimSpace(st.Name), st.Need, state); err != nil {
-				return fmt.Errorf("records: approval stage: %w", err)
-			}
-			for j, ref := range st.Approvers {
-				sid, err := uuid.NewV7()
-				if err != nil {
-					return err
-				}
-				if _, err := tx.Exec(ctx, `INSERT INTO approval_step (id, approval_id, stage, position, type_name, record_id, approver_type, approver_id, state, asked_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CASE WHEN $9 = 'open' THEN now() END)`,
-					sid, aid, i+1, j+1, t.QualifiedName(), id, ref.Type, ref.ID, state); err != nil {
-					return fmt.Errorf("records: approval step: %w", err)
-				}
-			}
+		if aid, err = s.insertApproval(ctx, tx, t, id, req, nil, actor); err != nil {
+			return err
 		}
 		asked = req.Stages[0].Approvers
 		return s.approvalWritten(ctx, tx, t, id, rec, meta.ApprovalPending, EventApprovalRequest,
@@ -378,6 +363,41 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CASE WHEN $9 = 'open' THEN now() END
 	}
 	s.follow(ctx, t, id, approvalSpec(t).Requested, "", actor)
 	return s.oneApproval(ctx, t, id, aid)
+}
+
+// insertApproval writes an approval with its stages and questions, the first stage asked;
+// changes, when set, is a change of the record that waits for it (SD-Plan N22).
+func (s *Service) insertApproval(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.UUID, req ApprovalRequest, changes []byte, actor Actor) (uuid.UUID, error) {
+	aid, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO approval (id, type_name, record_id, state, stage, message, requested_by, requester, changes)
+VALUES ($1, $2, $3, 'open', 1, $4, $5, $6, $7)`, aid, t.QualifiedName(), id, strings.TrimSpace(req.Message), nullActor(actor), authz.From(ctx).Me(), changes); err != nil {
+		return uuid.Nil, fmt.Errorf("records: approval: %w", err)
+	}
+	for i, st := range req.Stages {
+		state := stepWaiting
+		if i == 0 {
+			state = approvalOpen
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO approval_stage (approval_id, position, name, need, state) VALUES ($1, $2, $3, $4, $5)`,
+			aid, i+1, strings.TrimSpace(st.Name), st.Need, state); err != nil {
+			return uuid.Nil, fmt.Errorf("records: approval stage: %w", err)
+		}
+		for j, ref := range st.Approvers {
+			sid, err := uuid.NewV7()
+			if err != nil {
+				return uuid.Nil, err
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO approval_step (id, approval_id, stage, position, type_name, record_id, approver_type, approver_id, state, asked_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CASE WHEN $9 = 'open' THEN now() END)`,
+				sid, aid, i+1, j+1, t.QualifiedName(), id, ref.Type, ref.ID, state); err != nil {
+				return uuid.Nil, fmt.Errorf("records: approval step: %w", err)
+			}
+		}
+	}
+	return aid, nil
 }
 
 // Decide answers an open question of the current stage: the one named, or the first the
@@ -400,6 +420,8 @@ func (s *Service) Decide(ctx context.Context, typeName string, id, approvalID uu
 		return Approval{}, fmt.Errorf("%w: deciding needs a person linked to the account", ErrForbidden)
 	}
 	outcome := ""
+	var held map[string]any
+	var heldBy Actor
 	err = s.tx(ctx, func(tx pgx.Tx) error {
 		rec, err := s.read(ctx, tx, t, id, false, true)
 		if err != nil {
@@ -416,6 +438,7 @@ func (s *Service) Decide(ctx context.Context, typeName string, id, approvalID uu
 		if ap.State != approvalOpen {
 			return fmt.Errorf("%w: the approval is %s", ErrConflict, ap.State)
 		}
+		held, heldBy = ap.Changes, ap.requestedBy
 		stage := ap.Stages[ap.Stage-1]
 		var pick *ApprovalStep
 		var onBehalf *uuid.UUID
@@ -544,10 +567,15 @@ func (s *Service) Decide(ctx context.Context, typeName string, id, approvalID uu
 	if err = s.written(ctx, typeName, err); err != nil {
 		return Approval{}, err
 	}
-	switch outcome {
-	case approvalApproved:
+	switch {
+	case held != nil && outcome == approvalApproved:
+		// A change that waited (SD-Plan N22) is written; no transition follows, the record
+		// stays where it is.
+		s.applyHeld(ctx, t, id, held, heldBy)
+	case held != nil:
+	case outcome == approvalApproved:
 		s.follow(ctx, t, id, approvalSpec(t).Approved, "", actor)
-	case approvalRejected:
+	case outcome == approvalRejected:
 		s.follow(ctx, t, id, approvalSpec(t).Rejected, comment, actor)
 	}
 	return s.oneApproval(ctx, t, id, approvalID)
