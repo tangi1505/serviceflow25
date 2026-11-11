@@ -283,6 +283,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		}},
 		{Name: "valkey", Fn: kv.Ping},
 	}
+	rels := relations.New(rt, rec)
 	handler := httpapi.NewRouter(httpapi.Options{
 		Logger:     logger,
 		Version:    platform.Version,
@@ -297,7 +298,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Events:     ev,
 		Authn:      an,
 		TrustProxy: cfg.TrustProxy,
-		Relations:  relations.New(rt, rec),
+		Relations:  rels,
 		Files:      fileSvc,
 		Webhooks:   hooks,
 		Search:     search.NewPostgres(rec),
@@ -305,7 +306,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		KV:         kv,
 		Presence:   presence.New(kv),
 		Prefs:      prefs.New(rt, rec, orgSvc.Setting),
-		Forms:      forms.New(rec),
+		Forms:      forms.New(rec).WithRelations(rels),
 		Portal:     portal.New(rec),
 		Snippets:   snippetSvc,
 		Customer:   customer.New(rt, rec, logger),

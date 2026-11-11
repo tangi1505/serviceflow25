@@ -60,9 +60,12 @@ type SLA struct {
 	// RoundTheClock counts every minute, whatever calendar the unit has (counts
 	// round_the_clock, WF12).
 	RoundTheClock bool
-	applies       *rules.Condition
-	pause         *rules.Condition
-	stop          *rules.Condition
+	// TargetField names a number field of the record: the target is Target times its value,
+	// the delivery time of an offer in working days for example (SD13, SD-Plan N20).
+	TargetField string
+	applies     *rules.Condition
+	pause       *rules.Condition
+	stop        *rules.Condition
 }
 
 // Service keeps the SLAs and moves the clocks.
@@ -197,6 +200,7 @@ func fromRecord(r records.Record) (*SLA, error) {
 	sla := &SLA{ID: id, Name: fmt.Sprint(r["name"]), TypeName: fmt.Sprint(r["target_type"]),
 		Target: time.Duration(minutes * float64(time.Minute)).Round(time.Second), FromApplies: r["start_from"] == "applies",
 		RoundTheClock: r["counts"] == "round_the_clock"}
+	sla.TargetField, _ = r["target_field"].(string)
 	if c, ok := r["calendar"].(string); ok && c != "" {
 		if sla.Calendar, err = uuid.Parse(c); err != nil {
 			return nil, err
@@ -241,7 +245,39 @@ func (s *Service) Check(ctx context.Context, t meta.Type, rec map[string]any) []
 			ps = append(ps, records.Problem{Field: field, Code: "condition", Message: err.Error()})
 		}
 	}
+	// The target from a field (SD-Plan N20): a number field of the type.
+	if name, _ := rec["target_field"].(string); name != "" {
+		typeName, _ := rec["target_type"].(string)
+		if target, err := s.rec.Type(ctx, typeName); err == nil {
+			if f, ok := target.Field(name); !ok || f.Type != meta.FieldNumber {
+				ps = append(ps, records.Problem{Field: "target_field", Code: "invalid", Message: fmt.Sprintf("%s is no number field of %s", name, typeName)})
+			}
+		}
+	}
 	return ps
+}
+
+// targetOf is the target of a new clock: the SLA's, times the number in its target field when
+// the record has one above zero (SD-Plan N20).
+func targetOf(sla *SLA, rec records.Record) time.Duration {
+	if sla.TargetField == "" {
+		return sla.Target
+	}
+	var n float64
+	switch v := rec[sla.TargetField].(type) {
+	case float64:
+		n = v
+	case int64:
+		n = float64(v)
+	case int:
+		n = float64(v)
+	case string:
+		n, _ = strconv.ParseFloat(v, 64)
+	}
+	if n <= 0 {
+		return sla.Target
+	}
+	return time.Duration(float64(sla.Target) * n).Round(time.Second)
 }
 
 // Times tells records whether a type has SLAs (records.Clocks). When they cannot be read, it
@@ -333,7 +369,7 @@ func (s *Service) Written(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.U
 			// A new clock, or one cancelled before whose SLA holds again: it counts from the
 			// creation of the record (on the first write that is now), or from now when the
 			// SLA counts from the moment it holds (WF11).
-			c = &Clock{ID: uuid.New(), TypeName: t.QualifiedName(), RecordID: id, SLA: sla.ID, Target: sla.Target, StartedAt: now}
+			c = &Clock{ID: uuid.New(), TypeName: t.QualifiedName(), RecordID: id, SLA: sla.ID, Target: targetOf(sla, rec), StartedAt: now}
 			if exists {
 				c.ID, c.Generation = row.ID, row.Generation
 			}

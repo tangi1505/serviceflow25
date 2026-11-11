@@ -15,7 +15,7 @@
 // cards of the start page stand side by side where there is room.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -27,9 +27,6 @@ import {
   qualifiedName,
   readQuery,
   typesQuery,
-  type Field,
-  type FormOffer,
-  type Label,
   type PortalNotice,
   type RecordData,
   type TypeDefinition,
@@ -39,7 +36,7 @@ import { forget } from "@/app/recent";
 import { LanguageSwitch, ThemeSwitch } from "@/app/Switches";
 import { Form } from "@/render/Form";
 
-import { hiddenOf } from "./conditions";
+import { FormFill, inLanguage } from "./FormFill";
 import { AreaNav, creates, FieldValue } from "./Read";
 import { PortalSuggestions } from "./Suggest";
 import { TileGrid, useTiles } from "./Tiles";
@@ -264,20 +261,6 @@ function MyRecords({ type }: { type: TypeDefinition }) {
 
 // formsQuery are the forms offered to the session (UI11).
 
-// inLanguage is a text of a form in the language, else the German one (UI12).
-function inLanguage(label: Label | undefined, language: string, german: string): string {
-  return (language !== "de" && label?.[language]) || german;
-}
-
-// both is a label of a form for labelOf: English falls back to German (UI12).
-function both(label: Label | undefined): Label | undefined {
-  if (!label || !Object.values(label).some((v) => v)) {
-    return undefined;
-  }
-  const de = label["de"] ?? "";
-  return { ...label, de, en: label["en"] || de };
-}
-
 function Forms() {
   const { t, i18n } = useTranslation();
   const forms = useQuery(formsQuery);
@@ -419,54 +402,6 @@ export function PortalNewPage() {
   );
 }
 
-// formType is the form as the fields of a type: one field per question, named by the question
-// id; a bound question is its field of the target type with the question's label, a role
-// question a reference to the role's holders with search (SD9), a free one a field of its own.
-// The sections group them.
-export function formType(form: FormOffer, target: TypeDefinition) {
-  const fields: Field[] = [];
-  for (const s of form.definition.sections) {
-    for (const q of s.questions) {
-      const own = both(q.label);
-      if (q.field) {
-        const f = target.fields.find((x) => x.name === q.field);
-        if (f) {
-          fields.push({
-            ...f,
-            name: q.id,
-            label: own ?? f.label,
-            description: both(q.description) ?? f.description,
-            required: q.required === true || f.required === true,
-          });
-        }
-      } else if (q.role) {
-        const role = target.actors?.find((a) => a.name === q.role);
-        if (role) {
-          fields.push({
-            name: q.id,
-            type: "reference",
-            to: role.to[0],
-            label: own ?? role.label,
-            description: both(q.description),
-            required: q.required === true,
-          });
-        }
-      } else {
-        fields.push({
-          name: q.id,
-          type: (q.type ?? "text") as Field["type"],
-          label: own,
-          description: both(q.description),
-          required: q.required === true,
-          options: q.options?.map((o) => ({ value: o.value, label: both(o.label) })),
-        });
-      }
-    }
-  }
-  const type: TypeDefinition = { ...target, fields, actors: [], states: [], transitions: [] };
-  return { type, sections: form.definition.sections };
-}
-
 export function PortalFormPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -509,64 +444,6 @@ export function PortalFormPage() {
       }}
       onCancel={() => void navigate({ to: "/portal" })}
     />
-  );
-}
-
-// FormFill is a form to fill in, in the portal and in the workplace (SD9): the questions as
-// the fields of a type in their sections, with their conditions.
-export function FormFill({
-  formId,
-  crumb,
-  onSaved,
-  onCancel,
-}: {
-  formId: string;
-  crumb: ReactNode;
-  onSaved: (saved: RecordData, target: TypeDefinition) => void;
-  onCancel: () => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const form = useQuery({
-    queryKey: ["forms", formId],
-    queryFn: () => api.form(formId),
-    retry: false,
-  });
-  const types = useQuery(typesQuery);
-  if (form.isPending || types.isPending) {
-    return <p>{t("list.loading")}</p>;
-  }
-  const target = types.data?.find((x) => qualifiedName(x) === form.data?.target_type);
-  if (!form.data || !target) {
-    return <Alert variant="destructive">{t("portal.formUnknown")}</Alert>;
-  }
-  const { type, sections } = formType(form.data, target);
-  return (
-    <div className="flex flex-col gap-4">
-      <nav aria-label="breadcrumb" className="text-sm text-muted-foreground">
-        {crumb}
-      </nav>
-      <h1 className="text-2xl font-semibold">
-        {inLanguage(form.data.definition.title, i18n.language, form.data.name)}
-      </h1>
-      {form.data.description && (
-        <p className="text-muted-foreground">
-          {inLanguage(form.data.definition.intro, i18n.language, form.data.description)}
-        </p>
-      )}
-      <Form
-        type={type}
-        withRoles={false}
-        groups={sections.map((s) => ({
-          key: s.id,
-          title: labelOf(both(s.title), i18n.language, ""),
-          fields: s.questions.map((q) => q.id),
-        }))}
-        submit={(answers) => api.submitForm(formId, answers)}
-        visibility={(values) => hiddenOf(form.data.definition, values)}
-        onSaved={(saved: RecordData) => onSaved(saved, target)}
-        onCancel={onCancel}
-      />
-    </div>
   );
 }
 

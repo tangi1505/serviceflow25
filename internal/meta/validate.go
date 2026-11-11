@@ -156,6 +156,7 @@ func Validate(p Package, known map[string]bool) error {
 		validateReaders(add, where, t)
 		validateSuggest(add, where, t, p, local, known, trseen)
 		validateApproval(add, where, t)
+		validateOrder(add, where, t)
 		validateFieldStates(add, where, t)
 		validateList(add, where, t)
 		validateFormulas(add, where, t)
@@ -364,6 +365,20 @@ func validatePortal(add func(string, string, ...any), where string, t Type) {
 			if f, ok := t.Field(r.Group); !ok || f.Type != FieldReference {
 				add(rw, "group %q must be a reference field of the type", r.Group)
 			}
+		}
+		if r.Sort != "" {
+			if _, ok := t.Field(strings.TrimPrefix(r.Sort, "-")); !ok {
+				add(rw, "sort %q is not a field of the type", r.Sort)
+			}
+		}
+		seen = map[string]bool{}
+		for _, name := range r.Facts {
+			if _, ok := t.Field(name); !ok {
+				add(rw, "fact %q is not a field of the type", name)
+			} else if seen[name] {
+				add(rw, "fact %q is named twice", name)
+			}
+			seen[name] = true
 		}
 	}
 }

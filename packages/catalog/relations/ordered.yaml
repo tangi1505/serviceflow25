@@ -1,0 +1,13 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A request ordered from an offer of the catalog (SD13, SD-Plan N19): ordering makes it.
+name: ordered
+label: {de: bestellt aus, en: ordered from}
+inverse: {de: bestellt in, en: ordered in}
+description:
+  de: Die Anfrage wurde über dieses Angebot des Katalogs bestellt.
+  en: The request was ordered through this offer of the catalogue.
+from: [request.request]
+to: [catalog.offer]
+update: from

@@ -76,6 +76,11 @@ type PortalRead struct {
 	Label  Label    `json:"label" yaml:"label"`
 	Fields []string `json:"fields" yaml:"fields"`
 	Group  string   `json:"group,omitempty" yaml:"group"`
+	// Facts are fields the list shows with each record, such as the delivery time and the
+	// costs of an offer (SD13, SD-Plan N21); with facts the list shows cards.
+	Facts []string `json:"facts,omitempty" yaml:"facts"`
+	// Sort orders the list by a field ("-" before it: descending); empty: the newest first.
+	Sort string `json:"sort,omitempty" yaml:"sort"`
 }
 
 // Reader is a rule by which signed-in persons read records of a type without a grant (SD16a,
@@ -286,6 +291,8 @@ type Type struct {
 	Suggest *Suggest `json:"suggest,omitempty" yaml:"suggest"`
 	// Approval names the transitions that follow an approval (trait approvals, WF6).
 	Approval *ApprovalSpec `json:"approval,omitempty" yaml:"approval"`
+	// Order makes the records orderable with a form (SD13, SD-Plan N19): offers of the catalog.
+	Order *OrderSpec `json:"order,omitempty" yaml:"order"`
 	// Package is set by the loader; it is not written in types/<name>.yaml.
 	Package string `json:"package" yaml:"-"`
 	// Revision is the hash of the effective definition (PL43): base and customer layer.

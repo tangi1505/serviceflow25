@@ -34,6 +34,7 @@ import (
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
+	"group24.de/itsm/internal/relations"
 )
 
 // TypeForm is the core type of the forms.
@@ -60,6 +61,9 @@ const (
 	PlacePortal    = "portal"
 	PlaceWorkplace = "workplace"
 	PlaceBoth      = "both"
+	// PlaceOrder is a form filled only to order an offer of the catalog (SD13): no list offers
+	// it, and what the target needs may come from the offer instead of a question.
+	PlaceOrder = "order"
 )
 
 // Section groups questions under a title.
@@ -123,6 +127,12 @@ func Parse(raw string) (Definition, error) {
 // Problems checks a definition against its target type; the field names of the problems are
 // paths into the definition, such as sections[0].questions[1].field.
 func Problems(d Definition, target meta.Type) []records.Problem {
+	return problemsOf(d, target, false)
+}
+
+// problemsOf is Problems; for a form of an order (ordered) the fields the target needs may come
+// from the offer, so they need no question; the record says when one is missing.
+func problemsOf(d Definition, target meta.Type, ordered bool) []records.Problem {
 	var ps []records.Problem
 	add := func(path, code, msg string) {
 		ps = append(ps, records.Problem{Field: "definition", Code: code, Message: path + ": " + msg})
@@ -260,6 +270,9 @@ func Problems(d Definition, target meta.Type) []records.Problem {
 	}
 	// What the target type needs to be created must be asked.
 	for _, f := range target.Fields {
+		if ordered {
+			break
+		}
 		if f.Required && f.Default == nil && !f.Calculated() && !bound[f.Name] {
 			add("sections", "required", fmt.Sprintf("%s needs %s: add a question for it", target.QualifiedName(), f.Name))
 		}
@@ -357,7 +370,7 @@ func Check(rec *records.Service) records.RecordCheck {
 		if err != nil {
 			return []records.Problem{{Field: "definition", Code: "type", Message: err.Error()}}
 		}
-		ps := Problems(d, target)
+		ps := problemsOf(d, target, r["place"] == PlaceOrder)
 		if len(ps) == 0 {
 			if _, err := fixedValues(ctx, rec, target, d.Fixed); err != nil {
 				ps = append(ps, records.Problem{Field: "definition", Code: "invalid", Message: "fixed: " + err.Error()})
@@ -391,6 +404,14 @@ type Form struct {
 // Service lists and submits forms.
 type Service struct {
 	rec *records.Service
+	// rel links an order to its offer (SD13); without it no relation is made.
+	rel *relations.Service
+}
+
+// WithRelations lets orders link the new record to the offer (SD13, SD-Plan N19).
+func (s *Service) WithRelations(rel *relations.Service) *Service {
+	s.rel = rel
+	return s
 }
 
 // New returns the service.
@@ -476,6 +497,12 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 	if err != nil {
 		return nil, err
 	}
+	return s.submit(ctx, f, answers, nil, actor)
+}
+
+// submit creates the record of a form; given are values the record gets before the answers,
+// such as those an offer hands on to its order (SD13). An answer to a bound question wins.
+func (s *Service) submit(ctx context.Context, f Form, answers, given map[string]any, actor records.Actor) (records.Record, error) {
 	target, err := s.rec.Type(ctx, f.TargetType)
 	if err != nil {
 		return nil, err
@@ -484,6 +511,9 @@ func (s *Service) Submit(ctx context.Context, id uuid.UUID, answers map[string]a
 	input, err := fixedValues(ctx, s.rec, target, f.Definition.Fixed)
 	if err != nil {
 		return nil, err
+	}
+	for k, v := range given {
+		input[k] = v
 	}
 	if f.OrgPath != "" {
 		input["org_path"] = f.OrgPath

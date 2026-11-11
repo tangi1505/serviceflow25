@@ -1,0 +1,14 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The service catalogue (SD13; SD-Plan E15; Inventar G68, G133; IP24): services, and the offers a
+# person orders in the portal. An offer belongs to an area of the catalog, names the form to
+# fill in and the fulfilment template of the request it becomes, its delivery time and costs;
+# who sees it says "Sichtbar für", as at the tiles.
+name: catalog
+version: 0.1.0
+label:
+  de: Servicekatalog
+  en: Service catalogue
+# request brings the request and its templates; sd the service desk the example's tasks go to.
+depends: [core, sd, request]

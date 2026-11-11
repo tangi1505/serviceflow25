@@ -30,6 +30,13 @@ fields:
     description: {de: Arbeitszeit bis zur Frist, en: Working time to the deadline}
     required: true
     min: 1
+  # The target from a number of the record (SD13, SD-Plan N20): the delivery time of the offer
+  # a request was ordered from, in working days of target_minutes each.
+  - name: target_field
+    type: text
+    label: {de: Ziel mal Feld, en: Target times field}
+    description: {de: "Zahlfeld des Datensatzes, etwa delivery_days: das Ziel ist das Ziel in Minuten mal dieser Zahl; ohne Zahl gilt das Ziel in Minuten", en: "Number field of the record, e.g. delivery_days: the target is the target in minutes times this number; without a number the target in minutes holds"}
+    max_length: 63
   - name: calendar
     type: reference
     label: {de: Kalender, en: Calendar}

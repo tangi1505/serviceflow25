@@ -207,6 +207,15 @@ func (s *Service) create(ctx context.Context, pkg string, e meta.Seed, scope str
 	if err != nil {
 		return "", "", err
 	}
+	// A reference to a select list may name the key of its entry, as fixed values of forms do
+	// (SD13: the area of an offer in the catalog).
+	t, err := s.rec.Type(ctx, e.Type)
+	if err != nil {
+		return "", "", err
+	}
+	if values, err = s.rec.ListKeys(ctx, t, values); err != nil {
+		return "", "", err
+	}
 	values["org_path"] = scope
 	rec, err := s.rec.Create(ctx, e.Type, values, nil)
 	if err != nil {

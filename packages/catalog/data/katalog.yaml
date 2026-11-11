@@ -1,0 +1,56 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The catalog in the portal (SD13, SD-Plan E15): the tile "Katalog" beside "Etwas anfragen",
+# which stays for what no offer covers, and an example to start from: the offer "Neuer
+# Arbeitsplatz" with its form and the fulfilment template of the package request. Start data
+# each tenant changes.
+- key: tile_catalog
+  type: core.portal_tile
+  values:
+    name: Katalog
+    description: Zugänge, Geräte und Software bestellen.
+    kind: area
+    target_type: catalog.offer
+    position: 15
+    audience: all
+    active: true
+- key: workplace_service
+  type: catalog.service
+  values:
+    name: Arbeitsplatz-Ausstattung
+    description: <p>Rechner, Bildschirme und Zubehör am Arbeitsplatz.</p>
+    active: true
+    actors: {owner: [{type: core.group, id: "@sd.service_desk"}]}
+- key: workplace_form
+  type: core.form
+  values:
+    name: Neuer Arbeitsplatz bestellen
+    description: Für eine neue Kollegin oder einen neuen Kollegen.
+    target_type: request.request
+    active: true
+    place: order
+    definition: >-
+      {"title": {"en": "Order a new workplace"}, "intro": {"en": "For a new colleague."},
+      "sections": [
+      {"id": "fuer_wen", "title": {"de": "Für wen?", "en": "For whom?"}, "questions": [
+        {"id": "name", "type": "text", "required": true, "label": {"de": "Name", "en": "Name"}},
+        {"id": "ab", "type": "date", "required": true, "label": {"de": "Ab wann?", "en": "From when?"}},
+        {"id": "raum", "type": "text", "label": {"de": "Raum", "en": "Room"}}]},
+      {"id": "ausstattung", "title": {"de": "Ausstattung", "en": "Equipment"}, "questions": [
+        {"id": "geraet", "type": "choice", "required": true, "label": {"de": "Gerät", "en": "Device"},
+          "options": [{"value": "pc", "label": {"de": "Arbeitsplatzrechner", "en": "Desktop"}},
+                      {"value": "notebook", "label": {"de": "Notebook mit Dockingstation", "en": "Notebook with docking station"}}]},
+        {"id": "bemerkung", "field": "description", "label": {"de": "Bemerkungen", "en": "Remarks"}}]}]}
+- key: workplace_offer
+  type: catalog.offer
+  values:
+    name: Neuer Arbeitsplatz
+    description: <p>Gerät und Zugänge für eine neue Kollegin oder einen neuen Kollegen, eingerichtet vom Service Desk.</p>
+    area: workplace
+    service: "@workplace_service"
+    form: "@workplace_form"
+    template: "@request.arbeitsplatz"
+    delivery_days: 10
+    audience: all
+    active: true

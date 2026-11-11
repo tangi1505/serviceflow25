@@ -34,12 +34,14 @@ fields:
   - name: place
     type: choice
     label: {de: Angeboten im, en: Offered in}
-    description: {de: "Portal für Nutzer, Arbeitsplatz für Bearbeiter (etwa eine Telefonnotiz) oder beides; leer heißt Portal", en: "Portal for users, workplace for agents (e.g. a phone note) or both; empty means portal"}
+    description: {de: "Portal für Nutzer, Arbeitsplatz für Bearbeiter (etwa eine Telefonnotiz), beides oder nur über ein Angebot des Katalogs; leer heißt Portal", en: "Portal for users, workplace for agents (e.g. a phone note), both or only through an offer of the catalog; empty means portal"}
     default: portal
     options:
       - {value: portal, label: {de: Portal, en: Portal}}
       - {value: workplace, label: {de: Arbeitsplatz, en: Workplace}}
       - {value: both, label: {de: Beides, en: Both}}
+      # Filled only to order an offer of the catalog (SD13): no portal lists it on its own.
+      - {value: order, label: {de: Nur über ein Angebot, en: Only through an offer}}
   - name: definition
     type: text
     label: {de: Aufbau, en: Structure}

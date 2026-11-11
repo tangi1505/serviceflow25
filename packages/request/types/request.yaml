@@ -27,6 +27,27 @@ fields:
       de: Nennt die Stufen der Genehmigung und die Aufgaben der Erfüllung.
       en: Names the stages of the approval and the tasks of the fulfilment.
     to: request.template
+  # What an offer of the catalog hands on when it is ordered (SD13, SD-Plan E15): the delivery
+  # time sets the deadline of the fulfilment, the costs are shown only, nothing is charged.
+  - name: delivery_days
+    type: number
+    label: {de: Lieferzeit in Arbeitstagen, en: Delivery time in working days}
+    description:
+      de: Die Frist der Erfüllung; vom Angebot, ohne Angebot fünf Tage.
+      en: The deadline of the fulfilment; from the offer, without one five days.
+    default: 5
+    min: 0
+  - name: cost
+    type: number
+    label: {de: Kosten in Euro, en: Costs in euros}
+    min: 0
+  - name: cost_kind
+    type: choice
+    label: {de: Kostenart, en: Kind of costs}
+    options:
+      - {value: once, label: {de: einmalig, en: once}}
+      - {value: monthly, label: {de: monatlich, en: monthly}}
+      - {value: yearly, label: {de: jährlich, en: yearly}}
   - name: solution
     type: text
     label: {de: Lösung, en: Solution}

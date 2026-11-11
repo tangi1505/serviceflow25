@@ -315,7 +315,8 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 		slaSvc.Wrote(ctx, typeName)
 	}
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: relations.New(rt, recs), Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
+	rels := relations.New(rt, recs)
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
 		Calendars: calendars, SLA: slaSvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

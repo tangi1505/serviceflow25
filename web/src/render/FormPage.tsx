@@ -13,7 +13,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { api, labelOf, qualifiedName, typesQuery } from "@/api/client";
-import { FormFill } from "@/portal/Portal";
+import { FormFill } from "@/portal/FormFill";
 
 // workplaceFormsQuery are the forms offered in the workplace (SD9).
 export const workplaceFormsQuery = queryOptions({

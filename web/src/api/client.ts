@@ -148,7 +148,16 @@ export type ActorRole = { name: string; label?: Label; to: string[]; single?: bo
 export type ActorRef = { type: string; id: string };
 // PortalRead is the reading area of a type in the portal (SD16a): its name in the head, the
 // fields its page shows, and the reference field to a tree list it is browsed by.
-export type PortalRead = { label: Label; fields: string[]; group?: string };
+// With facts the list shows these fields with each record as cards, sorted by sort (SD13).
+export type PortalRead = {
+  label: Label;
+  fields: string[];
+  group?: string;
+  facts?: string[];
+  sort?: string;
+};
+// OrderSpec makes the records orderable with the form a field names (SD13, SD-Plan N19).
+export type OrderSpec = { form: string; copy?: Record<string, string>; relation?: string };
 // Suggest says where the records of a type are suggested while others are written (SD18):
 // for types or traits ("trait:sd.ticket"), searched with the fields from.
 export type Suggest = {
@@ -183,6 +192,8 @@ export type TypeDefinition = {
   suggest?: Suggest;
   // readers let persons read without a grant (SD16a), some also comment (SD18).
   readers?: { when?: string; roles?: string[]; actions?: string[] }[];
+  // order makes the records orderable, offers of the catalog (SD13).
+  order?: OrderSpec;
 };
 export type TransitionInfo = components["schemas"]["TransitionInfo"];
 // FieldStates is what the field states of the type (WF2) say for a record or a new one.
@@ -534,6 +545,14 @@ export const api = {
     unwrap(
       await client.POST("/api/v1/forms/{formId}:submit", {
         params: { path: { formId } },
+        body: { answers },
+      }),
+    ),
+  // order orders an offer with its form (SD13): the form's record, e.g. a request.
+  order: async (typeName: string, id: string, answers: Record<string, unknown>) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}:order", {
+        params: { path: { typeName, id } },
         body: { answers },
       }),
     ),

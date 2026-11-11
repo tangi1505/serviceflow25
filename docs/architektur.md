@@ -77,7 +77,7 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 | Ablauf | Workflow | `internal/workflow` | Statusmodell, Übergänge, Genehmigungen, Workflow-Provider (§8) | KF3, KF4 | WF |
 | Ablauf | Fristen | `internal/calendar`, `internal/sla` | Kalender mit Arbeitszeit und Feiertagen (gebaut, E113); SLAs und Uhren mit Pause und Verstoß (gebaut, E114); Eskalationsstufen als Regeln mit Auslöser `clock` (gebaut, E115) | KF5 | WF |
 | Ablauf | Regeln | `internal/rules`, `internal/rules/engine`, `internal/recurrence` | CEL für Bedingungen (E45); die Regeln „wenn, dann“ vor dem Schreiben und als Job danach, nach Zeitplan (gebaut, E111); wiederkehrende Vorgänge (gebaut, E119) | KF7 | WF |
-| Ablauf | Formulare | `internal/forms` | Kerntyp `core.form`, Prüfung des Aufbaus, Absenden mit erstem Eintrag (UI11), Bedingungen und Übersetzung (UI12), angeboten im Portal oder Arbeitsplatz, Fragen nach Rollen und feste Werte (SD9, E167); Formularziele (was ein Formular anlegt), Zugriff auch anonym mit Captcha, Umfragen als Formular mit Auswertung | KF8, KF15 | UI, SD |
+| Ablauf | Formulare | `internal/forms` | Kerntyp `core.form`, Prüfung des Aufbaus, Absenden mit erstem Eintrag (UI11), Bedingungen und Übersetzung (UI12), angeboten im Portal oder Arbeitsplatz, Fragen nach Rollen und feste Werte (SD9, E167), Bestellen über ein Angebot mit Block `order` am Typ, `:order` und Beziehung zum Angebot (SD13, E177); Formularziele (was ein Formular anlegt), Zugriff auch anonym mit Captcha, Umfragen als Formular mit Auswertung | KF8, KF15 | UI, SD |
 | Ablauf | Benachrichtigung | `internal/notify` | Einstellungen mit übersetzbaren Vorlagen, Empfänger aus Rollen, Gruppen, Personen und den Verantwortlichen der Gruppen einer Rolle (`actors.<rolle>.responsible`, SD-Plan N10), Bedingung über den Datensatz und die Rollen des Auslösers (`by`, E165), Verweise in Platzhaltern mit ihrem Titel (SD8), Mail hinaus über SMTP (gebaut, E120); Mail hinein (IMAP), Browser (SD) | KF14 | WF, SD |
 | Ablauf | Textbausteine | `internal/snippets` | Kerntyp `core.snippet`; Prüfung der Platzhalter beim Speichern, Einsetzen mit den Rechten der schreibenden Person über die Platzhalter der Benachrichtigungen, als formatierter Text (gebaut, E166) | — | SD |
 | Erweiterung | Pakete | `internal/packages` | Paketformat, Installation, Aktualisierung, Export | KF16 | EX |
@@ -551,7 +551,9 @@ E8, KF3 bis KF5, KF7:
   Job genau dieser Regel macht (E115). Wartegründe (`core.wait_reason`) sind SLAs, die ab
   Beginn des Wartens zählen, mit Stufen für Erinnerungen und Lösung (E116). Zeitregeln im
   Statusmodell (automatisch schließen, Warnung bei Laufzeit) sind ebenso SLAs mit Stufen; eine
-  SLA zählt nach Kalender oder rund um die Uhr (E117).
+  SLA zählt nach Kalender oder rund um die Uhr (E117). Seit SD13 kann eine SLA ihr Ziel mit der
+  Zahl eines Felds malnehmen (`target_field`, die Lieferzeit einer Anfrage in Arbeitstagen);
+  das Ziel steht fest, wenn die Uhr beginnt.
 - **Wiederkehrende Vorgänge** (gebaut, E119): Datensätze von `core.recurrence` mit Zeitplan
   (cron mit Zeitzone) und Vorlage; ein Job jede Minute legt je fälligem Termin genau einen
   Datensatz an (`internal/recurrence`), ein verpasster Termin wird einmal nachgeholt.
@@ -598,7 +600,8 @@ web/src/
                 core.portal_notice seit SD5; Lesebereiche wie „Wissen“ im Kopf aus der
                 Portal-Option read eines Typs seit SD16a; Startseite mit Kacheln aus
                 core.portal_tile und Hinweisen von Hand aus core.announcement seit SD14;
-                Katalog mit SD)
+                Katalog seit SD13: Lesebereich mit Karten (read.facts) und Bestellen auf der
+                Seite des Angebots; Ausfüllen eines Formulars in FormFill.tsx)
   dashboards/   Widgets (ECharts)
   i18n/         Deutsch und Englisch von Anfang an; Inhalte werden in der Sprache der Person
                 gelesen, das Formular liest und schreibt Deutsch (SD16c)

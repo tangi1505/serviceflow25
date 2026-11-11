@@ -125,6 +125,8 @@ export type FormProps = {
   // apply sets values from outside, unsaved, each time its n changes: "Als Lösung
   // übernehmen" from the tab "Wissen" (SD18).
   apply?: { n: number; values: Record<string, unknown> };
+  // sendLabel names the button that sends, such as "Bestellen" for an order (SD13).
+  sendLabel?: string;
   onCancel: () => void;
 };
 
@@ -175,6 +177,7 @@ export function Form({
   visibility,
   onValuesChange,
   apply,
+  sendLabel,
 }: FormProps) {
   const { t, i18n } = useTranslation();
   const id = useId();
@@ -595,7 +598,7 @@ export function Form({
       <div className="flex gap-2">
         {!locked && (
           <Button type="submit" disabled={isSubmitting}>
-            {base ? t("form.save") : submit ? t("form.send") : t("form.create")}
+            {base ? t("form.save") : (sendLabel ?? (submit ? t("form.send") : t("form.create")))}
           </Button>
         )}
         <Button variant="outline" onClick={onCancel}>

@@ -1,0 +1,116 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# An offer of the catalog (SD13, SD-Plan E15; Inventar G68, G133; IP24): what a person orders in
+# the portal. Ordering fills in its form and makes a request (SD-Plan N19) with the offer's
+# fulfilment template, so the approval and the tasks run as the template says, its delivery
+# time as the deadline (N20) and its costs, shown only. Who sees it says "Sichtbar für", as at
+# the tiles: everyone at the offer's node and below, or the groups in the role "Gruppen".
+name: offer
+label: {de: Angebot, en: Offer}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    searchable: true
+    translatable: true
+    max_length: 150
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    format: rich
+    required: true
+    searchable: true
+    translatable: true
+  - name: area
+    type: reference
+    label: {de: Katalogbereich, en: Catalogue area}
+    required: true
+    to: catalog.area
+  - name: service
+    type: reference
+    label: {de: Service, en: Service}
+    to: catalog.service
+  - name: form
+    type: reference
+    label: {de: Formular, en: Form}
+    description:
+      de: Was die Person beim Bestellen ausfüllt; legt eine Anfrage an.
+      en: What the person fills in to order; creates a request.
+    required: true
+    to: core.form
+  - name: template
+    type: reference
+    label: {de: Erfüllungsvorlage, en: Fulfilment template}
+    description:
+      de: Nennt die Stufen der Genehmigung und die Aufgaben der Erfüllung.
+      en: Names the stages of the approval and the tasks of the fulfilment.
+    to: request.template
+  - name: delivery_days
+    type: number
+    label: {de: Lieferzeit in Arbeitstagen, en: Delivery time in working days}
+    description:
+      de: Ab der Genehmigung; die Frist der Erfüllung der Anfrage.
+      en: From the approval; the deadline of the request's fulfilment.
+    required: true
+    default: 5
+    min: 0
+  - name: cost
+    type: number
+    label: {de: Kosten in Euro, en: Costs in euros}
+    description:
+      de: Nur zur Anzeige; leer heißt keine Kosten.
+      en: Shown only; empty means no costs.
+    min: 0
+  - name: cost_kind
+    type: choice
+    label: {de: Kostenart, en: Kind of costs}
+    options:
+      - {value: once, label: {de: einmalig, en: once}}
+      - {value: monthly, label: {de: monatlich, en: monthly}}
+      - {value: yearly, label: {de: jährlich, en: yearly}}
+  - name: audience
+    type: choice
+    label: {de: Sichtbar für, en: Visible to}
+    required: true
+    default: all
+    options:
+      - {value: all, label: {de: "Alle an diesem Ort und darunter", en: "Everyone at this place and below"}}
+      - {value: groups, label: {de: Nur bestimmte Gruppen, en: Certain groups only}}
+  - name: active
+    type: boolean
+    label: {de: Im Katalog gezeigt, en: Shown in the catalogue}
+    required: true
+    default: true
+actors:
+  - name: shared
+    label: {de: Gruppen, en: Groups}
+    to: [core.group]
+# Who sees it in the portal: as at the tiles (SD-Plan E13).
+readers:
+  - when: record.active == true && record.audience == "all"
+  - when: record.active == true && record.audience == "groups"
+    roles: [shared]
+# The area "Katalog" in the head of the portal (variant 1A of the mockup): the areas as a tree,
+# the offers as cards with delivery time and costs; the page of an offer shows its form.
+portal:
+  read:
+    label: {de: Katalog, en: Catalogue}
+    fields: [description, delivery_days, cost, cost_kind]
+    group: area
+    facts: [delivery_days, cost, cost_kind]
+    sort: name
+# Ordering (SD-Plan N19): the request gets the offer's name as its title, unless the form asks
+# for one, and the template, delivery time and costs; it is linked to the offer.
+order:
+  form: form
+  relation: catalog.ordered
+  copy:
+    title: name
+    template: template
+    delivery_days: delivery_days
+    cost: cost
+    cost_kind: cost_kind

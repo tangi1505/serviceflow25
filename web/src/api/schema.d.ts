@@ -245,6 +245,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{typeName}/{id}:order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Order an offer with its form; creates the form's record, e.g. a request (SD13)
+         * @description The type must be orderable (block order of its definition, SD-Plan N19). The offer is read with the rights of the session, so who does not see it gets 404. Its form is submitted as in submitForm, with the fields the offer hands on (copy, such as the fulfilment template, the delivery time and the costs) before the answers; the new record is linked to the offer with the relation kind the type names. 422 when the offer names no form, problems of the answers name the question ids.
+         */
+        post: operations["orderRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records/{typeName}/{id}:transition": {
         parameters: {
             query?: never;
@@ -2631,10 +2651,10 @@ export interface components {
             target_type: string;
             definition: components["schemas"]["FormDefinition"];
             /**
-             * @description where the form is offered (SD9)
+             * @description where the form is offered (SD9); order: only through an offer of the catalog (SD13)
              * @enum {string}
              */
-            place?: "portal" | "workplace" | "both";
+            place?: "portal" | "workplace" | "both" | "order";
         };
         /** @description the structure of a form as kept in the field definition of core.form (UI11) */
         FormDefinition: {
@@ -4164,6 +4184,43 @@ export interface operations {
             };
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
+        };
+    };
+    orderRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description the answer per question id */
+                    answers: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description the new record */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Record"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
         };
     };
     transitionRecord: {

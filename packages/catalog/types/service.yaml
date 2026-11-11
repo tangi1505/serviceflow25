@@ -1,0 +1,33 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A service of the IT (SD13, SD-Plan E15; IP24): what it provides and who is responsible. Its
+# offers are what people order; the portal shows the offers, not the services.
+name: service
+label: {de: Service, en: Service}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    translatable: true
+    max_length: 150
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    format: rich
+    searchable: true
+    translatable: true
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true
+actors:
+  - name: owner
+    label: {de: Verantwortlich, en: Responsible}
+    to: [core.group, core.person]

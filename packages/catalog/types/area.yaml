@@ -1,0 +1,21 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The areas of the catalog (SD13, SD-Plan E15): a tree for the people who order, not the
+# categories of the tickets. Each tenant changes the entries.
+name: area
+label: {de: Katalogbereich, en: Catalogue area}
+description:
+  de: Bereich des Katalogs im Portal, als Baum.
+  en: Area of the catalogue in the portal, as a tree.
+traits: [list]
+list:
+  tree: true
+  entries:
+    - {key: access, name: Zugänge, name_en: Access, position: 1}
+    - {key: drives, name: Laufwerke, name_en: Drives, parent: access, position: 1}
+    - {key: applications, name: Anwendungen, name_en: Applications, parent: access, position: 2}
+    - {key: workplace, name: Arbeitsplatz, name_en: Workplace, position: 2}
+    - {key: devices, name: Geräte, name_en: Devices, parent: workplace, position: 1}
+    - {key: software, name: Software, name_en: Software, parent: workplace, position: 2}
+    - {key: telephony, name: Telefonie, name_en: Telephony, position: 3}

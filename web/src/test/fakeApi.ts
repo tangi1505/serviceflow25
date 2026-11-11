@@ -376,6 +376,8 @@ export type FakeState = {
   others?: { account: string; name: string; editing: boolean; since: string; at: string }[];
   // forms are the forms offered to the session (UI11); formRecords the records of core.form.
   forms?: FormOffer[];
+  // orders are the offers ordered, with the answers (SD13).
+  orders?: { offer: string; answers: Record<string, unknown> }[];
   notices?: PortalNotice[];
   // snippets are the text modules (SD8) the editor lists; filled in, {{record.title}} becomes
   // the title of the probe.
@@ -1088,6 +1090,44 @@ export function fakeApi(state: FakeState) {
           { kind: "entry", at: stamp, actor: me.id, actor_name: me.display_name, entry },
         ];
       }
+      return json(201, rec);
+    }
+    // Ordering an offer (SD13): its form with the offer's values before the answers; the
+    // record lands among the extra records of the form's target.
+    const order = url.pathname.match(/^\/api\/v1\/records\/([a-z_]+\.[a-z_]+)\/([^/:]+):order$/);
+    if (order && method === "POST") {
+      const def = (state.extraTypes ?? []).find((x) => `${x.package}.${x.name}` === order[1]);
+      const offer = (state.extraRecords?.[order[1]!] ?? []).find((r) => r["id"] === order[2]);
+      const f = (state.forms ?? []).find((x) => x.id === offer?.[def?.order?.form ?? ""]);
+      if (!def?.order || !offer || !f) {
+        return problem(404, "not_found");
+      }
+      const { answers } = JSON.parse(bodyText) as { answers: Record<string, unknown> };
+      const questions = f.definition.sections.flatMap((x) => x.questions);
+      const errors = questions
+        .filter((q) => q.required && (answers[q.id] === undefined || answers[q.id] === ""))
+        .map((q) => ({ field: q.id, code: "required", message: "is required" }));
+      if (errors.length > 0) {
+        return problem(422, "validation", { errors });
+      }
+      const values: RecordData = {};
+      for (const [to, from] of Object.entries(def.order.copy ?? {})) {
+        values[to] = offer[from];
+      }
+      for (const q of questions) {
+        if (q.field && answers[q.id] !== undefined) {
+          values[q.field] = answers[q.id];
+        }
+      }
+      const rec: RecordData = {
+        id: `01a15a3c-8545-7691-b780-e${String(state.calls.length).padStart(11, "0")}`,
+        version: 1,
+        state: "new",
+        ...values,
+      };
+      state.extraRecords ??= {};
+      (state.extraRecords[f.target_type] ??= []).push(rec);
+      state.orders = [...(state.orders ?? []), { offer: order[2]!, answers }];
       return json(201, rec);
     }
     const formRecord = url.pathname.match(/^\/api\/v1\/records\/core\.form(?:\/([^/]+))?$/);

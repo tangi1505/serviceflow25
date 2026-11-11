@@ -303,7 +303,7 @@ func (s *sampler) record(name string) string {
 // required title of its target and is not offered (UI11); a notice in the portal names a text
 // field of an installed type and is not shown (SD5).
 var checkedSamples = map[string]map[string]any{
-	"core.sla": {"target_type": "probe.probe", "applies": "false", "pause": "false", "stop": "true"},
+	"core.sla": {"target_type": "probe.probe", "applies": "false", "pause": "false", "stop": "true", "target_field": ""},
 	"core.recurrence": {"target_type": "probe.probe", "schedule": "0 7 * * 1", "timezone": "Europe/Berlin",
 		"template": `{"title": "apitest"}`, "active": false},
 	"core.notification": {"target_type": "probe.probe", "events": "create", "recipients": "actors.assigned",

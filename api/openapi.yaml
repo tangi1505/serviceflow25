@@ -375,6 +375,43 @@ paths:
         "204": { description: restored }
         "404": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}:order:
+    post:
+      operationId: orderRecord
+      summary: Order an offer with its form; creates the form's record, e.g. a request (SD13)
+      description: >-
+        The type must be orderable (block order of its definition, SD-Plan N19). The offer is read
+        with the rights of the session, so who does not see it gets 404. Its form is submitted as
+        in submitForm, with the fields the offer hands on (copy, such as the fulfilment template,
+        the delivery time and the costs) before the answers; the new record is linked to the offer
+        with the relation kind the type names. 422 when the offer names no form, problems of the
+        answers name the question ids.
+      tags: [forms]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: object
+                  description: the answer per question id
+                  additionalProperties: true
+      responses:
+        "201":
+          description: the new record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Record" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
   /api/v1/records/{typeName}/{id}:transition:
     post:
       operationId: transitionRecord
@@ -3452,7 +3489,7 @@ components:
         description: { type: string }
         target_type: { type: string, description: the type the form creates }
         definition: { $ref: "#/components/schemas/FormDefinition" }
-        place: { type: string, enum: [portal, workplace, both], description: where the form is offered (SD9) }
+        place: { type: string, enum: [portal, workplace, both, order], description: "where the form is offered (SD9); order: only through an offer of the catalog (SD13)" }
     FormDefinition:
       type: object
       description: the structure of a form as kept in the field definition of core.form (UI11)

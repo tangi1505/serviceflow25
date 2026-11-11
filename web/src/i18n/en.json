@@ -456,7 +456,8 @@
     "readNone": "Nothing to read here yet.",
     "readNoHits": "Nothing found.",
     "changedOn": "last changed on {{time}}",
-    "readHelp": "Didn't that help?"
+    "readHelp": "Didn't that help?",
+    "order": "Order"
   },
   "builder": {
     "section": "Section {{n}}",

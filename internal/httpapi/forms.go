@@ -87,3 +87,25 @@ func (s *server) SubmitForm(w http.ResponseWriter, r *http.Request, formID gen.F
 	}
 	writeJSON(w, http.StatusCreated, rec)
 }
+
+// OrderRecord orders an offer with its form (SD13, SD-Plan N19).
+func (s *server) OrderRecord(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id) {
+	if !s.forms(w, r) {
+		return
+	}
+	input, ok := readBody(w, r)
+	if !ok {
+		return
+	}
+	answers, _ := input["answers"].(map[string]any)
+	if answers == nil {
+		writeProblem(w, r, http.StatusUnprocessableEntity, "validation", "answers must be an object of the answers per question id", nil)
+		return
+	}
+	rec, err := s.o.Forms.Order(r.Context(), typeName, id, answers, actor(r))
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, rec)
+}
