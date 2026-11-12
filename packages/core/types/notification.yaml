@@ -27,7 +27,7 @@ fields:
   - name: events
     type: text
     label: {de: Ereignisse, en: Events}
-    description: {de: "create, update, transition, trash, restore, breach, escalation, comment (neuer Eintrag der Zeitleiste), approval_request (eine Stufe fragt), approval_decision, approval (Genehmigung beendet); durch Komma getrennt", en: "create, update, transition, trash, restore, breach, escalation, comment (new entry of the timeline), approval_request (a stage asks), approval_decision, approval (approval over); separated by commas"}
+    description: {de: "create, update, transition, trash, restore, breach, escalation, comment (neuer Eintrag der Zeitleiste), approval_request (eine Stufe fragt), approval_decision, approval (Genehmigung beendet), approval_reminder (Erinnerung an offene Genehmigung); durch Komma getrennt", en: "create, update, transition, trash, restore, breach, escalation, comment (new entry of the timeline), approval_request (a stage asks), approval_decision, approval (approval over), approval_reminder (reminder of an open approval); separated by commas"}
     required: true
     max_length: 200
   - name: condition

@@ -162,6 +162,31 @@ VALUES ($1::ltree, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, scope, p.Name, e.Key
 	return created, nil
 }
 
+// Refresh puts the rules of the start data with the given keys again as the package defines
+// them, at the node, over the rules made before: an upgrade step of the package decides when
+// (WF7: the rules that asked from the stages of request 0.2). It returns how many it put.
+func (s *Service) Refresh(ctx context.Context, p meta.Package, scope string, keys ...string) (int, error) {
+	ctx = s.db.BindFor(authz.WithAccess(ctx, authz.SystemIn(scope)), scope)
+	ids, err := known(ctx, s.db.Tenant(ctx), scope)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, e := range p.Data {
+		if e.Rule == nil || !slices.Contains(keys, e.Key) {
+			continue
+		}
+		if _, _, err := s.create(ctx, p.Name, e, scope, ids); err != nil {
+			return n, fmt.Errorf("seed: %s.%s at %s: %w", p.Name, e.Key, scope, err)
+		}
+		n++
+	}
+	return n, nil
+}
+
+// Scopes are the tenants, or the root without tenants.
+func (s *Service) Scopes(ctx context.Context) ([]string, error) { return s.scopes(ctx) }
+
 // known is what the node got so far, "package.key" to a record id or a rule name.
 func known(ctx context.Context, pool *pgxpool.Pool, scope string) (map[string]string, error) {
 	rows, err := pool.Query(ctx, "SELECT package, key, ref FROM package_seed WHERE org_path = $1::ltree", scope)

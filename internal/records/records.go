@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -74,6 +75,9 @@ type Service struct {
 	// CheckRecord checks records beyond their fields (WF9: the conditions of an SLA); nil means
 	// none.
 	CheckRecord RecordCheck
+	// WorkingDays moves a moment on by working days in the calendar of a node of the tree
+	// (WF7: the reminders of approvals); nil counts calendar days.
+	WorkingDays func(ctx context.Context, path string, from time.Time, days int) (time.Time, error)
 }
 
 func (s *Service) afterWrite(ctx context.Context, typeName string) {

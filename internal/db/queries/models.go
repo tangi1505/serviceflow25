@@ -76,6 +76,8 @@ type Approval struct {
 	RequestedAt pgtype.Timestamptz
 	FinishedAt  pgtype.Timestamptz
 	Changes     []byte
+	TemplateID  uuid.NullUUID
+	RemindDays  pgtype.Int4
 }
 
 type ApprovalStage struct {
@@ -84,6 +86,9 @@ type ApprovalStage struct {
 	Name       string
 	Need       int32
 	State      string
+	RemindAt   pgtype.Timestamptz
+	RemindedAt pgtype.Timestamptz
+	Reminders  int32
 }
 
 type ApprovalStep struct {

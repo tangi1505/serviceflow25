@@ -45,12 +45,18 @@ type Each struct {
 //
 // With Role instead of Stages the holders of that role at the record itself approve, in one
 // stage where one yes is enough (SD17: the editors of an article).
+//
+// With Template instead the stages come from a template of approvals (WF7, WF-Plan E18): the
+// id of a core.approval_template, or a path of reference fields from the record to one
+// ("template.approval_template": the approval template of the record's fulfilment template).
+// Message, when set, replaces the template's text.
 type ApprovalAction struct {
 	Stages    Each   `json:"stages"`
 	Name      string `json:"name,omitempty"`
 	Need      string `json:"need,omitempty"`
 	Approvers string `json:"approvers,omitempty"`
 	Role      string `json:"role,omitempty"`
+	Template  string `json:"template,omitempty"`
 	Message   string `json:"message,omitempty"`
 }
 
@@ -198,6 +204,12 @@ func (e *Engine) checkApproval(ctx context.Context, typeName string, a *Approval
 	if !t.HasApprovals() {
 		return typeName + " has no approvals (trait approvals)"
 	}
+	if a.Template != "" {
+		if a.Role != "" || a.Stages.TypeName != "" || a.Approvers != "" {
+			return "template: either template, role, or stages with approvers"
+		}
+		return e.checkTemplatePath(ctx, t, a.Template)
+	}
 	if a.Role != "" {
 		if a.Stages.TypeName != "" || a.Approvers != "" {
 			return "role: either role, or stages with approvers"
@@ -253,6 +265,71 @@ func (e *Engine) createOnce(ctx context.Context, r Rule, typeName string, id uui
 	return nil
 }
 
+// checkTemplatePath checks the template of an action approval: an id, or reference fields
+// from the record to a core.approval_template.
+func (e *Engine) checkTemplatePath(ctx context.Context, t meta.Type, path string) string {
+	if _, err := uuid.Parse(path); err == nil {
+		return ""
+	}
+	cur := t
+	parts := strings.Split(path, ".")
+	for i, name := range parts {
+		f, ok := cur.Field(name)
+		if !ok || f.Type != meta.FieldReference {
+			return fmt.Sprintf("template: %q is no reference field of %s", name, cur.QualifiedName())
+		}
+		if i == len(parts)-1 {
+			if f.To != records.TypeApprovalTemplate {
+				return fmt.Sprintf("template: %s.%s refers to %s, not to %s", cur.QualifiedName(), name, f.To, records.TypeApprovalTemplate)
+			}
+			return ""
+		}
+		next, err := e.rec.Type(ctx, f.To)
+		if err != nil {
+			return "template: " + err.Error()
+		}
+		cur = next
+	}
+	return ""
+}
+
+// templateOf follows the template of an action approval from the record; uuid.Nil when a field
+// on the way is empty.
+func (e *Engine) templateOf(ctx context.Context, typeName string, rec map[string]any, path string) (uuid.UUID, error) {
+	if id, err := uuid.Parse(path); err == nil {
+		return id, nil
+	}
+	cur := rec
+	parts := strings.Split(path, ".")
+	for i, name := range parts {
+		raw, _ := cur[name].(string)
+		if raw == "" {
+			return uuid.Nil, nil
+		}
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("template: %s is no id: %w", name, err)
+		}
+		if i == len(parts)-1 {
+			return id, nil
+		}
+		t, err := e.rec.Type(ctx, typeName)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		f, _ := t.Field(name)
+		next, err := e.rec.Get(ctx, f.To, id)
+		if errors.Is(err, records.ErrNotFound) {
+			return uuid.Nil, nil
+		}
+		if err != nil {
+			return uuid.Nil, err
+		}
+		cur, typeName = next, f.To
+	}
+	return uuid.Nil, nil
+}
+
 // askApproval asks for approval with the stages from the lines; nothing without one, nothing
 // while one is open (two jobs may see the record alike when they run late).
 func (e *Engine) askApproval(ctx context.Context, r Rule, typeName string, id uuid.UUID, rec map[string]any, a *ApprovalAction) error {
@@ -261,7 +338,24 @@ func (e *Engine) askApproval(ctx context.Context, r Rule, typeName string, id uu
 	}
 	req := records.ApprovalRequest{Message: a.Message}
 	var lines []records.Record
-	if a.Role != "" {
+	if a.Template != "" {
+		tid, err := e.templateOf(ctx, typeName, rec, a.Template)
+		if err != nil {
+			return err
+		}
+		if tid == uuid.Nil {
+			return nil
+		}
+		if req, err = e.rec.ApprovalFromTemplate(ctx, typeName, id, tid); err != nil {
+			if errors.Is(err, records.ErrNotFound) {
+				return refused(r, err)
+			}
+			return err
+		}
+		if a.Message != "" {
+			req.Message = a.Message
+		}
+	} else if a.Role != "" {
 		// The holders of a role of the record itself (SD17): one stage, one yes is enough.
 		var approvers []records.Ref
 		for _, h := range holdersOf(rec, a.Role) {

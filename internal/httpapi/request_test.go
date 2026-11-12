@@ -38,7 +38,7 @@ func TestRequestOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/request", 11}} {
+	}{{"../../packages/sd", 28}, {"../../packages/request", 12}} {
 		p := installPackage(t, ctx, admin.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -62,12 +62,14 @@ func TestRequestOverHTTP(t *testing.T) {
 	files := create("core.group", `{"name": "SD6 Fileserver"}`)
 	other := create("core.person", `{"last_name": "Prüfer"}`)
 
-	// The template: two stages, the second "at least 1 of 2", and two task lines.
-	tpl := create("request.template", `{"name": "Zugang Gruppenlaufwerk"}`)
-	create("request.template_stage", `{"template": "`+tpl+`", "name": "IT-Sicherheit", "need": 1, "position": 20,
+	// The template: its approval template with two stages, the second "at least 1 of 2" (since
+	// WF7 a core.approval_template instead of request.template_stage), and two task lines.
+	approval := create("core.approval_template", `{"name": "Zugang Gruppenlaufwerk", "message": "Bitte genehmigen Sie diese Anfrage."}`)
+	create("core.approval_template_stage", `{"template": "`+approval+`", "name": "IT-Sicherheit", "need": 1, "position": 20,
 		"actors": {"approvers": [{"type": "core.person", "id": "`+sec.person+`"}, {"type": "core.person", "id": "`+other+`"}]}}`)
-	create("request.template_stage", `{"template": "`+tpl+`", "name": "Fachliche Prüfung", "position": 10,
+	create("core.approval_template_stage", `{"template": "`+approval+`", "name": "Fachliche Prüfung", "position": 10,
 		"actors": {"approvers": [{"type": "core.group", "id": "`+leads+`"}]}}`)
+	tpl := create("request.template", `{"name": "Zugang Gruppenlaufwerk", "approval_template": "`+approval+`"}`)
 	create("request.template_task", `{"template": "`+tpl+`", "title": "Rechte setzen", "group": "`+files+`", "position": 20}`)
 	create("request.template_task", `{"template": "`+tpl+`", "title": "Laufwerk anlegen", "group": "`+files+`", "position": 10}`)
 
@@ -120,8 +122,12 @@ func TestRequestOverHTTP(t *testing.T) {
 	stages := list[0]["stages"].([]any)
 	first, second := stages[0].(map[string]any), stages[1].(map[string]any)
 	if len(stages) != 2 || first["name"] != "Fachliche Prüfung" || second["name"] != "IT-Sicherheit" || second["need"] != float64(1) ||
-		len(second["steps"].([]any)) != 2 || list[0]["message"] != "Bitte genehmigen Sie diese Anfrage." {
+		len(second["steps"].([]any)) != 2 || list[0]["message"] != "Bitte genehmigen Sie diese Anfrage." || list[0]["template"] != approval {
 		t.Fatalf("approval from the template: %v", list)
+	}
+	// WF7: the first stage reminds after two days (no calendar, no setting), the second not yet.
+	if first["remind_at"] == nil || second["remind_at"] != nil || first["reminders"] != float64(0) {
+		t.Fatalf("reminders of the stages: %v", stages)
 	}
 	if rec := get(id); rec["approval"] != "pending" || rec["number"] == nil {
 		t.Fatalf("request asked: %v", rec)
@@ -197,10 +203,13 @@ func TestRequestOverHTTP(t *testing.T) {
 
 	// Rules refuse what cannot work.
 	for _, body := range []string{
-		`{"type_name": "probe.probe", "trigger": "create", "mode": "after", "actions": [{"approval": {"stages": {"type_name": "request.template_stage", "match": {"template": "title"}}, "approvers": "approvers"}}]}`,
-		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"stages": {"type_name": "request.template_stage", "match": {"nothing": "template"}}, "approvers": "approvers"}}]}`,
-		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"stages": {"type_name": "request.template_stage", "match": {"template": "template"}}, "approvers": "nobody"}}]}`,
-		`{"type_name": "request.request", "trigger": "create", "mode": "before", "actions": [{"approval": {"stages": {"type_name": "request.template_stage", "match": {"template": "template"}}, "approvers": "approvers"}}]}`,
+		`{"type_name": "probe.probe", "trigger": "create", "mode": "after", "actions": [{"approval": {"stages": {"type_name": "core.approval_template_stage", "match": {"template": "title"}}, "approvers": "approvers"}}]}`,
+		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"stages": {"type_name": "core.approval_template_stage", "match": {"nothing": "template"}}, "approvers": "approvers"}}]}`,
+		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"stages": {"type_name": "core.approval_template_stage", "match": {"template": "template"}}, "approvers": "nobody"}}]}`,
+		`{"type_name": "request.request", "trigger": "create", "mode": "before", "actions": [{"approval": {"stages": {"type_name": "core.approval_template_stage", "match": {"template": "template"}}, "approvers": "approvers"}}]}`,
+		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"template": "title"}}]}`,
+		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"template": "template"}}]}`,
+		`{"type_name": "request.request", "trigger": "create", "mode": "after", "actions": [{"approval": {"template": "template.approval_template", "role": "group"}}]}`,
 		`{"type_name": "request.request", "trigger": "update", "mode": "after", "actions": [{"create": {"type_name": "request.task", "fields": {"request": "@record", "title": "@item.title"}, "each": {"type_name": "request.template_task", "match": {"template": "template"}, "order": "nothing"}}}]}`,
 	} {
 		if r := call(t, admin, http.MethodPut, "/api/v1/rules/sd6_wrong", body, nil); r.code != 422 {

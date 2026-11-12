@@ -1,9 +1,10 @@
 # Copyright (C) 2026 group24 AG
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# A template of the fulfilment (SD6; SD-Plan E14): the stages of the approval
-# (request.template_stage) and the tasks of the fulfilment (request.template_task) a request
-# gets when it names the template. The catalog (SD13) names a template per offer.
+# A template of the fulfilment (SD6; SD-Plan E14): the template of the approval
+# (core.approval_template, since WF7 instead of own stages) and the tasks of the fulfilment
+# (request.template_task) a request gets when it names the template. The catalog (SD13) names
+# a template per offer.
 name: template
 label: {de: Erfüllungsvorlage, en: Fulfilment template}
 title_field: name
@@ -21,6 +22,14 @@ fields:
     label: {de: Beschreibung, en: Description}
     translatable: true
     max_length: 2000
+  # The approval a request with this template asks for (WF7, WF-Plan E18); empty: none.
+  - name: approval_template
+    type: reference
+    label: {de: Genehmigungsvorlage, en: Approval template}
+    description:
+      de: Nennt eine Anfrage diese Erfüllungsvorlage, fordert die Regel der Startdaten die Genehmigung nach dieser Vorlage an.
+      en: When a request names this fulfilment template, the rule of the start data asks for approval from this template.
+    to: core.approval_template
   - name: active
     type: boolean
     label: {de: Aktiv, en: Active}

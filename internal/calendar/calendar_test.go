@@ -150,3 +150,31 @@ func TestGermanHolidays(t *testing.T) {
 		t.Fatal("an unknown state must be refused")
 	}
 }
+
+// WF7: a reminder two working days after Thursday 10:05 comes on Monday 10:05; a holiday on
+// that Monday moves it to Tuesday; a Saturday counts from the Monday after it.
+func TestAddDays(t *testing.T) {
+	loc := berlin(t)
+	thursday := time.Date(2026, 11, 12, 10, 5, 0, 0, loc)
+	cases := []struct {
+		name  string
+		c     *Calendar
+		start time.Time
+		n     int
+		want  time.Time
+	}{
+		{"two working days", office(t), thursday, 2, time.Date(2026, 11, 16, 10, 5, 0, 0, loc)},
+		{"a holiday on Monday", office(t, "2026-11-16"), thursday, 2, time.Date(2026, 11, 17, 10, 5, 0, 0, loc)},
+		{"from a Saturday", office(t), time.Date(2026, 11, 14, 9, 0, 0, 0, loc), 1, time.Date(2026, 11, 16, 9, 0, 0, 0, loc)},
+		{"none", office(t), thursday, 0, thursday},
+	}
+	for _, c := range cases {
+		got, err := c.c.AddDays(c.start, c.n)
+		if err != nil || !got.Equal(c.want) {
+			t.Errorf("%s: %v %v, want %v", c.name, got, err, c.want)
+		}
+	}
+	if _, err := (&Calendar{Location: loc, Hours: map[time.Weekday][]Span{}}).AddDays(thursday, 1); !errors.Is(err, ErrNoHours) {
+		t.Errorf("a calendar without hours: %v", err)
+	}
+}

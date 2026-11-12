@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # The templates of the fulfilment at work (SD6, SD-Plan E14, N17, N18): a request that names a
-# template asks for approval in its stages; once it goes "In Erfüllung" it gets one task per
-# line, for the group of the line. All of it is start data each tenant changes.
+# template asks for approval from the approval template it names (WF7, WF-Plan E18); once it
+# goes "In Erfüllung" it gets one task per line, for the group of the line. All of it is start
+# data each tenant changes.
 
 # Asking: when the request is made with a template, or a new one gets one.
 - key: genehmigung_beim_anlegen
@@ -15,11 +16,7 @@
     condition: has(record.template) && record.template != null
     actions:
       - approval:
-          stages: {type_name: request.template_stage, match: {template: template}, order: position}
-          name: name
-          need: need
-          approvers: approvers
-          message: Bitte genehmigen Sie diese Anfrage.
+          template: template.approval_template
 - key: genehmigung_bei_vorlage
   rule:
     label: {de: Genehmigung aus der Vorlage bei neuer Vorlage, en: Approval from the template when it is set}
@@ -29,11 +26,7 @@
     condition: '"template" in changed && record.state == "new" && has(record.template) && record.template != null'
     actions:
       - approval:
-          stages: {type_name: request.template_stage, match: {template: template}, order: position}
-          name: name
-          need: need
-          approvers: approvers
-          message: Bitte genehmigen Sie diese Anfrage.
+          template: template.approval_template
 # The fulfilment: once, when the request is in fulfilment and has no task yet.
 - key: aufgaben_aus_vorlage
   rule:
@@ -53,7 +46,7 @@
             position: "@item.position"
             actors: {assignee: [{type: core.group, id: "@item.group"}]}
 
-# An example to start from: tasks only; the stages and their approvers the tenant adds.
+# An example to start from: tasks only; the approval template the tenant adds.
 - key: arbeitsplatz
   type: request.template
   values:

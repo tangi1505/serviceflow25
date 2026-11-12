@@ -42,6 +42,16 @@ func (s *server) RequestApproval(w http.ResponseWriter, r *http.Request, typeNam
 	writeJSON(w, http.StatusCreated, a)
 }
 
+// ApprovalTemplates lists the templates of approvals filled in for the record (WF7).
+func (s *server) ApprovalTemplates(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id) {
+	list, err := s.o.Records.ApprovalTemplates(r.Context(), typeName, id)
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
 func (s *server) DecideApproval(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id, approvalID gen.ApprovalId) {
 	var body struct {
 		Decision string     `json:"decision"`

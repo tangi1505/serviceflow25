@@ -28,6 +28,7 @@ import type {
   Permission,
   Rating,
   Approval,
+  ApprovalDraft,
   ApprovalRequest,
   MyApproval,
   Substitute,
@@ -400,6 +401,8 @@ export type FakeState = {
   // approvals are the approvals by record id (WF6), newest first; myApprovals the lists
   // "Zu genehmigen"; substitutes those of every person.
   approvals?: Record<string, Approval[]>;
+  // approvalTemplates are the drafts of templates by record id (WF7).
+  approvalTemplates?: Record<string, ApprovalDraft[]>;
   myApprovals?: { open?: MyApproval[]; done?: MyApproval[] };
   substitutes?: Substitute[];
   // exportJob makes an export a job (UI5, more than 100,000 rows); jobState is its state.
@@ -1241,6 +1244,12 @@ export function fakeApi(state: FakeState) {
         })),
       );
     }
+    const draftsOf = url.pathname.match(
+      /^\/api\/v1\/records\/[a-z_]+\.[a-z_]+\/([^/]+)\/approval-templates$/,
+    );
+    if (draftsOf) {
+      return json(200, state.approvalTemplates?.[draftsOf[1]!] ?? []);
+    }
     const approvalsOf = url.pathname.match(
       /^\/api\/v1\/records\/[a-z_]+\.[a-z_]+\/([^/]+)\/approvals(?:\/([^/:]+):(decide|withdraw))?$/,
     );
@@ -1256,6 +1265,7 @@ export function fakeApi(state: FakeState) {
             state: "open",
             stage: 1,
             message: body.message ?? "",
+            template: body.template,
             requester: approverPerson,
             requested_at: now,
             stages: body.stages.map((st, i) => ({

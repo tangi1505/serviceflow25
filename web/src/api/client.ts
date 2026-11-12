@@ -33,6 +33,7 @@ export type Approval = components["schemas"]["Approval"];
 export type ApprovalStage = components["schemas"]["ApprovalStage"];
 export type ApprovalStep = components["schemas"]["ApprovalStep"];
 export type ApprovalRequest = components["schemas"]["ApprovalRequest"];
+export type ApprovalDraft = components["schemas"]["ApprovalDraft"];
 export type ApproverRef = components["schemas"]["ApproverRef"];
 export type MyApproval = components["schemas"]["MyApproval"];
 export type Substitute = components["schemas"]["Substitute"];
@@ -435,6 +436,13 @@ export const api = {
   approvals: async (typeName: string, id: string) =>
     unwrap(
       await client.GET("/api/v1/records/{typeName}/{id}/approvals", {
+        params: { path: { typeName, id } },
+      }),
+    ),
+  // approvalTemplates are the active templates filled in for the record (WF7).
+  approvalTemplates: async (typeName: string, id: string) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/approval-templates", {
         params: { path: { typeName, id } },
       }),
     ),

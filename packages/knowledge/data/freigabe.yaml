@@ -38,3 +38,13 @@
     recipients: approvers
     subject: "Bitte freigeben: {{title}}"
     body: "Sie sind gefragt, den Artikel „{{title}}“ oder eine Änderung daran freizugeben. Zustimmen oder ablehnen können Sie hier: {{link}}"
+# The reminder while the approval is open (WF7).
+- key: approval_reminder_mail
+  type: core.notification
+  values:
+    name: Erinnerung an Freigabe
+    target_type: knowledge.article
+    events: approval_reminder
+    recipients: approvers
+    subject: "Erinnerung: Bitte freigeben: {{title}}"
+    body: "Der Artikel „{{title}}“ oder eine Änderung daran wartet noch auf Ihre Freigabe. Zustimmen oder ablehnen können Sie hier: {{link}}"

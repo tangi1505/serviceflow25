@@ -1307,6 +1307,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{typeName}/{id}/approval-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The active templates of approvals filled in for a record the session may change (WF7), by name
+         * @description Each template with its text, its working days between reminders and its stages; the roles of the record a stage names are resolved to the persons and groups that hold them now (role names the role). Stages without anybody are left out, templates without any stage too. The answer is a draft: whoever asks may change it and sends it with template set.
+         */
+        get: operations["approvalTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records/{typeName}/{id}/approvals/{approvalId}:decide": {
         parameters: {
             query?: never;
@@ -2980,6 +3000,18 @@ export interface components {
             /** @enum {string} */
             state: "waiting" | "open" | "approved" | "rejected" | "dropped";
             steps: components["schemas"]["ApprovalStep"][];
+            /** @description how often the stage reminded those not decided yet (WF7) */
+            reminders?: number;
+            /**
+             * Format: date-time
+             * @description the last reminder
+             */
+            reminded_at?: string;
+            /**
+             * Format: date-time
+             * @description the next reminder while the stage is open; missing: none
+             */
+            remind_at?: string;
         };
         Approval: {
             /** Format: uuid */
@@ -3003,10 +3035,42 @@ export interface components {
             changes?: {
                 [key: string]: unknown;
             };
+            /**
+             * Format: uuid
+             * @description the core.approval_template it was asked from (WF7)
+             */
+            template?: string;
+            /** @description working days between reminders from the template; missing: the setting approvals.remind_days of the record's unit (default 2) */
+            remind_days?: number;
+        };
+        ApprovalDraft: {
+            /** Format: uuid */
+            template: string;
+            name: string;
+            message: string;
+            /** @description missing: the setting approvals.remind_days */
+            remind_days?: number;
+            stages: {
+                name: string;
+                need: number;
+                approvers: {
+                    /** @enum {string} */
+                    type: "core.person" | "core.group";
+                    /** Format: uuid */
+                    id: string;
+                    /** @description the role of the record it comes from, e.g. assignee_group.responsible */
+                    role?: string;
+                }[];
+            }[];
         };
         ApprovalRequest: {
             /** @description the text to the approvers */
             message?: string;
+            /**
+             * Format: uuid
+             * @description the core.approval_template the stages come from (WF7): the approval takes over its working days between reminders
+             */
+            template?: string;
             stages: {
                 name?: string;
                 /** @description the least number of yes; 0 or missing means all */
@@ -3501,8 +3565,10 @@ export interface components {
                 };
                 comment?: string;
             };
-            /** @description after the write only (SD6, SD-Plan N18): asks for approval of the record (trait approvals) with one stage per line of stages, its name from the field name, its least number of yes from the field need, its persons and groups from the role approvers of the line; lines without approvers are left out, without any nothing is asked. With role instead (SD17) the holders of that role of the record itself approve, in one stage where one yes is enough */
+            /** @description after the write only (SD6, SD-Plan N18): asks for approval of the record (trait approvals) with one stage per line of stages, its name from the field name, its least number of yes from the field need, its persons and groups from the role approvers of the line; lines without approvers are left out, without any nothing is asked. With role instead (SD17) the holders of that role of the record itself approve, in one stage where one yes is enough. With template instead (WF7) the stages come from a template of approvals */
             approval?: {
+                /** @description the id of a core.approval_template, or reference fields from the record to one (e.g. template.approval_template); nothing is asked while a field on the way is empty */
+                template?: string;
                 /** @description the records of type_name whose fields in match name what the given fields of this record name (e.g. {"template": "template"}), at most 200, in the order of the field order */
                 stages?: {
                     type_name: string;
@@ -6221,6 +6287,32 @@ export interface operations {
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
+        };
+    };
+    approvalTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the drafts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDraft"][];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
         };
     };
     decideApproval: {

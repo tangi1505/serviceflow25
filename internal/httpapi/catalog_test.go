@@ -37,7 +37,7 @@ func TestCatalogOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/request", 11}, {"../../packages/catalog", 4}} {
+	}{{"../../packages/sd", 28}, {"../../packages/request", 12}, {"../../packages/catalog", 4}} {
 		p := installPackage(t, ctx, admin.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)
@@ -83,9 +83,11 @@ func TestCatalogOverHTTP(t *testing.T) {
 		return r.body["id"].(string)
 	}
 	files := create("core.group", `{"name": "SD13 Fileserver"}`)
-	tpl := create("request.template", `{"name": "Zugang Gruppenlaufwerk"}`)
-	create("request.template_stage", `{"template": "`+tpl+`", "name": "Fachliche Prüfung", "position": 10,
+	// Since WF7 the stages are an approval template the fulfilment template names.
+	approval := create("core.approval_template", `{"name": "Zugang Gruppenlaufwerk"}`)
+	create("core.approval_template_stage", `{"template": "`+approval+`", "name": "Fachliche Prüfung", "position": 10,
 		"actors": {"approvers": [{"type": "core.person", "id": "`+lead.person+`"}]}}`)
+	tpl := create("request.template", `{"name": "Zugang Gruppenlaufwerk", "approval_template": "`+approval+`"}`)
 	create("request.template_task", `{"template": "`+tpl+`", "title": "Rechte setzen", "group": "`+files+`", "position": 10}`)
 	form := create("core.form", `{"name": "Zugang Gruppenlaufwerk bestellen", "target_type": "request.request", "active": true, "place": "order",
 		"definition": "{\"sections\": [{\"id\": \"zugang\", \"title\": {\"de\": \"Zugang\"}, \"questions\": [{\"id\": \"laufwerk\", \"type\": \"text\", \"required\": true, \"label\": {\"de\": \"Laufwerk\", \"en\": \"Drive\"}}, {\"id\": \"rechte\", \"type\": \"choice\", \"label\": {\"de\": \"Rechte\"}, \"options\": [{\"value\": \"r\", \"label\": {\"de\": \"Lesen\"}}, {\"value\": \"rw\", \"label\": {\"de\": \"Lesen und Schreiben\"}}]}]}]}"}`)

@@ -298,7 +298,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 			t.Fatal(err)
 		}
 	}
-	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs), snippets.Check(recs))
+	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs), snippets.Check(recs))
 	snippetSvc := snippets.New(recs)
 	snippetSvc.PublicURL = "http://itsm.test"
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {

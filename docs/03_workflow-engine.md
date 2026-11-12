@@ -32,7 +32,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **WF3** | Rollen am Datensatz: Anforderer, Beobachter, Bearbeiter, je als Person, Gruppe oder Lieferant; Team je Vorgang; je Typ definierbar (Inventar G37, G79; Hauptplan E109) | 🟢 | 2 d | Vorgang mit Bearbeitergruppe → jedes Mitglied findet ihn unter „meine Gruppen"; Rollen eines anderen Typs sind dort nicht wählbar; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF4** | Regel-Engine: Auslöser Anlegen, Ändern, Zeit; Bedingung in CEL; Aktionen setzen, zuweisen, anlegen, benachrichtigen; synchron vor dem Speichern oder danach als Job (Architektur §6.2) (trägt KF7; Inventar G57; Hauptplan E111) | 🟢 | 2 d | Regel „Kategorie Netz → Gruppe Netz" setzt die Gruppe beim Anlegen in derselben Antwort; eine Folgeregel läuft als Job; LZ4 hält in H11; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF6** | Genehmigungen: Unterdatensatz mit Stufen in fester Reihenfolge oder parallel, Mindestanteil, Vertretung (trägt KF4; Inventar G43, G44); dazu Reiter „Genehmigung“, „Zu genehmigen“ im Arbeitsplatz, Bereich „Genehmigungen“ im Portal und Vertretung unter „Meine Einstellungen“ (E17) | 🟢 | 3 d (vorher 2 d) | Zwei Stufen, Stufe 2 erst nach Stufe 1; parallele Stufe mit 2 von 3 ist nach der zweiten Zustimmung erfüllt; Vertretung darf zustimmen; `docker compose run --rm tools scripts/ci.sh` grün |
-| **WF7** | Genehmigungsvorlagen und Erinnerung an offene Genehmigungen (Inventar G45, G67); für die Anfrage nennt seit SD6 die Erfüllungsvorlage die Stufen (Regelaktion `approval`, SD-Plan N18) | ⬜ | 1 d | Vorlage setzt beide Stufen in einem Schritt; nach der eingestellten Zeit geht eine Erinnerung (Testmail); `docker compose run --rm tools scripts/ci.sh` grün |
+| **WF7** | Genehmigungsvorlagen und Erinnerung an offene Genehmigungen (Inventar G45, G67); für die Anfrage nennt seit SD6 die Erfüllungsvorlage die Stufen (Regelaktion `approval`, SD-Plan N18) | 🟢 | 2,5 d (vorher 1 d) | Vorlage setzt beide Stufen in einem Schritt; nach der eingestellten Zeit geht eine Erinnerung (Testmail); `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF8** | Kalender mit Arbeitszeiten und Feiertagen (Inventar G169; Hauptplan E113) | 🟢 | 1 d | Frist von 8 Stunden ab Freitag 15 Uhr endet am Montag 15 Uhr bei 8–16 Uhr Arbeitszeit; ein Feiertag verschiebt sie um einen Tag; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF9** | Fristen und SLA-Uhren: Uhr als Datensatz mit Start, Pause und Ziel; River-Job auf den nächsten Schwellwert, kein minütlicher Lauf (Architektur §8) (trägt KF5; Inventar G167; Hauptplan E114) | 🟢 | 2 d | Uhr startet beim Anlegen, pausiert im Status „wartet", Restzeit stimmt nach Fortsetzen; bei 100.000 offenen Uhren gibt es keinen Lauf über alle (Messung in H11); `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF10** | Eskalationsstufen mit Aktionen (Inventar G66, G168; Hauptplan E115) | 🟢 | 1,5 d | Bei 80 % der Frist setzt Stufe 1 die Priorität hoch, bei 100 % benachrichtigt Stufe 2 die Leitung; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -56,7 +56,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **WF17** | Erinnerungen an geplante Termine (Inventar G75) | ⬜ | 0,5 d | Termin mit Erinnerung 15 Minuten vorher → Benachrichtigung im Browser zur richtigen Zeit (Testzeit); `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF18** | Regel auf eine gespeicherte Suche: benachrichtigen, wenn sie Treffer hat (Inventar G113) | ⬜ | 1 d | Gespeicherte Suche „Vorgänge ohne Bearbeiter" mit Regel → Mail, sobald ein Treffer entsteht; `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 27,5 d, geschätzt vor dem Bau (Block A: 2 d); WF6 am 2026-11-10 von 2 d auf 3 d für Oberfläche, Bereich im Portal und Vertretung (E17).
+**Summe:** 27,5 d, geschätzt vor dem Bau (Block A: 2 d); WF6 am 2026-11-10 von 2 d auf 3 d für Oberfläche, Bereich im Portal und Vertretung (E17). WF7 am 2026-11-12 von 1 d auf 2,5 d für Kerntypen, Rollen, Erinnerung als Job und den Umzug der Anfrage (E18): 29 d.
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B von WF kommt jetzt, vor Block B der Oberfläche; Block B ist gebaut: WF3, WF2, WF4 und WF8 bis WF15; dazwischen kam PL41 (Verteiler in Stapeln, Kern-Plan) aus dem Befund von WF4. Danach kam PL42 (Zeitleiste, Kern-Plan, Hauptplan E121) mit dem Ereignis `comment` für Benachrichtigungen. Als Nächstes Block B der Oberfläche (UI-Plan), dann SD; WF5 bis WF7 und WF16 folgen in Block C.
 
@@ -74,6 +74,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E8, E19, E45).
 | **E2** | Das Statusmodell steht in der Typdefinition (`states` mit genau einem `initial`, `transitions` mit `from`, `to`, `when`); der Status liegt in der Systemspalte `state`, ein neuer Datensatz startet im Anfangsstatus, PATCH auf `state` wird abgelehnt (422), nur ein Übergang ändert ihn | 2026-10-20 | Umsetzung |
 | **E3** | Übergang per `POST …/{id}:transition` mit `{"transition": name}`: Zeile gesperrt, Status und CEL-Bedingung geprüft, Status mit neuer Version geschrieben, Audit-Zeile `transition` und Ereignis in derselben Transaktion; nicht erlaubt → 409 mit Grund (Status oder Bedingung), unbekannt → 422. `GET …/{id}/transitions` sagt je Übergang, ob er gerade geht und warum nicht | 2026-10-20 | Umsetzung |
 | **E4** | CEL (`internal/rules`, cel.dev/cel-go) sieht den Datensatz als `record` (Felder und Systemfelder) und muss `true`/`false` liefern; die Definition prüft Bedingungen beim Installieren, ein fehlendes Feld zur Laufzeit ist ein Fehler, kein stilles `false` | 2026-10-20 | Umsetzung |
+| **E18** | Genehmigungsvorlagen und Erinnerung (WF7, deine Entscheidungen 2026-11-12 nach dem Mockup „Genehmigungsvorlagen und Erinnerung“, [Artifact](https://claude.ai/artifact/6QqiAzj1PyfcLmL7j4ikZH), Hauptplan E179): **Vorlage als Datensatz** des Kerns (`core.approval_template`: Name, Text an die Genehmiger, Erinnerung alle n Arbeitstage, aktiv; Stufen `core.approval_template_stage` mit Name, nötigen Zustimmungen, Reihenfolge) für jeden Typ mit Genehmigungen. **Genehmiger** sind feste Personen und Gruppen und Rollen des Vorgangs (`actors.<Rolle>`, `actors.<Rolle>.responsible` für die Leitung der Gruppen), aufgelöst beim Anfordern; eine Stufe ohne Genehmiger fällt weg. **Anfordern:** im Reiter „Genehmigung“ füllt die gewählte Vorlage Text und Stufen, danach ist alles änderbar; die Regelaktion `approval` nennt eine Vorlage (`template`: Id oder Weg über Verweisfelder). **Erinnerung** wiederholt, bis die Stufe entschieden ist, an alle in der laufenden Stufe, die noch nicht entschieden haben (Gruppen: alle Mitglieder), und ihre Vertretungen; der Abstand kommt aus der Vorlage (0: keine), sonst aus der Einstellung `approvals.remind_days` am Organisationsbaum (Vorgabe 2), gezählt in Arbeitstagen des Kalenders der Einheit; jede Erinnerung steht im Verlauf, die Mail ist eine Benachrichtigung der Startdaten (Ereignis `approval_reminder`). **Anfrage ganz umgestellt:** die Erfüllungsvorlage nennt eine Genehmigungsvorlage statt eigener Stufen (`request.template_stage` entfällt); vorhandene Stufen ziehen beim Update in eine Genehmigungsvorlage um. Verworfen: Vorlagen je Typ; nur beim Anfordern; nur feste Genehmiger; einmalige Erinnerung; Erinnerung mit Höchstzahl; nur an der Vorlage; Erfüllungsvorlage behält eigene Stufen | 2026-11-12 | Pascal |
 | **E17** | Genehmigungen (WF6, deine Entscheidungen 2026-11-10 nach dem Mockup „Genehmigungen“, [Artifact](https://claude.ai/artifact/Mez7bLzqU887wXw9s9Mnwk), Hauptplan E175): **Merkmal `approvals` mit Kerntabellen** (`approval`, `approval_stage`, `approval_step`, Migration 00044), wie Bewertung und Zeitleiste; jeder Typ kann es anziehen. **Stufen** laufen nacheinander, in einer Stufe sind Personen und Gruppen gleichzeitig gefragt, die Stufe braucht „mindestens n“ Zustimmungen (0: alle); sie ist erteilt, sobald genug zugestimmt haben, abgelehnt, sobald das nicht mehr erreichbar ist; dann entfallen die offenen Fragen. **Eine Gruppe** ist einmal gefragt, das erste Mitglied entscheidet für sie. **Wirkung:** das berechnete Feld `approval` (offen, erteilt, abgelehnt, zurückgezogen) und die Übergänge, die der Typ unter `approval` nennt (`requested`, `approved`, `rejected`); sie laufen nach dem Schreiben mit den Rechten des Systems und dem Entscheider als Auslöser, der Grund einer Ablehnung geht als Text mit. **Vertretung** an der Person mit „von“ und „bis“ (Tabelle `substitute`), eingetragen von der Person selbst oder von der Verwaltung an der Person (Recht zum Ändern der Person); in der Zeit entscheidet die Vertretung für die Person und ihre Gruppen, im Verlauf steht „für“. **Lesen:** wer gefragt ist oder entschieden hat, liest den Datensatz ohne eigenes Recht (`authz.Access.Asked`). **Ablehnen** braucht immer einen Grund. **Oberfläche:** Reiter „Genehmigung“ nach „Bezüge“, links „Zu genehmigen“ mit Anzahl, im Portal ein eigener Bereich „Genehmigungen“ im Kopf (Variante 3B) mit Seite zum Lesen und Entscheiden, Vertretungen unter „Meine Einstellungen“ und als Reiter an der Person. Benachrichtigungen kennen die Ereignisse `approval_request`, `approval_decision`, `approval` und den Empfänger `approvers`. Verworfen: Kerntyp „Genehmigung“ als Datensatz; nur Feld und Ereignis ohne Übergänge; jedes Gruppenmitglied einzeln; Weiterleiten je Genehmigung; „Zu genehmigen“ auf der Startseite des Portals (3A); Abschnitt über dem Formular; nur die Person selbst trägt Vertretungen ein | 2026-11-10 | Pascal |
 | **E16** | `internal/notify`: `HandleBatch` (Abnehmer `notify`, nur wo ein Mailserver gesetzt ist) liest die aktiven Benachrichtigungen einmal je Stapel über `records.Query` und legt je passendem Ereignis einen Job `notify.fanout` an, je notify-Ereignis einer Regel ebenso. `notify.fanout` liest Ereignis und Datensatz (wie er jetzt ist), prüft die Bedingung, löst die Empfänger auf (Rollen aus `actors`, Gruppen über `core.group_member`, Personen), zieht doppelte und den Auslöser ab (Konto → Person über `authz`) und legt je Person einen Job `notify.send` an, eindeutig nach seinen Argumenten (River `UniqueOpts.ByArgs`), damit ein wiederholter Lauf keine Mail doppelt legt. `notify.send` liest Person (Adresse, Sprache, sonst Deutsch), Benachrichtigung und Datensatz mit `records.Localize` in ihrer Sprache, rendert und schickt mit `net/smtp` (STARTTLS und Anmeldung wählbar, Anmeldung nur mit STARTTLS); 8 Versuche, danach `delivery_failure` mit der Art `mail`. Platzhalter prüft die Prüfung beim Speichern (`CheckRecord`); ein unbekannter in einer Übersetzung bleibt im Text stehen. Für Tests gibt es `internal/notify/smtptest`, einen SMTP-Empfänger im Prozess | 2026-10-29 | Umsetzung |
 | **E15** | `internal/recurrence`: `Run(ctx, now)` fragt über `records.Query` nur die aktiven Vorgänge mit leerem oder erreichtem `next_run` ab (kein Lauf über alle), legt den Datensatz des Termins mit `records.Sync` und dem Schlüssel `recurrence:<id>` / Termin an (der eindeutige Index `(source, external_key)` aus PL31 macht es genau einmal; eine zweite Instanz bekommt einen Konflikt oder „unverändert“) und schreibt `next_run` (nächster Termin nach jetzt, in der Zeitzone, auch über die Zeitumstellung), `last_run` und `last_error` über `records.Update`, also mit Verlauf. Ein leeres `next_run` wird nur gesetzt, ohne anzulegen. Die Prüfung beim Speichern (`CheckRecord`, mehrere über `records.Checks`) füllt die Vorlage für einen Beispieltermin und prüft sie mit `CheckValues` gegen den Zieltyp. Der Job `recurrence.run` läuft jede Minute auf der Standard-Warteschlange | 2026-10-29 | Umsetzung |
@@ -142,6 +143,55 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Feldzustände je Status mit WF2, Rechte je Übergang mit PL8; der Ereignisstrom hat weder
   Aufbewahrung noch SSE noch Verteiler (PL24); Übergänge laufen nur über die API, nicht per
   Bulk (PL31); die Bedingung sieht nur den Datensatz, nicht die Person (kommt mit PL8).
+
+### WF7 — Genehmigungsvorlagen und Erinnerung, 2026-11-12
+
+- **Grundlage:** Hauptplan E179, KF4; Inventar G45, G67; E18 dieses Plans; deine Entscheidungen
+  vom 2026-11-12 und das Mockup „Genehmigungsvorlagen und Erinnerung“ (Zeichenflächen 1 bis 4).
+- **Gebaut:**
+  - Kern: Kerntypen `core.approval_template` und `core.approval_template_stage` (Paket `core`
+    0.5.0); `internal/records/approval_template.go` füllt eine Vorlage für einen Datensatz aus
+    (Rollen aufgelöst, leere Stufen weg) und prüft die Rollen der Stufen;
+    `internal/records/approval_remind.go` mit dem Job `approval.remind` jede Minute; die
+    Genehmigung trägt Vorlage und Abstand, jede Stufe Anzahl, letzte und nächste Erinnerung
+    (Migration 00046); `calendar.AddDays` zählt Arbeitstage; Benachrichtigungen kennen
+    `approval_reminder`, und der Empfänger `approvers` schließt die Vertretungen ein.
+  - Regelaktion `approval` mit `template` (`internal/rules/engine/each.go`); API
+    `GET …/approval-templates`, `ApprovalRequest.template`.
+  - Paket `request` 0.3.0: Feld „Genehmigungsvorlage“ an der Erfüllungsvorlage, die Regeln
+    fragen über `template.approval_template`, Mail „Erinnerung an Genehmigung“; der Umzug
+    (`cmd/itsm/upgrade.go`) macht beim Update von einer Version unter 0.3.0 aus den Stufen jeder
+    Erfüllungsvorlage eine Genehmigungsvorlage und stellt die zwei Regeln der Startdaten um,
+    solange sie noch die alten Stufen nennen (`seed.Refresh`). Paket `knowledge` 0.7.0 mit der
+    Mail „Erinnerung an Freigabe“.
+  - Oberfläche: im Reiter „Genehmigung“ die Auswahl „Vorlage“ beim Anfordern, die Herkunft aus
+    einer Rolle unter den Genehmigern, der Hinweis zur Erinnerung; an der Stufe „Erinnert …,
+    nächste Erinnerung …“.
+- **Belegt:**
+  - Go `TestApprovalTemplatesOverHTTP` (Prüfweg): Entwürfe nach Namen, inaktive und leere Stufen
+    weg, `actors.group.responsible` wird zur Leitung der Gruppe; ohne Änderungsrecht kein
+    Entwurf; angefordert aus dem Entwurf trägt die Genehmigung Vorlage und Tage; der Job
+    erinnert erst, wenn es so weit ist, zählt, setzt die nächste Erinnerung und erinnert nicht
+    zweimal; zurückgezogen keine Erinnerung mehr, eine Vorlage mit 0 Tagen nie; eine Rolle, die
+    keine ist, und eine unbekannte Vorlage werden abgelehnt. `TestAddDays`.
+  - Vitest `Approvals.test.tsx`: Vorlage wählen füllt Text und Stufen, Herkunft aus der Rolle,
+    Hinweis zur Erinnerung, die Anfrage nennt die Vorlage, `axe` ohne Befund; die Stufe zeigt,
+    wie oft sie erinnert hat.
+  - Alte Tests angepasst, weil die Erfüllungsvorlage seit WF7 eine Genehmigungsvorlage nennt
+    statt eigener Stufen: `TestRequestOverHTTP` und `TestCatalogOverHTTP` legen
+    `core.approval_template` mit Stufen an, die Regeln mit falscher Angabe prüfen
+    `core.approval_template_stage` und drei neue Fälle mit `template`; die Zahl der Startdaten
+    ist bei `request` 12 statt 11 und bei `knowledge` 10 statt 9 (die Erinnerungsmails).
+  - `scripts/ci.sh` im zweiten Lauf 18 von 19 Schritten grün (126 Vitest, 18 Playwright); rot nur
+    LZ3 gegen die alte Basislinie (+15 %), im A/B gegen SD17 (`73035ab`) 0 % (10,58 gegen
+    10,59 ms), LZ1, LZ2 und LZ4 gleich auf; die Basislinie erneuerst du. Im ersten Lauf: Lint
+    (`nilerr` in der Regelaktion), E34 (der Umzug las die alte Tabelle in `cmd/itsm`, jetzt
+    `records.RemovedRows`), zwei Tests mit Zufallstext im Feld „Rollen des Vorgangs“
+    (Muster in `coverage_test.go` wie bei SD13), Lasttor ungültig unter fremder Last.
+- **Nicht geprüft:** Der Umzug beim Update hat keinen automatischen Test, weil es für die
+  Paketinstallation keine Datenbanktests gibt; geprüft auf 8092 beim Einspielen. Die Mail der
+  Erinnerung nur über den Empfänger `approvers` wie bei WF6, nicht in Mailpit. Ein Feiertag
+  mitten im Abstand zählt über den Kalender der Einheit, ohne Kalender zählen Kalendertage.
 
 ### WF6 — Genehmigungen, 2026-11-10
 

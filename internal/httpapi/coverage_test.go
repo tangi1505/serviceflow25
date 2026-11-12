@@ -313,6 +313,8 @@ var checkedSamples = map[string]map[string]any{
 		"definition": `{"sections": [{"id": "s1", "title": {"de": "Anliegen"}, "questions": [{"id": "q1", "field": "title"}]}]}`},
 	"core.portal_notice": {"target_type": "probe.probe", "query": "", "text_field": "title", "active": false},
 	"core.snippet":       {"target_type": "probe.probe"},
+	// WF7: the roles of a stage of an approval template are none or real ones.
+	"core.approval_template_stage": {"roles": ""},
 }
 
 // sampleValue is a valid value of a field that is not a reference.

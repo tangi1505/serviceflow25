@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 
 	"group24.de/itsm/internal/customer"
@@ -117,6 +118,13 @@ func packageInstall(ctx context.Context, rt *db.Router, dir string, force bool, 
 			return errCustomerConflicts
 		}
 	}
+	// The version before the update decides the upgrade steps (WF7).
+	installed := ""
+	if row, err := queries.New(pool).GetPackage(ctx, p.Name); err == nil {
+		installed = row.Version
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
 	if err := meta.Store(ctx, pool, p); err != nil {
 		return err
 	}
@@ -142,12 +150,17 @@ func packageInstall(ctx context.Context, rt *db.Router, dir string, force bool, 
 	// The start data once per tenant (SD-Plan N9); the server sees new SLAs and rules within
 	// half a minute.
 	recs := records.New(rt)
-	started, err := seed.New(rt, recs, engine.New(rt, recs, nil, nil, logger)).Package(ctx, p)
+	rules := engine.New(rt, recs, nil, nil, logger)
+	seeds := seed.New(rt, recs, rules)
+	started, err := seeds.Package(ctx, p)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "Paket %s %s installiert, %d Schemaänderungen, %d Listeneinträge und %d Startdaten angelegt\n",
 		p.Name, p.Version, len(changes), seeded, started)
+	if err := runUpgrades(ctx, upgradeEnv{rt: rt, recs: recs, seeds: seeds, rules: rules, p: p}, installed, stdout); err != nil {
+		return err
+	}
 	if err := recomputeChanged(ctx, rt, before, p, logger, stdout); err != nil {
 		return err
 	}

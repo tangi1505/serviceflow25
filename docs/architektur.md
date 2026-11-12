@@ -538,7 +538,12 @@ E8, KF3 bis KF5, KF7:
   berechnete Feld `approval` und die Übergänge, die der Typ unter `approval` nennt, laufen nach
   der Entscheidung mit den Rechten des Systems. Vertretung an der Person mit Zeitraum (Tabelle
   `substitute`); wer gefragt ist, auch als Vertretung, liest den Datensatz ohne eigenes Recht
-  (`authz.Access.Asked`). Erinnerung und Vorlagen kommen mit WF7. Seit SD17 (E178) kann ein Typ
+  (`authz.Access.Asked`). Seit WF7 (E179) gibt es Vorlagen (`core.approval_template` mit Stufen,
+  Rollen des Datensatzes beim Anfordern aufgelöst, `internal/records/approval_template.go`) und
+  die Erinnerung: jede offene Stufe hat ihren nächsten Zeitpunkt (`approval_stage.remind_at`,
+  Arbeitstage im Kalender der Einheit), ein Job jede Minute erinnert die fälligen
+  (`approval_remind.go`, Ereignis `approval_reminder`). Ändert ein Paket-Update eigene Typen,
+  ziehen Daten über einen Umzugsschritt in `cmd/itsm/upgrade.go` um. Seit SD17 (E178) kann ein Typ
   Änderungen an Feldern zurückhalten (`approval.hold`): solange eine Bedingung gilt, wartet die
   Änderung an einer Genehmigung (Spalte `approval.changes`), gefragt sind die Inhaber einer Rolle
   des Datensatzes; erteilt, schreibt der Kern sie mit Systemrechten als neue Fassung

@@ -19,9 +19,11 @@ import { useTranslation } from "react-i18next";
 import {
   api,
   ApiError,
+  labelOf,
   qualifiedName,
   type ActorRef,
   type Approval,
+  type ApprovalDraft,
   type ApprovalStage,
   type ApprovalStep,
   type RecordData,
@@ -136,7 +138,7 @@ export function Approvals({
       )}
       {asking && (
         <RequestForm
-          typeName={typeName}
+          type={type}
           id={id}
           onDone={() => {
             setAsking(false);
@@ -299,6 +301,20 @@ function StageView({ stage, count }: { stage: ApprovalStage; count: number }) {
           {t(`approvals.stageState.${stage.state}`)}
         </span>
       </div>
+      {((stage.reminders ?? 0) > 0 || stage.remind_at) && (
+        <p className="text-[13px] text-muted-foreground">
+          {(stage.reminders ?? 0) > 0 && stage.reminded_at
+            ? t("approvals.reminded", {
+                count: stage.reminders,
+                last: formatMoment(stage.reminded_at, i18n.language),
+              })
+            : t("approvals.notReminded")}
+          {stage.state === "open" && stage.remind_at
+            ? " · " +
+              t("approvals.nextReminder", { at: formatMoment(stage.remind_at, i18n.language) })
+            : ""}
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -433,31 +449,68 @@ export function DecisionForm({
   );
 }
 
-type Draft = { name: string; need: number; approvers: ActorRef[] };
+// Draft is a stage being asked; roles names, by approver id, the role of the record an
+// approver of a template comes from (WF7).
+type Draft = { name: string; need: number; approvers: ActorRef[]; roles?: Record<string, string> };
+
+// roleLabel names a role of a template the way the type does: "Gruppe", or "Leitung von
+// Gruppe" for the responsible persons of its groups.
+function roleLabel(type: TypeDefinition, spec: string, language: string, lead: string) {
+  const responsible = spec.endsWith(".responsible");
+  const name = responsible ? spec.slice(0, -".responsible".length) : spec;
+  const role = type.actors?.find((a) => a.name === name);
+  const label = labelOf(role?.label, language, name);
+  return responsible ? lead.replace("{{role}}", label) : label;
+}
 
 // RequestForm asks for approval: stages one under the other, each with its name, the least
-// number of yes (all by default) and its persons and groups.
+// number of yes (all by default) and its persons and groups. A template (WF7) fills the text
+// and the stages, its roles already resolved; everything may still change.
 function RequestForm({
-  typeName,
+  type,
   id,
   onDone,
   onCancel,
 }: {
-  typeName: string;
+  type: TypeDefinition;
   id: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const typeName = qualifiedName(type);
   const base = useId();
   const [stages, setStages] = useState<Draft[]>([{ name: "", need: 0, approvers: [] }]);
   const [message, setMessage] = useState("");
+  const [template, setTemplate] = useState<ApprovalDraft>();
+  const templates = useQuery({
+    queryKey: ["records", typeName, id, "approval-templates"],
+    queryFn: () => api.approvalTemplates(typeName, id),
+  });
+  const pick = (tid: string) => {
+    const d = templates.data?.find((x) => x.template === tid);
+    setTemplate(d);
+    setMessage(d?.message ?? "");
+    setStages(
+      d
+        ? d.stages.map((s) => ({
+            name: s.name,
+            need: s.need,
+            approvers: s.approvers.map((a) => ({ type: a.type, id: a.id })),
+            roles: Object.fromEntries(
+              s.approvers.filter((a) => a.role).map((a) => [a.id, a.role!]),
+            ),
+          }))
+        : [{ name: "", need: 0, approvers: [] }],
+    );
+  };
   const set = (i: number, patch: Partial<Draft>) =>
     setStages(stages.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const send = useMutation({
     mutationFn: () =>
       api.requestApproval(typeName, id, {
         message,
+        template: template?.template,
         stages: stages.map((s) => ({
           name: s.name,
           need: s.need,
@@ -487,6 +540,28 @@ function RequestForm({
         </h3>
         <span className="text-[12.5px] text-muted-foreground">{t("approvals.requestHint")}</span>
       </div>
+      {(templates.data?.length ?? 0) > 0 && (
+        <div className="flex max-w-md flex-col gap-1">
+          <Label htmlFor={`${base}-tpl`}>{t("approvals.template")}</Label>
+          <select
+            id={`${base}-tpl`}
+            value={template?.template ?? ""}
+            onChange={(e) => pick(e.target.value)}
+            aria-describedby={`${base}-tpl-hint`}
+            className="h-9 rounded-md border border-input bg-card px-2.5 text-sm"
+          >
+            <option value="">{t("approvals.noTemplate")}</option>
+            {templates.data!.map((d) => (
+              <option key={d.template} value={d.template}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          <span id={`${base}-tpl-hint`} className="text-[12.5px] text-muted-foreground">
+            {t("approvals.templateHint")}
+          </span>
+        </div>
+      )}
       {stages.map((s, i) => (
         <fieldset
           key={i}
@@ -540,6 +615,16 @@ function RequestForm({
                 set(i, { approvers, need: s.need >= approvers.length ? 0 : s.need })
               }
             />
+            {s.approvers
+              .filter((a) => s.roles?.[a.id])
+              .map((a) => (
+                <span key={a.id} className="text-[12.5px] text-muted-foreground">
+                  <RefName refTo={a} />{" "}
+                  {t("approvals.fromRole", {
+                    role: roleLabel(type, s.roles![a.id]!, i18n.language, t("approvals.roleLead")),
+                  })}
+                </span>
+              ))}
           </div>
         </fieldset>
       ))}
@@ -560,6 +645,13 @@ function RequestForm({
           className="min-h-16 rounded-md border border-input bg-card px-2.5 py-2 text-sm"
         />
       </div>
+      <p className="text-[12.5px] text-muted-foreground">
+        {template?.remind_days === 0
+          ? t("approvals.remindNone")
+          : template?.remind_days
+            ? t("approvals.remindTemplate", { count: template.remind_days })
+            : t("approvals.remindSetting")}
+      </p>
       {send.isError && (
         <Alert variant="destructive">{t("approvals.error", { detail: detail(send.error) })}</Alert>
       )}

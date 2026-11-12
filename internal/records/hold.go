@@ -106,7 +106,7 @@ func (s *Service) holdBack(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.
 		return false, err
 	}
 	req := ApprovalRequest{Message: h.Message, Stages: []StageRequest{{Need: 1, Approvers: approvers}}}
-	aid, err := s.insertApproval(ctx, tx, t, id, req, changes, actor)
+	aid, err := s.insertApproval(ctx, tx, t, id, old, req, changes, actor)
 	if err != nil {
 		return false, err
 	}

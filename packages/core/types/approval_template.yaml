@@ -1,0 +1,37 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A template of approvals (WF7; Inventar G45; WF-Plan E18) for every type with the trait
+# approvals: the text to the approvers, the stages (core.approval_template_stage) and how many
+# working days lie between reminders. Whoever asks for approval may start from it in the tab
+# "Genehmigung"; a rule names it with the action approval (template).
+name: approval_template
+label: {de: Genehmigungsvorlage, en: Approval template}
+title_field: name
+traits: [history]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    unique: true
+    searchable: true
+    max_length: 200
+  - name: message
+    type: text
+    label: {de: Text an die Genehmiger, en: Text to the approvers}
+    translatable: true
+    max_length: 2000
+  - name: remind_days
+    type: number
+    label: {de: Erinnerung alle … Arbeitstage, en: Reminder every … working days}
+    description:
+      de: "Leer: die Einstellung approvals.remind_days der Organisationseinheit (Vorgabe 2). 0 heißt: keine Erinnerung."
+      en: "Empty: the setting approvals.remind_days of the unit (default 2). 0 means no reminder."
+    min: 0
+    max: 60
+  - name: active
+    type: boolean
+    label: {de: Aktiv, en: Active}
+    required: true
+    default: true

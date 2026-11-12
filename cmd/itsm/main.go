@@ -215,6 +215,18 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	// SLA clocks (WF9): they move in the transaction of the write, a job waits for each
 	// deadline; working time comes from the calendars (WF8).
 	calendars := calendar.New(rec, orgSvc.Setting)
+	// Reminders of open approvals (WF7) count working days in the calendar of the record's unit,
+	// without one calendar days; a job every minute reminds the stages due.
+	rec.WorkingDays = func(ctx context.Context, path string, from time.Time, days int) (time.Time, error) {
+		c, _, err := calendars.ForNode(ctx, path)
+		if err != nil || c == nil {
+			return from.AddDate(0, 0, days), err
+		}
+		return c.AddDays(from, days)
+	}
+	if err := records.RegisterRemindJob(js, rec, logger); err != nil {
+		return err
+	}
 	slaSvc := sla.New(rt, rec, calendars, js, kv, logger)
 	slaSvc.Register(js)
 	// Escalation levels are rules with the trigger clock (WF10).
@@ -239,7 +251,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		notifySvc.Register(js)
 		ev.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
 	}
-	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec))
+	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec))
 	// The text modules (SD8) fill in their placeholders like the notifications.
 	snippetSvc := snippets.New(rec)
 	snippetSvc.PublicURL = cfg.PublicURL

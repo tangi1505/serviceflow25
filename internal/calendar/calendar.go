@@ -156,3 +156,27 @@ func (c *Calendar) Between(a, b time.Time) (time.Duration, error) {
 	}
 	return sum, nil
 }
+
+// AddDays returns the moment at the time of day of start on the n-th working day after the day
+// of start: a day with working hours that is no holiday (WF7: a reminder two working days
+// later, Thursday 10:05 to Monday 10:05). n of zero or less returns start.
+func (c *Calendar) AddDays(start time.Time, n int) (time.Time, error) {
+	if err := c.normalise(); err != nil {
+		return time.Time{}, err
+	}
+	if n <= 0 {
+		return start, nil
+	}
+	cur := start.In(c.Location)
+	date := time.Date(cur.Year(), cur.Month(), cur.Day(), 0, 0, 0, 0, c.Location)
+	for range maxDays {
+		date = date.AddDate(0, 0, 1)
+		if len(c.day(date)) == 0 {
+			continue
+		}
+		if n--; n == 0 {
+			return time.Date(date.Year(), date.Month(), date.Day(), cur.Hour(), cur.Minute(), cur.Second(), 0, c.Location), nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("%w in the next ten years", ErrNoHours)
+}

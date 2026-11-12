@@ -53,10 +53,11 @@ const TypeNotification = "core.notification"
 // goes to the recipients the rule names. comment is a new entry of the timeline (PL42); the
 // approvals bring a stage that asks, a decision and the end of an approval (WF6).
 var Kinds = []string{"create", "update", "transition", "trash", "restore", "breach", "escalation", records.EventComment,
-	records.EventApprovalRequest, records.EventApprovalDecision, records.EventApproval}
+	records.EventApprovalRequest, records.EventApprovalDecision, records.EventApproval, records.EventApprovalReminder}
 
 // RecipientApprovers names, as a recipient, the persons and groups a stage asks: those of the
-// event approval_request (WF6).
+// event approval_request (WF6), or those not decided yet of a reminder (approval_reminder,
+// WF7); with them whoever stands in for them now.
 const RecipientApprovers = "approvers"
 
 // MaxAttempts bounds the attempts of one mail.
@@ -369,6 +370,7 @@ func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, er
 		}
 	}
 	for _, target := range targets {
+		mark := len(out)
 		var refs []string
 		if target == RecipientApprovers {
 			// The persons and groups the stage of the event asks (WF6).
@@ -417,6 +419,16 @@ func (s *Service) Recipients(ctx context.Context, a FanoutArgs) ([]uuid.UUID, er
 				for _, m := range members {
 					addPerson(m)
 				}
+			}
+		}
+		if target == RecipientApprovers {
+			// Whoever stands in for one asked decides for her now, so she hears of it too (WF7).
+			subs, err := s.substitutes(ctx, out[mark:])
+			if err != nil {
+				return nil, err
+			}
+			for _, p := range subs {
+				addPerson(p)
 			}
 		}
 	}
@@ -584,6 +596,19 @@ func (s *Service) leads(ctx context.Context, refs []string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// substitutes are the persons who stand in for one of the persons now (WF6, WF7).
+func (s *Service) substitutes(ctx context.Context, persons []uuid.UUID) ([]uuid.UUID, error) {
+	if len(persons) == 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Tenant(ctx).Query(ctx, `SELECT DISTINCT substitute_id FROM substitute
+WHERE person_id = ANY($1::uuid[]) AND valid_from <= now() AND (valid_until IS NULL OR valid_until > now())`, persons)
+	if err != nil {
+		return nil, fmt.Errorf("notify: substitutes: %w", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
 }
 
 func (s *Service) members(ctx context.Context, group uuid.UUID) ([]uuid.UUID, error) {

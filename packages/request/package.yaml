@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # The request (SD6; SD-Plan E14; IP30): something a person asks for, with the trait ticket of
-# the base package sd, a running number REQ-…, approval in the stages its template names and
-# the tasks of its fulfilment from the same template.
+# the base package sd, a running number REQ-…, approval from the approval template its
+# fulfilment template names (WF7) and the tasks of its fulfilment from the same template.
 name: request
-version: 0.2.0
+version: 0.3.0
 label:
   de: Anfragen
   en: Requests

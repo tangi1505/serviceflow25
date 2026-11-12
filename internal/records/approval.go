@@ -79,6 +79,10 @@ type Approval struct {
 	// Changes is a change of the record that waits for this approval (SD17, SD-Plan N22): the
 	// fields as they were sent; written once the approval is given.
 	Changes map[string]any `json:"changes,omitempty"`
+	// Template is the template the approval was asked from, RemindDays its working days
+	// between reminders; without, the setting of the record's node holds (WF7).
+	Template   *uuid.UUID `json:"template,omitempty"`
+	RemindDays *int       `json:"remind_days,omitempty"`
 	// requestedBy is the account that asked: the actor of the change once it is written.
 	requestedBy *uuid.UUID
 }
@@ -90,6 +94,11 @@ type ApprovalStage struct {
 	Need     int            `json:"need"`
 	State    string         `json:"state"`
 	Steps    []ApprovalStep `json:"steps"`
+	// Reminders counts the reminders of the stage, RemindedAt is the last, RemindAt the next
+	// one while the stage is open (WF7).
+	Reminders  int        `json:"reminders"`
+	RemindedAt *time.Time `json:"reminded_at,omitempty"`
+	RemindAt   *time.Time `json:"remind_at,omitempty"`
 }
 
 // ApprovalStep is the question to one person or group. Mine says the session may answer it
@@ -114,9 +123,14 @@ type StageRequest struct {
 }
 
 // ApprovalRequest asks for approval: the stages in their order and a text to the approvers.
+// Template names the template it comes from (WF7): the approval takes over its working days
+// between reminders.
 type ApprovalRequest struct {
-	Message string         `json:"message"`
-	Stages  []StageRequest `json:"stages"`
+	Message  string         `json:"message"`
+	Stages   []StageRequest `json:"stages"`
+	Template *uuid.UUID     `json:"template,omitempty"`
+	// remindDays are the working days of the template, read by the service.
+	remindDays *int
 }
 
 func (s *Service) approvalType(ctx context.Context, typeName string) (meta.Type, error) {
@@ -144,7 +158,7 @@ func (s *Service) Approvals(ctx context.Context, typeName string, id uuid.UUID) 
 
 // approvalsOf reads the approvals of a record, or the one approval only.
 func (s *Service) approvalsOf(ctx context.Context, db querier, t meta.Type, id, only uuid.UUID) ([]Approval, error) {
-	rows, err := db.Query(ctx, `SELECT id, state, stage, message, requester, requested_at, finished_at, changes, requested_by FROM approval
+	rows, err := db.Query(ctx, `SELECT id, state, stage, message, requester, requested_at, finished_at, changes, requested_by, template_id, remind_days FROM approval
 WHERE type_name = $1 AND record_id = $2 AND ($3::uuid = '00000000-0000-0000-0000-000000000000' OR id = $3)
 ORDER BY requested_at DESC, id DESC`, t.QualifiedName(), id, only)
 	if err != nil {
@@ -153,7 +167,7 @@ ORDER BY requested_at DESC, id DESC`, t.QualifiedName(), id, only)
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Approval, error) {
 		var a Approval
 		var changes []byte
-		err := row.Scan(&a.ID, &a.State, &a.Stage, &a.Message, &a.Requester, &a.RequestedAt, &a.FinishedAt, &changes, &a.requestedBy)
+		err := row.Scan(&a.ID, &a.State, &a.Stage, &a.Message, &a.Requester, &a.RequestedAt, &a.FinishedAt, &changes, &a.requestedBy, &a.Template, &a.RemindDays)
 		if err == nil && len(changes) > 0 {
 			err = json.Unmarshal(changes, &a.Changes)
 		}
@@ -172,7 +186,7 @@ ORDER BY requested_at DESC, id DESC`, t.QualifiedName(), id, only)
 		at[a.ID] = i
 		list[i].Stages = []ApprovalStage{}
 	}
-	rows, err = db.Query(ctx, `SELECT approval_id, position, name, need, state FROM approval_stage
+	rows, err = db.Query(ctx, `SELECT approval_id, position, name, need, state, reminders, reminded_at, remind_at FROM approval_stage
 WHERE approval_id = ANY($1::uuid[]) ORDER BY approval_id, position`, ids)
 	if err != nil {
 		return nil, fmt.Errorf("records: approval stages: %w", err)
@@ -183,7 +197,7 @@ WHERE approval_id = ANY($1::uuid[]) ORDER BY approval_id, position`, ids)
 	}
 	stages, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (stageRow, error) {
 		var r stageRow
-		err := row.Scan(&r.approval, &r.stage.Position, &r.stage.Name, &r.stage.Need, &r.stage.State)
+		err := row.Scan(&r.approval, &r.stage.Position, &r.stage.Name, &r.stage.Need, &r.stage.State, &r.stage.Reminders, &r.stage.RemindedAt, &r.stage.RemindAt)
 		r.stage.Steps = []ApprovalStep{}
 		return r, err
 	})
@@ -323,6 +337,9 @@ func (s *Service) RequestApproval(ctx context.Context, typeName string, id uuid.
 	if err := s.checkApprovalRequest(ctx, req); err != nil {
 		return Approval{}, err
 	}
+	if err := s.templateOf(ctx, &req); err != nil {
+		return Approval{}, err
+	}
 	var aid uuid.UUID
 	var asked []Ref
 	err = s.tx(ctx, func(tx pgx.Tx) error {
@@ -350,7 +367,7 @@ func (s *Service) RequestApproval(ctx context.Context, typeName string, id uuid.
 		if open > 0 {
 			return fmt.Errorf("%w: %s %s has an open approval; withdraw it first", ErrConflict, t.QualifiedName(), id)
 		}
-		if aid, err = s.insertApproval(ctx, tx, t, id, req, nil, actor); err != nil {
+		if aid, err = s.insertApproval(ctx, tx, t, id, rec, req, nil, actor); err != nil {
 			return err
 		}
 		asked = req.Stages[0].Approvers
@@ -365,24 +382,28 @@ func (s *Service) RequestApproval(ctx context.Context, typeName string, id uuid.
 	return s.oneApproval(ctx, t, id, aid)
 }
 
-// insertApproval writes an approval with its stages and questions, the first stage asked;
-// changes, when set, is a change of the record that waits for it (SD-Plan N22).
-func (s *Service) insertApproval(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.UUID, req ApprovalRequest, changes []byte, actor Actor) (uuid.UUID, error) {
+// insertApproval writes an approval with its stages and questions, the first stage asked
+// with the moment of its first reminder (WF7); changes, when set, is a change of the record
+// that waits for it (SD-Plan N22).
+func (s *Service) insertApproval(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.UUID, rec Record, req ApprovalRequest, changes []byte, actor Actor) (uuid.UUID, error) {
 	aid, err := uuid.NewV7()
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO approval (id, type_name, record_id, state, stage, message, requested_by, requester, changes)
-VALUES ($1, $2, $3, 'open', 1, $4, $5, $6, $7)`, aid, t.QualifiedName(), id, strings.TrimSpace(req.Message), nullActor(actor), authz.From(ctx).Me(), changes); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO approval (id, type_name, record_id, state, stage, message, requested_by, requester, changes, template_id, remind_days)
+VALUES ($1, $2, $3, 'open', 1, $4, $5, $6, $7, $8, $9)`, aid, t.QualifiedName(), id, strings.TrimSpace(req.Message), nullActor(actor), authz.From(ctx).Me(), changes,
+		req.Template, req.remindDays); err != nil {
 		return uuid.Nil, fmt.Errorf("records: approval: %w", err)
 	}
 	for i, st := range req.Stages {
 		state := stepWaiting
+		var remind *time.Time
 		if i == 0 {
 			state = approvalOpen
+			remind = s.remindAt(ctx, rec, req.remindDays, time.Now())
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO approval_stage (approval_id, position, name, need, state) VALUES ($1, $2, $3, $4, $5)`,
-			aid, i+1, strings.TrimSpace(st.Name), st.Need, state); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO approval_stage (approval_id, position, name, need, state, remind_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+			aid, i+1, strings.TrimSpace(st.Name), st.Need, state, remind); err != nil {
 			return uuid.Nil, fmt.Errorf("records: approval stage: %w", err)
 		}
 		for j, ref := range st.Approvers {
@@ -521,7 +542,8 @@ func (s *Service) Decide(ctx context.Context, typeName string, id, approvalID uu
 				if _, err := q.Exec(ctx, `UPDATE approval SET stage = $2 WHERE id = $1`, ap.ID, ap.Stage+1); err != nil {
 					return fmt.Errorf("records: decide: %w", err)
 				}
-				if _, err := q.Exec(ctx, `UPDATE approval_stage SET state = 'open' WHERE approval_id = $1 AND position = $2`, ap.ID, ap.Stage+1); err != nil {
+				if _, err := q.Exec(ctx, `UPDATE approval_stage SET state = 'open', remind_at = $3 WHERE approval_id = $1 AND position = $2`,
+					ap.ID, ap.Stage+1, s.remindAt(ctx, rec, ap.RemindDays, time.Now())); err != nil {
 					return fmt.Errorf("records: decide: %w", err)
 				}
 				if _, err := q.Exec(ctx, `UPDATE approval_step SET state = 'open', asked_at = now() WHERE approval_id = $1 AND stage = $2`, ap.ID, ap.Stage+1); err != nil {

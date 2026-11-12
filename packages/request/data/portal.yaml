@@ -33,3 +33,13 @@
     recipients: approvers
     subject: "[{{record.number}}] Bitte genehmigen: {{title}}"
     body: "Sie sind gefragt, die Anfrage „{{title}}“ zu genehmigen. Zustimmen oder ablehnen können Sie hier: {{link}}"
+# The reminder while a stage is open (WF7): to those who have not decided yet.
+- key: approval_reminder_mail
+  type: core.notification
+  values:
+    name: Erinnerung an Genehmigung
+    target_type: request.request
+    events: approval_reminder
+    recipients: approvers
+    subject: "[{{record.number}}] Erinnerung: Bitte genehmigen: {{title}}"
+    body: "Die Anfrage „{{title}}“ wartet noch auf Ihre Genehmigung. Zustimmen oder ablehnen können Sie hier: {{link}}"

@@ -1,0 +1,46 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A stage of a template of approvals (WF7; WF-Plan E18): persons and groups asked at once, and
+# roles of the record, resolved to whoever holds them when the approval is asked. At least
+# "Nötige Zustimmungen" of them agree (0: all). The stages run in their order; a stage without
+# anybody is left out.
+name: approval_template_stage
+label: {de: Stufe der Genehmigungsvorlage, en: Stage of an approval template}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: template
+    type: reference
+    label: {de: Genehmigungsvorlage, en: Approval template}
+    to: core.approval_template
+    required: true
+  - name: name
+    type: text
+    label: {de: Name der Stufe, en: Name of the stage}
+    required: true
+    max_length: 200
+  - name: need
+    type: number
+    label: {de: Nötige Zustimmungen, en: Approvals needed}
+    description:
+      de: 0 heißt alle.
+      en: 0 means all.
+    min: 0
+    max: 50
+    default: 0
+  - name: position
+    type: number
+    label: {de: Reihenfolge, en: Order}
+    default: 100
+  - name: roles
+    type: text
+    label: {de: Rollen des Vorgangs, en: Roles of the record}
+    description:
+      de: "actors.<Rolle> (wer die Rolle hat) oder actors.<Rolle>.responsible (die Verantwortlichen der Gruppen in der Rolle), etwa actors.assignee_group.responsible; durch Komma getrennt"
+      en: "actors.<role> (who holds the role) or actors.<role>.responsible (the responsible persons of the groups in the role), e.g. actors.assignee_group.responsible; separated by commas"
+    max_length: 500
+actors:
+  - name: approvers
+    label: {de: Personen und Gruppen, en: Persons and groups}
+    to: [core.person, core.group]

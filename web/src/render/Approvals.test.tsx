@@ -287,6 +287,82 @@ describe("Approvals", () => {
     expect(await within(panel).findByText("Stufe 1 von 1 · Fachliche Prüfung")).toBeInTheDocument();
   });
 
+  // WF7 (WF-Plan E18): a template fills the text and the stages, a role shows where its
+  // person comes from, the stages may still change; the request names the template. A stage
+  // shows how often it reminded and when it reminds next.
+  it("asks from a template and shows the reminders", async () => {
+    const user = userEvent.setup();
+    state.approvalTemplates = {
+      [order]: [
+        {
+          template: "0190a000-0000-7000-7000-000000000001",
+          name: "Software mit Lizenzkosten",
+          message: "Bitte genehmigen Sie die Lizenzkosten.",
+          remind_days: 1,
+          stages: [
+            {
+              name: "Fachliche Freigabe",
+              need: 1,
+              approvers: [{ type: "core.person", id: lead, role: "group.responsible" }],
+            },
+            { name: "Lizenzmanagement", need: 0, approvers: [{ type: "core.person", id: sec }] },
+          ],
+        },
+      ],
+    };
+    renderAt(`/types/probe.order/${order}`);
+    await user.click(await screen.findByRole("tab", { name: "Genehmigung" }));
+    const panel = screen.getByRole("tabpanel");
+    await user.click(await within(panel).findByRole("button", { name: "Genehmigung anfordern" }));
+    await user.selectOptions(
+      await within(panel).findByLabelText("Vorlage"),
+      "Software mit Lizenzkosten",
+    );
+    expect(within(panel).getByLabelText("Text an die Genehmiger")).toHaveValue(
+      "Bitte genehmigen Sie die Lizenzkosten.",
+    );
+    expect(
+      within(panel)
+        .getAllByLabelText("Name der Stufe")
+        .map((x) => (x as HTMLInputElement).value),
+    ).toEqual(["Fachliche Freigabe", "Lizenzmanagement"]);
+    expect(within(panel).getByText(/aus der Rolle Leitung von group/)).toBeInTheDocument();
+    expect(
+      within(panel).getByText(/Erinnerung jeden Arbeitstag \(aus der Vorlage\)/),
+    ).toBeInTheDocument();
+    await expectAccessible(panel);
+    await user.click(within(panel).getByRole("button", { name: "Anfordern" }));
+    await waitFor(() =>
+      expect(state.calls.some((c) => c.method === "POST" && c.path.endsWith("/approvals"))).toBe(
+        true,
+      ),
+    );
+    const post = state.calls.find((c) => c.method === "POST" && c.path.endsWith("/approvals"))!;
+    expect(JSON.parse(post.body!)).toMatchObject({
+      template: "0190a000-0000-7000-7000-000000000001",
+      message: "Bitte genehmigen Sie die Lizenzkosten.",
+      stages: [
+        { name: "Fachliche Freigabe", need: 1, approvers: [{ type: "core.person", id: lead }] },
+        { name: "Lizenzmanagement", need: 0, approvers: [{ type: "core.person", id: sec }] },
+      ],
+    });
+  });
+
+  it("shows how often a stage reminded", async () => {
+    const a = running();
+    a.stages[1]!.reminders = 2;
+    a.stages[1]!.reminded_at = "2026-11-17T09:05:00Z";
+    a.stages[1]!.remind_at = "2026-11-19T09:05:00Z";
+    state.approvals = { [order]: [a] };
+    const user = userEvent.setup();
+    renderAt(`/types/probe.order/${order}`);
+    await user.click(await screen.findByRole("tab", { name: "Genehmigung" }));
+    const panel = screen.getByRole("tabpanel");
+    expect(
+      await within(panel).findByText(/Erinnert: 2-mal, zuletzt .* · nächste Erinnerung/),
+    ).toBeInTheDocument();
+  });
+
   it("lists what is to approve, in the workspace and as the area of the portal", async () => {
     state.approvals = { [order]: [running()] };
     state.myApprovals = {

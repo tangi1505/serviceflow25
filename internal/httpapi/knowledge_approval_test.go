@@ -38,7 +38,7 @@ func TestKnowledgeApprovalOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/knowledge", 9}} {
+	}{{"../../packages/sd", 28}, {"../../packages/knowledge", 10}} {
 		p := installPackage(t, ctx, admin.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)

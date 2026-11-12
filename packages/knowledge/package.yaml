@@ -7,7 +7,7 @@
 # suggested at tickets, rated and commented on (SD18); published and changed only with the
 # approval of the editors (SD17).
 name: knowledge
-version: 0.6.0
+version: 0.7.0
 label:
   de: Wissen
   en: Knowledge
