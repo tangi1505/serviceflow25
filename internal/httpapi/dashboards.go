@@ -71,3 +71,39 @@ func (s *server) WidgetData(w http.ResponseWriter, r *http.Request, id gen.Id, w
 	}
 	writeJSON(w, http.StatusOK, d)
 }
+
+func (s *server) SidebarWidgets(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id) {
+	if !s.dashboardsReady(w, r) {
+		return
+	}
+	list, err := s.o.Dashboards.Sidebar(r.Context(), typeName, id)
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (s *server) SidebarWidgetData(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id, widgetID gen.WidgetId) {
+	if !s.dashboardsReady(w, r) {
+		return
+	}
+	d, err := s.o.Dashboards.SidebarData(r.Context(), typeName, id, widgetID)
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
+}
+
+func (s *server) TileData(w http.ResponseWriter, r *http.Request, id gen.Id) {
+	if !s.dashboardsReady(w, r) {
+		return
+	}
+	d, err := s.o.Dashboards.TileData(r.Context(), id)
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
+}

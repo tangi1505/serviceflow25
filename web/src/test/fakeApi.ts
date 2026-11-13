@@ -370,6 +370,10 @@ export type FakeState = {
   dashboards?: { dashboard: RecordData; widgets: RecordData[]; editable: boolean }[];
   widgetData?: Record<string, Record<string, unknown>>;
   dashboardInvalid?: { field: string; code: string; message: string }[];
+  // sidebarWidgets stand in the sidebar of every record; tileData is the number of a tile by id
+  // (UI13b).
+  sidebarWidgets?: RecordData[];
+  tileData?: Record<string, Record<string, unknown>>;
   // workplace false makes the session a user of the portal (UI10); personId is its person.
   workplace?: boolean;
   personId?: string;
@@ -480,6 +484,19 @@ export function fakeApi(state: FakeState) {
     }
     if (url.pathname === "/api/v1/version") {
       return json(200, { version: "test" });
+    }
+    // Widgets in the sidebar of a record and the numbers of tiles (UI13b).
+    const sidebar = url.pathname.match(
+      /^\/api\/v1\/records\/([^/]+)\/([^/]+)\/widgets(?:\/([^/]+)\/data)?$/,
+    );
+    if (sidebar) {
+      return sidebar[3]
+        ? json(200, state.widgetData?.[sidebar[3]] ?? { kind: "number", value: 0 })
+        : json(200, state.sidebarWidgets ?? []);
+    }
+    const tileData = url.pathname.match(/^\/api\/v1\/portal\/tiles\/([^/]+)\/data$/);
+    if (tileData) {
+      return json(200, state.tileData?.[tileData[1]!] ?? { kind: "number", value: 0 });
     }
     if (url.pathname === "/api/v1/auth/login") {
       const body = JSON.parse(bodyText) as { username: string; password: string };

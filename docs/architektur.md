@@ -275,7 +275,10 @@ E34 und KF9:
   `internal/dashboard` rechnet ein Widget als JSON-Abfrage mit den Rechten der Person, die es
   ansieht, eingeschränkt durch Zeitraum und Einheit des Dashboards; gelesen werden die Widgets
   mit Systemrechten, sobald das Dashboard lesbar ist, geschrieben werden sie nur zusammen über
-  `PUT /api/v1/dashboards/{id}`, wenn man das Dashboard ändern darf.
+  `PUT /api/v1/dashboards/{id}`, wenn man das Dashboard ändern darf. Ein Widget mit
+  `sidebar_type` steht in der Seitenleiste jedes Datensatzes dieses Typs (für wer das
+  Dashboard liest), `@record` und `@record.feld` in seiner Bedingung nehmen den gezeigten
+  Datensatz; eine Kachel des Portals zeigt die Zahl eines Widgets mit den Rechten der Person.
 - **Zuweisung:** Person oder Gruppe bekommt eine Rolle für einen Knoten des Organisationsbaums.
   Regeln weisen das bei der Anmeldung aus LDAP- oder OIDC-Gruppen zu (G121).
 - **Übersetzung:** Je Person und Typ entsteht einmal eine SQL-Bedingung plus eine Liste erlaubter

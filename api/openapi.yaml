@@ -643,6 +643,54 @@ paths:
               schema: { $ref: "#/components/schemas/WidgetData" }
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/records/{typeName}/{id}/widgets:
+    get:
+      operationId: sidebarWidgets
+      summary: The widgets in the sidebar of a record the session reads, of the dashboards the session reads, by title (UI13b)
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: the widgets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Record" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/records/{typeName}/{id}/widgets/{widgetId}/data:
+    post:
+      operationId: sidebarWidgetData
+      summary: What a widget of the sidebar shows for the record, with the rights of the session; @record and @record.field take the record (UI13b)
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/typeName"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/widgetId"
+      responses:
+        "200":
+          description: the data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WidgetData" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/portal/tiles/{id}/data:
+    post:
+      operationId: tileData
+      summary: The number of a tile of the kind dashboard the session sees in the portal, with her rights (UI13b)
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: the data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WidgetData" }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/v1/settings/definitions:
     get:
       operationId: listSettingDefinitions
@@ -4155,6 +4203,7 @@ components:
         columns:
           type: array
           items: { type: string }
+        sidebar_only: { type: boolean, description: "the widget names @record and counts only in the sidebar of a record" }
     SettingOption:
       type: object
       required: [value, label]

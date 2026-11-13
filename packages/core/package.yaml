@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.7.0
+version: 0.8.0
 label:
   de: Kern
   en: Core

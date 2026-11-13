@@ -417,6 +417,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{typeName}/{id}/widgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The widgets in the sidebar of a record the session reads, of the dashboards the session reads, by title (UI13b) */
+        get: operations["sidebarWidgets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{typeName}/{id}/widgets/{widgetId}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What a widget of the sidebar shows for the record, with the rights of the session; @record and @record.field take the record (UI13b) */
+        post: operations["sidebarWidgetData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/tiles/{id}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The number of a tile of the kind dashboard the session sees in the portal, with her rights (UI13b) */
+        post: operations["tileData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/definitions": {
         parameters: {
             query?: never;
@@ -3309,6 +3360,8 @@ export interface components {
             }[];
             items?: components["schemas"]["Record"][];
             columns?: string[];
+            /** @description the widget names @record and counts only in the sidebar of a record */
+            sidebar_only?: boolean;
         };
         SettingOption: {
             /** @description the value: a text for a choice, a number or text for the cells of a matrix */
@@ -4785,6 +4838,81 @@ export interface operations {
             };
             404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
+        };
+    };
+    sidebarWidgets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the widgets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Record"][];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
+    };
+    sidebarWidgetData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description qualified type name, package.type */
+                typeName: components["parameters"]["typeName"];
+                id: components["parameters"]["id"];
+                widgetId: components["parameters"]["widgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetData"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    tileData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetData"];
+                };
+            };
+            404: components["responses"]["Problem"];
         };
     };
     listSettingDefinitions: {

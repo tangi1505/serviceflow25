@@ -489,7 +489,8 @@
     "readNoHits": "Nichts gefunden.",
     "changedOn": "zuletzt geändert am {{time}}",
     "readHelp": "Hilft das nicht weiter?",
-    "order": "Bestellen"
+    "order": "Bestellen",
+    "tileNumber": "Kennzahl"
   },
   "builder": {
     "section": "Abschnitt {{n}}",
@@ -1096,6 +1097,11 @@
     "removeWidget": "Widget entfernen",
     "new": "Neues Dashboard",
     "newName": "Neues Dashboard",
-    "newFailed": "Anlegen nicht möglich; dafür fehlt das Recht."
+    "newFailed": "Anlegen nicht möglich; dafür fehlt das Recht.",
+    "sidebarOnly": "Zählt nur in der Seitenleiste eines Datensatzes von {{type}}.",
+    "sidebarType": "Auch in der Seitenleiste von",
+    "noSidebar": "– nur im Dashboard –",
+    "queryJson": "Bedingung (JSON)",
+    "queryHint": "Wie die where der JSON-Abfrage, etwa {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In der Seitenleiste steht @record für den gezeigten Datensatz, @record.feld für ein Feld von ihm."
   }
 }

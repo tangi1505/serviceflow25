@@ -378,6 +378,22 @@ export const api = {
         body: filters,
       }),
     ),
+  // The widgets in the sidebar of a record and what they show for it; the number of a tile
+  // of the portal (UI13b).
+  sidebarWidgets: async (typeName: string, id: string) =>
+    unwrap(
+      await client.GET("/api/v1/records/{typeName}/{id}/widgets", {
+        params: { path: { typeName, id } },
+      }),
+    ),
+  sidebarWidgetData: async (typeName: string, id: string, widgetId: string) =>
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}/widgets/{widgetId}/data", {
+        params: { path: { typeName, id, widgetId } },
+      }),
+    ),
+  tileData: async (id: string) =>
+    unwrap(await client.POST("/api/v1/portal/tiles/{id}/data", { params: { path: { id } } })),
   // settingDefinitions are the settings the installed packages declare (SD20).
   settingDefinitions: async () => unwrap(await client.GET("/api/v1/settings/definitions")),
   unsetOrgSetting: async (path: string, key: string) => {

@@ -33,6 +33,7 @@ fields:
       - {value: area, label: {de: Bereich, en: Area}}
       - {value: record, label: {de: Datensatz, en: Record}}
       - {value: link, label: {de: Link, en: Link}}
+      - {value: dashboard, label: {de: Kennzahl aus einem Dashboard, en: Number from a dashboard}}
   - name: form
     type: reference
     label: {de: Formular, en: Form}
@@ -51,6 +52,12 @@ fields:
     label: {de: Adresse, en: Address}
     description: {de: "Beginnt mit https:// oder http://; öffnet sich in einem neuen Fenster", en: "Starts with https:// or http://; opens in a new window"}
     max_length: 2000
+  # A number of a dashboard (UI13b, UI-Plan E39): a widget of the kind number, computed with
+  # the rights of the person who sees the tile.
+  - name: widget
+    type: reference
+    label: {de: Widget, en: Widget}
+    to: core.dashboard_widget
   - name: position
     type: number
     label: {de: Reihenfolge, en: Order}
@@ -76,16 +83,19 @@ actors:
 field_states:
   - when: record.kind == "form"
     required: [form]
-    hidden: [target_type, target_id, url]
+    hidden: [target_type, target_id, url, widget]
   - when: record.kind == "create" || record.kind == "area"
     required: [target_type]
-    hidden: [form, target_id, url]
+    hidden: [form, target_id, url, widget]
   - when: record.kind == "record"
     required: [target_type, target_id]
-    hidden: [form, url]
+    hidden: [form, url, widget]
   - when: record.kind == "link"
     required: [url]
-    hidden: [form, target_type, target_id]
+    hidden: [form, target_type, target_id, widget]
+  - when: record.kind == "dashboard"
+    required: [widget]
+    hidden: [form, target_type, target_id, url]
 # Who sees it in the portal: as at the article (SD-Plan E8, N12).
 readers:
   - when: record.active == true && record.audience == "all"

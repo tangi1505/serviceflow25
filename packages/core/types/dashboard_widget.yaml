@@ -106,6 +106,14 @@ fields:
     format: rich
     translatable: true
     max_length: 20000
+  # Also in the sidebar of every record of a type (UI13b, UI-Plan E39), for those who may read
+  # the dashboard; its condition may name the record shown as @record or one of its fields as
+  # @record.field.
+  - name: sidebar_type
+    type: text
+    label: {de: Auch in der Seitenleiste von, en: Also in the sidebar of}
+    description: {de: "Typ mit Paket, etwa core.person; in der Bedingung steht @record für den gezeigten Datensatz, @record.feld für ein Feld von ihm", en: "Type with its package, e.g. core.person; in the condition @record stands for the record shown, @record.field for one of its fields"}
+    max_length: 130
   - name: x
     type: number
     label: {de: Spalte, en: Column}

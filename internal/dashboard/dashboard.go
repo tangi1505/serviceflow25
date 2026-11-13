@@ -33,7 +33,13 @@ const (
 	TypeDashboard = "core.dashboard"
 	TypeWidget    = "core.dashboard_widget"
 	typeSearch    = "core.saved_search"
+	// TypeTile is the tile of the portal; its kind dashboard shows a number (UI13b).
+	TypeTile = "core.portal_tile"
 )
+
+// recordRef is the value of a condition that stands for the record shown in the sidebar
+// (UI13b): "@record" is its id, "@record.field" one of its fields.
+const recordRef = "@record"
 
 // Kinds of widgets.
 const (
@@ -236,10 +242,36 @@ func (s *Service) Save(ctx context.Context, id uuid.UUID, version int64, fields 
 // Check is the RecordCheck of the widgets: what a kind needs, a source that runs, fields the
 // type has. It runs the condition once with the rights of the writer.
 func (s *Service) Check(ctx context.Context, t meta.Type, r map[string]any) []records.Problem {
-	if t.QualifiedName() != TypeWidget {
+	switch t.QualifiedName() {
+	case TypeWidget:
+		return s.checkWidget(ctx, r)
+	case TypeTile:
+		return s.checkTile(ctx, r)
+	}
+	return nil
+}
+
+// checkTile wants a widget of the kind number behind a tile of the kind dashboard (UI13b).
+func (s *Service) checkTile(ctx context.Context, r map[string]any) []records.Problem {
+	if kind, _ := r["kind"].(string); kind != "dashboard" {
 		return nil
 	}
-	return s.checkWidget(ctx, r)
+	raw, _ := r["widget"].(string)
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return nil // the field state makes it required
+	}
+	w, err := s.rec.Get(system(ctx), TypeWidget, id)
+	if err != nil {
+		return []records.Problem{{Field: "widget", Code: "unknown", Message: "no widget with this id"}}
+	}
+	if w["kind"] != KindNumber {
+		return []records.Problem{{Field: "widget", Code: "invalid", Message: "a tile shows a widget of the kind number"}}
+	}
+	if st, _ := w["sidebar_type"].(string); st != "" && strings.Contains(fmt.Sprint(w["query"]), recordRef) {
+		return []records.Problem{{Field: "widget", Code: "invalid", Message: "a widget with @record needs the record of a sidebar"}}
+	}
+	return nil
 }
 
 func (s *Service) checkWidget(ctx context.Context, r map[string]any) []records.Problem {
@@ -258,6 +290,28 @@ func (s *Service) checkWidget(ctx context.Context, r map[string]any) []records.P
 			return verr.Problems
 		}
 		add("saved_search", "invalid", err.Error())
+		return ps
+	}
+	// The sidebar (UI13b): a type the widget also stands at, and @record in its condition only
+	// there; checked against a record of that type with empty values.
+	sidebar, _ := r["sidebar_type"].(string)
+	if sidebar != "" {
+		st, err := s.rec.Type(ctx, sidebar)
+		if err != nil {
+			add("sidebar_type", "unknown", fmt.Sprintf("type %s is not installed", sidebar))
+			return ps
+		}
+		if bytes := string(src.where); strings.Contains(bytes, recordRef) {
+			sample := sampleRecord(st)
+			where, err := substitute(src.where, sample)
+			if err != nil {
+				add("query", "invalid", err.Error())
+				return ps
+			}
+			src.where = where
+		}
+	} else if strings.Contains(string(src.where), recordRef) {
+		add("query", "invalid", "@record names the record shown in a sidebar; set sidebar_type")
 		return ps
 	}
 	if len(src.where) > 0 {
@@ -403,6 +457,8 @@ type Data struct {
 	Points  []Point          `json:"points,omitempty"`
 	Items   []records.Record `json:"items,omitempty"`
 	Columns []string         `json:"columns,omitempty"`
+	// SidebarOnly says the widget names @record and counts only in the sidebar of a record.
+	SidebarOnly bool `json:"sidebar_only,omitempty"`
 }
 
 // Data computes a widget of a dashboard the session may read, with the session's rights.
@@ -417,11 +473,173 @@ func (s *Service) Data(ctx context.Context, dashboardID, widgetID uuid.UUID, f F
 	if fmt.Sprint(w["dashboard"]) != dashboardID.String() {
 		return Data{}, fmt.Errorf("widget %s of dashboard %s: %w", widgetID, dashboardID, records.ErrNotFound)
 	}
-	return s.compute(ctx, w, f)
+	return s.compute(ctx, w, f, nil)
 }
 
-// compute runs the query of a widget with the rights of ctx.
-func (s *Service) compute(ctx context.Context, w records.Record, f Filters) (Data, error) {
+// Sidebar lists the widgets that stand in the sidebar of a record the session reads, of the
+// dashboards the session reads (your decision 2026-11-13), by title.
+func (s *Service) Sidebar(ctx context.Context, typeName string, id uuid.UUID) ([]records.Record, error) {
+	if _, err := s.rec.Get(ctx, typeName, id); err != nil {
+		return nil, err
+	}
+	var all []records.Record
+	after := ""
+	for {
+		page, err := s.rec.List(system(ctx), TypeWidget, records.ListOptions{Limit: 200, After: after, Filter: map[string]string{"sidebar_type": typeName}})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page.Items...)
+		if page.Next == "" {
+			break
+		}
+		after = page.Next
+	}
+	readable := map[string]bool{}
+	out := []records.Record{}
+	for _, w := range all {
+		did := fmt.Sprint(w["dashboard"])
+		ok, seen := readable[did]
+		if !seen {
+			if u, err := uuid.Parse(did); err == nil {
+				_, err = s.rec.Get(ctx, TypeDashboard, u)
+				ok = err == nil
+			}
+			readable[did] = ok
+		}
+		if ok {
+			out = append(out, w)
+		}
+	}
+	slices.SortStableFunc(out, func(a, b records.Record) int { return strings.Compare(fmt.Sprint(a["title"]), fmt.Sprint(b["title"])) })
+	return out, nil
+}
+
+// SidebarData computes a widget of the sidebar for the record shown, with the session's
+// rights; @record and @record.field take the record's id and fields.
+func (s *Service) SidebarData(ctx context.Context, typeName string, id, widgetID uuid.UUID) (Data, error) {
+	shown, err := s.rec.Get(ctx, typeName, id)
+	if err != nil {
+		return Data{}, err
+	}
+	w, err := s.rec.Get(system(ctx), TypeWidget, widgetID)
+	if err != nil {
+		return Data{}, err
+	}
+	notHere := fmt.Errorf("widget %s in the sidebar of %s: %w", widgetID, typeName, records.ErrNotFound)
+	if st, _ := w["sidebar_type"].(string); st != typeName {
+		return Data{}, notHere
+	}
+	did, err := uuid.Parse(fmt.Sprint(w["dashboard"]))
+	if err != nil {
+		return Data{}, notHere
+	}
+	if _, err := s.rec.Get(ctx, TypeDashboard, did); err != nil {
+		return Data{}, notHere
+	}
+	return s.compute(ctx, w, Filters{}, shown)
+}
+
+// TileData computes the number of a tile of the kind dashboard the session sees in the portal,
+// with her rights: whoever placed the tile decided she sees it, the dashboard need not be
+// shared with her.
+func (s *Service) TileData(ctx context.Context, tileID uuid.UUID) (Data, error) {
+	tile, err := s.rec.Get(ctx, TypeTile, tileID)
+	if err != nil {
+		return Data{}, err
+	}
+	raw, _ := tile["widget"].(string)
+	wid, err := uuid.Parse(raw)
+	if tile["kind"] != "dashboard" || err != nil {
+		return Data{}, fmt.Errorf("tile %s shows no widget: %w", tileID, records.ErrNotFound)
+	}
+	w, err := s.rec.Get(system(ctx), TypeWidget, wid)
+	if err != nil {
+		return Data{}, err
+	}
+	return s.compute(ctx, w, Filters{}, nil)
+}
+
+// sampleRecord is a record of the type with empty values of the right kind, to check a
+// condition that names @record before any record is shown.
+func sampleRecord(t meta.Type) records.Record {
+	r := records.Record{"id": uuid.Nil.String(), "state": "", "org_path": "root", "created_at": "2000-01-01T00:00:00Z", "updated_at": "2000-01-01T00:00:00Z"}
+	for _, f := range t.Fields {
+		switch f.Type {
+		case meta.FieldNumber:
+			r[f.Name] = 0.0
+		case meta.FieldBoolean:
+			r[f.Name] = false
+		case meta.FieldDate:
+			r[f.Name] = "2000-01-01"
+		case meta.FieldDateTime:
+			r[f.Name] = "2000-01-01T00:00:00Z"
+		case meta.FieldReference:
+			r[f.Name] = uuid.Nil.String()
+		case meta.FieldChoice:
+			r[f.Name] = ""
+			if len(f.Options) > 0 {
+				r[f.Name] = f.Options[0].Value
+			}
+		default:
+			r[f.Name] = ""
+		}
+	}
+	return r
+}
+
+// substitute puts the record shown in place of @record (its id) and @record.field (that field)
+// wherever they stand as a value of the condition.
+func substitute(raw json.RawMessage, shown records.Record) (json.RawMessage, error) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	var walk func(x any) (any, error)
+	walk = func(x any) (any, error) {
+		switch t := x.(type) {
+		case map[string]any:
+			for k, e := range t {
+				n, err := walk(e)
+				if err != nil {
+					return nil, err
+				}
+				t[k] = n
+			}
+			return t, nil
+		case []any:
+			for i, e := range t {
+				n, err := walk(e)
+				if err != nil {
+					return nil, err
+				}
+				t[i] = n
+			}
+			return t, nil
+		case string:
+			if t == recordRef {
+				return shown["id"], nil
+			}
+			if f, ok := strings.CutPrefix(t, recordRef+"."); ok {
+				v, ok := shown[f]
+				if !ok {
+					return nil, fmt.Errorf("%s: the record shown has no field %q", t, f)
+				}
+				return v, nil
+			}
+		}
+		return x, nil
+	}
+	out, err := walk(v)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(out)
+}
+
+// compute runs the query of a widget with the rights of ctx; shown is the record of the
+// sidebar, nil elsewhere.
+func (s *Service) compute(ctx context.Context, w records.Record, f Filters, shown records.Record) (Data, error) {
 	kind, _ := w["kind"].(string)
 	out := Data{Kind: kind}
 	if kind == KindText {
@@ -432,6 +650,18 @@ func (s *Service) compute(ctx context.Context, w records.Record, f Filters) (Dat
 		return out, err
 	}
 	out.Type = src.typeName
+	if strings.Contains(string(src.where), recordRef) {
+		if shown == nil {
+			// On its dashboard a widget of the sidebar has no record to count for.
+			out.SidebarOnly = true
+			return out, nil
+		}
+		where, err := substitute(src.where, shown)
+		if err != nil {
+			return out, &records.ValidationError{Problems: []records.Problem{{Field: "query", Code: "invalid", Message: err.Error()}}}
+		}
+		src.where = where
+	}
 	var and []any
 	if len(src.where) > 0 {
 		and = append(and, src.where)

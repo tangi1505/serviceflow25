@@ -311,9 +311,9 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
               }
             >
               <WidgetCard
-                dashboard={id}
                 widget={w}
-                filters={filters}
+                queryKey={["dashboard", id, "data", String(w["id"]), filters]}
+                load={() => api.widgetData(id, String(w["id"]), filters)}
                 onType={(type) => typesSeen.current.add(type)}
               />
             </div>
@@ -324,31 +324,30 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   );
 }
 
-// WidgetCard computes and shows one widget.
-function WidgetCard({
-  dashboard,
+// WidgetCard computes and shows one widget: on its dashboard, or in the sidebar of a record
+// (UI13b); load says how.
+export function WidgetCard({
   widget,
-  filters,
+  queryKey,
+  load,
   onType,
+  compact = false,
 }: {
-  dashboard: string;
   widget: RecordData;
-  filters: DashboardFilters;
-  onType: (type: string) => void;
+  queryKey: unknown[];
+  load: () => Promise<WidgetData>;
+  onType?: (type: string) => void;
+  compact?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const wid = String(widget["id"]);
   const kind = String(widget["kind"]);
   const title = String(widget["title"]);
-  const data = useQuery({
-    queryKey: ["dashboard", dashboard, "data", wid, filters],
-    queryFn: () => api.widgetData(dashboard, wid, filters),
-    enabled: kind !== "text",
-  });
+  const data = useQuery({ queryKey, queryFn: load, enabled: kind !== "text" });
   const types = useQuery(typesQuery);
   useEffect(() => {
-    if (data.data?.type) onType(data.data.type);
+    if (data.data?.type) onType?.(data.data.type);
   }, [data.data?.type, onType]);
   const type = types.data?.find((ty) => qualifiedName(ty) === data.data?.type);
   const nf = new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 });
@@ -375,7 +374,7 @@ function WidgetCard({
   return (
     <section
       aria-labelledby={`w-${wid}`}
-      className="flex h-full min-w-0 flex-col gap-2 rounded-lg border bg-card p-4"
+      className={`flex h-full min-w-0 flex-col gap-2 rounded-lg border bg-card ${compact ? "p-3" : "p-4"}`}
     >
       <h2 id={`w-${wid}`} className="truncate text-sm font-semibold" title={title}>
         {title}
@@ -386,6 +385,10 @@ function WidgetCard({
         <p className="text-sm text-muted-foreground">{t("list.loading")}</p>
       ) : data.isError ? (
         <p className="text-sm text-destructive">{t("dashboard.widgetError")}</p>
+      ) : data.data.sidebar_only ? (
+        <p className="text-sm text-muted-foreground">
+          {t("dashboard.sidebarOnly", { type: String(widget["sidebar_type"] ?? "") })}
+        </p>
       ) : kind === "number" ? (
         <button
           type="button"
@@ -502,6 +505,7 @@ const widgetFields = [
   "sort",
   "size",
   "body",
+  "sidebar_type",
   "w",
   "h",
 ];
@@ -814,6 +818,9 @@ function WidgetForm({
     }
   })();
   const parsed = fromWhere(where);
+  // A widget of a sidebar names the record shown as @record: its condition is written as JSON.
+  const rawMode =
+    Boolean(widget["sidebar_type"]) || String(widget["query"] ?? "").includes("@record");
   const [conditions, setConditions] = useState<Condition[]>(parsed ?? []);
   const err = (f: string) =>
     errors[f] ? (
@@ -1008,7 +1015,22 @@ function WidgetForm({
                     ))}
                   </select>,
                 )}
-                {type && parsed !== null && (
+                {(rawMode || parsed === null) && (
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor={`${id}-query`}>{t("dashboard.queryJson")}</Label>
+                    <textarea
+                      id={`${id}-query`}
+                      className="min-h-20 rounded-md border border-input bg-background p-2 font-mono text-sm"
+                      value={String(widget["query"] ?? "")}
+                      aria-describedby={`${id}-query-hint ${described("query") ?? ""}`.trim()}
+                      onChange={(e) => onChange({ query: e.target.value })}
+                    />
+                    <p id={`${id}-query-hint`} className="text-sm text-muted-foreground">
+                      {t("dashboard.queryHint")}
+                    </p>
+                  </div>
+                )}
+                {type && !rawMode && parsed !== null && (
                   <Filters
                     type={type}
                     conditions={conditions}
@@ -1018,9 +1040,6 @@ function WidgetForm({
                       onChange({ query: w ? JSON.stringify(w) : "" });
                     }}
                   />
-                )}
-                {parsed === null && (
-                  <Alert>{t("search.raw", { where: String(widget["query"]) })}</Alert>
                 )}
                 {err("query")}
               </>
@@ -1055,6 +1074,18 @@ function WidgetForm({
                 ),
               )}
             {field("date_field", t("dashboard.dateField"), select("date_field", dates))}
+            {field(
+              "sidebar_type",
+              t("dashboard.sidebarType"),
+              select(
+                "sidebar_type",
+                (types.data ?? []).map((ty) => ({
+                  value: qualifiedName(ty),
+                  label: labelOf(ty.label, i18n.language, qualifiedName(ty)),
+                })),
+                t("dashboard.noSidebar"),
+              ),
+            )}
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="font-medium">{t("dashboard.takesFilters")}</legend>
               <label className="flex items-center gap-2">
@@ -1129,6 +1160,7 @@ function WidgetForm({
               "measure",
               "measure_field",
               "date_field",
+              "sidebar_type",
               "columns",
               "sort",
               "size",

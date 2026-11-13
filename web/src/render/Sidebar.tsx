@@ -15,6 +15,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import {
+  api,
   childrenQuery,
   clocksQuery,
   labelOf,
@@ -26,6 +27,7 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
+import { WidgetCard } from "@/app/Dashboard";
 import { Deadline, type DeadlineState } from "@/ui/marks";
 
 import { fieldLabel, formatMoment, formatValue } from "./fields";
@@ -231,6 +233,33 @@ export function Sidebar({ type, record }: { type: TypeDefinition; record: Record
       {[...groups.values()].map((g) => (
         <Children key={`${g.from}|${g.via}`} record={record} {...g} />
       ))}
+      <SidebarWidgets typeName={typeName} id={String(record["id"])} />
     </aside>
+  );
+}
+
+// SidebarWidgets are the widgets of dashboards the session reads that stand at records of the
+// type (UI13b), computed for this record.
+function SidebarWidgets({ typeName, id }: { typeName: string; id: string }) {
+  const widgets = useQuery({
+    queryKey: ["records", typeName, id, "widgets"],
+    queryFn: () => api.sidebarWidgets(typeName, id),
+    retry: false,
+  });
+  if (!widgets.data || widgets.data.length === 0) {
+    return null;
+  }
+  return (
+    <>
+      {widgets.data.map((w) => (
+        <WidgetCard
+          key={String(w["id"])}
+          widget={w}
+          compact
+          queryKey={["records", typeName, id, "widgets", String(w["id"])]}
+          load={() => api.sidebarWidgetData(typeName, id, String(w["id"]))}
+        />
+      ))}
+    </>
   );
 }

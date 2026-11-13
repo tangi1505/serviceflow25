@@ -44,12 +44,15 @@ export type Shown = {
   name: string;
   description: string;
   kind: string;
+  // number says the tile shows the number of a dashboard (UI13b).
+  number?: boolean;
   goal:
     | { to: "/portal/$typeName/new"; params: { typeName: string } }
     | { to: "/portal/forms/$formId"; params: { formId: string } }
     | { to: "/portal/read/$typeName"; params: { typeName: string } }
     | { to: "/portal/read/$typeName/$id"; params: { typeName: string; id: string } }
     | { to: "/portal/$typeName/$id"; params: { typeName: string; id: string } }
+    | { to: "/portal" }
     | { href: string };
 };
 
@@ -60,7 +63,7 @@ export function shown(
   types: TypeDefinition[],
   forms: string[],
   kindOf: (type: TypeDefinition) => string,
-  label: { form: string; area: string; link: string },
+  label: { form: string; area: string; link: string; number: string },
 ): Shown | null {
   const s = (k: string) => (typeof tile[k] === "string" ? String(tile[k]) : "");
   const type = types.find((x) => qualifiedName(x) === s("target_type"));
@@ -114,6 +117,11 @@ export function shown(
             },
           }
         : null;
+    case "dashboard":
+      // The number of a dashboard (UI13b): it leads to one's own records below the tiles.
+      return s("widget")
+        ? { ...base, kind: label.number, number: true, goal: { to: "/portal" } }
+        : null;
     case "link":
       return /^https?:\/\//i.test(s("url"))
         ? { ...base, kind: label.link, goal: { href: s("url") } }
@@ -137,6 +145,7 @@ export function useTiles(): { pending: boolean; tiles: Shown[] } {
     form: t("portal.tileForm"),
     area: t("portal.tileArea"),
     link: t("portal.tileLink"),
+    number: t("portal.tileNumber"),
   };
   return {
     pending: false,
@@ -154,6 +163,7 @@ export function TileGrid({ tiles }: { tiles: Shown[] }) {
   const body = (tile: Shown): ReactNode => (
     <>
       <span className="text-xs text-muted-foreground">{tile.kind}</span>
+      {tile.number && <TileNumber id={tile.id} />}
       <b className="text-[15px] font-semibold">{tile.name}</b>
       {tile.description && <span className="text-sm">{tile.description}</span>}
     </>
@@ -185,5 +195,23 @@ export function TileGrid({ tiles }: { tiles: Shown[] }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+// TileNumber is the number of a tile of the kind dashboard, with the person's rights (UI13b).
+function TileNumber({ id }: { id: string }) {
+  const { i18n } = useTranslation();
+  const data = useQuery({
+    queryKey: ["portal", "tiles", id, "data"],
+    queryFn: () => api.tileData(id),
+    retry: false,
+  });
+  const value = Number(data.data?.value ?? 0);
+  return (
+    <span className="text-3xl font-semibold tracking-tight">
+      {data.isSuccess
+        ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(value)
+        : "…"}
+    </span>
   );
 }

@@ -142,4 +142,21 @@ describe("Start page of the portal", () => {
     await user.click(within(band).getByRole("button", { name: "Mehr" }));
     expect(within(band).getByText("Kein Zugang von außen.")).toBeInTheDocument();
   });
+
+  // UI13b: a tile of the kind dashboard shows its number, counted with the person's rights.
+  it("shows the number of a tile from a dashboard", async () => {
+    state.extraRecords = {
+      "core.portal_tile": [
+        tile(9, { name: "Meine offenen Vorgänge", kind: "dashboard", widget: id(50) }),
+      ],
+    };
+    state.tileData = { [id(9)]: { kind: "number", type: "probe.probe", value: 3 } };
+    const { container } = renderAt("/portal");
+    const section = await screen.findByRole("region", { name: "Was möchten Sie tun?" });
+    const link = within(section).getByRole("link");
+    expect(await within(link).findByText("3")).toBeInTheDocument();
+    expect(link).toHaveTextContent(/Kennzahl.*Meine offenen Vorgänge/);
+    expect(link).toHaveAttribute("href", "/portal");
+    await expectAccessible(container);
+  });
 });

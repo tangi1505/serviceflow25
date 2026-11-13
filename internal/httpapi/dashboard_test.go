@@ -204,3 +204,134 @@ func TestDashboardsOverHTTP(t *testing.T) {
 		t.Fatalf("start page at the root: %d %s", r.code, r.raw)
 	}
 }
+
+// The Prüfweg of UI13b (UI-Plan E39): a widget in the sidebar of a person counts her probes
+// with @record, one of a probe the probes of the same kind with @record.kind; it shows only
+// for those who read its dashboard. A tile of the portal shows a number with the rights of the
+// person who sees it.
+func TestDashboardsEmbeddedOverHTTP(t *testing.T) {
+	base := os.Getenv("ITSM_TEST_DATABASE_URL")
+	if base == "" {
+		t.Skip("ITSM_TEST_DATABASE_URL not set")
+	}
+	t.Setenv("ITSM_TEST_DATABASE_URL", dbtest.Isolated(t, base, "itsmtest_api_ui13b"))
+	api := apiServer(t)
+	create := func(a *testAPI, typeName, body string) map[string]any {
+		t.Helper()
+		r := call(t, a, http.MethodPost, "/api/v1/records/"+typeName, body, nil)
+		if r.code != 201 {
+			t.Fatalf("create %s: %d %s", typeName, r.code, r.raw)
+		}
+		return r.body
+	}
+	const role = "ui13b_viewer"
+	dropRole(t, api, role)
+	call(t, api, http.MethodPost, "/api/v1/roles", `{"name": "`+role+`", "label": {"de": "Betrachter"}}`, nil)
+	for _, p := range []string{`{"type_name": "probe.probe", "action": "read", "scope": "own"}`, `{"type_name": "probe.probe", "action": "create", "scope": "all"}`,
+		`{"type_name": "core.person", "action": "read", "scope": "all"}`, `{"type_name": "core.dashboard", "action": "read", "scope": "involved"}`} {
+		if r := call(t, api, http.MethodPut, "/api/v1/roles/"+role+"/permissions", p, nil); r.code != 204 {
+			t.Fatalf("permission: %d %s", r.code, r.raw)
+		}
+	}
+	viewer := timelineLogin(t, api, "apitest_ui13b_viewer", role, `{"last_name": "Betrachterin"}`)
+	nina := create(api, "core.person", `{"last_name": "Nordmann"}`)["id"].(string)
+	asRequester := `"actors": {"requester": [{"type": "core.person", "id": "` + nina + `"}]}`
+	create(api, "probe.probe", `{"title": "UI13b eins", "kind": "fault", `+asRequester+`}`)
+	create(api, "probe.probe", `{"title": "UI13b zwei", "kind": "fault", `+asRequester+`}`)
+	other := create(api, "probe.probe", `{"title": "UI13b drei", "kind": "question"}`)
+
+	d := create(api, "core.dashboard", `{"name": "UI13b Seitenleiste"}`)
+	id := d["id"].(string)
+	save := func(widgets string) resp {
+		cur := call(t, api, http.MethodGet, "/api/v1/dashboards/"+id, "", nil).body["dashboard"].(map[string]any)
+		return call(t, api, http.MethodPut, "/api/v1/dashboards/"+id, fmt.Sprintf(`{"version": %v, "widgets": [%s]}`, cur["version"], widgets), nil)
+	}
+	const (
+		byPerson = `{"title": "Ihre Proben", "kind": "number", "target_type": "probe.probe", "sidebar_type": "core.person", "query": "{\"field\": \"actors.requester\", \"eq\": \"@record\"}"}`
+		sameKind = `{"title": "Gleiche Art", "kind": "number", "target_type": "probe.probe", "sidebar_type": "probe.probe", "query": "{\"field\": \"kind\", \"eq\": \"@record.kind\"}", "x": 1}`
+		all      = `{"title": "Alle", "kind": "number", "target_type": "probe.probe", "x": 2}`
+		pie      = `{"title": "Torte", "kind": "pie", "target_type": "probe.probe", "group_by": "kind", "x": 3}`
+	)
+	for _, c := range []struct{ widget, want string }{
+		{`{"title": "Ohne Leiste", "kind": "number", "target_type": "probe.probe", "query": "{\"field\": \"parent\", \"eq\": \"@record\"}"}`, "set sidebar_type"},
+		{`{"title": "Kein Feld", "kind": "number", "target_type": "probe.probe", "sidebar_type": "probe.probe", "query": "{\"field\": \"kind\", \"eq\": \"@record.nope\"}"}`, "no field"},
+		{`{"title": "Kein Typ", "kind": "number", "target_type": "probe.probe", "sidebar_type": "nope.nope"}`, "not installed"},
+	} {
+		if r := save(c.widget); r.code != 422 || !strings.Contains(r.raw, c.want) {
+			t.Fatalf("%s: %d %s", c.want, r.code, r.raw)
+		}
+	}
+	r := save(strings.Join([]string{byPerson, sameKind, all, pie}, ","))
+	if r.code != 200 {
+		t.Fatalf("save: %d %s", r.code, r.raw)
+	}
+	byTitle := map[string]string{}
+	for _, w := range r.body["widgets"].([]any) {
+		m := w.(map[string]any)
+		byTitle[m["title"].(string)] = m["id"].(string)
+	}
+
+	// The sidebar of Nina: her two probes; of the third probe: the one of its kind.
+	if r := call(t, api, http.MethodGet, "/api/v1/records/core.person/"+nina+"/widgets", "", nil); r.code != 200 || !strings.Contains(r.raw, "Ihre Proben") || strings.Contains(r.raw, "Gleiche Art") {
+		t.Fatalf("sidebar of a person: %d %s", r.code, r.raw)
+	}
+	data := func(a *testAPI, typeName, rec, title string) resp {
+		return call(t, a, http.MethodPost, "/api/v1/records/"+typeName+"/"+rec+"/widgets/"+byTitle[title]+"/data", "", nil)
+	}
+	if r := data(api, "core.person", nina, "Ihre Proben"); r.code != 200 || r.body["value"] != 2.0 {
+		t.Fatalf("her probes: %d %s", r.code, r.raw)
+	}
+	if r := data(api, "probe.probe", other["id"].(string), "Gleiche Art"); r.code != 200 || r.body["value"] != 1.0 {
+		t.Fatalf("the same kind: %d %s", r.code, r.raw)
+	}
+	if r := data(api, "probe.probe", other["id"].(string), "Ihre Proben"); r.code != 404 {
+		t.Fatalf("a widget of another type's sidebar: %d %s", r.code, r.raw)
+	}
+	// On its dashboard a widget with @record has no record to count for.
+	if r := call(t, api, http.MethodPost, "/api/v1/dashboards/"+id+"/widgets/"+byTitle["Ihre Proben"]+"/data", `{}`, nil); r.code != 200 || r.body["sidebar_only"] != true {
+		t.Fatalf("on the dashboard: %d %s", r.code, r.raw)
+	}
+
+	// Only for those who read the dashboard (your decision 2026-11-13).
+	if r := call(t, viewer.api, http.MethodGet, "/api/v1/records/core.person/"+nina+"/widgets", "", nil); r.code != 200 || strings.TrimSpace(r.raw) != "[]" {
+		t.Fatalf("not shared: %d %s", r.code, r.raw)
+	}
+	if r := data(viewer.api, "core.person", nina, "Ihre Proben"); r.code != 404 {
+		t.Fatalf("not shared, data: %d %s", r.code, r.raw)
+	}
+	cur := call(t, api, http.MethodGet, "/api/v1/records/core.dashboard/"+id, "", nil).body
+	if r := call(t, api, http.MethodPatch, "/api/v1/records/core.dashboard/"+id, `{"actors": {"shared": [{"type": "core.person", "id": "`+viewer.person+`"}]}}`,
+		map[string]string{"If-Match": fmt.Sprintf(`"%v"`, cur["version"])}); r.code != 200 {
+		t.Fatalf("share: %d %s", r.code, r.raw)
+	}
+	if r := call(t, viewer.api, http.MethodGet, "/api/v1/records/core.person/"+nina+"/widgets", "", nil); r.code != 200 || !strings.Contains(r.raw, "Ihre Proben") {
+		t.Fatalf("shared: %d %s", r.code, r.raw)
+	}
+	// With her rights: she reads none of Nina's probes.
+	if r := data(viewer.api, "core.person", nina, "Ihre Proben"); r.code != 200 || r.body["value"] != 0.0 {
+		t.Fatalf("her rights: %d %s", r.code, r.raw)
+	}
+
+	// A tile of the portal: a number widget, not one of the sidebar, not a pie.
+	tile := func(widget string) resp {
+		return call(t, api, http.MethodPost, "/api/v1/records/core.portal_tile", `{"name": "Meine Proben", "kind": "dashboard", "widget": "`+widget+`"}`, nil)
+	}
+	if r := tile(byTitle["Ihre Proben"]); r.code != 422 || !strings.Contains(r.raw, "@record") {
+		t.Fatalf("tile with @record: %d %s", r.code, r.raw)
+	}
+	if r := tile(byTitle["Torte"]); r.code != 422 || !strings.Contains(r.raw, "kind number") {
+		t.Fatalf("tile with a pie: %d %s", r.code, r.raw)
+	}
+	r = tile(byTitle["Alle"])
+	if r.code != 201 {
+		t.Fatalf("tile: %d %s", r.code, r.raw)
+	}
+	tid := r.body["id"].(string)
+	create(viewer.api, "probe.probe", `{"title": "UI13b ihre", "kind": "wish"}`)
+	if r := call(t, viewer.api, http.MethodPost, "/api/v1/portal/tiles/"+tid+"/data", "", nil); r.code != 200 || r.body["value"] != 1.0 {
+		t.Fatalf("tile for her: %d %s", r.code, r.raw)
+	}
+	if r := call(t, api, http.MethodPost, "/api/v1/portal/tiles/"+tid+"/data", "", nil); r.code != 200 || r.body["value"] != 4.0 {
+		t.Fatalf("tile for the admin: %d %s", r.code, r.raw)
+	}
+}

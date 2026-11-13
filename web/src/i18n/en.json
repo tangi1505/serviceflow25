@@ -489,7 +489,8 @@
     "readNoHits": "Nothing found.",
     "changedOn": "last changed on {{time}}",
     "readHelp": "Didn't that help?",
-    "order": "Order"
+    "order": "Order",
+    "tileNumber": "Number"
   },
   "builder": {
     "section": "Section {{n}}",
@@ -1096,6 +1097,11 @@
     "removeWidget": "Remove the widget",
     "new": "New dashboard",
     "newName": "New dashboard",
-    "newFailed": "Cannot create it; the right is missing."
+    "newFailed": "Cannot create it; the right is missing.",
+    "sidebarOnly": "Counts only in the sidebar of a record of {{type}}.",
+    "sidebarType": "Also in the sidebar of",
+    "noSidebar": "– on the dashboard only –",
+    "queryJson": "Condition (JSON)",
+    "queryHint": "Like the where of the JSON query, e.g. {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In a sidebar @record stands for the record shown, @record.field for one of its fields."
   }
 }

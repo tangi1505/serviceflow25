@@ -260,4 +260,49 @@ describe("Dashboards", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(state.settings).toMatchObject({ start_dashboard: "none" }));
   });
+
+  // UI13b: a widget of a dashboard the session reads stands in the sidebar of every record of
+  // its type, computed for that record; in the editor its condition is written as JSON.
+  it("shows a widget in the sidebar of a record, and sets one up in the editor", async () => {
+    board(state);
+    state.sidebarWidgets = [
+      { id: W(5), title: "Gleiche Art", kind: "number", sidebar_type: "probe.probe" },
+    ];
+    state.widgetData = {
+      ...state.widgetData,
+      [W(5)]: { kind: "number", type: "probe.probe", value: 7 },
+    };
+    const user = userEvent.setup();
+    const rid = String(state.records[0]!["id"]);
+    const first = renderAt(`/types/probe.probe/${rid}`);
+    const widget = await screen.findByRole("region", { name: "Gleiche Art" });
+    expect(
+      await within(widget).findByRole("button", { name: "Gleiche Art: 7, Liste öffnen" }),
+    ).toBeInTheDocument();
+    expect(
+      state.calls.some(
+        (c) =>
+          c.method === "POST" &&
+          c.path === `/api/v1/records/probe.probe/${rid}/widgets/${W(5)}/data`,
+      ),
+    ).toBe(true);
+    first.unmount();
+
+    renderAt(`/dashboards/${D}`);
+    await user.click(await screen.findByRole("button", { name: "Bearbeiten" }));
+    const form = screen.getByRole("region", { name: "Widget „Offene“" });
+    await user.selectOptions(
+      within(form).getByLabelText("Auch in der Seitenleiste von"),
+      "probe.probe",
+    );
+    const json = within(form).getByLabelText("Bedingung (JSON)");
+    await user.click(json);
+    await user.paste('{"field": "kind", "eq": "@record.kind"}');
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await screen.findByRole("button", { name: "Bearbeiten" });
+    expect(state.dashboards![0]!.widgets[0]).toMatchObject({
+      sidebar_type: "probe.probe",
+      query: '{"field": "kind", "eq": "@record.kind"}',
+    });
+  });
 });
