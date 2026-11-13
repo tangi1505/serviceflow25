@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,7 +98,19 @@ type Service struct {
 	loaded time.Time
 	byType map[string][]*SLA
 	byID   map[uuid.UUID]*SLA
+	// calendars are the calendars of the clocks in memory, by database and id (PL53).
+	calendars map[string]calendarEntry
 }
+
+// calendarEntry is a calendar in memory and when it was loaded.
+type calendarEntry struct {
+	c  Counter
+	at time.Time
+}
+
+// calendarMaxAge is the longest a calendar stays in memory (PL53, like the settings, SD20); a
+// change of a calendar drops them at once here and on the other instances (Wrote).
+const calendarMaxAge = 10 * time.Second
 
 // New wires the service; kv may be nil (then only this instance hears of changes).
 func New(rt *db.Router, rec *records.Service, cals *calendar.Service, js *jobs.Service, kv *cache.Client, logger *slog.Logger) *Service {
@@ -125,14 +138,14 @@ func (s *Service) Run(ctx context.Context) error {
 
 func (s *Service) forget() {
 	s.mu.Lock()
-	s.byType, s.byID = nil, nil
+	s.byType, s.byID, s.calendars = nil, nil, nil
 	s.mu.Unlock()
 }
 
 // Wrote is told of every write (records.AfterWrite): a change of an SLA drops them here and on
 // the other instances.
 func (s *Service) Wrote(ctx context.Context, typeName string) {
-	if typeName != TypeSLA {
+	if typeName != TypeSLA && !strings.HasPrefix(typeName, "core.calendar") {
 		return
 	}
 	s.forget()
@@ -589,6 +602,15 @@ func (s *Service) counter(ctx context.Context, id uuid.UUID) (Counter, error) {
 	if id == uuid.Nil {
 		return RoundTheClock{}, nil
 	}
+	// In memory for a short while (PL53): loading a calendar read its hours and holidays for
+	// every write of a record with a clock.
+	key := fmt.Sprintf("%p/%s", s.db.Tenant(ctx), id)
+	s.mu.RLock()
+	e, ok := s.calendars[key]
+	s.mu.RUnlock()
+	if ok && time.Since(e.at) < calendarMaxAge {
+		return e.c, nil
+	}
 	c, err := s.cals.Load(system(ctx), id)
 	if err == nil {
 		_, err = c.Add(s.Now(), time.Minute)
@@ -597,6 +619,12 @@ func (s *Service) counter(ctx context.Context, id uuid.UUID) (Counter, error) {
 		s.logger.Warn("sla: calendar not usable, counting round the clock", "calendar", id, "error", err.Error())
 		return RoundTheClock{}, nil
 	}
+	s.mu.Lock()
+	if s.calendars == nil {
+		s.calendars = map[string]calendarEntry{}
+	}
+	s.calendars[key] = calendarEntry{c: c, at: time.Now()}
+	s.mu.Unlock()
 	return c, nil
 }
 

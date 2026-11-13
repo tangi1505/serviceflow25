@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,11 @@ type Calendar struct {
 	Hours    map[time.Weekday][]Span
 	// Holidays are dates "2006-01-02" without working time.
 	Holidays map[string]bool
+
+	// once puts the hours in order on the first count; the SLA clocks share a calendar
+	// between writes (PL53), so this happens once and not on every count.
+	once    sync.Once
+	invalid error
 }
 
 // ParseClock reads "HH:MM" as minutes after midnight; "24:00" is the end of the day.
@@ -50,8 +56,13 @@ func ParseClock(s string) (int, error) {
 	return hh*60 + mm, nil
 }
 
-// normalise sorts the spans of each day and merges overlapping ones.
+// normalise sorts the spans of each day and merges overlapping ones, once.
 func (c *Calendar) normalise() error {
+	c.once.Do(func() { c.invalid = c.order() })
+	return c.invalid
+}
+
+func (c *Calendar) order() error {
 	total := 0
 	for d, spans := range c.Hours {
 		sort.Slice(spans, func(i, j int) bool { return spans[i].From < spans[j].From })

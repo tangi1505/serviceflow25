@@ -73,6 +73,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | ~~**PL50**~~ | ~~Zwei CIs gleichzeitig (Spuren K und O, Hauptplan E147): die festen Namen der Test-Datenbanken aus `dbtest.Isolated` bekommen eine Endung aus einer Umgebungsvariable, ebenso die CI-Datenbank `itsm_ci`; Valkey getrennt je Spur (eigene Valkey-Datenbank oder Präfix der Schlüssel, Entscheidung vor dem Bau); Compose-Projekt und Ports der zweiten WSL-Kopie stören die erste nicht. Bis dahin läuft nie mehr als eine CI~~ — **entfällt am 2026-10-31:** nur noch ein Agent, nie zwei CIs gleichzeitig (Hauptplan E149) | — | 0,5 d | Zwei `scripts/ci.sh` mit verschiedener Endung laufen gleichzeitig und sind beide grün; keine löscht Datenbanken oder Schlüssel der anderen |
 | **PL51** | CI mit eigenem Stand je Lauf: eigener PostgreSQL und Valkey je Lauf, frisch und danach entfernt; zeitkritische Pakete nacheinander; kein Abbruch beim ersten Fehler, alle Fehler gesammelt; Browser-Tests einzeln (Hauptplan E150) | 🟢 | 0,5 d | Zwei Läufe nacheinander finden dieselben Datenbanken vor (nur `itsm_ci` samt Vorlagen); nach dem Lauf gibt es keine Container `postgres-ci` und `valkey-ci` mehr; ein absichtlich roter Schritt hält die übrigen nicht auf und steht in der Zusammenfassung; `scripts/ci-run.sh` grün |
 | **PL52** | Schnellere CI in zwei Stufen (Hauptplan E162): ein Skript für die Teil-CI während der Arbeit (Lint, Format, Typen immer; die geänderten Go-Pakete samt allen, die sie nutzen; Vitest nur für betroffene Dateien; die Browser-Tests des Bereichs); die ganze CI bleibt vor jedem Commit; die Lastmessung läuft nur, wenn sich Go-Code des Servers (`cmd/`, `internal/`) oder Migrationen ändern; die Basislinie der schnellen Stufe wieder messbar machen (heute „login as load: 404“, verglichen werden nur die festen Grenzen); `internal/httpapi` (210 s) in parallele Teile mit eigener Datenbank aufteilen; die wackeligen Browser-Tests (Formular-Baukasten per Tastatur, Zeitleiste in `records.spec`, LZ9-Seitenwechsel nach einem Neustart; in Vitest die Zeitgrenze von Formular-Baukasten und Workflow-Editor unter Last) stabil machen | 🟢 | 1 d | Eine Änderung nur in `web/src` läuft in der Teil-CI ohne Go-Tests und ohne Lastmessung durch und nennt die Tests, die sie gewählt hat; die ganze CI misst LZ1 bis LZ4 wieder gegen die Basislinie; die ganze CI ohne Lastmessung ist mindestens zwei Minuten schneller als 10:27 min (deine Entscheidung 2026-11-03); drei Läufe nacheinander ohne wackelnden Test; `scripts/ci-run.sh` grün |
+| **PL53** | Typen und Kalender im Speicher (gefunden mit H14, E64): die Typdefinitionen werden nicht mehr bei jedem Aufruf aus der Datenbank gelesen und dekodiert, sondern im Speicher gehalten und bei einer Änderung neu geladen (sofort im eigenen Prozess, über `LISTEN itsm_definitions` für andere Instanzen und die Kommandozeile, spätestens nach einer Minute); die SLA-Uhren halten ihren Kalender zehn Sekunden | 🟢 | 1 d | Massenimport von Störungen mindestens dreimal so schnell; ein Feld aus dem Typ-Editor ist sofort da, eine Änderung an der API vorbei binnen Sekunden; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -146,6 +147,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E64** | **Typen und Kalender im Speicher (PL53, deine Entscheidung 2026-11-13 nach dem Profil aus H14):** `records.Service.Type` las bei jedem Aufruf alle Definitionen aus der Steuer-Datenbank und dekodierte sie; beim Schreiben einer Störung war das mehr als die Hälfte der Zeit (Massenimport 55 Zeilen/s). Jetzt hält ein Speicher die Typen und lädt sie neu, wenn sich die Definitionen ändern: sofort nach einem Schreiben des eigenen Prozesses (`meta.DefinitionsChanged`), über einen Trigger mit `pg_notify` auf `itsm_definitions` für andere Instanzen und `itsm package install`, und spätestens nach einer Minute, falls eine Nachricht verloren ging. Die ausgegebenen Typen sind geteilt und werden nicht verändert. Die SLA-Uhren halten ihren Kalender zehn Sekunden (wie die Einstellungen), eine Änderung eines Kalenders oder SLA wirft ihn hier und über Valkey auf den anderen Instanzen sofort weg; der Kalender ordnet seine Zeiten einmal und ist damit zwischen Abläufen teilbar. Eigene Aufgabe vor H14 eingeschoben | jede Definition bei jedem Aufruf lesen; nur Ablaufzeit ohne Nachricht | 2026-11-13 | Pascal |
 | **E63** | Laufende Nummer (PL49, deine Entscheidungen 2026-11-02, Hauptplan E157): **Zähler** ist eine Postgres-Sequenz je Typ, Feld und Mandant, ohne Sperre; Lücken nach abgebrochenen Transaktionen sind erlaubt. **Gespeichert** wird die Zahl (`bigint`), das Präfix kommt aus der Definition und gilt für alle Datensätze; sortiert numerisch, die Suche findet „INC-24817“ und „24817“. **Bestand:** bekommt ein Typ das Feld später, nummeriert ein Job die vorhandenen Datensätze nach Anlagezeit. **Import:** nur Bulk mit `source` darf eine Nummer mitbringen, die Sequenz springt danach über die höchste; Anlegen und PATCH setzen sie nie. Verworfen: Zählertabelle mit Zeilensperre; fertiger Text; nur neue Datensätze; Altnummern nur als Textfeld | 2026-11-02 | Pascal |
 | **E62** | Nebendaten finden ihren Mandanten auf drei Wegen (PL45): eine eigene Spalte (`rule.tenant`, `webhook.tenant`, `security_event.tenant`), der Knoten des Datensatzes im Ereignis (`payload.org_path`, `delivery_failure.org_path`) oder das Konto (`account.tenant` für API-Clients). Wo das System im Auftrag arbeitet (Regeln, Benachrichtigungen, OIDC), bestimmt `org.TenantOf` den Mandanten aus dem Knoten, und `authz.SystemIn` hält Schreiben und Suchen darin. Jobs tragen den Mandanten als `tenant` in den Argumenten; `/jobs` filtert darüber mit `JobListParams.Where` | 2026-10-30 | Umsetzung |
 | **E61** | Die Grenze des Mandanten (PL44) sitzt in `authz.Access`: Mandant der Anfrage ist der mit `Enter` gewählte, sonst der erste erlaubte, damit Arbeit im Auftrag eines Kontos (Jobs, Webhooks) seine Mandanten nie verlässt. `Filter` hängt `org_path <@ Mandant` an die ganze Bedingung, `Permits` prüft dasselbe; eine Rolle an einem Knoten außerhalb zählt nicht, auch nicht mit `all`. `Tenants` und `Home` stehen im Rechte-Cache, der gewählte Mandant nur in der Sitzung. Ein Konto der Installation ohne Rolle in einem Mandanten arbeitet in `root.NONE`, einem Pfad, den kein Knoten haben kann. Was zur Installation gehört (Rollen, Kundenschicht, Einstellungen der Wurzel), prüft `Installation`: das Recht aus einer Rolle an der Wurzel mit Reichweite `all` oder `subtree` | 2026-10-30 | Umsetzung |
@@ -1616,6 +1618,45 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL53 — Typen und Kalender im Speicher, 2026-11-13
+
+- **Grundlage:** E64; gefunden mit H14 (Hauptplan E128): der Massenimport von 18,25 Mio.
+  Störungen lief mit 55 Zeilen/s; das Profil (neu: `ITSM_PPROF_ADDR`, nur auf der Loopback)
+  zeigte mehr als die Hälfte der Zeit in `meta.Types` (alle Definitionen lesen und dekodieren)
+  und 40 % im Laden des Kalenders je SLA-Uhr. Deine Entscheidung vom 2026-11-13: eigene
+  Aufgabe jetzt, dann H14 weiter.
+- **Gebaut:**
+  - `internal/records/typecache.go`: die Typen im Speicher, neu geladen, wenn
+    `meta.DefinitionsGeneration` sich bewegt hat oder nach einer Minute; `WatchTypes` hört
+    auf `itsm_definitions` (eigene Verbindung, bei Verlust neu und mit einem Neuladen).
+  - Migration `00047_definition_notify.sql`: Trigger auf `definition` mit `pg_notify`.
+  - `meta.Store` und die Kundenschicht (`internal/customer` Add und Remove) sagen nach dem
+    Schreiben `meta.DefinitionsChanged`.
+  - `internal/sla`: Kalender je Datenbank und Id zehn Sekunden im Speicher; eine Änderung an
+    `core.calendar*` oder einem SLA wirft sie weg (auch auf den anderen Instanzen über den
+    vorhandenen Kanal). `internal/calendar`: die Zeiten werden einmal geordnet (`sync.Once`),
+    vorher bei jeder Rechnung, was bei einem geteilten Kalender ein gleichzeitiges Schreiben in
+    eine Map war (gefunden mit acht parallelen Strömen).
+  - `cmd/itsm`: `go rec.WatchTypes`; Profile über `ITSM_PPROF_ADDR` nur auf der Loopback.
+- **Belegt:**
+  - Massenimport von Störungen (Pakete sd und incident, mit Regeln und SLA): ein Strom 55 auf
+    165 Zeilen/s, acht Ströme mit acht Bulk-Arbeitern etwa 800 Zeilen/s, sechzehn nicht mehr
+    (620 Zeilen/s, die Grenze ist jetzt die Datenbank: je Zeile eine eigene Transaktion mit
+    Verlauf, Ereignis, Suche, Rollen, Nummer und zwei Uhren). Das Ziel LZ5 (5.000 Zeilen/s)
+    verfehlen Typen mit Uhren damit weiter; das ist ein Befund von H14.
+  - Go `TestTypesFollowDefinitionsOverHTTP`: ein Feld aus dem Typ-Editor ist sofort da, das
+    Löschen der Kundenschicht an der API vorbei kommt über die Nachricht binnen 5 s an.
+    `TestCalendarSharedBetweenGoroutines`: sechzehn Abläufe rechnen mit demselben neuen
+    Kalender ohne Wettlauf. `TestCustomerLayerInsideItsPackage` löscht die Kundenschicht per
+    SQL und sagt es jetzt dem Speicher (Grund: die Typen kommen nicht mehr bei jedem Aufruf frisch).
+  - `scripts/ci.sh` am 2026-11-13: 18 von 19 Schritten grün. Die Schnellstufe der Lastmessung
+    verfehlte nur das feste Ziel LZ5 (3.828 statt 5.000 Zeilen/s), während andere Container den
+    Rechner auslasteten; die Basislinie kam im selben Lauf auf 3.358, am Vormittag auf 9.170.
+    Im Vergleich mit der Basislinie ist der neue Stand überall gleich oder schneller (p95 LZ2
+    6,1 statt 9,9 ms, LZ4 10,9 statt 22,1 ms, LZ16 2,8 statt 7,3 ms, LZ17 11,0 statt 19,1 ms).
+- **Nicht geprüft:** Mehrere Instanzen gleichzeitig (die Nachricht ist dieselbe wie für eine);
+  ein Kalender, der auf einer anderen Instanz geändert wird, gilt dort sofort, hier über Valkey.
 
 ### PL48 — Auswertungen über Mandanten, 2026-10-31
 

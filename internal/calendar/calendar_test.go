@@ -9,6 +9,7 @@ package calendar
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 )
@@ -177,4 +178,29 @@ func TestAddDays(t *testing.T) {
 	if _, err := (&Calendar{Location: loc, Hours: map[time.Weekday][]Span{}}).AddDays(thursday, 1); !errors.Is(err, ErrNoHours) {
 		t.Errorf("a calendar without hours: %v", err)
 	}
+}
+
+// A calendar is shared between the writes of the SLA clocks (PL53): counting with it from many
+// goroutines at once is safe and gives the same answer.
+func TestCalendarSharedBetweenGoroutines(t *testing.T) {
+	loc := berlin(t)
+	mk := func() *Calendar {
+		return &Calendar{Location: loc, Hours: map[time.Weekday][]Span{time.Monday: {{13 * 60, 16 * 60}, {8 * 60, 12 * 60}}}}
+	}
+	start := time.Date(2026, 11, 9, 7, 0, 0, 0, loc)
+	want, err := mk().Add(start, 5*time.Hour)
+	c := mk() // its first count happens in the goroutines
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			got, err := c.Add(start, 5*time.Hour)
+			if err != nil || !got.Equal(want) {
+				t.Errorf("shared: %v %v, want %v", got, err, want)
+			}
+		})
+	}
+	wg.Wait()
 }

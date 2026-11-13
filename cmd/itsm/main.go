@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -130,6 +131,11 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	cfg, err := platform.LoadConfig(getenv)
 	if err != nil {
 		return err
+	}
+	if addr := getenv("ITSM_PPROF_ADDR"); addr != "" {
+		if err := startPprof(addr, slog.Default()); err != nil {
+			return err
+		}
 	}
 	if *role != "" {
 		r, err := platform.ParseRole(*role)
@@ -359,6 +365,8 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	})
 	// Rights change on any instance reach this one through Valkey (PL9).
 	go func() { _ = az.Run(ctx) }()
+	// The types in memory hear of the changes of other instances and of the command line (PL53).
+	go rec.WatchTypes(ctx, logger)
 	go func() { _ = ruleEngine.Run(ctx) }()
 	go func() { _ = slaSvc.Run(ctx) }()
 	if err := js.Start(ctx); err != nil {

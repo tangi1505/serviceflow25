@@ -102,12 +102,7 @@ func (s *Service) written(ctx context.Context, typeName string, err error) error
 
 // New creates a service that reads the type definitions through q (cached later, PL9).
 func New(rt *db.Router) *Service {
-	return &Service{db: rt, nodeExists: func(ctx context.Context, path string) (bool, error) {
-		if !org.ValidPath(path) {
-			return false, nil
-		}
-		return queries.New(rt.Tenant(ctx)).OrgNodeExists(ctx, path)
-	}, types: func(ctx context.Context) (map[string]meta.Type, error) {
+	load := func(ctx context.Context) (map[string]meta.Type, error) {
 		ts, err := meta.Types(ctx, queries.New(rt.Control()))
 		if err != nil {
 			return nil, err
@@ -117,7 +112,15 @@ func New(rt *db.Router) *Service {
 			m[t.QualifiedName()] = t
 		}
 		return m, nil
-	}}
+	}
+	// The types in memory (PL53): loaded anew when the definitions changed.
+	cache := &typeCache{}
+	return &Service{db: rt, nodeExists: func(ctx context.Context, path string) (bool, error) {
+		if !org.ValidPath(path) {
+			return false, nil
+		}
+		return queries.New(rt.Tenant(ctx)).OrgNodeExists(ctx, path)
+	}, types: func(ctx context.Context) (map[string]meta.Type, error) { return cache.get(ctx, load) }}
 }
 
 // Type returns the definition of a qualified type name.

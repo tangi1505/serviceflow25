@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -126,8 +127,23 @@ func Store(ctx context.Context, pool *pgxpool.Pool, p Package) error {
 	if err := qtx.DeleteDefinitionsNotIn(ctx, queries.DeleteDefinitionsNotInParams{Package: p.Name, Keep: keep}); err != nil {
 		return fmt.Errorf("meta: prune: %w", err)
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	DefinitionsChanged()
+	return nil
 }
+
+// definitionsGen counts the changes of the definitions this process knows of (PL53): its own
+// writes and the notices on the channel itsm_definitions (records.Service.WatchTypes). The
+// types kept in memory are loaded anew when it moved.
+var definitionsGen atomic.Int64
+
+// DefinitionsChanged says that the definitions changed: the types are loaded anew.
+func DefinitionsChanged() { definitionsGen.Add(1) }
+
+// DefinitionsGeneration is the count of changes this process knows of.
+func DefinitionsGeneration() int64 { return definitionsGen.Load() }
 
 // InstalledTypes returns the qualified names of all installed base types.
 func InstalledTypes(ctx context.Context, q *queries.Queries) (map[string]bool, error) {

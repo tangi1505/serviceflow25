@@ -161,6 +161,8 @@ func problems(field string, msgs ...string) error {
 // Add checks a change against the effective type, keeps it if the layer still has the
 // expected version, and adds its column at once.
 func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expected int64, by uuid.UUID) (View, error) {
+	// The types in memory follow the layer at once in this process (PL53).
+	defer meta.DefinitionsChanged()
 	t, err := s.base(ctx, typeName)
 	if err != nil {
 		return View{}, err
@@ -257,6 +259,7 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 // Remove takes a change back if no later change needs it. A field the layer added keeps its
 // column and its values; added again under the same name, it shows them again.
 func (s *Service) Remove(ctx context.Context, typeName, changeID string, expected int64) (View, error) {
+	defer meta.DefinitionsChanged()
 	t, err := s.base(ctx, typeName)
 	if err != nil {
 		return View{}, err

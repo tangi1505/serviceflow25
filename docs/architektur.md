@@ -282,6 +282,12 @@ E34 und KF9:
   Ein Widget gruppiert auch nach einer Rolle (`actors.<rolle>`, ein Datensatz mit zwei Haltern
   zählt bei beiden); wer ein Dashboard nur liest, kopiert es mit `POST …/copy` in ein eigenes
   (UI14a).
+- **Typen im Speicher** (PL53, Kern-Plan E64): `records.Service.Type` hält die wirksamen
+  Typen im Speicher und lädt sie neu, wenn sich `definition` ändert: im eigenen Prozess sofort
+  (`meta.DefinitionsChanged`), für andere Instanzen und die Kommandozeile über einen Trigger mit
+  `pg_notify('itsm_definitions')`, den `WatchTypes` hört, und spätestens nach einer Minute. Die
+  ausgegebenen Typen sind geteilt und unveränderlich. Die SLA-Uhren halten Kalender zehn
+  Sekunden.
 - **Lösung** (UI14a, UI-Plan E40): ein Typ mit dem Merkmal `resolution` (braucht den Verlauf)
   bekommt `resolved_at`, `resolution_hours` und `resolution_service_hours`; `internal/records`
   setzt sie in der Transaktion des Wechsels in einen Status der Kategorie „erledigt“ und leert

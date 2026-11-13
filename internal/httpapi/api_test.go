@@ -199,6 +199,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	t.Cleanup(stopRun)
 	go func() { _ = az.Run(runCtx) }()
 	recs := withHook(rt, az)
+	go recs.WatchTypes(runCtx, quiet)
 	ev := events.New(rt, recs, kv, quiet)
 	hook := recs.AfterWrite
 	recs.AfterWrite = func(ctx context.Context, typeName string) {

@@ -263,6 +263,8 @@ func TestCustomerLayerInsideItsPackage(t *testing.T) {
 		if _, err := admin.pool.Exec(context.Background(), "DELETE FROM definition WHERE package = 'probe' AND name = 'probe' AND layer = 'customer'"); err != nil {
 			t.Fatal(err)
 		}
+		// Past the API: the types in memory hear of it at once, not only by the notice (PL53).
+		meta.DefinitionsChanged()
 	}
 	drop()
 	t.Cleanup(drop)
