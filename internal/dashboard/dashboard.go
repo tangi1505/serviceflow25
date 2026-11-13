@@ -338,7 +338,14 @@ func (s *Service) checkWidget(ctx context.Context, r map[string]any) []records.P
 	case group != "":
 		name, unit, _ := strings.Cut(group, ":")
 		f, ok := field(name)
+		role, byRole := strings.CutPrefix(name, actorsPrefix)
+		_, isRole := src.t.Actor(role)
 		switch {
+		case byRole && !isRole:
+			add("group_by", "unknown", fmt.Sprintf("%q is not a role of %s", role, src.typeName))
+		case byRole && unit != "":
+			add("group_by", "invalid", "a role groups by its holders, without a unit")
+		case byRole:
 		case !ok && !systemColumns[name]:
 			add("group_by", "unknown", fmt.Sprintf("%s has no field %q", src.typeName, name))
 		case unit != "" && !slices.Contains([]string{"day", "week", "month", "year"}, unit):
@@ -773,6 +780,8 @@ func (s *Service) points(ctx context.Context, t meta.Type, group string, rows *r
 	}
 	name, unit, _ := strings.Cut(group, ":")
 	f, isField := t.Field(name)
+	role, byRole := t.Actor(strings.TrimPrefix(name, actorsPrefix))
+	byRole = byRole && strings.HasPrefix(name, actorsPrefix)
 	for _, row := range rows.Rows {
 		key := row[group]
 		p := Point{Key: key, Value: row["value"]}
@@ -780,6 +789,11 @@ func (s *Service) points(ctx context.Context, t meta.Type, group string, rows *r
 		switch {
 		case key == nil:
 		case unit != "":
+		case byRole:
+			// The holder of a role (UI14a): a person, a group or what else the role takes.
+			if id, err := uuid.Parse(str); err == nil {
+				p.Label = s.title(ctx, role.To, id)
+			}
 		case name == "state":
 			for _, st := range t.States {
 				if st.Name == str {
@@ -805,4 +819,64 @@ func (s *Service) points(ctx context.Context, t meta.Type, group string, rows *r
 		out = append(out, p)
 	}
 	return out
+}
+
+// actorsPrefix names a role at the record in a grouping: "actors.group" (UI14a).
+const actorsPrefix = "actors."
+
+// title is the title of the record id of one of the types, as a label; empty when none of
+// them has it readable.
+func (s *Service) title(ctx context.Context, types []string, id uuid.UUID) map[string]string {
+	for _, typeName := range types {
+		target, err := s.rec.Type(ctx, typeName)
+		if err != nil {
+			continue
+		}
+		if r, err := s.rec.Get(ctx, typeName, id); err == nil {
+			title := fmt.Sprint(r[target.TitleField])
+			return map[string]string{"de": title, "en": title}
+		}
+	}
+	return nil
+}
+
+// Copy makes a dashboard the session reads into a new one of its own, named name, with copies
+// of all its widgets (UI14a, UI-Plan E40): one who only reads a shared dashboard can then
+// change it freely. The copy is shared with the person who copies, so that reading by
+// involvement finds it; the original stays as it is.
+func (s *Service) Copy(ctx context.Context, id uuid.UUID, name string, actor records.Actor) (View, error) {
+	src, err := s.Get(ctx, id)
+	if err != nil {
+		return View{}, err
+	}
+	fields := map[string]any{"name": name}
+	if d, ok := src.Dashboard["description"]; ok && d != nil {
+		fields["description"] = d
+	}
+	if me := authz.From(ctx).Me(); me != nil {
+		fields["actors"] = map[string]any{"shared": []any{map[string]any{"type": "core.person", "id": me.String()}}}
+	}
+	d, err := s.rec.Create(ctx, TypeDashboard, fields, actor)
+	if err != nil {
+		return View{}, err
+	}
+	newID := uuid.MustParse(fmt.Sprint(d["id"]))
+	wt, err := s.rec.Type(ctx, TypeWidget)
+	if err != nil {
+		return View{}, err
+	}
+	// The widgets as the save writes them: with system rights, after the dashboard.
+	for _, w := range src.Widgets {
+		values := map[string]any{}
+		for _, f := range wt.Fields {
+			if v, ok := w[f.Name]; ok && v != nil && !f.Computed && f.Name != "dashboard" {
+				values[f.Name] = v
+			}
+		}
+		values["dashboard"] = newID.String()
+		if _, err := s.rec.Create(system(ctx), TypeWidget, values, actor); err != nil {
+			return View{}, err
+		}
+	}
+	return s.Get(ctx, newID)
 }

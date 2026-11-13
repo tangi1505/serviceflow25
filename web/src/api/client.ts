@@ -361,6 +361,14 @@ export const api = {
   // A dashboard with its widgets, saved at once, and what a widget shows (UI13).
   dashboard: async (id: string) =>
     unwrap(await client.GET("/api/v1/dashboards/{id}", { params: { path: { id } } })),
+  // copyDashboard copies a dashboard the session reads into one of its own (UI14a).
+  copyDashboard: async (id: string, name: string) =>
+    unwrap(
+      await client.POST("/api/v1/dashboards/{id}/copy", {
+        params: { path: { id } },
+        body: { name },
+      }),
+    ),
   saveDashboard: async (
     id: string,
     body: { version: number; fields?: Record<string, unknown>; widgets: Record<string, unknown>[] },

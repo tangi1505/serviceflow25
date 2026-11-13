@@ -56,6 +56,25 @@ func (s *server) SaveDashboard(w http.ResponseWriter, r *http.Request, id gen.Id
 	writeJSON(w, http.StatusOK, v)
 }
 
+// CopyDashboard copies a dashboard the session reads into a new one of its own (UI14a).
+func (s *server) CopyDashboard(w http.ResponseWriter, r *http.Request, id gen.Id) {
+	if !s.dashboardsReady(w, r) {
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	v, err := s.o.Dashboards.Copy(r.Context(), id, body.Name, actor(r))
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, v)
+}
+
 func (s *server) WidgetData(w http.ResponseWriter, r *http.Request, id gen.Id, widgetID gen.WidgetId) {
 	if !s.dashboardsReady(w, r) {
 		return

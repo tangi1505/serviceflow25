@@ -622,6 +622,27 @@ paths:
         "404": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/dashboards/{id}/copy:
+    post:
+      operationId: copyDashboard
+      summary: "Copy a dashboard the session reads into a new one of its own, with all widgets (UI14a; needs create on dashboards)"
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DashboardCopy" }
+      responses:
+        "201":
+          description: the copy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardView" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
   /api/v1/dashboards/{id}/widgets/{widgetId}/data:
     post:
       operationId: widgetData
@@ -4157,6 +4178,12 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Record" }
         editable: { type: boolean, description: the session may change the dashboard }
+    DashboardCopy:
+      type: object
+      description: The name of the copy (UI14a).
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
     DashboardSave:
       type: object
       required: [version, widgets]

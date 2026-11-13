@@ -400,6 +400,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboards/{id}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a dashboard the session reads into a new one of its own, with all widgets (UI14a; needs create on dashboards) */
+        post: operations["copyDashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboards/{id}/widgets/{widgetId}/data": {
         parameters: {
             query?: never;
@@ -3308,6 +3325,10 @@ export interface components {
             /** @description the session may change the dashboard */
             editable: boolean;
         };
+        /** @description The name of the copy (UI14a). */
+        DashboardCopy: {
+            name: string;
+        };
         DashboardSave: {
             /**
              * Format: int64
@@ -4808,6 +4829,35 @@ export interface operations {
             403: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    copyDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardCopy"];
+            };
+        };
+        responses: {
+            /** @description the copy */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardView"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
         };
     };

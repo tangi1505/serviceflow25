@@ -654,11 +654,35 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 	var selects, groups []string
 	var names []string
 	type groupCol struct {
-		r    resolved
-		unit string
+		r     resolved
+		unit  string
+		actor bool
 	}
 	var groupCols []groupCol
+	// joins hold the roles a query groups by (UI14a): each the holders of one role, so that a
+	// record with two groups counts for both and one without any for none (null).
+	var joins []string
 	for _, g := range q.Group {
+		if isActorFilter(g) {
+			role, p := filterRole(t, g)
+			switch {
+			case p != nil:
+				b.problems = append(b.problems, *p)
+				continue
+			case role == "":
+				b.problem("group", "syntax", fmt.Sprintf("%q: group by one role, actors.<role>", g))
+				continue
+			}
+			alias := fmt.Sprintf("grp_actor_%d", len(joins))
+			joins = append(joins, fmt.Sprintf("LEFT JOIN (SELECT record_id AS rid, target_id AS target FROM actor WHERE type_name = %s AND role = %s) %s ON %s.rid = base.id",
+				b.arg(t.QualifiedName()), b.arg(role), alias, alias))
+			expr := alias + ".target"
+			selects = append(selects, fmt.Sprintf("%s AS %s", expr, pgx.Identifier{g}.Sanitize()))
+			groups = append(groups, expr)
+			names = append(names, g)
+			groupCols = append(groupCols, groupCol{actor: true})
+			continue
+		}
 		// A date or a moment groups by day, week, month or year with "field:unit" (UI13):
 		// "created_at:day", counted in Europe/Berlin.
 		field, unit, _ := strings.Cut(g, ":")
@@ -741,6 +765,12 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 		return nil, &ValidationError{Problems: b.problems}
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s", strings.Join(selects, ", "), table(t), strings.Join(where, " AND "))
+	if len(joins) > 0 {
+		// The records readable first, then the holders of the roles: the names of the actor
+		// table stay out of the conditions and the fields.
+		sql = fmt.Sprintf("SELECT %s FROM (SELECT * FROM %s WHERE %s) base %s", strings.Join(selects, ", "), table(t),
+			strings.Join(where, " AND "), strings.Join(joins, " "))
+	}
 	if len(groups) > 0 {
 		sql += " GROUP BY " + strings.Join(groups, ", ") + " ORDER BY " + strings.Join(groups, ", ") + " NULLS LAST"
 	}
@@ -760,6 +790,8 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 		for i, g := range names {
 			gc := groupCols[i]
 			switch {
+			case gc.actor:
+				row[g] = toJSON(meta.Field{Type: meta.FieldReference}, vals[i])
 			case gc.unit != "":
 				if d, ok := vals[i].(time.Time); ok {
 					row[g] = d.Format(dateFormat)

@@ -368,6 +368,8 @@ export type FakeState = {
   // dashboards are the dashboards with their widgets (UI13); widgetData what each widget
   // shows by its id, dashboardInvalid answers a save with 422 and these errors.
   dashboards?: { dashboard: RecordData; widgets: RecordData[]; editable: boolean }[];
+  // copyForbidden refuses copying a dashboard (UI14a).
+  copyForbidden?: boolean;
   widgetData?: Record<string, Record<string, unknown>>;
   dashboardInvalid?: { field: string; code: string; message: string }[];
   // sidebarWidgets stand in the sidebar of every record; tileData is the number of a tile by id
@@ -1223,6 +1225,32 @@ export function fakeApi(state: FakeState) {
       };
       state.dashboards.push({ dashboard, widgets: [], editable: true });
       return json(201, dashboard);
+    }
+    // Copying a dashboard (UI14a): a new one of one's own with copies of the widgets.
+    const copy = url.pathname.match(/^\/api\/v1\/dashboards\/([^/]+)\/copy$/);
+    if (copy && method === "POST") {
+      const d = (state.dashboards ?? []).find((x) => x.dashboard["id"] === copy[1]);
+      if (!d) {
+        return problem(404, "not_found");
+      }
+      if (state.copyForbidden) {
+        return problem(403, "forbidden");
+      }
+      const n = state.dashboards!.length + 1;
+      const made = {
+        dashboard: {
+          ...(JSON.parse(bodyText) as RecordData),
+          id: `01a15a3c-8545-7691-b780-d${String(n).padStart(11, "0")}`,
+          version: 1,
+        },
+        widgets: d.widgets.map((w, i) => ({
+          ...w,
+          id: `01a15a3c-8545-7691-b780-f${String(n * 100 + i).padStart(11, "0")}`,
+        })),
+        editable: true,
+      };
+      state.dashboards!.push(made);
+      return json(201, made);
     }
     const board = url.pathname.match(
       /^\/api\/v1\/dashboards\/([^/]+)(?:\/widgets\/([^/]+)\/data)?$/,

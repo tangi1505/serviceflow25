@@ -305,4 +305,38 @@ describe("Dashboards", () => {
       query: '{"field": "kind", "eq": "@record.kind"}',
     });
   });
+
+  // UI14a: one who only reads a dashboard copies it into one of their own and changes that; a
+  // role is offered to group by.
+  it("copies a dashboard one only reads, and groups by a role in the editor", async () => {
+    board(state);
+    state.dashboards![0]!.editable = false;
+    state.copyForbidden = true;
+    const user = userEvent.setup();
+    const { container } = renderAt(`/dashboards/${D}`);
+    const copy = await screen.findByRole("button", { name: "Als eigenes kopieren" });
+    expect(screen.queryByRole("button", { name: "Bearbeiten" })).not.toBeInTheDocument();
+    await user.click(copy);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Kopieren nicht möglich");
+    await expectAccessible(container);
+
+    state.copyForbidden = false;
+    await user.click(copy);
+    expect(
+      await screen.findByRole("heading", { name: "Service Desk Überblick (Kopie)" }),
+    ).toBeInTheDocument();
+    expect(state.dashboards).toHaveLength(2);
+    expect(state.dashboards![1]!.widgets).toHaveLength(state.dashboards![0]!.widgets.length);
+    expect(state.dashboards![0]!.dashboard["name"]).toBe("Service Desk Überblick");
+
+    await user.click(await screen.findByRole("button", { name: "Bearbeiten" }));
+    await user.click(screen.getByRole("button", { name: "Widget hinzufügen" }));
+    const form = screen.getByRole("region", { name: "Widget „Neues Widget“" });
+    await user.selectOptions(within(form).getByLabelText("Art"), "bar");
+    await user.selectOptions(within(form).getByLabelText("Typ"), "probe.probe");
+    const group = within(form).getByLabelText("Gruppieren nach");
+    expect(within(group).getByRole("option", { name: "Rolle: Anforderer" })).toHaveValue(
+      "actors.requester",
+    );
+  });
 });

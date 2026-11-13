@@ -279,6 +279,14 @@ E34 und KF9:
   `sidebar_type` steht in der Seitenleiste jedes Datensatzes dieses Typs (für wer das
   Dashboard liest), `@record` und `@record.feld` in seiner Bedingung nehmen den gezeigten
   Datensatz; eine Kachel des Portals zeigt die Zahl eines Widgets mit den Rechten der Person.
+  Ein Widget gruppiert auch nach einer Rolle (`actors.<rolle>`, ein Datensatz mit zwei Haltern
+  zählt bei beiden); wer ein Dashboard nur liest, kopiert es mit `POST …/copy` in ein eigenes
+  (UI14a).
+- **Lösung** (UI14a, UI-Plan E40): ein Typ mit dem Merkmal `resolution` (braucht den Verlauf)
+  bekommt `resolved_at`, `resolution_hours` und `resolution_service_hours`; `internal/records`
+  setzt sie in der Transaktion des Wechsels in einen Status der Kategorie „erledigt“ und leert
+  sie beim Verlassen. Die Servicezeit zählt die Abschnitte aus dem Verlauf des Status ohne die
+  wartenden im Kalender der Einheit (`calendar.default`, Haken `WorkingTime`).
 - **Zuweisung:** Person oder Gruppe bekommt eine Rolle für einen Knoten des Organisationsbaums.
   Regeln weisen das bei der Anmeldung aus LDAP- oder OIDC-Gruppen zu (G121).
 - **Übersetzung:** Je Person und Typ entsteht einmal eine SQL-Bedingung plus eine Liste erlaubter

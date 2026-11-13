@@ -193,6 +193,7 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          {!view.data.editable && <CopyButton id={id} name={String(d["name"])} />}
           {view.data.editable && (
             <>
               <Link
@@ -839,6 +840,11 @@ function WidgetForm({
   ];
   const groups = [
     ...(type?.states?.length ? [{ value: "state", label: t("column.state") }] : []),
+    // A role groups by its holders (UI14a); a record with two counts for both.
+    ...(type?.actors ?? []).map((r) => ({
+      value: `actors.${r.name}`,
+      label: t("dashboard.role", { role: labelOf(r.label, i18n.language, r.name) }),
+    })),
     ...fields
       .filter(
         (f) =>
@@ -1178,6 +1184,38 @@ function WidgetForm({
         </Button>
       </div>
     </section>
+  );
+}
+
+// CopyButton copies a dashboard one only reads into one of one's own and opens it (UI14a).
+function CopyButton({ id, name }: { id: string; name: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        variant="outline"
+        className="h-10"
+        onClick={() =>
+          void api.copyDashboard(id, t("dashboard.copyName", { name })).then(
+            (v) => {
+              void queryClient.invalidateQueries({ queryKey: ["records", "core.dashboard"] });
+              void navigate({ to: "/dashboards/$id", params: { id: String(v.dashboard["id"]) } });
+            },
+            () => setFailed(true),
+          )
+        }
+      >
+        {t("dashboard.copy")}
+      </Button>
+      {failed && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("dashboard.copyFailed")}
+        </p>
+      )}
+    </div>
   );
 }
 

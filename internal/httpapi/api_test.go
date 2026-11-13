@@ -307,6 +307,14 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 		}
 	}
 	dashboards := dashboard.New(recs)
+	// The service time of a resolution (UI14a), as cmd/itsm wires it.
+	recs.WorkingTime = func(ctx context.Context, path string, from, to time.Time) (time.Duration, error) {
+		c, _, err := calendars.ForNode(authz.WithAccess(ctx, authz.System()), path)
+		if err != nil || c == nil {
+			return to.Sub(from), err
+		}
+		return c.Between(from, to)
+	}
 	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs), snippets.Check(recs), dashboards.Check)
 	snippetSvc := snippets.New(recs)
 	snippetSvc.PublicURL = "http://itsm.test"

@@ -78,6 +78,9 @@ type Service struct {
 	// WorkingDays moves a moment on by working days in the calendar of a node of the tree
 	// (WF7: the reminders of approvals); nil counts calendar days.
 	WorkingDays func(ctx context.Context, path string, from time.Time, days int) (time.Time, error)
+	// WorkingTime counts the working time between two moments in the calendar of a node of the
+	// tree (UI14a: the service time of a resolution); nil counts round the clock.
+	WorkingTime func(ctx context.Context, path string, from, to time.Time) (time.Duration, error)
 	// SettingValue reads a setting of a node with the default of its declaration (SD20:
 	// setting("…") in formulas); nil means formulas see no settings.
 	SettingValue func(ctx context.Context, path, key string) (json.RawMessage, string, error)
@@ -942,6 +945,10 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 		// The sums at the records it points to, before and after (WF13); the clocks pause, go
 		// on or stop with the record as it is now (WF9).
 		if err := s.rollupsWritten(ctx, tx, t, old, rec, actor); err != nil {
+			return err
+		}
+		// Reaching or leaving the done states sets or empties the resolution (UI14a).
+		if err := s.resolutionWritten(ctx, tx, t, id, old, rec); err != nil {
 			return err
 		}
 		return s.clocksWritten(ctx, tx, t, id, rec)

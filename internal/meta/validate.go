@@ -152,6 +152,7 @@ func Validate(p Package, known map[string]bool) error {
 		validateStates(add, where, t)
 		validateTraits(add, where, t, p)
 		validateActors(add, where, t, local, known)
+		validateResolution(add, where, t)
 		validatePortal(add, where, t)
 		validateReaders(add, where, t)
 		validateSuggest(add, where, t, p, local, known, trseen)
@@ -285,6 +286,23 @@ func hasOption(f Field, v any) bool {
 		}
 	}
 	return false
+}
+
+// validateResolution checks the trait resolution (UI14a): it needs a state of the category
+// done to set its fields, and the history to leave the time of waiting out.
+func validateResolution(add func(string, string, ...any), where string, t Type) {
+	if !t.HasTrait(TraitResolution) {
+		return
+	}
+	if !t.HasHistory() {
+		add(where, "trait resolution needs the trait history")
+	}
+	for _, st := range t.States {
+		if st.Category == CategoryDone {
+			return
+		}
+	}
+	add(where, "trait resolution needs a state of the category done")
 }
 
 // validateActors checks the roles at the record (WF3): the trait actors and at least one role

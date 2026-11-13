@@ -230,6 +230,15 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		}
 		return c.AddDays(from, days)
 	}
+	// The service time of a resolution (UI14a) counts in the calendar of the node, read with
+	// system rights: whoever resolves need not read calendars.
+	rec.WorkingTime = func(ctx context.Context, path string, from, to time.Time) (time.Duration, error) {
+		c, _, err := calendars.ForNode(authz.WithAccess(ctx, authz.System()), path)
+		if err != nil || c == nil {
+			return to.Sub(from), err
+		}
+		return c.Between(from, to)
+	}
 	if err := records.RegisterRemindJob(js, rec, logger); err != nil {
 		return err
 	}

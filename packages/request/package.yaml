@@ -5,7 +5,7 @@
 # the base package sd, a running number REQ-…, approval from the approval template its
 # fulfilment template names (WF7) and the tasks of its fulfilment from the same template.
 name: request
-version: 0.3.0
+version: 0.4.0
 label:
   de: Anfragen
   en: Requests

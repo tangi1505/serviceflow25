@@ -414,9 +414,10 @@ func typeSchema(t meta.Type) *openapi3.Schema {
 		sch.Title = f.Label["en"]
 		if f.Computed {
 			// Kept by the core, never written: a sum (the costs, PL20) is never null, anything
-			// else is until the core sets it (the outcome of an approval, WF6).
+			// else is until the core sets it (the outcome of an approval, WF6; the durations of a
+			// resolution, UI14a).
 			sch.Description = "computed by the core"
-			sch.Nullable = f.Type != meta.FieldNumber
+			sch.Nullable = !f.StartsAtZero()
 		} else if f.Formula != "" {
 			// Calculated on every write (PL22): null when a field the formula uses is empty.
 			sch.Description = "calculated: " + f.Formula

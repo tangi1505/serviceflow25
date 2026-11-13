@@ -207,9 +207,10 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 			}
 		} else {
 			def := ct
-			if f.Computed && f.Type == meta.FieldNumber {
-				// A sum kept by the core starts at zero, also for rows that exist (PL20). Other
-				// computed fields start empty, the outcome of an approval for one (WF6).
+			if f.StartsAtZero() {
+				// A sum kept by the core starts at zero, also for rows that exist (PL20, WF13).
+				// Other computed fields start empty, the outcome of an approval for one (WF6), the
+				// durations of a resolution (UI14a).
 				def += " NOT NULL DEFAULT 0"
 			}
 			stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s",

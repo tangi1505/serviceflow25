@@ -20,7 +20,7 @@ import (
 //
 // A trait is a definition building block a type pulls in by name. The core ships the traits
 // with behaviour: list (PL16), history, documents, notes, reservable, costs (PL20), actors
-// (WF3), timeline (PL42), rating (SD18) and approvals (WF6). A core trait may bring fields of its own (costs brings its sums). A package may add
+// (WF3), timeline (PL42), rating (SD18), approvals (WF6) and resolution (UI14a). A core trait may bring fields of its own (costs brings its sums). A package may add
 // traits of its own below traits/<name>.yaml: bundles of fields every type of the package
 // can take, such as finance data. A type names its traits in "traits: [...]".
 
@@ -35,12 +35,28 @@ const (
 	TraitTimeline   = "timeline"   // entries public or private, with the history in order (PL42)
 	TraitRating     = "rating"     // helped or not, once per person (SD18)
 	TraitApprovals  = "approvals"  // approval in stages, with the field approval (WF6)
+	TraitResolution = "resolution" // when the record was resolved and how long it took (UI14a)
 )
 
 // The computed fields of the trait costs: the sums of the entries, kept by the core.
 const (
 	FieldTimeSpent = "time_spent" // minutes of all time entries
 	FieldCostTotal = "cost_total" // amount of all entries
+)
+
+// StartsAtZero reports whether a computed field is a number the core keeps from zero: the sums
+// of costs (PL20) and of rollups (WF13), never null. The durations of a resolution are empty
+// until the record is resolved (UI14a).
+func (f Field) StartsAtZero() bool {
+	return f.Computed && f.Type == FieldNumber && f.Name != FieldResolutionHours && f.Name != FieldResolutionServiceHours
+}
+
+// The computed fields of the trait resolution (UI14a): set when the record reaches a state of
+// the category done, emptied when it leaves it again.
+const (
+	FieldResolvedAt             = "resolved_at"              // the moment of the resolution
+	FieldResolutionHours        = "resolution_hours"         // hours from creating to resolving, round the clock
+	FieldResolutionServiceHours = "resolution_service_hours" // working hours by the calendar, without waiting
 )
 
 // Trait is one building block: its name, labels, the fields it gives a type and the
@@ -86,6 +102,16 @@ var CoreTraits = []Trait{
 	{Name: TraitApprovals, Label: Label{"de": "Genehmigungen", "en": "Approvals"}, SubResources: []string{"approvals"},
 		Description: Label{"de": "Genehmigung in Stufen nacheinander, in einer Stufe mit Mindestzahl; das Feld Genehmigung zeigt den Stand", "en": "Approval in stages one after the other, each with a least number of yes; the field approval shows the outcome"},
 		Fields:      []Field{approvalField}},
+	{Name: TraitResolution, Label: Label{"de": "Lösung", "en": "Resolution"},
+		Description: Label{"de": "Hält fest, wann der Datensatz einen erledigten Status erreicht hat, und die Dauer seit dem Anlegen in Kalenderzeit und in Servicezeit ohne Wartezeit", "en": "Keeps when the record reached a done state, and the time since its creation round the clock and in working time without waiting"},
+		Fields: []Field{
+			{Name: FieldResolvedAt, Type: FieldDateTime, Computed: true,
+				Label: Label{"de": "Gelöst am", "en": "Resolved at"}},
+			{Name: FieldResolutionHours, Type: FieldNumber, Computed: true,
+				Label: Label{"de": "Lösungsdauer (Stunden)", "en": "Time to resolve (hours)"}},
+			{Name: FieldResolutionServiceHours, Type: FieldNumber, Computed: true,
+				Label: Label{"de": "Lösungsdauer in Servicezeit (Stunden)", "en": "Time to resolve in service time (hours)"}},
+		}},
 }
 
 // CoreTrait returns the core trait with that name.

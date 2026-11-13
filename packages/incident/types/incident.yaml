@@ -12,7 +12,8 @@ description:
 title_field: title
 # ticket from sd brings title, description, category, channel, impact, urgency and the roles
 # requester, observer, assignee and group (SD-Plan N6, N7).
-traits: [sd.ticket, history, documents, timeline]
+# resolution keeps when it was resolved and how long it took (UI14a).
+traits: [sd.ticket, history, documents, timeline, resolution]
 fields:
   # The running number per tenant (PL49): INC-1, INC-2, …
   - name: number
