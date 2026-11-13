@@ -48,6 +48,9 @@ export type SettingsChange = NonNullable<
 export type OrgNode = components["schemas"]["OrgNode"];
 export type OrgSetting = components["schemas"]["OrgSetting"];
 export type SettingDefinition = components["schemas"]["SettingDefinition"];
+export type DashboardView = components["schemas"]["DashboardView"];
+export type DashboardFilters = components["schemas"]["DashboardFilters"];
+export type WidgetData = components["schemas"]["WidgetData"];
 export type PresenceEntry = components["schemas"]["Presence"]["others"][number];
 // A form (UI11): sections with questions, bound to fields of the target type or free.
 export type FormOffer = components["schemas"]["FormOffer"];
@@ -355,6 +358,26 @@ export const api = {
       }),
     );
   },
+  // A dashboard with its widgets, saved at once, and what a widget shows (UI13).
+  dashboard: async (id: string) =>
+    unwrap(await client.GET("/api/v1/dashboards/{id}", { params: { path: { id } } })),
+  saveDashboard: async (
+    id: string,
+    body: { version: number; fields?: Record<string, unknown>; widgets: Record<string, unknown>[] },
+  ) =>
+    unwrap(
+      await client.PUT("/api/v1/dashboards/{id}", {
+        params: { path: { id } },
+        body: body as never,
+      }),
+    ),
+  widgetData: async (id: string, widgetId: string, filters: DashboardFilters) =>
+    unwrap(
+      await client.POST("/api/v1/dashboards/{id}/widgets/{widgetId}/data", {
+        params: { path: { id, widgetId } },
+        body: filters,
+      }),
+    ),
   // settingDefinitions are the settings the installed packages declare (SD20).
   settingDefinitions: async () => unwrap(await client.GET("/api/v1/settings/definitions")),
   unsetOrgSetting: async (path: string, key: string) => {
@@ -687,6 +710,13 @@ export const typesQuery = queryOptions({
 
 // savedSearchesQuery are the saved searches one may read, own and shared, for the navigation
 // (UI30) and the command line (UI31).
+// The dashboards the session may read, for the navigation (UI13).
+export const dashboardsQuery = queryOptions({
+  queryKey: ["records", "core.dashboard", "list", "nav"],
+  queryFn: () => api.list("core.dashboard", { limit: 50, sort: "id" }),
+  retry: false,
+});
+
 export const savedSearchesQuery = queryOptions({
   queryKey: ["records", "core.saved_search", "list", "nav"],
   queryFn: () => api.list("core.saved_search", { limit: 50, sort: "name" }),

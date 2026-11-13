@@ -24,6 +24,7 @@ import { AppShell } from "@/app/AppShell";
 import { HomePage } from "@/app/HomePage";
 import { LoginPage } from "@/app/LoginPage";
 import { PasswordPage } from "@/app/PasswordPage";
+import { DashboardPage } from "@/app/Dashboard";
 import { GlobalSettingsPage } from "@/app/GlobalSettings";
 import { MySettingsPage } from "@/app/SettingsPage";
 import {
@@ -195,8 +196,11 @@ const formRoute = createRoute({
 const typeRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/types/$typeName",
-  validateSearch: (search: Record<string, unknown>): { search?: string } =>
-    typeof search["search"] === "string" ? { search: search["search"] } : {},
+  // ?where=<JSON> opens the list with a condition, from a dashboard (UI13).
+  validateSearch: (search: Record<string, unknown>): { search?: string; where?: string } => ({
+    ...(typeof search["search"] === "string" ? { search: search["search"] } : {}),
+    ...(typeof search["where"] === "string" ? { where: search["where"] } : {}),
+  }),
   component: TypePage,
 });
 
@@ -262,6 +266,13 @@ const passwordRoute = createRoute({
 });
 
 // One's own settings and the global ones (UI9).
+// A dashboard (UI13).
+const dashboardRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/dashboards/$id",
+  component: DashboardPage,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings",
@@ -303,6 +314,7 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     globalSettingsRoute,
     approvalsRoute,
+    dashboardRoute,
   ]),
 ]);
 

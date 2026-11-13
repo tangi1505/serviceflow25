@@ -204,10 +204,19 @@ function SearchBar({
 }
 
 // TypeView is the list with its filters; another saved search makes a new one (key).
-function TypeView({ type, saved }: { type: TypeDefinition; saved?: RecordData }) {
+function TypeView({
+  type,
+  saved,
+  initialWhere,
+}: {
+  type: TypeDefinition;
+  saved?: RecordData;
+  // initialWhere is a condition from the address, such as a click on a dashboard (UI13).
+  initialWhere?: string;
+}) {
   const { t } = useTranslation();
   const typeName = qualifiedName(type);
-  const savedWhere = parseWhere(saved?.["query"]);
+  const savedWhere = parseWhere(saved?.["query"] ?? initialWhere);
   const parsed = fromWhere(savedWhere);
   // A condition the filters cannot show (written over the API) applies as it is.
   const raw = parsed === null ? (savedWhere as Record<string, unknown>) : undefined;
@@ -251,7 +260,7 @@ function TypeView({ type, saved }: { type: TypeDefinition; saved?: RecordData })
 export function TypePage() {
   const { t, i18n } = useTranslation();
   const { typeName } = useParams({ from: "/shell/types/$typeName" });
-  const { search } = useSearch({ from: "/shell/types/$typeName" });
+  const { search, where } = useSearch({ from: "/shell/types/$typeName" });
   const types = useQuery(typesQuery);
   const me = useQuery(meQuery);
   const saved = useQuery({ ...recordQuery(searchType, search ?? ""), enabled: Boolean(search) });
@@ -293,9 +302,10 @@ export function TypePage() {
       </div>
       {search && saved.isError && <Alert variant="destructive">{t("search.notFound")}</Alert>}
       <TypeView
-        key={`${typeName}-${search ?? ""}-${String(saved.data?.["version"] ?? "")}`}
+        key={`${typeName}-${search ?? ""}-${String(saved.data?.["version"] ?? "")}-${where ?? ""}`}
         type={type}
         saved={saved.data}
+        initialWhere={where}
       />
     </>
   );

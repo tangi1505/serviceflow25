@@ -379,6 +379,44 @@ export interface paths {
         patch: operations["applyOrgSettings"];
         trace?: never;
     };
+    "/api/v1/dashboards/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A dashboard the session may read, with its widgets top left first, and whether the session may change it (UI13) */
+        get: operations["getDashboard"];
+        /**
+         * Save the fields and all widgets of a dashboard at once (UI13; needs update on the dashboard)
+         * @description A widget with an id is changed, one without is created, one of the dashboard not named any more is removed. Every widget is checked before the first write; the version is the dashboard's, another one is a conflict and nothing is written.
+         */
+        put: operations["saveDashboard"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/{id}/widgets/{widgetId}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What a widget shows, computed with the rights of the session and the filters of the dashboard (UI13) */
+        post: operations["widgetData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/definitions": {
         parameters: {
             query?: never;
@@ -3213,6 +3251,65 @@ export interface components {
              */
             linked?: string;
         };
+        DashboardView: {
+            dashboard: components["schemas"]["Record"];
+            widgets: components["schemas"]["Record"][];
+            /** @description the session may change the dashboard */
+            editable: boolean;
+        };
+        DashboardSave: {
+            /**
+             * Format: int64
+             * @description the version of the dashboard as read
+             */
+            version: number;
+            /** @description fields of the dashboard to change, like name, and actors (shared) */
+            fields?: {
+                [key: string]: unknown;
+            };
+            widgets: {
+                [key: string]: unknown;
+            }[];
+        };
+        DashboardFilters: {
+            /**
+             * Format: date-time
+             * @description start of the period, inclusive
+             */
+            from?: string;
+            /**
+             * Format: date-time
+             * @description end of the period, exclusive
+             */
+            to?: string;
+            /** @description a node of the organisation tree; the records there and below */
+            unit?: string;
+        };
+        WidgetData: {
+            /** @enum {string} */
+            kind: "number" | "pie" | "bar" | "line" | "list" | "text";
+            /** @description the type of the records */
+            type?: string;
+            /** @description the condition the numbers come from, with the filters */
+            where?: {
+                [key: string]: unknown;
+            };
+            /** @description the field the points are grouped by */
+            group?: string;
+            /** @description the number of a widget of kind number */
+            value?: unknown;
+            points?: {
+                /** @description the value of the group field */
+                key: unknown;
+                label?: {
+                    [key: string]: string;
+                };
+                /** @description the measure of the group */
+                value: unknown;
+            }[];
+            items?: components["schemas"]["Record"][];
+            columns?: string[];
+        };
         SettingOption: {
             /** @description the value: a text for a choice, a number or text for the cells of a matrix */
             value: unknown;
@@ -3387,6 +3484,7 @@ export interface components {
             theme: components["schemas"]["SettingValue"];
             color_scheme: components["schemas"]["SettingValue"];
             density: components["schemas"]["SettingValue"];
+            start_dashboard: components["schemas"]["SettingValue"];
             defaults: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -3819,6 +3917,7 @@ export interface components {
         /** @description qualified type name, package.type */
         typeName: string;
         id: string;
+        widgetId: string;
         approvalId: string;
         /** @description the id of a core.person */
         personId: string;
@@ -4602,6 +4701,88 @@ export interface operations {
                 content?: never;
             };
             403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the dashboard */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardView"];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
+    };
+    saveDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardSave"];
+            };
+        };
+        responses: {
+            /** @description the dashboard as saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardView"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    widgetData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+                widgetId: components["parameters"]["widgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardFilters"];
+            };
+        };
+        responses: {
+            /** @description the data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetData"];
+                };
+            };
             404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
         };
@@ -7246,6 +7427,8 @@ export interface operations {
                      * @enum {string|null}
                      */
                     density?: "compact" | "normal" | null;
+                    /** @description the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13) */
+                    start_dashboard?: string | null;
                     /** @description per type an object of field values, or null to remove */
                     defaults?: {
                         [key: string]: {

@@ -40,7 +40,12 @@ const (
 	GlobalColorScheme = "ui.color_scheme"
 	// GlobalDensity is compact or normal, the row height of lists (UI30, UI-Plan E35).
 	GlobalDensity = "ui.density"
+	// GlobalStartDashboard is the dashboard on the start page of the workplace (UI13).
+	GlobalStartDashboard = "ui.start_dashboard"
 )
+
+// StartNone is the own start page without a dashboard: the greeting only (UI13).
+const StartNone = "none"
 
 // Defaults when neither the person nor the tree says anything.
 const (
@@ -84,8 +89,11 @@ type Prefs struct {
 	// ColorScheme is light, dark or system (UI29).
 	ColorScheme Value `json:"color_scheme"`
 	// Density is compact or normal (UI30).
-	Density  Value                     `json:"density"`
-	Defaults map[string]map[string]any `json:"defaults"`
+	Density Value `json:"density"`
+	// StartDashboard is the id of the dashboard on the start page, or "none" for the greeting
+	// only; empty without one (UI13).
+	StartDashboard Value                     `json:"start_dashboard"`
+	Defaults       map[string]map[string]any `json:"defaults"`
 }
 
 // Settings reads a setting of the tree with the node it comes from.
@@ -200,6 +208,7 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 		density = Value{DefaultDensity, SourceDefault}
 	}
 	out.Density = density
+	out.StartDashboard = pick(str("start_dashboard"), GlobalStartDashboard, "")
 	return out, nil
 }
 
@@ -233,9 +242,9 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "color_scheme", "density", "defaults":
+		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "defaults":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density and defaults")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard and defaults")
 		}
 	}
 	text("language", func(v string) bool { return v == "de" || v == "en" }, "must be de or en")
@@ -243,6 +252,17 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	text("theme", themeRe.MatchString, "must be the name of a theme")
 	text("color_scheme", isColorScheme, "must be light, dark or system")
 	text("density", isDensity, "must be compact or normal")
+	text("start_dashboard", func(v string) bool {
+		if v == StartNone {
+			return true
+		}
+		id, err := uuid.Parse(v)
+		if err != nil {
+			return false
+		}
+		_, err = s.rec.Get(ctx, "core.dashboard", id)
+		return err == nil
+	}, "must be the id of a dashboard you may read, or none")
 	if raw, given := input["defaults"]; given {
 		m, ok := raw.(map[string]any)
 		if !ok {

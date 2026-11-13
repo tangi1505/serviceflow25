@@ -31,6 +31,7 @@ import (
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
 	"group24.de/itsm/internal/customer"
+	"group24.de/itsm/internal/dashboard"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/export"
 	"group24.de/itsm/internal/files"
@@ -74,6 +75,8 @@ type Options struct {
 	Org *org.Service
 	// Settings knows the declared settings and checks values (SD20); nil stores any key.
 	Settings *settings.Service
+	// Dashboards shows and saves dashboards (UI13); nil answers 503 on /api/v1/dashboards.
+	Dashboards *dashboard.Service
 	// Groups answers the membership of groups (PL7); required when API is set.
 	Groups *query.Groups
 	// Authz loads the rights of the session (PL8); without it a session may do nothing.

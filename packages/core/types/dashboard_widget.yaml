@@ -1,0 +1,136 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A widget of a dashboard (UI13, UI-Plan E39): a number, a pie, bars, a line, a list or a text,
+# at its place in the grid of four columns. Its records come from a saved search or from a type
+# with a condition of its own (the where of the JSON query); pie, bars and line group them by a
+# field, a date by day, week, month or year ("created_at:day"). The filters of the dashboard
+# narrow the date field it names and the unit, unless the widget leaves them out.
+name: dashboard_widget
+label: {de: Widget, en: Widget}
+title_field: title
+traits: [history]
+fields:
+  - name: dashboard
+    type: reference
+    label: {de: Dashboard, en: Dashboard}
+    to: core.dashboard
+    required: true
+  - name: title
+    type: text
+    label: {de: Titel, en: Title}
+    required: true
+    translatable: true
+    max_length: 100
+  - name: kind
+    type: choice
+    label: {de: Art, en: Kind}
+    required: true
+    default: number
+    options:
+      - {value: number, label: {de: Kennzahl, en: Number}}
+      - {value: pie, label: {de: Torte, en: Pie}}
+      - {value: bar, label: {de: Balken, en: Bars}}
+      - {value: line, label: {de: Linie, en: Line}}
+      - {value: list, label: {de: Liste, en: List}}
+      - {value: text, label: {de: Text, en: Text}}
+  - name: saved_search
+    type: reference
+    label: {de: Gespeicherte Suche, en: Saved search}
+    to: core.saved_search
+  - name: target_type
+    type: text
+    label: {de: Typ, en: Type}
+    description: {de: "Typ mit Paket, etwa incident.incident; ohne gespeicherte Suche", en: "Type with its package, e.g. incident.incident; without a saved search"}
+    max_length: 130
+  - name: query
+    type: text
+    label: {de: Bedingung, en: Condition}
+    description: {de: "where der JSON-Abfrage, leer für alle", en: "where of the JSON query, empty for all"}
+    max_length: 20000
+  - name: group_by
+    type: text
+    label: {de: Gruppieren nach, en: Group by}
+    description: {de: "Feld, ein Datum mit :day, :week, :month oder :year", en: "Field, a date with :day, :week, :month or :year"}
+    max_length: 130
+  - name: measure
+    type: choice
+    label: {de: Kennzahl, en: Measure}
+    required: true
+    default: count
+    options:
+      - {value: count, label: {de: Anzahl, en: Count}}
+      - {value: sum, label: {de: Summe, en: Sum}}
+      - {value: avg, label: {de: Durchschnitt, en: Average}}
+      - {value: min, label: {de: Minimum, en: Minimum}}
+      - {value: max, label: {de: Maximum, en: Maximum}}
+  - name: measure_field
+    type: text
+    label: {de: Feld der Kennzahl, en: Field of the measure}
+    max_length: 130
+  - name: date_field
+    type: text
+    label: {de: Datumsfeld für den Zeitraum, en: Date field for the period}
+    default: created_at
+    max_length: 130
+  - name: use_period
+    type: boolean
+    label: {de: Nimmt den Zeitraum, en: Takes the period}
+    required: true
+    default: true
+  - name: use_unit
+    type: boolean
+    label: {de: Nimmt die Einheit, en: Takes the unit}
+    required: true
+    default: true
+  - name: columns
+    type: text
+    label: {de: Spalten, en: Columns}
+    description: {de: "Für eine Liste: Feldnamen durch Komma getrennt; leer für die der gespeicherten Suche oder den Titel", en: "For a list: field names separated by commas; empty for those of the saved search or the title"}
+    max_length: 2000
+  - name: sort
+    type: text
+    label: {de: Sortierung, en: Sort}
+    description: {de: "Für eine Liste: ein Feld, mit - absteigend", en: "For a list: one field, - for descending"}
+    max_length: 130
+  - name: size
+    type: number
+    label: {de: Zeilen, en: Rows}
+    description: {de: "Für eine Liste: höchstens so viele Zeilen", en: "For a list: at most this many rows"}
+    default: 10
+    min: 1
+    max: 50
+  - name: body
+    type: text
+    label: {de: Text, en: Text}
+    format: rich
+    translatable: true
+    max_length: 20000
+  - name: x
+    type: number
+    label: {de: Spalte, en: Column}
+    required: true
+    default: 0
+    min: 0
+    max: 3
+  - name: y
+    type: number
+    label: {de: Zeile, en: Row}
+    required: true
+    default: 0
+    min: 0
+    max: 1000
+  - name: w
+    type: number
+    label: {de: Breite, en: Width}
+    required: true
+    default: 1
+    min: 1
+    max: 4
+  - name: h
+    type: number
+    label: {de: Höhe, en: Height}
+    required: true
+    default: 1
+    min: 1
+    max: 4

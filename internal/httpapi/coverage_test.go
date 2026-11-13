@@ -315,6 +315,8 @@ var checkedSamples = map[string]map[string]any{
 	"core.snippet":       {"target_type": "probe.probe"},
 	// WF7: the roles of a stage of an approval template are none or real ones.
 	"core.approval_template_stage": {"roles": ""},
+	// UI13: a widget of kind text needs no source; random text would be no type.
+	"core.dashboard_widget": {"kind": "text", "target_type": "", "query": "", "group_by": "", "measure_field": "", "date_field": "", "columns": "", "sort": ""},
 }
 
 // sampleValue is a valid value of a field that is not a reference.

@@ -27,8 +27,10 @@ import {
   mySettingsQuery,
   qualifiedName,
   savedSearchesQuery,
+  dashboardsQuery,
   typesQuery,
 } from "@/api/client";
+import { NewDashboardButton } from "@/app/Dashboard";
 import { useContentLanguage } from "@/app/contentLanguage";
 import { setDisplayTimeZone } from "@/render/fields";
 import { applyColorScheme, isColorScheme } from "@/ui/colorScheme";
@@ -76,6 +78,7 @@ export function AppShell() {
   }, []);
   // The saved searches one may read, own and shared, in the navigation (UI30).
   const saved = useQuery({ ...savedSearchesQuery, enabled: me.data !== undefined });
+  const dashboards = useQuery({ ...dashboardsQuery, enabled: me.data !== undefined });
   const approvals = useQuery({ ...myApprovalsQuery, enabled: me.data !== undefined });
   // The types grouped by their package: the areas of the navigation.
   const areas = new Map<string, NonNullable<typeof types.data>>();
@@ -155,6 +158,27 @@ export function AppShell() {
                     </span>
                   )}
                 </Link>
+              </li>
+            </ul>
+            {/* Dashboards (UI13): those the session may read, and a new one. */}
+            <h2 className="mb-2 mt-4 text-xs font-semibold uppercase text-foreground-2">
+              {t("nav.dashboards")}
+            </h2>
+            <ul className="flex flex-col gap-1">
+              {(dashboards.data?.items ?? []).map((b) => (
+                <li key={String(b["id"])}>
+                  <Link
+                    to="/dashboards/$id"
+                    params={{ id: String(b["id"]) }}
+                    className="block rounded-md px-2 py-1 text-sm hover:bg-surface-active"
+                    activeProps={{ className: "bg-surface-active font-medium text-foreground" }}
+                  >
+                    {String(b["name"])}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <NewDashboardButton />
               </li>
             </ul>
             {[...areas.entries()].map(([pkg, list]) => (

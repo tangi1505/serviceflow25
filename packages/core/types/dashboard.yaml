@@ -1,0 +1,28 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# A dashboard (UI13, UI-Plan E39; Inventar G238, G239): a page of widgets with the filters
+# period and unit on top. Its widgets are records of core.dashboard_widget. It is shared like a
+# saved search, through the role "shared" with persons and groups; whoever looks at it sees the
+# numbers of the records they may read themselves. Packages bring dashboards as start data.
+name: dashboard
+label: {de: Dashboard, en: Dashboard}
+title_field: name
+traits: [history, actors]
+fields:
+  - name: name
+    type: text
+    label: {de: Name, en: Name}
+    required: true
+    searchable: true
+    translatable: true
+    max_length: 100
+  - name: description
+    type: text
+    label: {de: Beschreibung, en: Description}
+    translatable: true
+    max_length: 500
+actors:
+  - name: shared
+    label: {de: Geteilt mit, en: Shared with}
+    to: [core.person, core.group]

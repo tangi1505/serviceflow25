@@ -30,6 +30,7 @@ import (
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
 	"group24.de/itsm/internal/customer"
+	"group24.de/itsm/internal/dashboard"
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
@@ -305,7 +306,8 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 			t.Fatal(err)
 		}
 	}
-	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs), snippets.Check(recs))
+	dashboards := dashboard.New(recs)
+	recs.Clocks, recs.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recur.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(recs), forms.Check(recs), portal.Check(recs), snippets.Check(recs), dashboards.Check)
 	snippetSvc := snippets.New(recs)
 	snippetSvc.PublicURL = "http://itsm.test"
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {
@@ -323,7 +325,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	}
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
 	rels := relations.New(rt, recs)
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Settings: settingsSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Settings: settingsSvc, Dashboards: dashboards, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
 		Calendars: calendars, SLA: slaSvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

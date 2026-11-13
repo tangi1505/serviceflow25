@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -325,6 +326,15 @@ func (b *builder) condition(field string, r resolved, op string, raw json.RawMes
 		}
 		return r.expr + " IS NOT NULL"
 	case "under":
+		// {"field": "org_path", "under": "root.nord"}: the records at a unit and below it (UI13).
+		if r.system == orgPathField {
+			path, _ := v.(string)
+			if !org.ValidPath(path) {
+				b.problem(field, "type", "under on org_path needs a path of the organisation tree, like root.nord")
+				return "TRUE"
+			}
+			return fmt.Sprintf("%s <@ %s::ltree", r.expr, b.arg(path))
+		}
 		// {"field": "parent", "under": id}: the entries below one entry of a tree list (PL16).
 		s, _ := v.(string)
 		id, err := uuid.Parse(s)
@@ -643,14 +653,40 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 	t := b.t
 	var selects, groups []string
 	var names []string
+	type groupCol struct {
+		r    resolved
+		unit string
+	}
+	var groupCols []groupCol
 	for _, g := range q.Group {
-		r, ok := b.resolve(g)
+		// A date or a moment groups by day, week, month or year with "field:unit" (UI13):
+		// "created_at:day", counted in Europe/Berlin.
+		field, unit, _ := strings.Cut(g, ":")
+		r, ok := b.resolve(field)
 		if !ok {
 			continue
 		}
-		selects = append(selects, fmt.Sprintf("%s AS %s", r.expr, pgx.Identifier{g}.Sanitize()))
-		groups = append(groups, r.expr)
+		expr := r.expr
+		if unit != "" {
+			if !slices.Contains([]string{"day", "week", "month", "year"}, unit) {
+				b.problem("group", "syntax", fmt.Sprintf("%q: the unit is day, week, month or year", g))
+				continue
+			}
+			switch {
+			case r.system == "created_at" || r.system == "updated_at" || r.system == "deleted_at" || r.system == "sla_due_at" ||
+				(r.system == "" && r.field.Type == meta.FieldDateTime):
+				expr = fmt.Sprintf("date_trunc('%s', %s AT TIME ZONE 'Europe/Berlin')::date", unit, r.expr)
+			case r.system == "" && r.field.Type == meta.FieldDate:
+				expr = fmt.Sprintf("date_trunc('%s', %s)::date", unit, r.expr)
+			default:
+				b.problem("group", "type", fmt.Sprintf("%q: only a date or a moment groups by %s", g, unit))
+				continue
+			}
+		}
+		selects = append(selects, fmt.Sprintf("%s AS %s", expr, pgx.Identifier{g}.Sanitize()))
+		groups = append(groups, expr)
 		names = append(names, g)
+		groupCols = append(groupCols, groupCol{r: r, unit: unit})
 	}
 	if len(q.Aggregate) == 0 {
 		q.Aggregate = map[string]Aggregate{"count": {Count: "*"}}
@@ -722,11 +758,18 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 		}
 		row := map[string]any{}
 		for i, g := range names {
-			r, _ := b.resolve(g)
-			if r.system != "" {
-				row[g] = systemToJSON(r.system, vals[i])
-			} else {
-				row[g] = toJSON(r.field, vals[i])
+			gc := groupCols[i]
+			switch {
+			case gc.unit != "":
+				if d, ok := vals[i].(time.Time); ok {
+					row[g] = d.Format(dateFormat)
+				} else {
+					row[g] = nil
+				}
+			case gc.r.system != "":
+				row[g] = systemToJSON(gc.r.system, vals[i])
+			default:
+				row[g] = toJSON(gc.r.field, vals[i])
 			}
 		}
 		for i, a := range aggCols {

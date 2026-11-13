@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.6.0
+version: 0.7.0
 label:
   de: Kern
   en: Core
@@ -51,6 +51,12 @@ settings:
       - {value: normal, label: {de: Normal, en: Normal}}
       - {value: compact, label: {de: Kompakt, en: Compact}}
     default: normal
+  - key: ui.start_dashboard
+    kind: reference
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Dashboard der Startseite, en: Dashboard of the start page}
+    description: {de: "Steht auf der Startseite des Arbeitsplatzes, solange eine Person nichts anderes wählt.", en: "Shown on the start page of the workplace unless a person chooses otherwise."}
+    to: core.dashboard
   # Approvals (WF7).
   - key: approvals.remind_days
     kind: number

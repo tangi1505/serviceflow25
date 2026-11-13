@@ -365,6 +365,11 @@ export type FakeState = {
   restoreConflict?: boolean;
   // searches are the saved searches the session may read (UI4); new ones are its own.
   searches?: RecordData[];
+  // dashboards are the dashboards with their widgets (UI13); widgetData what each widget
+  // shows by its id, dashboardInvalid answers a save with 422 and these errors.
+  dashboards?: { dashboard: RecordData; widgets: RecordData[]; editable: boolean }[];
+  widgetData?: Record<string, Record<string, unknown>>;
+  dashboardInvalid?: { field: string; code: string; message: string }[];
   // workplace false makes the session a user of the portal (UI10); personId is its person.
   workplace?: boolean;
   personId?: string;
@@ -773,6 +778,7 @@ export function fakeApi(state: FakeState) {
         theme: val("theme", "neutral"),
         color_scheme: val("color_scheme", "system"),
         density: val("density", "normal"),
+        start_dashboard: val("start_dashboard", ""),
         defaults: state.settings["defaults"] ?? {},
       });
     }
@@ -1186,6 +1192,52 @@ export function fakeApi(state: FakeState) {
         });
       }
       return json(200, rec);
+    }
+    // Dashboards (UI13): the list for the navigation, one with its widgets, saving, data.
+    if (url.pathname === "/api/v1/records/core.dashboard" && method === "GET") {
+      return json(200, { items: (state.dashboards ?? []).map((d) => d.dashboard) });
+    }
+    if (url.pathname === "/api/v1/records/core.dashboard" && method === "POST") {
+      state.dashboards ??= [];
+      const dashboard: RecordData = {
+        ...(JSON.parse(bodyText) as RecordData),
+        id: `01a15a3c-8545-7691-b780-d${String(state.dashboards.length + 1).padStart(11, "0")}`,
+        version: 1,
+      };
+      state.dashboards.push({ dashboard, widgets: [], editable: true });
+      return json(201, dashboard);
+    }
+    const board = url.pathname.match(
+      /^\/api\/v1\/dashboards\/([^/]+)(?:\/widgets\/([^/]+)\/data)?$/,
+    );
+    if (board) {
+      const d = (state.dashboards ?? []).find((x) => x.dashboard["id"] === board[1]);
+      if (!d) {
+        return problem(404, "not_found");
+      }
+      if (board[2]) {
+        const w = d.widgets.find((x) => x["id"] === board[2]);
+        return json(200, state.widgetData?.[board[2]] ?? { kind: String(w?.["kind"] ?? "text") });
+      }
+      if (method === "PUT") {
+        if (state.dashboardInvalid) {
+          return json(422, {
+            type: "/problems/validation",
+            title: "Eingabe ungültig",
+            status: 422,
+            errors: state.dashboardInvalid,
+          });
+        }
+        const body = JSON.parse(bodyText) as { fields?: RecordData; widgets: RecordData[] };
+        Object.assign(d.dashboard, body.fields ?? {}, {
+          version: Number(d.dashboard["version"]) + 1,
+        });
+        d.widgets = body.widgets.map((w, i) => ({
+          ...w,
+          id: w["id"] ?? `01a15a3c-8545-7691-b780-e${String(i + 1).padStart(11, "0")}`,
+        }));
+      }
+      return json(200, d);
     }
     const saved = url.pathname.match(/^\/api\/v1\/records\/core\.saved_search(?:\/([^/]+))?$/);
     if (saved) {

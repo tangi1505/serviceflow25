@@ -32,6 +32,7 @@ import (
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
 	"group24.de/itsm/internal/customer"
+	"group24.de/itsm/internal/dashboard"
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
@@ -257,7 +258,9 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		notifySvc.Register(js)
 		ev.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
 	}
-	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec))
+	// Dashboards (UI13): their widgets are checked like the saved searches.
+	dashboards := dashboard.New(rec)
+	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec), dashboards.Check)
 	// The text modules (SD8) fill in their placeholders like the notifications.
 	snippetSvc := snippets.New(rec)
 	snippetSvc.PublicURL = cfg.PublicURL
@@ -311,6 +314,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Auth:       authSvc,
 		Org:        orgSvc,
 		Settings:   settingsSvc,
+		Dashboards: dashboards,
 		Groups:     query.NewGroups(rt),
 		Authz:      az,
 		Jobs:       js,

@@ -583,6 +583,66 @@ paths:
         "204": { description: applied }
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/dashboards/{id}:
+    get:
+      operationId: getDashboard
+      summary: A dashboard the session may read, with its widgets top left first, and whether the session may change it (UI13)
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: the dashboard
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardView" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: saveDashboard
+      summary: Save the fields and all widgets of a dashboard at once (UI13; needs update on the dashboard)
+      description: >-
+        A widget with an id is changed, one without is created, one of the dashboard not named
+        any more is removed. Every widget is checked before the first write; the version is the
+        dashboard's, another one is a conflict and nothing is written.
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DashboardSave" }
+      responses:
+        "200":
+          description: the dashboard as saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardView" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/dashboards/{id}/widgets/{widgetId}/data:
+    post:
+      operationId: widgetData
+      summary: What a widget shows, computed with the rights of the session and the filters of the dashboard (UI13)
+      tags: [dashboards]
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/widgetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DashboardFilters" }
+      responses:
+        "200":
+          description: the data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WidgetData" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
   /api/v1/settings/definitions:
     get:
       operationId: listSettingDefinitions
@@ -2470,6 +2530,7 @@ paths:
                 theme: { type: string, nullable: true }
                 color_scheme: { type: string, nullable: true, enum: [light, dark, system, null], description: "light, dark or like the system of the device (UI29)" }
                 density: { type: string, nullable: true, enum: [compact, normal, null], description: "the row height of lists, 36 or 52 px (UI30)" }
+                start_dashboard: { type: string, nullable: true, description: "the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13)" }
                 defaults:
                   type: object
                   description: 'per type an object of field values, or null to remove'
@@ -2894,6 +2955,11 @@ components:
       schema: { type: string, pattern: "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$" }
     id:
       name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    widgetId:
+      name: widgetId
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -4034,6 +4100,61 @@ components:
         rating: { $ref: "#/components/schemas/Rating" }
         uses: { type: integer, format: int64, description: how many records are linked to the hit with the group's relation kind }
         linked: { type: string, format: uuid, description: "the relation that links the record to the hit, if any" }
+    DashboardView:
+      type: object
+      required: [dashboard, widgets, editable]
+      properties:
+        dashboard: { $ref: "#/components/schemas/Record" }
+        widgets:
+          type: array
+          items: { $ref: "#/components/schemas/Record" }
+        editable: { type: boolean, description: the session may change the dashboard }
+    DashboardSave:
+      type: object
+      required: [version, widgets]
+      properties:
+        version: { type: integer, format: int64, description: the version of the dashboard as read }
+        fields:
+          type: object
+          additionalProperties: true
+          description: "fields of the dashboard to change, like name, and actors (shared)"
+        widgets:
+          type: array
+          maxItems: 40
+          items:
+            type: object
+            additionalProperties: true
+            description: "the fields of core.dashboard_widget; with id an existing widget of the dashboard"
+    DashboardFilters:
+      type: object
+      properties:
+        from: { type: string, format: date-time, description: "start of the period, inclusive" }
+        to: { type: string, format: date-time, description: "end of the period, exclusive" }
+        unit: { type: string, description: "a node of the organisation tree; the records there and below" }
+    WidgetData:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [number, pie, bar, line, list, text] }
+        type: { type: string, description: the type of the records }
+        where: { type: object, additionalProperties: true, description: "the condition the numbers come from, with the filters" }
+        group: { type: string, description: the field the points are grouped by }
+        value: { description: the number of a widget of kind number }
+        points:
+          type: array
+          items:
+            type: object
+            required: [key, value]
+            properties:
+              key: { description: the value of the group field }
+              label: { type: object, additionalProperties: { type: string } }
+              value: { description: the measure of the group }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Record" }
+        columns:
+          type: array
+          items: { type: string }
     SettingOption:
       type: object
       required: [value, label]
@@ -4200,13 +4321,14 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, color_scheme, density, defaults]
+      required: [language, time_zone, theme, color_scheme, density, start_dashboard, defaults]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
         theme: { $ref: "#/components/schemas/SettingValue" }
         color_scheme: { $ref: "#/components/schemas/SettingValue" }
         density: { $ref: "#/components/schemas/SettingValue" }
+        start_dashboard: { $ref: "#/components/schemas/SettingValue" }
         defaults:
           type: object
           additionalProperties: { type: object, additionalProperties: true }

@@ -271,6 +271,11 @@ E34 und KF9:
   Datensatzes (ein Makro auf die Variable `__settings`, die `records` füllt), Fristen nehmen ihr
   Ziel aus `target_setting`, Dateien zählen Größe und Endungen an der Einheit der Person, die
   hochlädt.
+- **Dashboards** (UI13, E181) sind Datensätze des Kerns (`core.dashboard`, `core.dashboard_widget`);
+  `internal/dashboard` rechnet ein Widget als JSON-Abfrage mit den Rechten der Person, die es
+  ansieht, eingeschränkt durch Zeitraum und Einheit des Dashboards; gelesen werden die Widgets
+  mit Systemrechten, sobald das Dashboard lesbar ist, geschrieben werden sie nur zusammen über
+  `PUT /api/v1/dashboards/{id}`, wenn man das Dashboard ändern darf.
 - **Zuweisung:** Person oder Gruppe bekommt eine Rolle für einen Knoten des Organisationsbaums.
   Regeln weisen das bei der Anmeldung aus LDAP- oder OIDC-Gruppen zu (G121).
 - **Übersetzung:** Je Person und Typ entsteht einmal eine SQL-Bedingung plus eine Liste erlaubter

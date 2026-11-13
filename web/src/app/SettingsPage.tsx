@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import {
   api,
   labelOf,
+  dashboardsQuery,
   meQuery,
   mySettingsQuery,
   qualifiedName,
@@ -54,7 +55,7 @@ function useSource() {
         : t("settings.source.node", { node: source });
 }
 
-type Key = "language" | "time_zone" | "theme" | "color_scheme" | "density";
+type Key = "language" | "time_zone" | "theme" | "color_scheme" | "density" | "start_dashboard";
 const densities = ["compact", "normal"] as const;
 
 function Choice({
@@ -63,12 +64,15 @@ function Choice({
   value,
   onChange,
   options,
+  show,
 }: {
   name: Key;
   settings: MySettings;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  // show names a value in force, such as the name of a dashboard (UI13).
+  show?: (v: string) => string;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -91,7 +95,12 @@ function Choice({
         ))}
       </select>
       <p className="text-sm text-muted-foreground">
-        {t("settings.inForce", { value: now.value, source: source(now.source) })}
+        {now.value === ""
+          ? t("settings.inForceNone")
+          : t("settings.inForce", {
+              value: show ? show(now.value) : now.value,
+              source: source(now.source),
+            })}
       </p>
     </div>
   );
@@ -246,6 +255,7 @@ export function MySettingsPage() {
   // In the portal (UI10) presets and the global settings are of no use.
   const me = useQuery(meQuery);
   const settings = useQuery(mySettingsQuery);
+  const dashboards = useQuery({ ...dashboardsQuery, enabled: me.data?.workplace !== false });
   const own = (s: MySettings, k: Key) => (s[k].source === "own" ? s[k].value : "");
   const [draft, setDraft] = useState<Record<Key, string> | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -257,6 +267,7 @@ export function MySettingsPage() {
         theme: d.theme || null,
         color_scheme: (d.color_scheme || null) as "light" | "dark" | "system" | null,
         density: (d.density || null) as "compact" | "normal" | null,
+        start_dashboard: d.start_dashboard || null,
       }),
     onSuccess: (saved) => {
       queryClient.setQueryData(mySettingsQuery.queryKey, saved);
@@ -280,7 +291,15 @@ export function MySettingsPage() {
     theme: own(s, "theme"),
     color_scheme: own(s, "color_scheme"),
     density: own(s, "density"),
+    start_dashboard: own(s, "start_dashboard"),
   };
+  // The start page of the workplace (UI13): a dashboard one may read, or the greeting only.
+  const boards = (dashboards.data?.items ?? []).map((b) => ({
+    value: String(b["id"]),
+    label: String(b["name"]),
+  }));
+  const showBoard = (v: string) =>
+    v === "none" ? t("settings.startNone") : (boards.find((b) => b.value === v)?.label ?? v);
   const set = (k: Key) => (v: string) => setDraft({ ...d, [k]: v });
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -327,6 +346,16 @@ export function MySettingsPage() {
           onChange={set("density")}
           options={densities.map((x) => ({ value: x, label: t(`list.densities.${x}`) }))}
         />
+        {me.data?.workplace !== false && (
+          <Choice
+            name="start_dashboard"
+            settings={s}
+            value={d.start_dashboard}
+            onChange={set("start_dashboard")}
+            options={[...boards, { value: "none", label: t("settings.startNone") }]}
+            show={showBoard}
+          />
+        )}
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={save.isPending}>
             {t("form.save")}
