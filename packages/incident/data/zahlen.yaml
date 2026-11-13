@@ -1,0 +1,226 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The widgets of the incidents on the dashboards of the service desk (UI14b, UI-Plan E40;
+# Inventar G76, G77): on "Helpdesk" the state now (without the period), on "Statistik" what
+# was created or resolved in the period. The rows from 5 on Helpdesk and from 7 on Statistik
+# are left to the package request. The file name keeps it after the queues it names. Start
+# data each tenant changes.
+
+# --- Helpdesk: the state now ---
+- key: hd_offen
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Offene Störungen
+    kind: number
+    target_type: incident.incident
+    query: '{"field": "state", "in": ["new", "in_progress", "waiting"]}'
+    use_period: false
+    x: 0
+    y: 0
+- key: hd_ohne_bearbeiter
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Ohne Bearbeiter
+    kind: number
+    saved_search: "@nicht_zugewiesen"
+    use_period: false
+    x: 1
+    y: 0
+- key: hd_sla_risiko
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Mit SLA-Risiko
+    kind: number
+    saved_search: "@sla_risiko"
+    use_period: false
+    x: 2
+    y: 0
+- key: hd_frist_ueberschritten
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Frist überschritten
+    kind: number
+    target_type: incident.incident
+    query: '{"and": [{"field": "sla_due_at", "lte": "@now"}, {"field": "state", "in": ["new", "in_progress", "waiting"]}]}'
+    use_period: false
+    x: 3
+    y: 0
+- key: hd_nach_status
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Offene Störungen nach Status
+    kind: bar
+    target_type: incident.incident
+    query: '{"field": "state", "in": ["new", "in_progress", "waiting"]}'
+    group_by: state
+    use_period: false
+    x: 0
+    y: 1
+    w: 2
+    h: 2
+- key: hd_nach_prioritaet
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Offene Störungen nach Priorität
+    kind: pie
+    target_type: incident.incident
+    query: '{"field": "state", "in": ["new", "in_progress", "waiting"]}'
+    group_by: priority
+    use_period: false
+    x: 2
+    y: 1
+    w: 2
+    h: 2
+- key: hd_meine
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Meine Störungen
+    kind: list
+    saved_search: "@meine"
+    use_period: false
+    x: 0
+    y: 3
+    w: 2
+    h: 2
+- key: hd_sla_risiko_liste
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Störungen mit SLA-Risiko
+    kind: list
+    saved_search: "@sla_risiko"
+    use_period: false
+    x: 2
+    y: 3
+    w: 2
+    h: 2
+
+# --- Statistik: created and resolved in the period ---
+- key: st_neu
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Neue Störungen
+    kind: number
+    target_type: incident.incident
+    x: 0
+    y: 0
+- key: st_geloest
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Gelöste Störungen
+    kind: number
+    target_type: incident.incident
+    query: '{"field": "resolved_at", "null": false}'
+    date_field: resolved_at
+    x: 1
+    y: 0
+- key: st_dauer
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Ø Lösungsdauer (Stunden)
+    kind: number
+    target_type: incident.incident
+    query: '{"field": "resolved_at", "null": false}'
+    measure: avg
+    measure_field: resolution_hours
+    date_field: resolved_at
+    x: 2
+    y: 0
+- key: st_dauer_service
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Ø Lösungsdauer in Servicezeit (Stunden)
+    kind: number
+    target_type: incident.incident
+    query: '{"field": "resolved_at", "null": false}'
+    measure: avg
+    measure_field: resolution_service_hours
+    date_field: resolved_at
+    x: 3
+    y: 0
+- key: st_neu_je_woche
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Neue Störungen je Woche
+    kind: line
+    target_type: incident.incident
+    group_by: "created_at:week"
+    x: 0
+    y: 1
+    w: 2
+    h: 2
+- key: st_geloest_je_woche
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Gelöste Störungen je Woche
+    kind: line
+    target_type: incident.incident
+    query: '{"field": "resolved_at", "null": false}'
+    group_by: "resolved_at:week"
+    date_field: resolved_at
+    x: 2
+    y: 1
+    w: 2
+    h: 2
+- key: st_nach_kategorie
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Störungen nach Kategorie
+    kind: bar
+    target_type: incident.incident
+    group_by: category
+    x: 0
+    y: 3
+    w: 2
+    h: 2
+- key: st_nach_prioritaet
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Störungen nach Priorität
+    kind: pie
+    target_type: incident.incident
+    group_by: priority
+    x: 2
+    y: 3
+    w: 2
+    h: 2
+- key: st_nach_gruppe
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Störungen nach Gruppe
+    kind: bar
+    target_type: incident.incident
+    group_by: actors.group
+    x: 0
+    y: 5
+    w: 2
+    h: 2
+- key: st_nach_quelle
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Störungen nach Anfragequelle
+    kind: bar
+    target_type: incident.incident
+    group_by: channel
+    x: 2
+    y: 5
+    w: 2
+    h: 2

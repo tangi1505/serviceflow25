@@ -38,7 +38,7 @@ func TestRequestOverHTTP(t *testing.T) {
 	for _, c := range []struct {
 		dir  string
 		want int
-	}{{"../../packages/sd", 28}, {"../../packages/request", 12}} {
+	}{{"../../packages/sd", 30}, {"../../packages/request", 21}} {
 		p := installPackage(t, ctx, admin.rt, c.dir)
 		if n, err := starter.Package(ctx, p); err != nil || n != c.want {
 			t.Fatalf("start data of %s: %d %v, want %d", p.Name, n, err, c.want)

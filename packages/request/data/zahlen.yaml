@@ -1,0 +1,117 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The widgets of the requests on the dashboards of the service desk (UI14b, UI-Plan E40;
+# Inventar G76, G77), below those of the incidents: on "Helpdesk" from row 5 the state now, on
+# "Statistik" from row 7 what was created or done in the period. Done counts done and closed,
+# not rejected. Start data each tenant changes.
+
+# --- Helpdesk: the state now ---
+- key: hd_offen
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Offene Anfragen
+    kind: number
+    target_type: request.request
+    query: '{"field": "state", "in": ["new", "approval", "fulfilment", "waiting"]}'
+    use_period: false
+    x: 0
+    y: 5
+- key: hd_genehmigung
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Warten auf Genehmigung
+    kind: number
+    target_type: request.request
+    query: '{"field": "state", "eq": "approval"}'
+    use_period: false
+    x: 1
+    y: 5
+- key: hd_nach_status
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.helpdesk"
+    title: Offene Anfragen nach Status
+    kind: bar
+    target_type: request.request
+    query: '{"field": "state", "in": ["new", "approval", "fulfilment", "waiting"]}'
+    group_by: state
+    use_period: false
+    x: 2
+    y: 5
+    w: 2
+    h: 2
+
+# --- Statistik: created and done in the period ---
+- key: st_neu
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Neue Anfragen
+    kind: number
+    target_type: request.request
+    x: 0
+    y: 7
+- key: st_erledigt
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Erledigte Anfragen
+    kind: number
+    target_type: request.request
+    query: '{"field": "state", "in": ["done", "closed"]}'
+    date_field: resolved_at
+    x: 1
+    y: 7
+- key: st_dauer_service
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Ø Dauer in Servicezeit (Stunden)
+    kind: number
+    target_type: request.request
+    query: '{"field": "state", "in": ["done", "closed"]}'
+    measure: avg
+    measure_field: resolution_service_hours
+    date_field: resolved_at
+    x: 2
+    y: 7
+- key: st_kosten
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Kosten der Anfragen (Euro)
+    kind: number
+    target_type: request.request
+    measure: sum
+    measure_field: cost
+    x: 3
+    y: 7
+- key: st_nach_vorlage
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Anfragen nach Erfüllungsvorlage
+    kind: bar
+    target_type: request.request
+    group_by: template
+    x: 0
+    y: 8
+    w: 2
+    h: 2
+- key: st_erledigt_je_woche
+  type: core.dashboard_widget
+  values:
+    dashboard: "@sd.statistik"
+    title: Erledigte Anfragen je Woche
+    kind: line
+    target_type: request.request
+    query: '{"field": "state", "in": ["done", "closed"]}'
+    group_by: "resolved_at:week"
+    date_field: resolved_at
+    x: 2
+    y: 8
+    w: 2
+    h: 2

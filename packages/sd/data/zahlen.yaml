@@ -1,0 +1,19 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The dashboards of the service desk (UI14b, UI-Plan E40; Inventar G76, G77): "Helpdesk" shows
+# the state now, "Statistik" what was created and resolved in a period. Both are shared with
+# the group Service Desk and start empty; the packages incident and request put their widgets
+# in. Start data each tenant changes; one who only reads them copies them into their own.
+- key: helpdesk
+  type: core.dashboard
+  values:
+    name: Helpdesk
+    description: Der Stand jetzt, offene Vorgänge, Fristen und die eigenen Listen.
+    actors: {shared: [{type: core.group, id: "@service_desk"}]}
+- key: statistik
+  type: core.dashboard
+  values:
+    name: Statistik
+    description: Was im Zeitraum angelegt und gelöst wurde, und wie lange es gedauert hat.
+    actors: {shared: [{type: core.group, id: "@service_desk"}]}

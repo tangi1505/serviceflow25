@@ -43,7 +43,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI13a** | Dashboards: Kerntypen Dashboard und Widget, Widgets mit ECharts (Kennzahl, Torte, Balken, Linie, Liste, Text), Filter Zeitraum und Einheit, ansehen, bearbeiten im Raster, teilen, Startseite des Arbeitsplatzes (trägt KF11; Inventar G238, G239; E39) | 🟢 | 3 d (UI13 vorher 2 d) | Dashboard mit Widgets aus gespeicherten Suchen und eigenen Bedingungen anlegen, teilen, eine andere Person sieht ihre eigenen Zahlen; als Startseite wählen; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI13b** | Dashboards eingebettet: Kachelart „Dashboard“ im Portal, einzelnes Widget in der Seitenleiste eines Typs mit `@record` (Inventar G239; E39) | 🟢 | 1,5 d | Kachel „Meine offenen Vorgänge“ im Portal zeigt die eigene Zahl; ein Widget mit `@record` steht an jeder Person; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI14a** | Lösung und Kopie: Merkmal `resolution` des Kerns (Gelöst am, Lösungsdauer in Kalender- und in Servicezeit) an Störung und Anfrage, Gruppieren nach einer Rolle, „Als eigenes kopieren“ (E40) | 🟢 | 1,75 d | Eine gelöste Störung zeigt „Gelöst am“ und beide Dauern, wieder geöffnet sind sie leer; ein Balken nach einer Rolle zählt einen Vorgang mit zwei Haltern bei beiden; wer ein Dashboard nur liest, kopiert es und ändert die Kopie; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI14b** | Statistik und Helpdesk-Dashboard als mitgelieferte Dashboards (Inventar G76, G77; E40) | ⬜ | 1,5 d | Nach Installation des Service-Desk-Pakets ist das Helpdesk-Dashboard da und zeigt die offenen Vorgänge je Status; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI14b** | Statistik und Helpdesk-Dashboard als mitgelieferte Dashboards (Inventar G76, G77; E40) | 🟢 | 1,5 d | Nach Installation des Service-Desk-Pakets ist das Helpdesk-Dashboard da und zeigt die offenen Vorgänge je Status; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI15** | Kalenderansicht für Aufgaben und Termine aller Bearbeiter (trägt KF10; Inventar G73) | ⬜ | 2 d | Aufgaben mit Termin erscheinen im Wochenkalender; Verschieben per Ziehen ändert den Termin; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI16** | Weitere Sprachen als ladbares Sprachpaket (Inventar G247) | ⬜ | 0,5 d | Ein Probe-Sprachpaket „fr" mit drei Texten wird geladen, fehlende Texte fallen auf Deutsch zurück; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI25** | Typ- und Feld-Editor: Kunden ändern Typen in der Oberfläche, Änderungen landen in der Kundenschicht (Hauptplan E37; E29) | 🟢 | 2 d | Feld an einem Typ ergänzen → erscheint in Liste und Formular ohne Neustart; Export der Kundenschicht enthält genau diese Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -341,6 +341,42 @@ Keine offen.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI14b — Mitgelieferte Dashboards, 2026-11-13
+
+- **Grundlage:** Inventar G76, G77; Hauptplan E182; E40 dieses Plans; Mockup „Mitgelieferte
+  Dashboards“ mit deinen Entscheidungen vom 2026-11-13.
+- **Gebaut:** Startdaten in drei Paketen (`data/zahlen.yaml`, nach den Warteschlangen, auf die
+  sie verweisen):
+  - `sd` 0.5.0: die leeren Dashboards „Helpdesk“ und „Statistik“, geteilt mit der Gruppe
+    Service Desk.
+  - `incident` 0.11.0: auf Helpdesk acht Widgets ohne Zeitraum (offen, ohne Bearbeiter, mit
+    SLA-Risiko, Frist überschritten, offen nach Status und nach Priorität, die Listen „Meine
+    Störungen“ und „mit SLA-Risiko“ aus den gespeicherten Suchen von SD7); auf Statistik zehn
+    (neu, gelöst nach „Gelöst am“, beide Durchschnitte der Lösungsdauer, neu und gelöst je
+    Woche, nach Kategorie, Priorität, Gruppe und Anfragequelle).
+  - `request` 0.5.0: auf Helpdesk ab Zeile 5 drei (offen, warten auf Genehmigung, offen nach
+    Status), auf Statistik ab Zeile 7 sechs (neu, erledigt, Durchschnitt in Servicezeit,
+    Summe der Kosten, nach Erfüllungsvorlage, erledigt je Woche; erledigt heißt Erledigt
+    oder Geschlossen, nicht Abgelehnt).
+- **Belegt:**
+  - Go `TestDashboardsShippedOverHTTP` (Prüfweg, eigene Datenbank): nach Service Desk und
+    Störung ist „Helpdesk“ da, geteilt mit der Gruppe Service Desk, mit acht Widgets; offen nach
+    Status zählt drei neue und eine in Arbeit; mit der Anfrage elf Widgets, „Statistik“ sechzehn;
+    jedes Widget beider Dashboards rechnet ohne Fehler.
+  - Die Zahl der Startdaten in zwölf älteren Tests angepasst (Service Desk 28 auf 30, Störung 40
+    auf 58, Anfrage 12 auf 21). Grund: die neuen Startdaten aus UI14b; geprüft wird weiter, dass
+    alle Einträge angelegt werden. Ebenso die Startdaten eines neuen Mandanten in
+    `TestIncidentDeadlinesOverHTTP` (69 auf 89).
+  - Ganze CI am 2026-11-13 (16:56 min) 18 von 19 Schritten grün, Lasttor gegen die
+    Basislinie grün, Vitest und Browser-Tests mit axe grün; rot war nur
+    `TestIncidentDeadlinesOverHTTP`, das die Startdaten eines neuen Mandanten zählt (69, jetzt
+    89); angepasst, danach dieser Test, `TestDashboardsShippedOverHTTP` und die Tests der
+    Mandanten grün.
+  - Auf 8092 eingespielt (`sd` 0.5.0, `incident` 0.11.0, `request` 0.5.0; die Dashboards und
+    ihre Widgets als Startdaten angelegt).
+- **Nicht geprüft:** Kein Browser-Test der beiden Dashboards. Die Durchschnitte der Lösungsdauer
+  rechnet `TestResolutionAndDashboardCopyOverHTTP` (UI14a); hier nur, dass sie rechnen.
 
 ### UI14a — Lösung, Gruppieren nach Rolle, Kopieren, 2026-11-13
 
