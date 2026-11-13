@@ -9,6 +9,7 @@ package records
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -21,6 +22,7 @@ import (
 
 	"group24.de/itsm/internal/jobs"
 	"group24.de/itsm/internal/meta"
+	"group24.de/itsm/internal/rules"
 )
 
 // --- calculated fields (KF6; Hauptplan E45, E99; PL22) ---
@@ -59,8 +61,9 @@ func formulasOf(t meta.Type) ([]meta.CompiledFormula, error) {
 }
 
 // calculate computes the formulas of the type from state (the record as it will be written,
-// values in API or stored form) and puts the results into values and state.
-func calculate(t meta.Type, state, values map[string]any) error {
+// values in API or stored form) and puts the results into values and state. setting gives the
+// value of a setting at the record's unit (SD20), nil without one.
+func calculate(t meta.Type, state, values map[string]any, setting func(key string) any) error {
 	fs, err := formulasOf(t)
 	if err != nil || len(fs) == 0 {
 		return err
@@ -68,7 +71,7 @@ func calculate(t meta.Type, state, values map[string]any) error {
 	var ps []Problem
 	for _, cf := range fs {
 		name := cf.Field.Name
-		result, err := evalFormula(t, cf, state)
+		result, err := evalFormula(t, cf, state, setting)
 		if err != nil {
 			ps = append(ps, Problem{Field: name, Code: "formula", Message: err.Error()})
 			continue
@@ -87,9 +90,24 @@ func calculate(t meta.Type, state, values map[string]any) error {
 	return nil
 }
 
-// evalFormula computes one formula; nil when a field it uses is empty.
-func evalFormula(t meta.Type, cf meta.CompiledFormula, state map[string]any) (any, error) {
-	vars := make(map[string]any, len(cf.Formula.Uses))
+// evalFormula computes one formula; nil when a field it uses is empty or a setting it reads
+// has no value.
+func evalFormula(t meta.Type, cf meta.CompiledFormula, state map[string]any, setting func(key string) any) (any, error) {
+	vars := make(map[string]any, len(cf.Formula.Uses)+1)
+	if len(cf.Formula.Settings) > 0 {
+		settings := make(map[string]any, len(cf.Formula.Settings))
+		for _, key := range cf.Formula.Settings {
+			var v any
+			if setting != nil {
+				v = setting(key)
+			}
+			if v == nil {
+				return nil, nil
+			}
+			settings[key] = v
+		}
+		vars[rules.SettingsVar] = settings
+	}
 	for _, name := range cf.Formula.Uses {
 		f, _ := t.Field(name)
 		v, err := formulaInput(f, state[name])
@@ -251,7 +269,7 @@ func (s *Service) Recompute(ctx context.Context, typeName string) (changed, fail
 					state[k] = v
 				}
 				values := map[string]any{}
-				if err := calculate(t, state, values); err != nil {
+				if err := calculate(t, state, values, s.settingsAt(ctx, pathOf(state))); err != nil {
 					failed++
 					continue
 				}
@@ -286,4 +304,34 @@ func (s *Service) Recompute(ctx context.Context, typeName string) (changed, fail
 		}
 		after = last
 	}
+}
+
+// settingsAt reads the settings formulas use at a unit, each once (SD20): the value at the
+// node or above, else the default of its declaration.
+func (s *Service) settingsAt(ctx context.Context, path string) func(key string) any {
+	if path == "" {
+		path = "root"
+	}
+	seen := map[string]any{}
+	return func(key string) any {
+		if v, ok := seen[key]; ok {
+			return v
+		}
+		var v any
+		if s.SettingValue != nil {
+			if raw, _, err := s.SettingValue(ctx, path, key); err == nil && raw != nil {
+				if json.Unmarshal(raw, &v) != nil {
+					v = nil
+				}
+			}
+		}
+		seen[key] = v
+		return v
+	}
+}
+
+// pathOf is the node of a record as it will be written.
+func pathOf(state map[string]any) string {
+	p, _ := state[orgPathField].(string)
+	return p
 }

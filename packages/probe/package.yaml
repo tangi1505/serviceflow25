@@ -4,9 +4,24 @@
 # The probe package: the thin thread through all layers (Hauptplan E59, H13). It has no
 # business meaning and is replaced by the real packages after the Durchstich.
 name: probe
-version: 0.2.0
+version: 0.3.0
 label:
   de: Probe
   en: Probe
 # The roles at the record of probe.probe name persons and groups (WF3).
 depends: [core]
+# Settings for the tests of the organisation tree (SD20: only declared keys are taken).
+settings:
+  - key: probe.priority
+    kind: number
+    label: {de: Probe-Priorität, en: Probe priority}
+    integer: true
+    min: 1
+    max: 5
+  - key: probe.tenant
+    kind: text
+    label: {de: Probe-Text, en: Probe text}
+  - key: probe.root_only
+    kind: number
+    label: {de: Probe nur an der Wurzel, en: Probe at the root only}
+    root: true

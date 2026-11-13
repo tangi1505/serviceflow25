@@ -205,6 +205,7 @@ func Validate(p Package, known map[string]bool) error {
 		}
 	}
 	validateData(p, local, known, add)
+	checkSettings(add, p)
 	if len(ps) == 0 {
 		return nil
 	}

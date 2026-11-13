@@ -5,10 +5,51 @@
 # base package sd, a running number INC-…, the priority from impact and urgency and a state
 # model in which the requester confirms or refuses the solution.
 name: incident
-version: 0.8.0
+version: 0.9.0
 label:
   de: Störungen
   en: Incidents
 # sd brings the trait ticket and the lists (SD-Plan N7); core the persons, groups and reasons
 # to wait.
 depends: [core, sd]
+
+# Settings of the organisation tree (SD20): a unit can have its own matrix of the priority and
+# its own time to close a resolved incident; without one the defaults here hold (SD-Plan §2.4).
+settings:
+  - key: incident.priority_matrix
+    kind: matrix
+    group: {de: Störung, en: Incident}
+    label: {de: Prioritätsmatrix, en: Priority matrix}
+    description:
+      de: "Priorität aus Auswirkung (Zeilen) und Dringlichkeit (Spalten); P1 ist die dringendste. Offene Störungen rechnen beim nächsten Speichern neu."
+      en: "Priority from impact (rows) and urgency (columns); P1 is the most urgent. Open incidents compute it anew when they are saved next."
+    rows:
+      label: {de: Auswirkung, en: Impact}
+      options:
+        - {value: high, label: {de: Hoch, en: High}}
+        - {value: medium, label: {de: Mittel, en: Medium}}
+        - {value: low, label: {de: Niedrig, en: Low}}
+    columns:
+      label: {de: Dringlichkeit, en: Urgency}
+      options:
+        - {value: high, label: {de: Hoch, en: High}}
+        - {value: medium, label: {de: Mittel, en: Medium}}
+        - {value: low, label: {de: Niedrig, en: Low}}
+    options:
+      - {value: 1, label: {de: P1, en: P1}}
+      - {value: 2, label: {de: P2, en: P2}}
+      - {value: 3, label: {de: P3, en: P3}}
+      - {value: 4, label: {de: P4, en: P4}}
+    default:
+      high: {high: 1, medium: 2, low: 3}
+      medium: {high: 2, medium: 3, low: 4}
+      low: {high: 3, medium: 4, low: 4}
+  - key: incident.close_after
+    kind: duration
+    group: {de: Störung, en: Incident}
+    label: {de: Gelöste Störung automatisch schließen nach, en: Close a resolved incident after}
+    description:
+      de: "Arbeitszeit der Servicezeit nach „Gelöst“. 0 heißt: nicht automatisch schließen."
+      en: "Working time of the service hours after resolved. 0 means do not close by itself."
+    min: 0
+    default: 3300

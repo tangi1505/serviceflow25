@@ -53,6 +53,7 @@ import (
 	"group24.de/itsm/internal/schema"
 	"group24.de/itsm/internal/search"
 	"group24.de/itsm/internal/seclog"
+	"group24.de/itsm/internal/settings"
 	"group24.de/itsm/internal/sla"
 	"group24.de/itsm/internal/snippets"
 	"group24.de/itsm/internal/webhooks"
@@ -78,6 +79,8 @@ type testAPI struct {
 	ruleEvents *events.Service
 	// sla moves the clocks (WF9); tests set its Now and run Due themselves.
 	sla *sla.Service
+	// settings knows the declared settings (SD20); tests call Forget after installing.
+	settings *settings.Service
 	// recur creates recurring records (WF14); tests call Run with their time.
 	recur *recurrence.Service
 	// notify sends mail to smtp (WF15) through a dispatcher of its own, which tests call.
@@ -235,7 +238,10 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	stream.Queue = bulkTestQueue
 	stream.Register()
 	// Exports (UI5): large ones as jobs on the same queue.
-	fileSvc := testFiles(t, rt, recs)
+	// The settings the packages declare (SD20), as the binary wires them.
+	settingsSvc := settings.New(rt, orgSvc)
+	recs.SettingValue = settingsSvc.Value
+	fileSvc := testFiles(t, rt, recs, orgSvc.Setting)
 	exp := export.New(recs, fileSvc, bulkJobs, az.Load, quiet)
 	exp.Queue = bulkTestQueue
 	exp.Register()
@@ -274,6 +280,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	calendars := calendar.New(recs, orgSvc.Setting)
 	slaSvc := sla.New(rt, recs, calendars, js, nil, quiet)
 	slaSvc.Queue = slaTestQueue
+	slaSvc.Settings, slaSvc.Declared = settingsSvc.Value, settingsSvc.Definition
 	recur := recurrence.New(recs, quiet)
 	// Notifications (WF15) to a test SMTP server, on a queue of their own with workers, through
 	// a dispatcher of their own that starts at the end of the stream.
@@ -316,13 +323,13 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	}
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
 	rels := relations.New(rt, recs)
-	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
+	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Settings: settingsSvc, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
 		Calendars: calendars, SLA: slaSvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	an.SetPublicURL(srv.URL)
 	api := &testAPI{Server: srv, auth: a, authz: az, pool: pool, rt: rt, kv: kv, events: ev, idp: idp, authn: an, hooks: hooks, export: exp,
-		rules: ruleEngine, ruleEvents: ruleEvents, sla: slaSvc, recur: recur, notify: notifySvc, notifyEvents: notifyEvents,
+		rules: ruleEngine, ruleEvents: ruleEvents, sla: slaSvc, settings: settingsSvc, recur: recur, notify: notifySvc, notifyEvents: notifyEvents,
 		smtp: mailbox, person: pid}
 	r := call(t, api, http.MethodPost, "/api/v1/auth/login", `{"username": "apitest", "password": "`+testPassword+`"}`, nil)
 	if r.code != 200 {

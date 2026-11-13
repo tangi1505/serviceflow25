@@ -24,13 +24,13 @@ import (
 	"group24.de/itsm/internal/records"
 )
 
-func testFiles(t *testing.T, rt *db.Router, recs *records.Service) *files.Service {
+func testFiles(t *testing.T, rt *db.Router, recs *records.Service, settings files.Settings) *files.Service {
 	t.Helper()
 	store, err := files.NewFS(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return files.New(rt, store, recs, nil, quiet)
+	return files.New(rt, store, recs, settings, quiet)
 }
 
 // raw sends a request with the session and the CSRF header and returns status, headers and

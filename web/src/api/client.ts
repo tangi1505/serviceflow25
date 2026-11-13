@@ -47,6 +47,7 @@ export type SettingsChange = NonNullable<
 >["content"]["application/json"];
 export type OrgNode = components["schemas"]["OrgNode"];
 export type OrgSetting = components["schemas"]["OrgSetting"];
+export type SettingDefinition = components["schemas"]["SettingDefinition"];
 export type PresenceEntry = components["schemas"]["Presence"]["others"][number];
 // A form (UI11): sections with questions, bound to fields of the target type or free.
 export type FormOffer = components["schemas"]["FormOffer"];
@@ -345,6 +346,17 @@ export const api = {
       }),
     );
   },
+  // applyOrgSettings saves the changes of a node at once: a value sets, null removes (SD20).
+  applyOrgSettings: async (path: string, changes: Record<string, unknown>) => {
+    unwrap(
+      await client.PATCH("/api/v1/org/nodes/{path}/settings", {
+        params: { path: { path } },
+        body: changes as never,
+      }),
+    );
+  },
+  // settingDefinitions are the settings the installed packages declare (SD20).
+  settingDefinitions: async () => unwrap(await client.GET("/api/v1/settings/definitions")),
   unsetOrgSetting: async (path: string, key: string) => {
     unwrap(
       await client.DELETE("/api/v1/org/nodes/{path}/settings/{key}", {

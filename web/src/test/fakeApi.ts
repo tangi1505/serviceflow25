@@ -369,10 +369,12 @@ export type FakeState = {
   workplace?: boolean;
   personId?: string;
   // settings are the person's settings (UI9); orgSettings the values at nodes, orgForbidden
-  // makes setting them 403.
+  // makes setting them 403, orgInvalid answers a change of those keys with 422 and the message
+  // (SD20).
   settings?: Record<string, unknown>;
   orgSettings?: Record<string, Record<string, unknown>>;
   orgForbidden?: boolean;
+  orgInvalid?: Record<string, string>;
   // others are who else has a record open (UI8), as the presence endpoint answers.
   others?: { account: string; name: string; editing: boolean; since: string; at: string }[];
   // forms are the forms offered to the session (UI11); formRecords the records of core.form.
@@ -871,6 +873,10 @@ export function fakeApi(state: FakeState) {
         { path: "root.it", name: "it", label: { de: "IT" }, parent: "root" },
       ]);
     }
+    if (url.pathname === "/api/v1/settings/definitions") {
+      // The settings the packages declare (SD20), a few of each kind.
+      return json(200, settingDefinitions);
+    }
     const orgSetting = url.pathname.match(
       /^\/api\/v1\/org\/nodes\/([^/]+)\/settings(?:\/([^/]+))?$/,
     );
@@ -879,17 +885,40 @@ export function fakeApi(state: FakeState) {
       const node = orgSetting[1]!;
       const key = orgSetting[2];
       if (method === "GET") {
-        const own = state.orgSettings[node] ?? {};
-        return json(
-          200,
-          Object.entries(own).map(([k, value]) => ({ key: k, value, source: node })),
-        );
+        // Each key from the nearest node on the way up (inheritance).
+        const out: { key: string; value: unknown; source: string }[] = [];
+        const parts = node.split(".");
+        for (let i = parts.length; i > 0; i--) {
+          const at = parts.slice(0, i).join(".");
+          for (const [k, value] of Object.entries(state.orgSettings[at] ?? {})) {
+            if (!out.some((o) => o.key === k)) out.push({ key: k, value, source: at });
+          }
+        }
+        return json(200, out);
       }
       if (state.orgForbidden) {
         return problem(403, "forbidden");
       }
       const own = (state.orgSettings[node] ??= {});
-      if (method === "PUT") {
+      if (method === "PATCH") {
+        // All changes at once, or none (SD20).
+        const changes = JSON.parse(bodyText) as Record<string, unknown>;
+        const bad = Object.keys(changes).filter(
+          (k) => state.orgInvalid?.[k] && changes[k] !== null,
+        );
+        if (bad.length > 0) {
+          return json(422, {
+            type: "/problems/validation",
+            title: "Eingabe ungültig",
+            status: 422,
+            errors: bad.map((k) => ({ field: k, code: "invalid", message: state.orgInvalid![k] })),
+          });
+        }
+        for (const [k, v] of Object.entries(changes)) {
+          if (v === null) delete own[k];
+          else own[k] = v;
+        }
+      } else if (method === "PUT") {
         own[key!] = JSON.parse(bodyText) as unknown;
       } else {
         delete own[key!];
@@ -1515,3 +1544,86 @@ export function fakeApi(state: FakeState) {
     return problem(404, "not_found");
   });
 }
+
+// settingDefinitions are a few declared settings of the core and the package incident (SD20).
+const settingDefinitions = [
+  {
+    package: "core",
+    key: "ui.time_zone",
+    kind: "time_zone",
+    group: { de: "Oberfläche", en: "Interface" },
+    label: { de: "Zeitzone", en: "Time zone" },
+    default: "Europe/Berlin",
+  },
+  {
+    package: "core",
+    key: "files.max_size",
+    kind: "size",
+    group: { de: "Dateien", en: "Files" },
+    label: { de: "Höchstgröße einer Datei", en: "Largest file" },
+    default: 104857600,
+  },
+  {
+    package: "core",
+    key: "files.allowed_extensions",
+    kind: "list",
+    group: { de: "Dateien", en: "Files" },
+    label: { de: "Erlaubte Endungen", en: "Allowed extensions" },
+    description: {
+      de: "Leer: alles außer den gesperrten Endungen.",
+      en: "Empty: all but the blocked.",
+    },
+  },
+  {
+    package: "core",
+    key: "security.local_login",
+    kind: "choice",
+    group: { de: "Sicherheit", en: "Security" },
+    label: { de: "Lokale Anmeldung", en: "Local sign-in" },
+    options: [
+      { value: "all", label: { de: "Für alle Konten", en: "For every account" } },
+      { value: "none", label: { de: "Keine", en: "None" } },
+    ],
+    default: "all",
+    root: true,
+  },
+  {
+    package: "incident",
+    key: "incident.priority_matrix",
+    kind: "matrix",
+    group: { de: "Störung", en: "Incident" },
+    label: { de: "Prioritätsmatrix", en: "Priority matrix" },
+    rows: {
+      label: { de: "Auswirkung", en: "Impact" },
+      options: [
+        { value: "high", label: { de: "Hoch", en: "High" } },
+        { value: "low", label: { de: "Niedrig", en: "Low" } },
+      ],
+    },
+    columns: {
+      label: { de: "Dringlichkeit", en: "Urgency" },
+      options: [
+        { value: "high", label: { de: "Hoch", en: "High" } },
+        { value: "low", label: { de: "Niedrig", en: "Low" } },
+      ],
+    },
+    options: [
+      { value: 1, label: { de: "P1", en: "P1" } },
+      { value: 2, label: { de: "P2", en: "P2" } },
+      { value: 3, label: { de: "P3", en: "P3" } },
+    ],
+    default: { high: { high: 1, low: 2 }, low: { high: 2, low: 3 } },
+  },
+  {
+    package: "incident",
+    key: "incident.close_after",
+    kind: "duration",
+    group: { de: "Störung", en: "Incident" },
+    label: {
+      de: "Gelöste Störung automatisch schließen nach",
+      en: "Close a resolved incident after",
+    },
+    min: 0,
+    default: 3300,
+  },
+];

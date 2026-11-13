@@ -53,6 +53,9 @@ func Store(ctx context.Context, pool *pgxpool.Pool, p Package) error {
 	if err := Validate(p, known); err != nil {
 		return err
 	}
+	if err := checkSettingUse(ctx, q, p); err != nil {
+		return err
+	}
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -220,4 +223,51 @@ func BaseTypes(ctx context.Context, q *queries.Queries) ([]Type, error) {
 		out = append(out, t)
 	}
 	return out, nil
+}
+
+// checkSettingUse refuses a setting another installed package declares, and a formula that
+// reads a setting neither this package nor an installed one declares (SD20).
+func checkSettingUse(ctx context.Context, q *queries.Queries, p Package) error {
+	rows, err := q.ListPackages(ctx)
+	if err != nil {
+		return fmt.Errorf("meta: list packages: %w", err)
+	}
+	declared := map[string]string{}
+	for _, r := range rows {
+		if r.Name == p.Name {
+			continue
+		}
+		var other Package
+		if err := json.Unmarshal(r.Spec, &other); err != nil {
+			return fmt.Errorf("meta: package %s: %w", r.Name, err)
+		}
+		for _, st := range other.Settings {
+			declared[st.Key] = r.Name
+		}
+	}
+	var ps []Problem
+	for _, st := range p.Settings {
+		if by, ok := declared[st.Key]; ok {
+			ps = append(ps, Problem{Where: "setting " + st.Key, Msg: "is declared by the package " + by})
+		}
+		declared[st.Key] = p.Name
+	}
+	for _, t := range p.Types {
+		fs, err := CompileFormulas(t)
+		if err != nil {
+			continue // Validate reported it
+		}
+		for _, cf := range fs {
+			for _, key := range cf.Formula.Settings {
+				if _, ok := declared[key]; !ok {
+					ps = append(ps, Problem{Where: "type " + t.Name + ", field " + cf.Field.Name,
+						Msg: fmt.Sprintf("the formula reads the setting %q, which no package declares", key)})
+				}
+			}
+		}
+	}
+	if len(ps) == 0 {
+		return nil
+	}
+	return &ValidationError{Package: p.Name, Problems: ps}
 }

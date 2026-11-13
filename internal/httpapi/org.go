@@ -14,6 +14,7 @@ import (
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/httpapi/gen"
+	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
 )
 
@@ -137,7 +138,11 @@ func (s *server) SetOrgSetting(w http.ResponseWriter, r *http.Request, path gen.
 		return
 	}
 	before := s.ownSetting(r, path, key)
-	err = s.o.Org.SetSetting(r.Context(), path, key, json.RawMessage(raw), actor(r))
+	if s.o.Settings != nil {
+		err = s.o.Settings.Set(r.Context(), path, key, json.RawMessage(raw), actor(r))
+	} else {
+		err = s.o.Org.SetSetting(r.Context(), path, key, json.RawMessage(raw), actor(r))
+	}
 	s.changed(r, "setting.set", path+" "+key, before, json.RawMessage(raw), err)
 	if err == nil {
 		s.o.Auth.ForgetPolicy() // security settings apply at once on this instance (PL28)
@@ -156,6 +161,62 @@ func (s *server) UnsetOrgSetting(w http.ResponseWriter, r *http.Request, path ge
 		s.o.Auth.ForgetPolicy()
 	}
 	s.noContent(w, r, err)
+}
+
+// ApplyOrgSettings sets and removes values of a node at once (SD20): all are checked first,
+// then written in one transaction; each change gets its own row in the security log.
+func (s *server) ApplyOrgSettings(w http.ResponseWriter, r *http.Request, path gen.OrgPath) {
+	if !s.mayOrg(w, r, "manage_settings", path) {
+		return
+	}
+	if s.o.Settings == nil {
+		writeProblem(w, r, http.StatusServiceUnavailable, "unavailable", "settings are not configured", nil)
+		return
+	}
+	var changes map[string]json.RawMessage
+	if !decode(w, r, &changes) {
+		return
+	}
+	if len(changes) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	before := map[string]any{}
+	for key := range changes {
+		before[key] = s.ownSetting(r, path, key)
+	}
+	err := s.o.Settings.Apply(r.Context(), path, changes, actor(r))
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	for key, value := range changes {
+		var after any = value
+		action := "setting.set"
+		if len(value) == 0 || string(value) == "null" {
+			after, action = nil, "setting.unset"
+		}
+		s.changed(r, action, path+" "+key, before[key], after, nil)
+	}
+	s.o.Auth.ForgetPolicy()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ListSettingDefinitions gives the declared settings for the page (SD20).
+func (s *server) ListSettingDefinitions(w http.ResponseWriter, r *http.Request) {
+	if s.o.Settings == nil {
+		writeJSON(w, http.StatusOK, []meta.Setting{})
+		return
+	}
+	defs, err := s.o.Settings.Definitions(r.Context())
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	if defs == nil {
+		defs = []meta.Setting{}
+	}
+	writeJSON(w, http.StatusOK, defs)
 }
 
 // ownSetting is the value a node sets itself (not inherited), nil without one.

@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Störung (SD2; Inventar G36, G38, G42; IP19). The values of the priority matrix are
-# provisional (SD-Plan E3, §2.4) until the business side answers Hauptplan V30.
+# provisional (SD-Plan E3, §2.4) until the business side answers Hauptplan V30; since SD20 they
+# are the setting incident.priority_matrix, which a unit can set otherwise.
 name: incident
 label: {de: Störung, en: Incident}
 description:
@@ -18,16 +19,14 @@ fields:
     type: sequence
     label: {de: Nummer, en: Number}
     prefix: INC-
-  # Calculated (PL22) from the matrix of SD-Plan §2.4: P1 is the most urgent; empty until both
-  # impact and urgency are set.
+  # Calculated (PL22) from the matrix of the record's unit (setting incident.priority_matrix,
+  # SD20; default SD-Plan §2.4): P1 is the most urgent; empty until both impact and urgency are
+  # set.
   - name: priority
     type: number
     label: {de: Priorität, en: Priority}
     format: priority
-    formula: >-
-      {"high": {"high": 1.0, "medium": 2.0, "low": 3.0},
-       "medium": {"high": 2.0, "medium": 3.0, "low": 4.0},
-       "low": {"high": 3.0, "medium": 4.0, "low": 4.0}}[impact][urgency]
+    formula: setting("incident.priority_matrix")[impact][urgency]
   - name: solution
     type: text
     label: {de: Lösung, en: Solution}

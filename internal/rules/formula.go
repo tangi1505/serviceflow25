@@ -12,8 +12,12 @@ import (
 	"sort"
 
 	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common"
+	"cel.dev/cel-go/common/ast"
+	"cel.dev/cel-go/common/operators"
 	"cel.dev/cel-go/common/types"
 	"cel.dev/cel-go/common/types/ref"
+	"cel.dev/cel-go/parser"
 )
 
 // --- formulas of calculated fields (KF6; Hauptplan E45, E99; PL22) ---
@@ -52,16 +56,40 @@ func (k Kind) celType() (*cel.Type, error) {
 type Formula struct {
 	Expr string
 	// Uses are the fields the expression reads, in name order.
-	Uses    []string
-	result  Kind
-	program cel.Program
+	Uses []string
+	// Settings are the keys the expression reads with setting("…") (SD20), in name order:
+	// the caller gives their values at the record's unit in SettingsVar.
+	Settings []string
+	result   Kind
+	program  cel.Program
+}
+
+// SettingsVar is the variable that holds the settings a formula reads, key to value; the
+// macro setting("key") stands for SettingsVar["key"].
+const SettingsVar = "__settings"
+
+// settingMacro expands setting("key") to __settings["key"] and notes the key; the key must
+// be a text written in the formula, so that it is known when the formula is installed.
+func settingMacro(keys map[string]bool) cel.Macro {
+	return cel.GlobalMacro("setting", 1, func(eh parser.ExprHelper, _ ast.Expr, args []ast.Expr) (ast.Expr, *common.Error) {
+		arg := args[0]
+		if arg.Kind() == ast.LiteralKind {
+			if key, ok := arg.AsLiteral().(types.String); ok {
+				keys[string(key)] = true
+				return eh.NewCall(operators.Index, eh.NewIdent(SettingsVar), eh.NewLiteral(key)), nil
+			}
+		}
+		return nil, eh.NewError(arg.ID(), "setting(…) takes the key as a text, like setting(\"incident.priority_matrix\")")
+	})
 }
 
 // CompileFormula checks expr against the fields (name → kind) and the kind of the result.
 // A whole number is accepted for a double; a value of dynamic type (a map lookup) is checked
 // when it is computed.
 func CompileFormula(expr string, fields map[string]Kind, result Kind) (*Formula, error) {
-	opts := make([]cel.EnvOption, 0, len(fields))
+	keys := map[string]bool{}
+	opts := make([]cel.EnvOption, 0, len(fields)+2)
+	opts = append(opts, cel.Macros(settingMacro(keys)), cel.Variable(SettingsVar, cel.MapType(cel.StringType, cel.DynType)))
 	for name, k := range fields {
 		t, err := k.celType()
 		if err != nil {
@@ -102,7 +130,12 @@ func CompileFormula(expr string, fields map[string]Kind, result Kind) (*Formula,
 	if err != nil {
 		return nil, fmt.Errorf("rules: %q: %w", expr, err)
 	}
-	return &Formula{Expr: expr, Uses: uses, result: result, program: prg}, nil
+	settings := make([]string, 0, len(keys))
+	for k := range keys {
+		settings = append(settings, k)
+	}
+	sort.Strings(settings)
+	return &Formula{Expr: expr, Uses: uses, Settings: settings, result: result, program: prg}, nil
 }
 
 // Eval computes the formula. vars holds the used fields as Go values: string, float64, bool,

@@ -106,27 +106,104 @@ describe("Settings", () => {
     expect(screen.getByLabelText("Art")).toHaveValue("fault");
   });
 
-  it("sets a global default at a node, and says when the right is missing", async () => {
+  // SD20: the page shows the declared settings by group and saves all changes at once in the
+  // bar at the top (Pascal's comment on the mockup); before SD20 every setting had its own
+  // button, so this test replaces the one of UI9 that saved the time zone by itself.
+  it("saves all changes of a unit at once in the bar at the top", async () => {
     const user = userEvent.setup();
     const { container } = renderAt("/settings/global");
-    await screen.findByRole("heading", { name: "Globale Einstellungen" });
+    await screen.findByRole("heading", { name: "Globale Einstellungen · Gesamt" });
     await screen.findByRole("option", { name: "IT (root.it)" });
-    await user.selectOptions(screen.getByLabelText("Knoten"), "root.it");
-    const zone = screen.getByRole("listitem", { name: "Zeitzone" });
+    await user.selectOptions(screen.getByLabelText("Einheit"), "root.it");
+    await screen.findByRole("heading", { name: "Globale Einstellungen · IT" });
+    expect(screen.getByRole("heading", { name: "Oberfläche Kern" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Störung Paket incident" })).toBeInTheDocument();
+    const bar = screen.getByRole("region", { name: "Speichern" });
+    expect(within(bar).getByRole("status")).toHaveTextContent("Alles gespeichert");
+    expect(within(bar).getByRole("button", { name: "Speichern" })).toBeDisabled();
+
+    const zone = screen.getByRole("group", { name: "Zeitzone" });
+    expect(within(zone).getByText("Vorgabe des Kerns")).toBeInTheDocument();
     await user.selectOptions(within(zone).getByLabelText("Zeitzone"), "Europe/London");
-    await user.click(within(zone).getByRole("button", { name: "Speichern" }));
-    expect(await within(zone).findByText("Gilt hier aus root.it")).toBeInTheDocument();
-    expect(state.orgSettings?.["root.it"]).toEqual({ "ui.time_zone": "Europe/London" });
+    expect(within(zone).getByText("Geändert, noch nicht gespeichert")).toBeInTheDocument();
+    const matrix = screen.getByRole("group", { name: "Prioritätsmatrix" });
+    await user.selectOptions(
+      within(matrix).getByLabelText("Auswirkung Hoch, Dringlichkeit Niedrig"),
+      "1",
+    );
+    await user.clear(
+      screen.getByRole("spinbutton", { name: "Gelöste Störung automatisch schließen nach" }),
+    );
+    await user.type(
+      screen.getByRole("spinbutton", { name: "Gelöste Störung automatisch schließen nach" }),
+      "36",
+    );
+    const allowed = screen.getByRole("group", { name: "Erlaubte Endungen" });
+    expect(within(allowed).getByText("Keine Einträge")).toBeInTheDocument();
+    await user.type(
+      within(allowed).getByLabelText("Eintrag zu „Erlaubte Endungen“ hinzufügen"),
+      "pdf{Enter}",
+    );
+    expect(within(allowed).getByRole("button", { name: "pdf entfernen" })).toBeInTheDocument();
+    // A setting of the root only cannot be changed at a unit below.
+    const login = screen.getByRole("group", { name: "Lokale Anmeldung" });
+    expect(within(login).getByLabelText("Lokale Anmeldung")).toBeDisabled();
+    expect(within(login).getByText("Nur am Wurzelknoten einstellbar.")).toBeInTheDocument();
+    expect(within(bar).getByRole("status")).toHaveTextContent("4 Änderungen nicht gespeichert");
     await expectAccessible(container);
 
-    await user.click(within(zone).getByRole("button", { name: "Eigenen Wert entfernen" }));
+    await user.click(within(bar).getByRole("button", { name: "Speichern" }));
     expect(
-      await within(zone).findByText("Nicht eingestellt: es gilt die Vorgabe."),
+      await screen.findByText("Gespeichert: 4 Einstellungen für IT und alle Einheiten darunter."),
     ).toBeInTheDocument();
+    expect(state.orgSettings?.["root.it"]).toEqual({
+      "ui.time_zone": "Europe/London",
+      "incident.priority_matrix": { high: { high: 1, low: 1 }, low: { high: 2, low: 3 } },
+      "incident.close_after": 2160,
+      "files.allowed_extensions": ["pdf"],
+    });
+    expect(await within(zone).findByText("Eigene Einstellung dieser Einheit")).toBeInTheDocument();
+    expect(within(bar).getByRole("status")).toHaveTextContent("Alles gespeichert");
+  });
 
+  it("removes an own value, shows what the server refuses, and says when the right is missing", async () => {
+    state.orgSettings = {
+      root: { "files.max_size": 20971520 },
+      "root.it": { "ui.time_zone": "Europe/London" },
+    };
+    const user = userEvent.setup();
+    renderAt("/settings/global");
+    await screen.findByRole("option", { name: "IT (root.it)" });
+    await user.selectOptions(screen.getByLabelText("Einheit"), "root.it");
+    const zone = await screen.findByRole("group", { name: "Zeitzone" });
+    expect(await within(zone).findByText("Eigene Einstellung dieser Einheit")).toBeInTheDocument();
+    const size = screen.getByRole("group", { name: "Höchstgröße einer Datei" });
+    expect(within(size).getByText("Geerbt von Gesamt")).toBeInTheDocument();
+    expect(within(size).getByLabelText("Höchstgröße einer Datei")).toHaveValue(20);
+    const bar = screen.getByRole("region", { name: "Speichern" });
+
+    // Remove the own value, then discard it.
+    await user.click(within(zone).getByRole("button", { name: "Eigene entfernen" }));
+    expect(within(zone).getByText(/Wird beim Speichern entfernt/)).toBeInTheDocument();
+    await user.click(within(bar).getByRole("button", { name: "Verwerfen" }));
+    expect(within(zone).getByText("Eigene Einstellung dieser Einheit")).toBeInTheDocument();
+
+    // The server refuses a value: nothing is saved, the message stands at the setting.
+    state.orgInvalid = { "files.max_size": "must be at least 1" };
+    await user.clear(within(size).getByLabelText("Höchstgröße einer Datei"));
+    await user.type(within(size).getByLabelText("Höchstgröße einer Datei"), "0");
+    await user.click(within(zone).getByRole("button", { name: "Eigene entfernen" }));
+    await user.click(within(bar).getByRole("button", { name: "Speichern" }));
+    expect(
+      await screen.findByText("Nicht gespeichert: Bitte die markierten Einstellungen prüfen."),
+    ).toBeInTheDocument();
+    expect(within(size).getByText("must be at least 1")).toBeInTheDocument();
+    expect(state.orgSettings["root.it"]).toEqual({ "ui.time_zone": "Europe/London" });
+    expect(within(bar).getByRole("status")).toHaveTextContent("2 Änderungen nicht gespeichert");
+
+    state.orgInvalid = undefined;
     state.orgForbidden = true;
-    await user.selectOptions(within(zone).getByLabelText("Zeitzone"), "Europe/Paris");
-    await user.click(within(zone).getByRole("button", { name: "Speichern" }));
+    await user.click(within(bar).getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText(/fehlt dir das Recht manage_settings/)).toBeInTheDocument();
   });
 });

@@ -37,6 +37,13 @@ fields:
     label: {de: Ziel mal Feld, en: Target times field}
     description: {de: "Zahlfeld des Datensatzes, etwa delivery_days: das Ziel ist das Ziel in Minuten mal dieser Zahl; ohne Zahl gilt das Ziel in Minuten", en: "Number field of the record, e.g. delivery_days: the target is the target in minutes times this number; without a number the target in minutes holds"}
     max_length: 63
+  # The target from a setting of the organisation tree (SD20): its value at the record's unit
+  # in minutes, so that a unit can have its own target; 0 there means no clock.
+  - name: target_setting
+    type: text
+    label: {de: Ziel aus Einstellung, en: Target from setting}
+    description: {de: "Schlüssel einer Einstellung in Minuten, etwa incident.close_after: ihr Wert an der Einheit des Datensatzes ist das Ziel, 0 heißt keine Uhr; ohne Wert gilt das Ziel in Minuten", en: "Key of a setting in minutes, e.g. incident.close_after: its value at the record's unit is the target, 0 means no clock; without a value the target in minutes holds"}
+    max_length: 120
   - name: calendar
     type: reference
     label: {de: Kalender, en: Calendar}

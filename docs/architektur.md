@@ -263,6 +263,14 @@ E34 und KF9:
   die Abmeldung löscht sie.
 - **Den Baum selbst** ändern die Sonderrechte `manage_org` (Knoten) und `manage_settings`
   (Einstellungen) am Pseudotyp `core.org`, mit der Reichweite der Zuweisung (Kern-Plan E59).
+- **Einstellungen am Baum** erklären die Pakete in `package.yaml` (`settings`: Schlüssel, Art,
+  Vorgabe, Grenzen, „nur an der Wurzel“; der Kern seine im Paket `core`, SD20, E180).
+  `internal/settings` nimmt nur erklärte Schlüssel, prüft jeden Wert, schreibt die Änderungen
+  eines Knotens in einer Transaktion und gibt einen Wert mit der Vorgabe (zehn Sekunden
+  zwischengespeichert). Formeln lesen Einstellungen mit `setting("…")` an der Einheit des
+  Datensatzes (ein Makro auf die Variable `__settings`, die `records` füllt), Fristen nehmen ihr
+  Ziel aus `target_setting`, Dateien zählen Größe und Endungen an der Einheit der Person, die
+  hochlädt.
 - **Zuweisung:** Person oder Gruppe bekommt eine Rolle für einen Knoten des Organisationsbaums.
   Regeln weisen das bei der Anmeldung aus LDAP- oder OIDC-Gruppen zu (G121).
 - **Übersetzung:** Je Person und Typ entsteht einmal eine SQL-Bedingung plus eine Liste erlaubter

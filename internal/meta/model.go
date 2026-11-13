@@ -435,6 +435,8 @@ type Package struct {
 	// Data is the start data below data/ (SD-Plan N9): records and rules the core creates once
 	// per tenant.
 	Data []Seed `json:"data,omitempty" yaml:"-"`
+	// Settings are the settings of the organisation tree the package reads (SD20).
+	Settings []Setting `json:"settings,omitempty" yaml:"settings"`
 }
 
 // RelationKind is a kind of link between records (relations/<name>.yaml): what it is called

@@ -78,6 +78,9 @@ type Service struct {
 	// WorkingDays moves a moment on by working days in the calendar of a node of the tree
 	// (WF7: the reminders of approvals); nil counts calendar days.
 	WorkingDays func(ctx context.Context, path string, from time.Time, days int) (time.Time, error)
+	// SettingValue reads a setting of a node with the default of its declaration (SD20:
+	// setting("…") in formulas); nil means formulas see no settings.
+	SettingValue func(ctx context.Context, path, key string) (json.RawMessage, string, error)
 }
 
 func (s *Service) afterWrite(ctx context.Context, typeName string) {
@@ -556,7 +559,7 @@ func (s *Service) create(ctx context.Context, t meta.Type, input map[string]any,
 	for k, v := range values {
 		state[k] = v
 	}
-	if err := calculate(t, state, values); err != nil {
+	if err := calculate(t, state, values, s.settingsAt(ctx, node)); err != nil {
 		return nil, err
 	}
 	id, err := uuid.NewV7()
@@ -805,7 +808,7 @@ func (s *Service) update(ctx context.Context, t meta.Type, id uuid.UUID, expecte
 		for k, v := range values {
 			state[k] = v
 		}
-		if err := calculate(t, state, values); err != nil {
+		if err := calculate(t, state, values, s.settingsAt(ctx, pathOf(state))); err != nil {
 			return err
 		}
 		var sets []string

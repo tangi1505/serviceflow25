@@ -56,11 +56,11 @@ func TestAPICoverage(t *testing.T) {
 	}
 
 	// Organisation units and settings (Inventar G208, G223), with one setting of the test's own.
-	if r := call(t, api, http.MethodPut, "/api/v1/org/nodes/root/settings/apitest.coverage", `{"checked": true}`, nil); r.code != 204 {
+	if r := call(t, api, http.MethodPut, "/api/v1/org/nodes/root/settings/probe.tenant", `"geprüft"`, nil); r.code != 204 {
 		t.Fatalf("set a setting: %d %s", r.code, r.raw)
 	}
 	t.Cleanup(func() {
-		_, _ = api.pool.Exec(context.Background(), "DELETE FROM org_setting WHERE path = 'root' AND key = 'apitest.coverage'")
+		_, _ = api.pool.Exec(context.Background(), "DELETE FROM org_setting WHERE path = 'root' AND key = 'probe.tenant'")
 	})
 	spec.check(t, api, "/api/v1/org/nodes", "/api/v1/org/nodes", nil)
 	spec.check(t, api, "/api/v1/org/nodes/root", "/api/v1/org/nodes/{path}", map[string]string{"path": "root"})
@@ -303,7 +303,7 @@ func (s *sampler) record(name string) string {
 // required title of its target and is not offered (UI11); a notice in the portal names a text
 // field of an installed type and is not shown (SD5).
 var checkedSamples = map[string]map[string]any{
-	"core.sla": {"target_type": "probe.probe", "applies": "false", "pause": "false", "stop": "true", "target_field": ""},
+	"core.sla": {"target_type": "probe.probe", "applies": "false", "pause": "false", "stop": "true", "target_field": "", "target_setting": ""},
 	"core.recurrence": {"target_type": "probe.probe", "schedule": "0 7 * * 1", "timezone": "Europe/Berlin",
 		"template": `{"title": "apitest"}`, "active": false},
 	"core.notification": {"target_type": "probe.probe", "events": "create", "recipients": "actors.assigned",

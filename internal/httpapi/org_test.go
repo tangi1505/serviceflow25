@@ -20,7 +20,7 @@ func TestOrgTreeOverHTTP(t *testing.T) {
 	// Leftovers of earlier runs.
 	call(t, api, http.MethodDelete, "/api/v1/org/nodes/root.apitest.team", "", nil)
 	call(t, api, http.MethodDelete, "/api/v1/org/nodes/root.apitest", "", nil)
-	call(t, api, http.MethodDelete, "/api/v1/org/nodes/root/settings/apitest.priority", "", nil)
+	call(t, api, http.MethodDelete, "/api/v1/org/nodes/root/settings/probe.priority", "", nil)
 
 	r := call(t, api, http.MethodPost, "/api/v1/org/nodes", `{"parent": "root", "name": "apitest", "label": {"de": "Testabteilung"}}`, nil)
 	if r.code != 201 || r.body["path"] != "root.apitest" || r.body["parent"] != "root" {
@@ -45,16 +45,16 @@ func TestOrgTreeOverHTTP(t *testing.T) {
 	}
 
 	// Settings: root sets 3, the child overrides with 1, the grandchild inherits from the child.
-	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root/settings/apitest.priority", `3`, nil); r.code != 204 {
+	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root/settings/probe.priority", `3`, nil); r.code != 204 {
 		t.Fatalf("set at root: %d %s", r.code, r.raw)
 	}
-	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.apitest/settings/apitest.priority", `1`, nil); r.code != 204 {
+	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.apitest/settings/probe.priority", `1`, nil); r.code != 204 {
 		t.Fatalf("set at child: %d %s", r.code, r.raw)
 	}
-	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.apitest/settings/apitest.priority", `{`, nil); r.code != 400 {
+	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.apitest/settings/probe.priority", `{`, nil); r.code != 400 {
 		t.Fatalf("bad json: %d %s", r.code, r.raw)
 	}
-	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.nope/settings/apitest.priority", `1`, nil); r.code != 404 {
+	if r = call(t, api, http.MethodPut, "/api/v1/org/nodes/root.nope/settings/probe.priority", `1`, nil); r.code != 404 {
 		t.Fatalf("set at missing node: %d %s", r.code, r.raw)
 	}
 	effective := func(path string) map[string][2]string {
@@ -77,13 +77,13 @@ func TestOrgTreeOverHTTP(t *testing.T) {
 		}
 		return out
 	}
-	if got := effective("root.apitest.team")["apitest.priority"]; got != [2]string{"1", "root.apitest"} {
+	if got := effective("root.apitest.team")["probe.priority"]; got != [2]string{"1", "root.apitest"} {
 		t.Fatalf("grandchild inherits from child: %v", got)
 	}
-	if r = call(t, api, http.MethodDelete, "/api/v1/org/nodes/root.apitest/settings/apitest.priority", "", nil); r.code != 204 {
+	if r = call(t, api, http.MethodDelete, "/api/v1/org/nodes/root.apitest/settings/probe.priority", "", nil); r.code != 204 {
 		t.Fatalf("unset: %d %s", r.code, r.raw)
 	}
-	if got := effective("root.apitest.team")["apitest.priority"]; got != [2]string{"3", "root"} {
+	if got := effective("root.apitest.team")["probe.priority"]; got != [2]string{"3", "root"} {
 		t.Fatalf("grandchild inherits from root after unset: %v", got)
 	}
 

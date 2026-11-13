@@ -47,6 +47,7 @@ import (
 	"group24.de/itsm/internal/rules/engine"
 	"group24.de/itsm/internal/search"
 	"group24.de/itsm/internal/seclog"
+	"group24.de/itsm/internal/settings"
 	"group24.de/itsm/internal/sla"
 	"group24.de/itsm/internal/snippets"
 	"group24.de/itsm/internal/webhooks"
@@ -71,6 +72,8 @@ type Options struct {
 	Auth *auth.Service
 	// Org is the organisation tree (PL6); required when API is set.
 	Org *org.Service
+	// Settings knows the declared settings and checks values (SD20); nil stores any key.
+	Settings *settings.Service
 	// Groups answers the membership of groups (PL7); required when API is set.
 	Groups *query.Groups
 	// Authz loads the rights of the session (PL8); without it a session may do nothing.

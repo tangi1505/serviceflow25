@@ -162,7 +162,7 @@ func tenantBoundary(t *testing.T, separate bool) {
 		if r := call(t, d.api, http.MethodPost, "/api/v1/org/nodes", `{"parent": "`+d.data.path+`", "name": "unit"}`, nil); r.code != 201 {
 			t.Fatalf("node in %s: %d %s", d.data.path, r.code, r.raw)
 		}
-		if r := call(t, d.api, http.MethodPut, "/api/v1/org/nodes/"+d.data.node+"/settings/apitest.tenant", `"geheim"`, nil); r.code != 204 {
+		if r := call(t, d.api, http.MethodPut, "/api/v1/org/nodes/"+d.data.node+"/settings/probe.tenant", `"geheim"`, nil); r.code != 204 {
 			t.Fatalf("setting in %s: %d %s", d.data.path, r.code, r.raw)
 		}
 		s := &sampler{t: t, api: d.api, types: types, made: map[string]string{}, busy: map[string]bool{}}
@@ -223,7 +223,7 @@ func tenantBoundary(t *testing.T, separate bool) {
 		{http.MethodPost, "/api/v1/roles", `{"name": "pl44_role", "label": {"de": "x"}}`, 403},
 		{http.MethodPost, "/api/v1/types/probe.probe/customer", `{"version": 0, "change": {"op": "hide_field", "field": "priority"}}`, 403},
 		{http.MethodPost, "/api/v1/org/nodes", `{"parent": "root", "name": "x"}`, 404},
-		{http.MethodPut, "/api/v1/org/nodes/root/settings/apitest.tenant", `1`, 404},
+		{http.MethodPut, "/api/v1/org/nodes/root/settings/probe.tenant", `1`, 404},
 		{http.MethodPost, "/api/v1/assignments", `{"role": "admin", "person_id": "` + b.records["core.person"] + `", "org_path": "root.ta"}`, 404},
 		{http.MethodPost, "/api/v1/assignments", `{"role": "admin", "person_id": "` + a.records["core.person"] + `", "org_path": "root.tb"}`, 404},
 		// With one database the node of B exists and A may not write there; with a database per
@@ -389,7 +389,7 @@ func fillTemplate(tpl, typeName string, other tenantData) (string, bool) {
 		case "path":
 			v, foreign = other.node, true
 		case "key":
-			v = "apitest.tenant"
+			v = "probe.tenant"
 		case "name":
 			v = "admin"
 		case "action":

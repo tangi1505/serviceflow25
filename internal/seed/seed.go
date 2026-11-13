@@ -184,6 +184,17 @@ func (s *Service) Refresh(ctx context.Context, p meta.Package, scope string, key
 	return n, nil
 }
 
+// Ref is what the start data entry pkg.key became at the node: the id of its record or the
+// name of its rule; empty when the node never got it (an upgrade step finds it so, SD20).
+func (s *Service) Ref(ctx context.Context, scope, pkg, key string) (string, error) {
+	ctx = s.db.BindFor(authz.WithAccess(ctx, authz.SystemIn(scope)), scope)
+	ids, err := known(ctx, s.db.Tenant(ctx), scope)
+	if err != nil {
+		return "", err
+	}
+	return ids[pkg+"."+key], nil
+}
+
 // Scopes are the tenants, or the root without tenants.
 func (s *Service) Scopes(ctx context.Context) ([]string, error) { return s.scopes(ctx) }
 

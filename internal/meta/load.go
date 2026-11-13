@@ -107,6 +107,9 @@ func LoadFS(fsys fs.FS) (Package, error) {
 		p.Relations = append(p.Relations, k)
 	}
 	sort.Slice(p.Relations, func(i, j int) bool { return p.Relations[i].Name < p.Relations[j].Name })
+	for i := range p.Settings {
+		p.Settings[i].Package = p.Name
+	}
 	if err := loadData(fsys, &p); err != nil {
 		return p, err
 	}

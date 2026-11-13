@@ -67,7 +67,7 @@ func TestOrgRightsOverHTTP(t *testing.T) {
 		{"set at the root", http.MethodPut, "/api/v1/org/nodes/root/settings/auth.password_min_length", `4`, 403, 403},
 		{"node under the root", http.MethodPost, "/api/v1/org/nodes", `{"parent": "root", "name": "orgrights2"}`, 403, 403},
 		{"node in the unit", http.MethodPost, "/api/v1/org/nodes", `{"parent": "root.orgrights", "name": "sub"}`, 403, 201},
-		{"set in the unit", http.MethodPut, "/api/v1/org/nodes/root.orgrights.sub/settings/calendar.default", `"x"`, 403, 204},
+		{"set in the unit", http.MethodPut, "/api/v1/org/nodes/root.orgrights.sub/settings/calendar.default", `"01a1a300-0000-7000-8000-0000000000c1"`, 403, 204},
 		{"unset in the unit", http.MethodDelete, "/api/v1/org/nodes/root.orgrights.sub/settings/calendar.default", ``, 403, 204},
 		{"delete the root", http.MethodDelete, "/api/v1/org/nodes/root", ``, 403, 403},
 	} {

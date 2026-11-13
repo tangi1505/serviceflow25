@@ -52,6 +52,7 @@ type upgradeEnv struct {
 
 var upgrades = []upgrade{
 	{pkg: "request", below: "0.3.0", name: "Genehmigungsstufen der Erfüllungsvorlagen in Genehmigungsvorlagen", run: moveTemplateStages},
+	{pkg: "incident", below: "0.9.0", name: "Automatisches Schließen aus der Einstellung incident.close_after", run: closeFromSetting},
 }
 
 // runUpgrades runs the steps of the package for an installed version below theirs.
@@ -208,4 +209,35 @@ func freeTemplateName(ctx context.Context, recs *records.Service, name string) (
 		try = fmt.Sprintf("%s (%d)", name, i)
 	}
 	return try, nil
+}
+
+// closeFromSetting lets the SLA of the start data that closes a resolved incident take its
+// target from the setting incident.close_after (SD20), as incident 0.9 defines it, unless the
+// tenant gave it a setting of its own already. The target in minutes stays as it is: it holds
+// where no unit sets the time, and the default of the setting is the same 3300 minutes.
+func closeFromSetting(ctx context.Context, u upgradeEnv, scope string) (int, error) {
+	ref, err := u.seeds.Ref(ctx, scope, "incident", "sla_close")
+	if err != nil || ref == "" {
+		return 0, err
+	}
+	id, err := uuid.Parse(ref)
+	if err != nil {
+		return 0, fmt.Errorf("incident.sla_close at %s is no record: %w", scope, err)
+	}
+	ctx = u.rt.BindFor(authz.WithAccess(ctx, authz.SystemIn(scope)), scope)
+	rec, err := u.recs.Get(ctx, "core.sla", id)
+	if errors.Is(err, records.ErrNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	if v, _ := rec["target_setting"].(string); v != "" {
+		return 0, nil
+	}
+	version, _ := rec["version"].(int64)
+	if _, err := u.recs.Update(ctx, "core.sla", id, version, map[string]any{"target_setting": "incident.close_after"}, nil); err != nil {
+		return 0, err
+	}
+	return 1, nil
 }

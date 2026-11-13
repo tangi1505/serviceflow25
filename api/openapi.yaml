@@ -558,10 +558,48 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/OrgSetting" }
         "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: applyOrgSettings
+      summary: Set and remove values of this node at once, all or none (SD20; needs manage_settings on core.org for the node)
+      description: >-
+        The body names each key to change: a value sets it, null removes the node's own value
+        so that it inherits again. Every key to set must be declared by an installed package and
+        its value must pass the declaration (GET /api/v1/settings/definitions); a key marked
+        root only at the root node. A removal works for any key.
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                description: any JSON value, or null to remove
+                nullable: true
+      responses:
+        "403": { $ref: "#/components/responses/Problem" }
+        "204": { description: applied }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/settings/definitions:
+    get:
+      operationId: listSettingDefinitions
+      summary: The settings of the organisation tree the installed packages declare, the core first (SD20)
+      tags: [org]
+      responses:
+        "200":
+          description: declarations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SettingDefinition" }
   /api/v1/org/nodes/{path}/settings/{key}:
     put:
       operationId: setOrgSetting
-      summary: Set a value at this node; nodes below inherit it unless they set their own (needs manage_settings on core.org for the node)
+      summary: Set a value at this node; nodes below inherit it unless they set their own (needs manage_settings on core.org for the node; the key must be declared and the value pass its declaration, SD20)
       tags: [org]
       parameters:
         - $ref: "#/components/parameters/orgPath"
@@ -2024,9 +2062,9 @@ paths:
       summary: Upload a file as the raw body; it stays temporary until it is attached
       description: >-
         The name comes from the query parameter name or from Content-Disposition. The content
-        type is detected from the first bytes. Limits are the settings files.max_size and
-        files.blocked_extensions of the root node; unattached files are removed after
-        files.temporary_ttl (24 hours).
+        type is detected from the first bytes. Limits are the settings files.max_size,
+        files.blocked_extensions and files.allowed_extensions at the unit of the uploading person
+        (SD20); unattached files are removed after files.temporary_ttl of the root node (24 hours).
       tags: [files]
       parameters:
         - name: name
@@ -3996,6 +4034,46 @@ components:
         rating: { $ref: "#/components/schemas/Rating" }
         uses: { type: integer, format: int64, description: how many records are linked to the hit with the group's relation kind }
         linked: { type: string, format: uuid, description: "the relation that links the record to the hit, if any" }
+    SettingOption:
+      type: object
+      required: [value, label]
+      properties:
+        value: { description: "the value: a text for a choice, a number or text for the cells of a matrix" }
+        label: { type: object, additionalProperties: { type: string } }
+    SettingAxis:
+      type: object
+      required: [label, options]
+      properties:
+        label: { type: object, additionalProperties: { type: string } }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/SettingOption" }
+    SettingDefinition:
+      type: object
+      required: [package, key, kind, label]
+      properties:
+        package: { type: string, description: the declaring package }
+        key: { type: string }
+        kind:
+          type: string
+          enum: [choice, text, time_zone, number, boolean, duration, size, list, matrix, reference]
+          description: duration is whole minutes, size whole bytes, matrix an object of rows of objects of columns
+        label: { type: object, additionalProperties: { type: string } }
+        description: { type: object, additionalProperties: { type: string } }
+        group: { type: object, additionalProperties: { type: string }, description: "the section of the page; missing: the package's" }
+        unit: { type: object, additionalProperties: { type: string } }
+        default: { description: "the value without a setting; missing: none" }
+        min: { type: number }
+        max: { type: number }
+        integer: { type: boolean }
+        pattern: { type: string, description: a regular expression for a text or each entry of a list }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/SettingOption" }
+        rows: { $ref: "#/components/schemas/SettingAxis" }
+        columns: { $ref: "#/components/schemas/SettingAxis" }
+        to: { type: string, description: the type a reference names }
+        root: { type: boolean, description: only at the root node }
     RelationKind:
       type: object
       required: [package, name, label, inverse, from, to]

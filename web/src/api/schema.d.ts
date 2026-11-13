@@ -372,6 +372,27 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Set and remove values of this node at once, all or none (SD20; needs manage_settings on core.org for the node)
+         * @description The body names each key to change: a value sets it, null removes the node's own value so that it inherits again. Every key to set must be declared by an installed package and its value must pass the declaration (GET /api/v1/settings/definitions); a key marked root only at the root node. A removal works for any key.
+         */
+        patch: operations["applyOrgSettings"];
+        trace?: never;
+    };
+    "/api/v1/settings/definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The settings of the organisation tree the installed packages declare, the core first (SD20) */
+        get: operations["listSettingDefinitions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -383,7 +404,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set a value at this node; nodes below inherit it unless they set their own (needs manage_settings on core.org for the node) */
+        /** Set a value at this node; nodes below inherit it unless they set their own (needs manage_settings on core.org for the node; the key must be declared and the value pass its declaration, SD20) */
         put: operations["setOrgSetting"];
         post?: never;
         /** Remove this node's own value; it inherits again (needs manage_settings on core.org for the node) */
@@ -1449,7 +1470,7 @@ export interface paths {
         put?: never;
         /**
          * Upload a file as the raw body; it stays temporary until it is attached
-         * @description The name comes from the query parameter name or from Content-Disposition. The content type is detected from the first bytes. Limits are the settings files.max_size and files.blocked_extensions of the root node; unattached files are removed after files.temporary_ttl (24 hours).
+         * @description The name comes from the query parameter name or from Content-Disposition. The content type is detected from the first bytes. Limits are the settings files.max_size, files.blocked_extensions and files.allowed_extensions at the unit of the uploading person (SD20); unattached files are removed after files.temporary_ttl of the root node (24 hours).
          */
         post: operations["uploadFile"];
         delete?: never;
@@ -3192,6 +3213,56 @@ export interface components {
              */
             linked?: string;
         };
+        SettingOption: {
+            /** @description the value: a text for a choice, a number or text for the cells of a matrix */
+            value: unknown;
+            label: {
+                [key: string]: string;
+            };
+        };
+        SettingAxis: {
+            label: {
+                [key: string]: string;
+            };
+            options: components["schemas"]["SettingOption"][];
+        };
+        SettingDefinition: {
+            /** @description the declaring package */
+            package: string;
+            key: string;
+            /**
+             * @description duration is whole minutes, size whole bytes, matrix an object of rows of objects of columns
+             * @enum {string}
+             */
+            kind: "choice" | "text" | "time_zone" | "number" | "boolean" | "duration" | "size" | "list" | "matrix" | "reference";
+            label: {
+                [key: string]: string;
+            };
+            description?: {
+                [key: string]: string;
+            };
+            /** @description the section of the page; missing: the package's */
+            group?: {
+                [key: string]: string;
+            };
+            unit?: {
+                [key: string]: string;
+            };
+            /** @description the value without a setting; missing: none */
+            default?: unknown;
+            min?: number;
+            max?: number;
+            integer?: boolean;
+            /** @description a regular expression for a text or each entry of a list */
+            pattern?: string;
+            options?: components["schemas"]["SettingOption"][];
+            rows?: components["schemas"]["SettingAxis"];
+            columns?: components["schemas"]["SettingAxis"];
+            /** @description the type a reference names */
+            to?: string;
+            /** @description only at the root node */
+            root?: boolean;
+        };
         RelationKind: {
             package: string;
             name: string;
@@ -4503,6 +4574,56 @@ export interface operations {
                 };
             };
             404: components["responses"]["Problem"];
+        };
+    };
+    applyOrgSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description path in the organisation tree, like root.it.support */
+                path: components["parameters"]["orgPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description applied */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    listSettingDefinitions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description declarations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingDefinition"][];
+                };
+            };
         };
     };
     setOrgSetting: {

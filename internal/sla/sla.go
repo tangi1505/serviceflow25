@@ -14,6 +14,7 @@ package sla
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -63,9 +64,12 @@ type SLA struct {
 	// TargetField names a number field of the record: the target is Target times its value,
 	// the delivery time of an offer in working days for example (SD13, SD-Plan N20).
 	TargetField string
-	applies     *rules.Condition
-	pause       *rules.Condition
-	stop        *rules.Condition
+	// TargetSetting names a setting of the organisation tree (SD20): its value at the
+	// record's unit, in minutes, is the target instead of Target; 0 means no clock.
+	TargetSetting string
+	applies       *rules.Condition
+	pause         *rules.Condition
+	stop          *rules.Condition
 }
 
 // Service keeps the SLAs and moves the clocks.
@@ -83,6 +87,11 @@ type Service struct {
 	// Levels returns the escalation levels of an SLA for a type, lowest first (WF10: the rules
 	// with trigger clock); nil means none.
 	Levels func(ctx context.Context, typeName string, sla uuid.UUID) ([]Level, error)
+	// Settings reads a setting of a node with the default of its declaration (SD20: the
+	// target of an SLA from a setting); nil means the targets of the SLAs.
+	Settings func(ctx context.Context, path, key string) (json.RawMessage, string, error)
+	// Declared says how a setting is declared, for checking target_setting; nil checks nothing.
+	Declared func(ctx context.Context, key string) (meta.Setting, bool, error)
 
 	mu     sync.RWMutex
 	loaded time.Time
@@ -201,6 +210,7 @@ func fromRecord(r records.Record) (*SLA, error) {
 		Target: time.Duration(minutes * float64(time.Minute)).Round(time.Second), FromApplies: r["start_from"] == "applies",
 		RoundTheClock: r["counts"] == "round_the_clock"}
 	sla.TargetField, _ = r["target_field"].(string)
+	sla.TargetSetting, _ = r["target_setting"].(string)
 	if c, ok := r["calendar"].(string); ok && c != "" {
 		if sla.Calendar, err = uuid.Parse(c); err != nil {
 			return nil, err
@@ -254,14 +264,26 @@ func (s *Service) Check(ctx context.Context, t meta.Type, rec map[string]any) []
 			}
 		}
 	}
+	// The target from a setting (SD20): a declared setting of minutes.
+	if key, _ := rec["target_setting"].(string); key != "" && s.Declared != nil {
+		st, ok, err := s.Declared(ctx, key)
+		switch {
+		case err != nil:
+			ps = append(ps, records.Problem{Field: "target_setting", Code: "invalid", Message: err.Error()})
+		case !ok:
+			ps = append(ps, records.Problem{Field: "target_setting", Code: "unknown", Message: fmt.Sprintf("no package declares the setting %s", key)})
+		case st.Kind != meta.SettingDuration && st.Kind != meta.SettingNumber:
+			ps = append(ps, records.Problem{Field: "target_setting", Code: "invalid", Message: fmt.Sprintf("the setting %s is a %s, not minutes", key, st.Kind)})
+		}
+	}
 	return ps
 }
 
 // targetOf is the target of a new clock: the SLA's, times the number in its target field when
 // the record has one above zero (SD-Plan N20).
-func targetOf(sla *SLA, rec records.Record) time.Duration {
+func targetOf(sla *SLA, base time.Duration, rec records.Record) time.Duration {
 	if sla.TargetField == "" {
-		return sla.Target
+		return base
 	}
 	var n float64
 	switch v := rec[sla.TargetField].(type) {
@@ -275,9 +297,35 @@ func targetOf(sla *SLA, rec records.Record) time.Duration {
 		n, _ = strconv.ParseFloat(v, 64)
 	}
 	if n <= 0 {
-		return sla.Target
+		return base
 	}
-	return time.Duration(float64(sla.Target) * n).Round(time.Second)
+	return time.Duration(float64(base) * n).Round(time.Second)
+}
+
+// target is the target of a new clock: the setting the SLA names at the record's unit (SD20),
+// else the SLA's own, times the number field of the record (SD13). false when the setting is
+// 0: then the SLA starts no clock there, such as "do not close by itself". A setting that is no
+// number keeps the SLA's own target.
+func (s *Service) target(ctx context.Context, sla *SLA, rec records.Record) (time.Duration, bool) {
+	base := sla.Target
+	if sla.TargetSetting != "" && s.Settings != nil {
+		path, _ := rec["org_path"].(string)
+		if path == "" {
+			path = "root"
+		}
+		raw, _, err := s.Settings(ctx, path, sla.TargetSetting)
+		var minutes float64
+		switch {
+		case err != nil:
+			s.logger.Warn("sla: setting of the target not readable, using the SLA's", "sla", sla.Name, "setting", sla.TargetSetting, "error", err.Error())
+		case raw == nil || json.Unmarshal(raw, &minutes) != nil || minutes < 0:
+		case minutes == 0:
+			return 0, false
+		default:
+			base = time.Duration(minutes * float64(time.Minute)).Round(time.Second)
+		}
+	}
+	return targetOf(sla, base, rec), true
 }
 
 // Times tells records whether a type has SLAs (records.Clocks). When they cannot be read, it
@@ -369,7 +417,11 @@ func (s *Service) Written(ctx context.Context, tx pgx.Tx, t meta.Type, id uuid.U
 			// A new clock, or one cancelled before whose SLA holds again: it counts from the
 			// creation of the record (on the first write that is now), or from now when the
 			// SLA counts from the moment it holds (WF11).
-			c = &Clock{ID: uuid.New(), TypeName: t.QualifiedName(), RecordID: id, SLA: sla.ID, Target: targetOf(sla, rec), StartedAt: now}
+			target, ok := s.target(ctx, sla, rec)
+			if !ok {
+				continue
+			}
+			c = &Clock{ID: uuid.New(), TypeName: t.QualifiedName(), RecordID: id, SLA: sla.ID, Target: target, StartedAt: now}
 			if exists {
 				c.ID, c.Generation = row.ID, row.Generation
 			}

@@ -4,9 +4,247 @@
 # The core package (Plattform-Kern PL7; Hauptplan E79): persons and groups as entity types, so
 # that list, form, audit, bulk import and the LDAP sync (PL9) use the same path as every other
 # record. Accounts (PL5), the organisation tree (PL6) and roles (PL8) stay core tables. The
-# start page of the portal: tiles and notices written by hand (SD14).
+# start page of the portal: tiles and notices written by hand (SD14). The settings of the
+# organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
+# the server takes only declared keys.
 name: core
-version: 0.5.0
+version: 0.6.0
 label:
   de: Kern
   en: Core
+
+settings:
+  # Interface (UI9, UI29, UI30): what a person did not set herself.
+  - key: ui.language
+    kind: choice
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Sprache, en: Language}
+    options:
+      - {value: de, label: {de: Deutsch, en: German}}
+      - {value: en, label: {de: Englisch, en: English}}
+    default: de
+  - key: ui.time_zone
+    kind: time_zone
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Zeitzone, en: Time zone}
+    default: Europe/Berlin
+  - key: ui.theme
+    kind: text
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Theme, en: Theme}
+    pattern: '[a-z][a-z0-9_-]{0,30}'
+    default: neutral
+  - key: ui.color_scheme
+    kind: choice
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Farbschema, en: Colour scheme}
+    options:
+      - {value: system, label: {de: Wie das Gerät, en: Like the device}}
+      - {value: light, label: {de: Hell, en: Light}}
+      - {value: dark, label: {de: Dunkel, en: Dark}}
+    default: system
+  - key: ui.density
+    kind: choice
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Zeilenhöhe der Listen, en: Row height of lists}
+    options:
+      - {value: normal, label: {de: Normal, en: Normal}}
+      - {value: compact, label: {de: Kompakt, en: Compact}}
+    default: normal
+  # Approvals (WF7).
+  - key: approvals.remind_days
+    kind: number
+    group: {de: Genehmigungen, en: Approvals}
+    label: {de: Erinnerung an offene Genehmigungen alle, en: Remind of open approvals every}
+    description: {de: "0 heißt: keine Erinnerung. Eine Genehmigungsvorlage kann es anders sagen.", en: "0 means no reminder. An approval template may say otherwise."}
+    unit: {de: Arbeitstage, en: working days}
+    integer: true
+    min: 0
+    max: 60
+    default: 2
+  # Files (PL18, E95; SD20): size and extensions at the unit of the person who uploads.
+  - key: files.max_size
+    kind: size
+    group: {de: Dateien, en: Files}
+    label: {de: Höchstgröße einer Datei, en: Largest file}
+    min: 1
+    default: 104857600
+  - key: files.allowed_extensions
+    kind: list
+    group: {de: Dateien, en: Files}
+    label: {de: Erlaubte Endungen, en: Allowed extensions}
+    description: {de: "Leer: alles außer den gesperrten Endungen.", en: "Empty: all but the blocked extensions."}
+    pattern: '[a-z0-9]{1,10}'
+  - key: files.blocked_extensions
+    kind: list
+    group: {de: Dateien, en: Files}
+    label: {de: Gesperrte Endungen, en: Blocked extensions}
+    pattern: '[a-z0-9]{1,10}'
+    default: [bat, cmd, com, exe, js, msi, ps1, scr, vbs]
+  - key: files.temporary_ttl
+    kind: number
+    group: {de: Dateien, en: Files}
+    label: {de: Unangehängte Dateien löschen nach, en: Remove unattached files after}
+    unit: {de: Sekunden, en: seconds}
+    integer: true
+    min: 60
+    default: 86400
+    root: true
+  # Calendars (WF8): the calendar of a unit, for SLAs and reminders.
+  - key: calendar.default
+    kind: reference
+    group: {de: Kalender, en: Calendars}
+    label: {de: Kalender der Einheit, en: Calendar of the unit}
+    to: core.calendar
+  # Costs (PL20).
+  - key: costs.currency
+    kind: text
+    group: {de: Kosten, en: Costs}
+    label: {de: Währung, en: Currency}
+    pattern: '[A-Z]{3}'
+    default: EUR
+    root: true
+  - key: costs.hourly_rate
+    kind: number
+    group: {de: Kosten, en: Costs}
+    label: {de: Stundensatz, en: Hourly rate}
+    unit: {de: je Stunde, en: per hour}
+    min: 0
+  # Security of local accounts (PL28): only at the root.
+  - key: security.password.min_length
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Mindestlänge des Passworts, en: Least length of a password}
+    unit: {de: Zeichen, en: characters}
+    integer: true
+    min: 4
+    max: 128
+    default: 8
+    root: true
+  - key: security.password.require_classes
+    kind: boolean
+    group: {de: Sicherheit, en: Security}
+    label: {de: "Passwort braucht Groß-, Kleinbuchstaben und Ziffern", en: "Password needs upper and lower case and digits"}
+    default: true
+    root: true
+  - key: security.password.max_age_days
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Passwort läuft ab nach, en: Password expires after}
+    description: {de: "0 heißt: nie.", en: "0 means never."}
+    unit: {de: Tagen, en: days}
+    integer: true
+    min: 0
+    default: 0
+    root: true
+  - key: security.password.blocklist
+    kind: list
+    group: {de: Sicherheit, en: Security}
+    label: {de: Verbotene Passwörter, en: Forbidden passwords}
+    root: true
+  - key: security.session.idle_hours
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Abmelden nach Untätigkeit von, en: Sign out after idle}
+    unit: {de: Stunden, en: hours}
+    integer: true
+    min: 1
+    default: 12
+    root: true
+  - key: security.session.max_hours
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Sitzung höchstens, en: Session at most}
+    unit: {de: Stunden, en: hours}
+    integer: true
+    min: 1
+    default: 24
+    root: true
+  - key: security.lockout.account_failures
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Sperre eines Kontos nach Fehlversuchen, en: Lock an account after failures}
+    description: {de: "0 heißt: nie sperren.", en: "0 means never lock."}
+    integer: true
+    min: 0
+    default: 5
+    root: true
+  - key: security.lockout.ip_failures
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Sperre einer Adresse nach Fehlversuchen, en: Lock an address after failures}
+    description: {de: "0 heißt: nie sperren.", en: "0 means never lock."}
+    integer: true
+    min: 0
+    default: 20
+    root: true
+  - key: security.lockout.window_minutes
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Fehlversuche zählen innerhalb von, en: Count failures within}
+    unit: {de: Minuten, en: minutes}
+    integer: true
+    min: 1
+    default: 15
+    root: true
+  - key: security.lockout.minutes
+    kind: number
+    group: {de: Sicherheit, en: Security}
+    label: {de: Sperre dauert, en: Lock lasts}
+    unit: {de: Minuten, en: minutes}
+    integer: true
+    min: 1
+    default: 15
+    root: true
+  - key: security.local_login
+    kind: choice
+    group: {de: Sicherheit, en: Security}
+    label: {de: Lokale Anmeldung, en: Local sign-in}
+    options:
+      - {value: all, label: {de: Für alle Konten, en: For every account}}
+      - {value: admins, label: {de: Nur für Verwalter der Rechte, en: Only for managers of rights}}
+      - {value: none, label: {de: "Keine, nur der Identitätsanbieter", en: "None, the identity provider only"}}
+    default: all
+    root: true
+  # Interfaces (PL25, PL26, PL32): only at the root.
+  - key: api.rate_limit
+    kind: number
+    group: {de: Schnittstellen, en: Interfaces}
+    label: {de: Anfragen eines API-Clients höchstens, en: Requests of an API client at most}
+    unit: {de: je Minute, en: per minute}
+    integer: true
+    min: 1
+    default: 600
+    root: true
+  - key: api.token_ttl
+    kind: number
+    group: {de: Schnittstellen, en: Interfaces}
+    label: {de: Gültigkeit eines Tokens, en: Lifetime of a token}
+    unit: {de: Sekunden, en: seconds}
+    integer: true
+    min: 60
+    default: 3600
+    root: true
+  - key: webhooks.allowed_http_hosts
+    kind: list
+    group: {de: Schnittstellen, en: Interfaces}
+    label: {de: Hosts für Webhooks ohne HTTPS, en: Hosts for webhooks without HTTPS}
+    pattern: '[A-Za-z0-9._:-]{1,253}'
+    root: true
+  - key: bulk.max_size
+    kind: size
+    group: {de: Schnittstellen, en: Interfaces}
+    label: {de: Größte Datei einer Massenänderung, en: Largest file of a bulk change}
+    min: 1
+    default: 1073741824
+    root: true
+  # Security log (PL29).
+  - key: audit.security_retention
+    kind: number
+    group: {de: Protokoll, en: Log}
+    label: {de: Sicherheitsprotokoll aufbewahren, en: Keep the security log}
+    unit: {de: Tage, en: days}
+    integer: true
+    min: 1
+    default: 365
+    root: true

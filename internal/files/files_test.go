@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
@@ -157,7 +159,7 @@ func setup(t *testing.T) fixture {
 	}
 	rec := records.New(db.Single(pool))
 	svc := New(db.Single(pool), store, rec, nil, quiet)
-	svc.limits = func(context.Context) Limits {
+	svc.limits = func(context.Context, string) Limits {
 		return Limits{MaxSize: 1 << 20, Blocked: DefaultBlockedExtensions, TemporaryTTL: 24 * time.Hour}
 	}
 	doc, err := rec.Create(ctx, "filestest.doc", map[string]any{"title": "with files"}, nil)
@@ -301,4 +303,70 @@ func TestUploadAttachReadAndCleanup(t *testing.T) {
 	if hist[len(hist)-1].Action != "detach" {
 		t.Fatalf("last history row: %s", hist[len(hist)-1].Action)
 	}
+}
+
+// SD20: size and extensions count at the unit of the person who uploads. Nord allows only pdf
+// and 1,000 bytes; a person of Süd uploads as the root says; the time to keep unattached files
+// is read at the root, whoever uploads.
+func TestLimitsAtTheUploadersUnit(t *testing.T) {
+	f := setup(t)
+	var asked []string
+	settings := func(_ context.Context, path, key string) (json.RawMessage, string, error) {
+		asked = append(asked, path+" "+key)
+		switch {
+		case path == "root.nord" && key == SettingAllowedExtensions:
+			return json.RawMessage(`["pdf"]`), path, nil
+		case path == "root.nord" && key == SettingMaxSize:
+			return json.RawMessage(`1000`), path, nil
+		}
+		return nil, "", nil
+	}
+	f.svc.limits = func(ctx context.Context, path string) Limits { return readLimits(ctx, settings, path) }
+	nord := authz.WithAccess(f.ctx, &authz.Access{PersonNode: "root.nord"})
+	sued := authz.WithAccess(f.ctx, &authz.Access{PersonNode: "root.sued"})
+
+	if l := f.svc.Limits(nord); l.MaxSize != 1000 || len(l.Allowed) != 1 || l.Allowed[0] != "pdf" {
+		t.Fatalf("limits of Nord: %+v", l)
+	}
+	if _, err := f.svc.Upload(nord, "filestest logauszug.zip", strings.NewReader("PK zip"), nil); err == nil || !strings.Contains(err.Error(), "only files ending in .pdf") {
+		t.Fatalf("zip in Nord: %v", err)
+	}
+	if _, err := f.svc.Upload(nord, "filestest ohne Endung", strings.NewReader("text"), nil); err == nil || !strings.Contains(err.Error(), "only files ending in .pdf") {
+		t.Fatalf("no extension in Nord: %v", err)
+	}
+	if _, err := f.svc.Upload(nord, "filestest gross.pdf", bytes.NewReader(bytes.Repeat([]byte("%PDF"), 500)), nil); !errors.Is(err, ErrTooLarge) {
+		t.Fatalf("2,000 bytes in Nord: %v", err)
+	}
+	if up, err := f.svc.Upload(nord, "filestest klein.pdf", strings.NewReader("%PDF-1.7 klein"), nil); err != nil || up.State != "temporary" {
+		t.Fatalf("small pdf in Nord: %+v %v", up, err)
+	}
+	if up, err := f.svc.Upload(sued, "filestest logauszug.zip", strings.NewReader("PK zip"), nil); err != nil || up.State != "temporary" {
+		t.Fatalf("zip in Süd: %+v %v", up, err)
+	}
+	if _, err := f.svc.Upload(sued, "filestest start.exe", strings.NewReader("MZ"), nil); err == nil || !strings.Contains(err.Error(), "not accepted") {
+		t.Fatalf("blocked in Süd: %v", err)
+	}
+	asked = nil
+	f.svc.Limits(nord)
+	for _, a := range asked {
+		if strings.HasSuffix(a, " "+SettingTemporaryTTL) && a != "root "+SettingTemporaryTTL {
+			t.Fatalf("temporary_ttl read below the root: %v", asked)
+		}
+	}
+	if !slicesContain(asked, "root.nord "+SettingMaxSize) {
+		t.Fatalf("size not read at the unit: %v", asked)
+	}
+	// Without a person the root holds.
+	if l := f.svc.Limits(f.ctx); l.MaxSize != DefaultMaxSize || len(l.Allowed) != 0 {
+		t.Fatalf("limits without a person: %+v", l)
+	}
+}
+
+func slicesContain(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }

@@ -7,8 +7,8 @@
 
 // Settings (UI9, Hauptplan E131). "Meine Einstellungen": language, time zone and theme, each
 // own or "as set for my unit", with where the value in force comes from; presets per type
-// for creating. "Globale Einstellungen": the defaults at a node of the organisation tree,
-// for those who hold manage_settings there (Kern-Plan E59).
+// for creating. "Globale Einstellungen" (GlobalSettings.tsx): the settings at a node of the
+// organisation tree, for those who hold manage_settings there (Kern-Plan E59; SD20).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useId, useState } from "react";
@@ -16,7 +16,6 @@ import { useTranslation } from "react-i18next";
 
 import {
   api,
-  ApiError,
   labelOf,
   meQuery,
   mySettingsQuery,
@@ -37,7 +36,7 @@ import { themes } from "@/ui/theme";
 const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
 
 // timeZones are the zones the browser knows; Europe/Berlin first.
-function timeZones(): string[] {
+export function timeZones(): string[] {
   const all =
     typeof Intl.supportedValuesOf === "function"
       ? Intl.supportedValuesOf("timeZone")
@@ -349,136 +348,6 @@ export function MySettingsPage() {
             </Link>
           </p>
         </>
-      )}
-    </div>
-  );
-}
-
-const globalKeys = [
-  { key: "ui.language", name: "language" },
-  { key: "ui.time_zone", name: "time_zone" },
-  { key: "ui.theme", name: "theme" },
-  { key: "ui.color_scheme", name: "color_scheme" },
-  { key: "ui.density", name: "density" },
-] as const;
-
-export function GlobalSettingsPage() {
-  const { t, i18n } = useTranslation();
-  const id = useId();
-  const queryClient = useQueryClient();
-  const [path, setPath] = useState("root");
-  const nodes = useQuery({ queryKey: ["org", "nodes"], queryFn: api.orgNodes });
-  const current = useQuery({
-    queryKey: ["org", "settings", path],
-    queryFn: () => api.orgSettings(path),
-  });
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<string | null>(null);
-  const done = (msg: string) => {
-    setMessage(msg);
-    void queryClient.invalidateQueries({ queryKey: ["org", "settings"] });
-    void queryClient.invalidateQueries({ queryKey: mySettingsQuery.queryKey });
-  };
-  const fail = (err: unknown) =>
-    setMessage(
-      err instanceof ApiError && err.status === 403
-        ? t("settings.forbidden")
-        : t("settings.error", { detail: err instanceof Error ? err.message : String(err) }),
-    );
-  const options = (name: string) =>
-    name === "language"
-      ? Object.keys(languages).map((l) => ({ value: l, label: t(`language.${l}`) }))
-      : name === "theme"
-        ? themes.map((x) => ({ value: x, label: t(`theme.${x}`) }))
-        : name === "color_scheme"
-          ? colorSchemes.map((x) => ({ value: x, label: t(`colorScheme.${x}`) }))
-          : name === "density"
-            ? densities.map((x) => ({ value: x, label: t(`list.densities.${x}`) }))
-            : timeZones().map((z) => ({ value: z, label: z }));
-  return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t("settings.globalTitle")}</h1>
-      <p className="text-sm text-muted-foreground">{t("settings.globalHint")}</p>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${id}-node`}>{t("settings.node")}</Label>
-        <select
-          id={`${id}-node`}
-          className={selectClass}
-          value={path}
-          onChange={(e) => {
-            setPath(e.target.value);
-            setDraft({});
-            setMessage(null);
-          }}
-        >
-          {(nodes.data ?? [{ path: "root", name: "root", label: {} }]).map((n) => (
-            <option key={n.path} value={n.path}>
-              {labelOf(n.label, i18n.language, n.path)} ({n.path})
-            </option>
-          ))}
-        </select>
-      </div>
-      <ul className="flex flex-col gap-4">
-        {globalKeys.map(({ key, name }) => {
-          const s = current.data?.find((x) => x.key === key);
-          const value = draft[key] ?? (typeof s?.value === "string" ? s.value : "");
-          return (
-            <li
-              key={key}
-              className="flex flex-col gap-1 rounded-md border p-3"
-              aria-label={t(`settings.${name}`)}
-            >
-              <Label htmlFor={`${id}-${name}`}>{t(`settings.${name}`)}</Label>
-              <div className="flex flex-wrap gap-2">
-                <select
-                  id={`${id}-${name}`}
-                  className={selectClass}
-                  value={value}
-                  onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-                >
-                  <option value="">{t("form.none")}</option>
-                  {options(name).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  className="h-10"
-                  disabled={!value}
-                  onClick={() =>
-                    void api.setOrgSetting(path, key, value).then(() => done(t("form.saved")), fail)
-                  }
-                >
-                  {t("form.save")}
-                </Button>
-                {s?.source === path && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-10"
-                    onClick={() =>
-                      void api
-                        .unsetOrgSetting(path, key)
-                        .then(() => done(t("settings.removed")), fail)
-                    }
-                  >
-                    {t("settings.remove")}
-                  </Button>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {s ? t("settings.from", { node: s.source }) : t("settings.notSet")}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-      {message && (
-        <p role="status" className="text-sm">
-          {message}
-        </p>
       )}
     </div>
   );

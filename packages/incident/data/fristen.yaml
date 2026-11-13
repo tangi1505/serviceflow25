@@ -166,13 +166,15 @@
       - notify: {to: [actors.group.responsible], message: "80 % der Lösungsfrist (P4) sind verbraucht."}
 
 # Closed by itself five days of the service time after "resolved", if the requester neither
-# confirms nor refuses (WF12); a reopened incident starts anew.
+# confirms nor refuses (WF12); a reopened incident starts anew. A unit can set its own time with
+# the setting incident.close_after (SD20), 0 there means not at all.
 - key: sla_close
   type: core.sla
   values:
     name: Störung automatisch schließen
     target_type: incident.incident
     target_minutes: 3300
+    target_setting: incident.close_after
     calendar: "@sd.servicezeit"
     start_from: applies
     applies: record.state == "resolved"

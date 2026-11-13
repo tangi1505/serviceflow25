@@ -288,6 +288,54 @@ func (s *Service) SetSetting(ctx context.Context, path, key string, value json.R
 	return nil
 }
 
+// ApplySettings sets and removes own values of a node in one transaction (SD20: the page
+// saves all its changes at once): set holds key to value, unset the keys to remove; a key to
+// remove that the node does not set is no error. Checking the values is the caller's.
+func (s *Service) ApplySettings(ctx context.Context, path string, set map[string]json.RawMessage, unset []string, actor *uuid.UUID) error {
+	for key, value := range set {
+		if !keyRe.MatchString(key) {
+			return fmt.Errorf("%w: key %q must be dotted snake_case, like ticket.default_priority", ErrInvalid, key)
+		}
+		if !json.Valid(value) {
+			return fmt.Errorf("%w: value of %s is not JSON", ErrInvalid, key)
+		}
+	}
+	if ok, err := s.Exists(ctx, path); err != nil {
+		return err
+	} else if !ok {
+		return ErrNotFound
+	}
+	var by uuid.NullUUID
+	if actor != nil {
+		by = uuid.NullUUID{UUID: *actor, Valid: true}
+	}
+	tx, err := s.db.For(path).Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("org: apply: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := queries.New(tx)
+	keys := make([]string, 0, len(set))
+	for key := range set {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	for _, key := range keys {
+		if err := q.UpsertOrgSetting(ctx, queries.UpsertOrgSettingParams{Path: path, Key: key, Value: set[key], UpdatedBy: by}); err != nil {
+			return fmt.Errorf("org: set %s: %w", key, err)
+		}
+	}
+	for _, key := range unset {
+		if _, err := q.DeleteOrgSetting(ctx, queries.DeleteOrgSettingParams{Path: path, Key: key}); err != nil {
+			return fmt.Errorf("org: unset %s: %w", key, err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("org: apply: %w", err)
+	}
+	return nil
+}
+
 // UnsetSetting removes a node's own value; the node then inherits again.
 func (s *Service) UnsetSetting(ctx context.Context, path, key string) error {
 	if !ValidPath(path) {

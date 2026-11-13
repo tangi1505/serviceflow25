@@ -24,7 +24,8 @@ import { AppShell } from "@/app/AppShell";
 import { HomePage } from "@/app/HomePage";
 import { LoginPage } from "@/app/LoginPage";
 import { PasswordPage } from "@/app/PasswordPage";
-import { GlobalSettingsPage, MySettingsPage } from "@/app/SettingsPage";
+import { GlobalSettingsPage } from "@/app/GlobalSettings";
+import { MySettingsPage } from "@/app/SettingsPage";
 import {
   PortalFormPage,
   PortalHome,

@@ -236,7 +236,7 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 		for k, v := range values {
 			state[k] = v
 		}
-		if err := calculate(t, state, values); err != nil {
+		if err := calculate(t, state, values, s.settingsAt(ctx, path)); err != nil {
 			return fail(err)
 		}
 		id, err := uuid.NewV7()
@@ -292,7 +292,7 @@ func (s *Service) bulkPrepare(ctx context.Context, t meta.Type, row BulkRow, ex 
 	for k, v := range values {
 		state[k] = v
 	}
-	if err := calculate(t, state, values); err != nil {
+	if err := calculate(t, state, values, s.settingsAt(ctx, pathOf(state))); err != nil {
 		return fail(err)
 	}
 	p := pending{op: "h", id: id, version: version, path: fmt.Sprint(ex.rec[orgPathField]), values: map[string]any{}, old: ex.rec}

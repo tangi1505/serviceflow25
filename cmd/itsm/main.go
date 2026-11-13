@@ -54,6 +54,7 @@ import (
 	"group24.de/itsm/internal/savedsearch"
 	"group24.de/itsm/internal/search"
 	"group24.de/itsm/internal/seclog"
+	"group24.de/itsm/internal/settings"
 	"group24.de/itsm/internal/sla"
 	"group24.de/itsm/internal/snippets"
 	"group24.de/itsm/internal/webhooks"
@@ -185,6 +186,10 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	}
 	// The costs read their currency and hourly rate from the settings of the tree (PL20).
 	rec.Settings = orgSvc.Setting
+	// The settings the packages declare (SD20): checked when set, read with their default by
+	// formulas (setting("…")) and SLAs (target_setting).
+	settingsSvc := settings.New(rt, orgSvc)
+	rec.SettingValue = settingsSvc.Value
 	an := authn.New(rt, kv, authSvc, az, rec, orgSvc, logger, authn.Options{
 		Issuer: cfg.OIDC.Issuer, ClientID: cfg.OIDC.ClientID, ClientSecret: cfg.OIDC.ClientSecret, Name: cfg.OIDC.Name,
 		PublicURL: cfg.PublicURL, InternalURL: cfg.OIDC.InternalURL, Scopes: cfg.OIDC.Scopes, GroupsClaim: cfg.OIDC.GroupsClaim,
@@ -229,6 +234,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	}
 	slaSvc := sla.New(rt, rec, calendars, js, kv, logger)
 	slaSvc.Register(js)
+	slaSvc.Settings, slaSvc.Declared = settingsSvc.Value, settingsSvc.Definition
 	// Escalation levels are rules with the trigger clock (WF10).
 	slaSvc.Levels = func(ctx context.Context, typeName string, id uuid.UUID) ([]sla.Level, error) {
 		list, err := ruleEngine.Levels(ctx, typeName, id)
@@ -304,6 +310,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Records:    rec,
 		Auth:       authSvc,
 		Org:        orgSvc,
+		Settings:   settingsSvc,
 		Groups:     query.NewGroups(rt),
 		Authz:      az,
 		Jobs:       js,

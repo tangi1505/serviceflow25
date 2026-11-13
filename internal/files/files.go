@@ -26,6 +26,7 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -41,10 +42,12 @@ import (
 	"group24.de/itsm/internal/records"
 )
 
-// Settings of the root node (E95).
+// Settings (E95). Size and extensions apply at the unit of the person who uploads (SD20), the
+// time to keep an unattached file at the root node.
 const (
 	SettingMaxSize           = "files.max_size"           // bytes, default 100 MiB
 	SettingBlockedExtensions = "files.blocked_extensions" // list of extensions without dot
+	SettingAllowedExtensions = "files.allowed_extensions" // list; empty: all but the blocked (SD20)
 	SettingTemporaryTTL      = "files.temporary_ttl"      // how long an unattached file stays, default 24h
 )
 
@@ -93,8 +96,10 @@ type File struct {
 
 // Limits are the settings that apply to an upload.
 type Limits struct {
-	MaxSize      int64
-	Blocked      []string
+	MaxSize int64
+	Blocked []string
+	// Allowed are the only extensions taken when not empty (SD20).
+	Allowed      []string
 	TemporaryTTL time.Duration
 }
 
@@ -108,8 +113,8 @@ type Service struct {
 	rec     *records.Service
 	logger  *slog.Logger
 	Scanner Scanner
-	// limits reads the settings; tests replace it.
-	limits func(ctx context.Context) Limits
+	// limits reads the settings at a node; tests replace it.
+	limits func(ctx context.Context, path string) Limits
 }
 
 // New returns the service. settings may be nil (then the defaults apply).
@@ -118,23 +123,41 @@ func New(rt *db.Router, store Store, rec *records.Service, settings Settings, lo
 		logger = slog.Default()
 	}
 	s := &Service{db: rt, store: store, rec: rec, logger: logger, Scanner: NoScan{}}
-	s.limits = func(ctx context.Context) Limits { return readLimits(ctx, settings) }
+	s.limits = func(ctx context.Context, path string) Limits { return readLimits(ctx, settings, path) }
 	return s
 }
 
 // tq is the query handle in the database of the request's tenant (PL47).
 func (s *Service) tq(ctx context.Context) *queries.Queries { return queries.New(s.db.Tenant(ctx)) }
 
-// Limits returns the settings that apply now.
-func (s *Service) Limits(ctx context.Context) Limits { return s.limits(ctx) }
+// Limits returns the settings that apply now to an upload of the request's person.
+func (s *Service) Limits(ctx context.Context) Limits { return s.limits(ctx, uploaderNode(ctx)) }
 
-func readLimits(ctx context.Context, settings Settings) Limits {
+// uploaderNode is the unit of the person who uploads, else the tenant of the account, else the
+// root: a file is attached to no record yet when it comes.
+func uploaderNode(ctx context.Context) string {
+	a := authz.From(ctx)
+	switch {
+	case a == nil:
+	case a.PersonNode != "":
+		return a.PersonNode
+	case a.Home != "":
+		return a.Home
+	}
+	return "root"
+}
+
+func readLimits(ctx context.Context, settings Settings, path string) Limits {
 	l := Limits{MaxSize: DefaultMaxSize, Blocked: DefaultBlockedExtensions, TemporaryTTL: DefaultTemporaryTTL}
 	if settings == nil {
 		return l
 	}
 	get := func(key string) json.RawMessage {
-		raw, _, err := settings(ctx, "root", key)
+		at := path
+		if key == SettingTemporaryTTL {
+			at = "root"
+		}
+		raw, _, err := settings(ctx, at, key)
 		if err != nil {
 			return nil
 		}
@@ -150,6 +173,12 @@ func readLimits(ctx context.Context, settings Settings) Limits {
 		var list []string
 		if json.Unmarshal(raw, &list) == nil {
 			l.Blocked = list
+		}
+	}
+	if raw := get(SettingAllowedExtensions); len(raw) > 0 {
+		var list []string
+		if json.Unmarshal(raw, &list) == nil {
+			l.Allowed = list
 		}
 	}
 	if raw := get(SettingTemporaryTTL); len(raw) > 0 {
@@ -224,12 +253,18 @@ func (s *Service) Upload(ctx context.Context, name string, body io.Reader, actor
 	if name == "" {
 		return File{}, invalid("required", "the file needs a name (query parameter name or Content-Disposition)")
 	}
-	lim := s.limits(ctx)
+	lim := s.limits(ctx, uploaderNode(ctx))
 	ext := strings.ToLower(strings.TrimPrefix(path.Ext(name), "."))
 	for _, b := range lim.Blocked {
 		if ext != "" && strings.EqualFold(strings.TrimPrefix(b, "."), ext) {
 			return File{}, invalid("blocked", fmt.Sprintf("files ending in .%s are not accepted (setting %s)", ext, SettingBlockedExtensions))
 		}
+	}
+	if len(lim.Allowed) > 0 && !slices.ContainsFunc(lim.Allowed, func(a string) bool {
+		return ext != "" && strings.EqualFold(strings.TrimPrefix(a, "."), ext)
+	}) {
+		return File{}, invalid("not_allowed", fmt.Sprintf("only files ending in %s are accepted at your unit (setting %s)",
+			"."+strings.Join(lim.Allowed, ", ."), SettingAllowedExtensions))
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -510,7 +545,7 @@ func (s *Service) Detach(ctx context.Context, typeName string, recordID, fileID 
 // Cleanup removes uploads older than an hour that never finished and temporary files older
 // than files.temporary_ttl that nobody attached, content first, then the row.
 func (s *Service) Cleanup(ctx context.Context) (int, error) {
-	lim := s.limits(ctx)
+	lim := s.limits(ctx, "root")
 	now := time.Now()
 	removed := 0
 	for {
