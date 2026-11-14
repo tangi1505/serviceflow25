@@ -15,6 +15,7 @@ package schema
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"strings"
 
@@ -253,7 +254,79 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 			return nil, err
 		}
 	}
+	// The moment of creation of every type (PL54): lists sort by it, newest first, and a
+	// table of millions without it is read whole (found with H14).
+	if err := ensureIndex(ctx, tx, table, table+"_created_at_idx",
+		fmt.Sprintf("CREATE INDEX %s ON %s (created_at)", pgx.Identifier{table + "_created_at_idx"}.Sanitize(), pgx.Identifier{table}.Sanitize()), run); err != nil {
+		return nil, err
+	}
+	if err := ensureDeclared(ctx, tx, t, table, run); err != nil {
+		return nil, err
+	}
 	return changes, nil
+}
+
+// declaredMark is the comment on the indexes a package declared (PL54): those, and only those,
+// go again when the definition no longer names them.
+const declaredMark = "itsm: declared by the type (PL54)"
+
+// DeclaredIndexName is the name of a declared index: the table, "ix" and the columns; a name
+// longer than PostgreSQL keeps ends in a hash instead.
+func DeclaredIndexName(table string, fields []string) string {
+	name := table + "_ix_" + strings.Join(fields, "_")
+	if len(name) <= 63 {
+		return name
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(name))
+	return fmt.Sprintf("%s_%08x", name[:54], h.Sum32())
+}
+
+// ensureDeclared creates the indexes the type declares and drops the declared ones it no
+// longer names (PL54). The build of an index on a large table holds its writes for as long as
+// it takes, inside the transaction of the install.
+func ensureDeclared(ctx context.Context, tx pgx.Tx, t meta.Type, table string, run func(change, stmt string) error) error {
+	want := map[string]bool{}
+	for _, ix := range t.Indexes {
+		name := DeclaredIndexName(table, ix.Fields)
+		want[name] = true
+		exists, err := indexExists(ctx, tx, table, name)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		cols := make([]string, len(ix.Fields))
+		for i, f := range ix.Fields {
+			cols[i] = pgx.Identifier{f}.Sanitize()
+		}
+		if err := run("index "+name, fmt.Sprintf("CREATE INDEX %s ON %s (%s)",
+			pgx.Identifier{name}.Sanitize(), pgx.Identifier{table}.Sanitize(), strings.Join(cols, ", "))); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, fmt.Sprintf("COMMENT ON INDEX %s IS '%s'", pgx.Identifier{name}.Sanitize(), declaredMark)); err != nil {
+			return fmt.Errorf("schema: mark index %s: %w", name, err)
+		}
+	}
+	rows, err := tx.Query(ctx, `SELECT c.relname FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+WHERE i.indrelid = $1::regclass AND obj_description(c.oid, 'pg_class') = $2 ORDER BY 1`, pgx.Identifier{table}.Sanitize(), declaredMark)
+	if err != nil {
+		return fmt.Errorf("schema: read declared indexes of %s: %w", table, err)
+	}
+	have, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return fmt.Errorf("schema: read declared indexes of %s: %w", table, err)
+	}
+	for _, name := range have {
+		if want[name] {
+			continue
+		}
+		if err := run("drop index "+name, "DROP INDEX "+pgx.Identifier{name}.Sanitize()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ensureIndex creates an index unless it exists.

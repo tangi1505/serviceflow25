@@ -5,7 +5,7 @@
 # base package sd, a running number INC-…, the priority from impact and urgency and a state
 # model in which the requester confirms or refuses the solution.
 name: incident
-version: 0.11.0
+version: 0.12.0
 label:
   de: Störungen
   en: Incidents

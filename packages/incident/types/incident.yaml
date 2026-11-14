@@ -14,6 +14,10 @@ title_field: title
 # requester, observer, assignee and group (SD-Plan N6, N7).
 # resolution keeps when it was resolved and how long it took (UI14a).
 traits: [sd.ticket, history, documents, timeline, resolution]
+# The queues list open tickets, newest first (PL54, found with H14): an index on state and the
+# moment of creation; the core indexes created_at alone for every type.
+indexes:
+  - fields: [state, created_at]
 fields:
   # The running number per tenant (PL49): INC-1, INC-2, …
   - name: number

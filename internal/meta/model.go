@@ -293,6 +293,9 @@ type Type struct {
 	Approval *ApprovalSpec `json:"approval,omitempty" yaml:"approval"`
 	// Order makes the records orderable with a form (SD13, SD-Plan N19): offers of the catalog.
 	Order *OrderSpec `json:"order,omitempty" yaml:"order"`
+	// Indexes are the indexes the package declares for the frequent lists of the type (PL54,
+	// Kern-Plan E65), in addition to the one on created_at the core gives every type.
+	Indexes []Index `json:"indexes,omitempty" yaml:"indexes"`
 	// Package is set by the loader; it is not written in types/<name>.yaml.
 	Package string `json:"package" yaml:"-"`
 	// Revision is the hash of the effective definition (PL43): base and customer layer.

@@ -158,6 +158,7 @@ func Validate(p Package, known map[string]bool) error {
 		validateSuggest(add, where, t, p, local, known, trseen)
 		validateApproval(add, where, t)
 		validateOrder(add, where, t)
+		validateIndexes(add, where, t)
 		validateFieldStates(add, where, t)
 		validateList(add, where, t)
 		validateFormulas(add, where, t)

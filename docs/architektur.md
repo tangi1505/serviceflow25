@@ -282,6 +282,10 @@ E34 und KF9:
   Ein Widget gruppiert auch nach einer Rolle (`actors.<rolle>`, ein Datensatz mit zwei Haltern
   zählt bei beiden); wer ein Dashboard nur liest, kopiert es mit `POST …/copy` in ein eigenes
   (UI14a).
+- **Indizes je Typ** (PL54, Kern-Plan E65): jede Tabelle eines Typs hat einen Index auf
+  `created_at`; ein Paket erklärt weitere in der Typdatei (`indexes: - fields: [state,
+  created_at]`), `internal/schema` legt sie beim Installieren an, markiert sie mit einem
+  Kommentar und entfernt erklärte, die das Paket nicht mehr nennt.
 - **Typen im Speicher** (PL53, Kern-Plan E64): `records.Service.Type` hält die wirksamen
   Typen im Speicher und lädt sie neu, wenn sich `definition` ändert: im eigenen Prozess sofort
   (`meta.DefinitionsChanged`), für andere Instanzen und die Kommandozeile über einen Trigger mit
