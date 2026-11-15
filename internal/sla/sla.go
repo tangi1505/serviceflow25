@@ -35,6 +35,7 @@ import (
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/jobs"
+	"group24.de/itsm/internal/memo"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
 	"group24.de/itsm/internal/rules"
@@ -94,18 +95,26 @@ type Service struct {
 	// Declared says how a setting is declared, for checking target_setting; nil checks nothing.
 	Declared func(ctx context.Context, key string) (meta.Setting, bool, error)
 
-	mu     sync.RWMutex
-	loaded time.Time
-	byType map[string][]*SLA
-	byID   map[uuid.UUID]*SLA
-	// calendars are the calendars of the clocks in memory, by database and id (PL53).
-	calendars map[string]calendarEntry
+	// slas are the active SLAs in memory (PL58): a request takes the last state, a reload runs
+	// in the background, never in a request that holds a transaction.
+	slas memo.Value[slaSet]
+	mu   sync.RWMutex
+	// calendars are the calendars of the clocks in memory, by database and id (PL53); an old
+	// one serves while it is read anew in the background (PL58).
+	calendars map[string]*calendarEntry
 }
 
-// calendarEntry is a calendar in memory and when it was loaded.
+// slaSet are the active SLAs by type and by id.
+type slaSet struct {
+	byType map[string][]*SLA
+	byID   map[uuid.UUID]*SLA
+}
+
+// calendarEntry is a calendar in memory, when it was loaded and whether a reload runs.
 type calendarEntry struct {
-	c  Counter
-	at time.Time
+	c       Counter
+	at      time.Time
+	loading bool
 }
 
 // calendarMaxAge is the longest a calendar stays in memory (PL53, like the settings, SD20); a
@@ -117,7 +126,16 @@ func New(rt *db.Router, rec *records.Service, cals *calendar.Service, js *jobs.S
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Service{db: rt, rec: rec, cals: cals, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault, Now: time.Now}
+	s := &Service{db: rt, rec: rec, cals: cals, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault, Now: time.Now}
+	s.slas = memo.Value[slaSet]{MaxAge: reloadAfter, Load: s.read, Logger: logger, Name: "sla"}
+	return s
+}
+
+// Warm loads the SLAs before the first request (PL58): the first load is the only one that
+// runs in a caller.
+func (s *Service) Warm(ctx context.Context) error {
+	_, err := s.slas.Refresh(ctx)
+	return err
 }
 
 // Run keeps the SLAs in step with the other instances until the context ends.
@@ -127,7 +145,7 @@ func (s *Service) Run(ctx context.Context) error {
 		return nil
 	}
 	for ctx.Err() == nil {
-		err := s.kv.Subscribe(ctx, channel, func(string) { s.forget() })
+		err := s.kv.Subscribe(ctx, channel, func(string) { s.stale() })
 		if err != nil && ctx.Err() == nil {
 			s.logger.Warn("sla: subscription lost, retrying", "error", err.Error())
 			time.Sleep(time.Second)
@@ -136,9 +154,14 @@ func (s *Service) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) forget() {
+// stale marks what is in memory as old after a change on another instance: it is read anew in
+// the background (PL58).
+func (s *Service) stale() {
+	s.slas.Stale()
 	s.mu.Lock()
-	s.byType, s.byID, s.calendars = nil, nil, nil
+	for _, e := range s.calendars {
+		e.at = time.Time{}
+	}
 	s.mu.Unlock()
 }
 
@@ -148,7 +171,15 @@ func (s *Service) Wrote(ctx context.Context, typeName string) {
 	if typeName != TypeSLA && !strings.HasPrefix(typeName, "core.calendar") {
 		return
 	}
-	s.forget()
+	// The own change counts for the next request of this instance: read anew here, after the
+	// commit of the write, and the calendars at their next use.
+	if _, err := s.slas.Refresh(context.WithoutCancel(ctx)); err != nil {
+		s.logger.Warn("sla: reload after a change failed", "error", err.Error())
+		s.slas.Forget()
+	}
+	s.mu.Lock()
+	s.calendars = nil
+	s.mu.Unlock()
 	if s.kv != nil {
 		if err := s.kv.Publish(ctx, channel, "1"); err != nil {
 			s.logger.Warn("sla: publish", "error", err.Error())
@@ -162,31 +193,27 @@ func system(ctx context.Context) context.Context {
 	return authz.WithAccess(ctx, authz.System())
 }
 
-// load returns the active SLAs by type and by id.
+// load returns the active SLAs by type and by id: the last state in memory (PL58).
 func (s *Service) load(ctx context.Context) (map[string][]*SLA, map[uuid.UUID]*SLA, error) {
-	s.mu.RLock()
-	byType, byID := s.byType, s.byID
-	fresh := byType != nil && time.Since(s.loaded) < reloadAfter
-	s.mu.RUnlock()
-	if fresh {
-		return byType, byID, nil
+	set, err := s.slas.Get(ctx)
+	if err != nil {
+		return nil, nil, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.byType != nil && time.Since(s.loaded) < reloadAfter {
-		return s.byType, s.byID, nil
-	}
-	byType, byID = map[string][]*SLA{}, map[uuid.UUID]*SLA{}
+	return set.byType, set.byID, nil
+}
+
+// read reads the active SLAs from the database.
+func (s *Service) read(ctx context.Context) (slaSet, error) {
+	byType, byID := map[string][]*SLA{}, map[uuid.UUID]*SLA{}
 	if _, err := s.rec.Type(ctx, TypeSLA); errors.Is(err, records.ErrNotFound) {
 		// The core package of an instance not yet updated has no SLAs.
-		s.byType, s.byID, s.loaded = byType, byID, time.Now()
-		return byType, byID, nil
+		return slaSet{byType, byID}, nil
 	}
 	after := ""
 	for {
 		page, err := s.rec.List(system(ctx), TypeSLA, records.ListOptions{Limit: 500, After: after})
 		if err != nil {
-			return nil, nil, fmt.Errorf("sla: load: %w", err)
+			return slaSet{}, fmt.Errorf("sla: load: %w", err)
 		}
 		for _, r := range page.Items {
 			if active, _ := r["active"].(bool); !active {
@@ -205,8 +232,7 @@ func (s *Service) load(ctx context.Context) (map[string][]*SLA, map[uuid.UUID]*S
 		}
 		after = page.Next
 	}
-	s.byType, s.byID, s.loaded = byType, byID, time.Now()
-	return byType, byID, nil
+	return slaSet{byType, byID}, nil
 }
 
 // fromRecord reads an SLA from its record and compiles its conditions.
@@ -605,27 +631,55 @@ func (s *Service) counter(ctx context.Context, id uuid.UUID) (Counter, error) {
 	// In memory for a short while (PL53): loading a calendar read its hours and holidays for
 	// every write of a record with a clock.
 	key := fmt.Sprintf("%p/%s", s.db.Tenant(ctx), id)
-	s.mu.RLock()
+	s.mu.Lock()
 	e, ok := s.calendars[key]
-	s.mu.RUnlock()
-	if ok && time.Since(e.at) < calendarMaxAge {
-		return e.c, nil
+	if ok {
+		// An old calendar serves while it is read anew in the background (PL58).
+		if time.Since(e.at) >= calendarMaxAge && !e.loading {
+			e.loading = true
+			go s.reloadCalendar(context.WithoutCancel(ctx), key, id)
+		}
+		c := e.c
+		s.mu.Unlock()
+		return c, nil
 	}
+	s.mu.Unlock()
+	c, _ := s.readCalendar(ctx, id)
+	s.mu.Lock()
+	if s.calendars == nil {
+		s.calendars = map[string]*calendarEntry{}
+	}
+	s.calendars[key] = &calendarEntry{c: c, at: time.Now()}
+	s.mu.Unlock()
+	return c, nil
+}
+
+// readCalendar reads a calendar; one that cannot count counts round the clock, and ok is false.
+func (s *Service) readCalendar(ctx context.Context, id uuid.UUID) (Counter, bool) {
 	c, err := s.cals.Load(system(ctx), id)
 	if err == nil {
 		_, err = c.Add(s.Now(), time.Minute)
 	}
 	if err != nil {
 		s.logger.Warn("sla: calendar not usable, counting round the clock", "calendar", id, "error", err.Error())
-		return RoundTheClock{}, nil
+		return RoundTheClock{}, false
 	}
+	return c, true
+}
+
+func (s *Service) reloadCalendar(ctx context.Context, key string, id uuid.UUID) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	c, ok := s.readCalendar(ctx, id)
 	s.mu.Lock()
-	if s.calendars == nil {
-		s.calendars = map[string]calendarEntry{}
+	defer s.mu.Unlock()
+	if e, there := s.calendars[key]; there {
+		// A failed reload keeps the calendar that counted until now; the next use tries again.
+		if ok {
+			e.c, e.at = c, time.Now()
+		}
+		e.loading = false
 	}
-	s.calendars[key] = calendarEntry{c: c, at: time.Now()}
-	s.mu.Unlock()
-	return c, nil
 }
 
 // --- conversions ---

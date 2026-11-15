@@ -54,6 +54,8 @@ var systemFields = []string{"id", "version", "state", "org_path", "source", "ext
 type Service struct {
 	db    *db.Router
 	types func(ctx context.Context) (map[string]meta.Type, error)
+	// typeCache holds the types in memory (PL53); WatchTypes marks it old (PL58).
+	typeCache *typeCache
 	// seqs are the sequences of the running numbers known to exist, by pool and name (PL49).
 	seqs sync.Map
 	// nodeExists tells whether a path of the organisation tree exists (PL6).
@@ -120,7 +122,7 @@ func New(rt *db.Router) *Service {
 			return false, nil
 		}
 		return queries.New(rt.Tenant(ctx)).OrgNodeExists(ctx, path)
-	}, types: func(ctx context.Context) (map[string]meta.Type, error) { return cache.get(ctx, load) }}
+	}, types: func(ctx context.Context) (map[string]meta.Type, error) { return cache.get(ctx, load) }, typeCache: cache}
 }
 
 // Type returns the definition of a qualified type name.

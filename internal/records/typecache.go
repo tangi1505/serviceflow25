@@ -29,25 +29,57 @@ import (
 const typesMaxAge = time.Minute
 
 type typeCache struct {
-	mu   sync.Mutex
-	gen  int64
-	at   time.Time
-	byID map[string]meta.Type
+	mu      sync.Mutex
+	gen     int64
+	at      time.Time
+	byID    map[string]meta.Type
+	stale   bool
+	loading bool
 }
 
+// get returns the types. A write of this process (a new generation) loads them in the caller,
+// so that the change counts for its next request; the minute run out or a notice of another
+// instance reads them anew in the background while the last state serves (PL58: a reload in a
+// request that holds a transaction waits for a second connection of the pool).
 func (c *typeCache) get(ctx context.Context, load func(context.Context) (map[string]meta.Type, error)) (map[string]meta.Type, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	gen := meta.DefinitionsGeneration()
-	if c.byID != nil && c.gen == gen && time.Since(c.at) < typesMaxAge {
-		return c.byID, nil
+	if c.byID != nil && c.gen == gen {
+		if (c.stale || time.Since(c.at) >= typesMaxAge) && !c.loading {
+			c.loading = true
+			go c.reload(context.WithoutCancel(ctx), gen, load)
+		}
+		m := c.byID
+		c.mu.Unlock()
+		return m, nil
 	}
+	defer c.mu.Unlock()
 	m, err := load(ctx)
 	if err != nil {
 		return nil, err
 	}
-	c.byID, c.gen, c.at = m, gen, time.Now()
+	c.byID, c.gen, c.at, c.stale = m, gen, time.Now(), false
 	return m, nil
+}
+
+func (c *typeCache) reload(ctx context.Context, gen int64, load func(context.Context) (map[string]meta.Type, error)) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	m, err := load(ctx)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.loading = false
+	if err != nil || c.gen != gen {
+		return // the last state stays; a write of this process loaded a newer one meanwhile
+	}
+	c.byID, c.at, c.stale = m, time.Now(), false
+}
+
+// markStale makes the next call read the types anew in the background.
+func (c *typeCache) markStale() {
+	c.mu.Lock()
+	c.stale = true
+	c.mu.Unlock()
 }
 
 // definitionsChannel is the channel the trigger of the table definition notifies on.
@@ -62,7 +94,7 @@ func (s *Service) WatchTypes(ctx context.Context, logger *slog.Logger) {
 			return
 		}
 		// A notice may have got lost while the connection was away.
-		meta.DefinitionsChanged()
+		s.typeCache.markStale()
 		logger.Warn("records: listening for changes of the definitions failed, retrying", "error", err.Error())
 		select {
 		case <-ctx.Done():
@@ -85,11 +117,13 @@ func (s *Service) listenTypes(ctx context.Context) error {
 		return err
 	}
 	// Changes before the LISTEN are not noticed.
-	meta.DefinitionsChanged()
+	s.typeCache.markStale()
 	for {
 		if _, err := conn.Conn().WaitForNotification(ctx); err != nil {
 			return err
 		}
-		meta.DefinitionsChanged()
+		// A change of another instance or the command line: read anew in the background (PL58);
+		// a write of this process has loaded already.
+		s.typeCache.markStale()
 	}
 }

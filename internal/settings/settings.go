@@ -25,6 +25,7 @@ import (
 
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
+	"group24.de/itsm/internal/memo"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
@@ -42,9 +43,16 @@ const reloadAfter = 30 * time.Second
 const valueTTL = 10 * time.Second
 
 type cached struct {
-	raw    json.RawMessage
-	source string
-	at     time.Time
+	raw     json.RawMessage
+	source  string
+	at      time.Time
+	loading bool
+}
+
+// declared are the declarations of the installed packages.
+type declared struct {
+	defs  []meta.Setting
+	byKey map[string]meta.Setting
 }
 
 // Service keeps the declarations and reads values.
@@ -54,29 +62,43 @@ type Service struct {
 	// Now is the clock; tests replace it.
 	Now func() time.Time
 
-	mu     sync.Mutex
-	defs   []meta.Setting
-	byKey  map[string]meta.Setting
-	loaded time.Time
-	values map[string]cached
+	// decl are the declarations in memory (PL58): a request takes the last state, a reload runs
+	// in the background, never in a request that holds a transaction.
+	decl memo.Value[declared]
+	mu   sync.Mutex
+	// values are the values read at nodes; an old one serves while it is read anew in the
+	// background (PL58: the priority of every incident reads one in its write).
+	values map[string]*cached
 }
 
 // New returns the service.
 func New(rt *db.Router, o *org.Service) *Service {
-	return &Service{db: rt, org: o, Now: time.Now, values: map[string]cached{}}
+	s := &Service{db: rt, org: o, Now: time.Now, values: map[string]*cached{}}
+	s.decl = memo.Value[declared]{MaxAge: reloadAfter, Load: s.readDeclared, Name: "settings"}
+	return s
+}
+
+// Warm loads the declarations before the first request (PL58).
+func (s *Service) Warm(ctx context.Context) error {
+	_, err := s.decl.Refresh(ctx)
+	return err
 }
 
 // Definitions are the declared settings of the installed packages: the core first, then the
 // packages by name, each in the order of its package.yaml.
 func (s *Service) Definitions(ctx context.Context) ([]meta.Setting, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.byKey != nil && s.Now().Sub(s.loaded) < reloadAfter {
-		return s.defs, nil
+	d, err := s.decl.Get(ctx)
+	if err != nil {
+		return nil, err
 	}
+	return d.defs, nil
+}
+
+// readDeclared reads the declarations from the packages.
+func (s *Service) readDeclared(ctx context.Context) (declared, error) {
 	rows, err := queries.New(s.db.Control()).ListPackages(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("settings: packages: %w", err)
+		return declared{}, fmt.Errorf("settings: packages: %w", err)
 	}
 	slices.SortStableFunc(rows, func(a, b queries.Package) int {
 		switch {
@@ -94,7 +116,7 @@ func (s *Service) Definitions(ctx context.Context) ([]meta.Setting, error) {
 	for _, r := range rows {
 		var p meta.Package
 		if err := json.Unmarshal(r.Spec, &p); err != nil {
-			return nil, fmt.Errorf("settings: package %s: %w", r.Name, err)
+			return declared{}, fmt.Errorf("settings: package %s: %w", r.Name, err)
 		}
 		for _, st := range p.Settings {
 			if _, twice := byKey[st.Key]; twice {
@@ -105,39 +127,32 @@ func (s *Service) Definitions(ctx context.Context) ([]meta.Setting, error) {
 			byKey[st.Key] = st
 		}
 	}
-	s.defs, s.byKey, s.loaded = defs, byKey, s.Now()
-	return defs, nil
+	return declared{defs: defs, byKey: byKey}, nil
 }
 
 // Definition is the declaration of a key. A key not known reads the declarations again: a
 // package installed by the command declares it at once.
 func (s *Service) Definition(ctx context.Context, key string) (meta.Setting, bool, error) {
-	if _, err := s.Definitions(ctx); err != nil {
+	d, err := s.decl.Get(ctx)
+	if err != nil {
 		return meta.Setting{}, false, err
 	}
-	s.mu.Lock()
-	st, ok := s.byKey[key]
-	if !ok {
-		s.byKey = nil
-	}
-	s.mu.Unlock()
-	if ok {
+	if st, ok := d.byKey[key]; ok {
 		return st, true, nil
 	}
-	if _, err := s.Definitions(ctx); err != nil {
+	if d, err = s.decl.Refresh(ctx); err != nil {
 		return meta.Setting{}, false, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	st, ok = s.byKey[key]
+	st, ok := d.byKey[key]
 	return st, ok, nil
 }
 
 // Forget drops what the service holds: the next read asks the database.
 func (s *Service) Forget() {
+	s.decl.Forget()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.byKey, s.values = nil, map[string]cached{}
+	s.values = map[string]*cached{}
 }
 
 // Value is the setting at the node: its own or the nearest above, else the default of the
@@ -145,11 +160,28 @@ func (s *Service) Forget() {
 func (s *Service) Value(ctx context.Context, path, key string) (json.RawMessage, string, error) {
 	ck := path + "\x00" + key
 	s.mu.Lock()
-	if c, ok := s.values[ck]; ok && s.Now().Sub(c.at) < valueTTL {
+	if c, ok := s.values[ck]; ok {
+		if s.Now().Sub(c.at) >= valueTTL && !c.loading {
+			c.loading = true
+			go s.reloadValue(context.WithoutCancel(ctx), ck, path, key)
+		}
+		raw, src := c.raw, c.source
 		s.mu.Unlock()
-		return c.raw, c.source, nil
+		return raw, src, nil
 	}
 	s.mu.Unlock()
+	raw, src, err := s.read(ctx, path, key)
+	if err != nil {
+		return nil, "", err
+	}
+	s.mu.Lock()
+	s.values[ck] = &cached{raw: raw, source: src, at: s.Now()}
+	s.mu.Unlock()
+	return raw, src, nil
+}
+
+// read reads the value at the node, else the default of the declaration.
+func (s *Service) read(ctx context.Context, path, key string) (json.RawMessage, string, error) {
 	raw, src, err := s.org.Setting(ctx, path, key)
 	if err != nil {
 		return nil, "", err
@@ -163,10 +195,24 @@ func (s *Service) Value(ctx context.Context, path, key string) (json.RawMessage,
 			raw, src = st.DefaultJSON(), SourceDefault
 		}
 	}
-	s.mu.Lock()
-	s.values[ck] = cached{raw: raw, source: src, at: s.Now()}
-	s.mu.Unlock()
 	return raw, src, nil
+}
+
+// reloadValue reads a value anew in the background; a failed read keeps the old one.
+func (s *Service) reloadValue(ctx context.Context, ck, path, key string) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	raw, src, err := s.read(ctx, path, key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, ok := s.values[ck]
+	if !ok {
+		return // cleared by a change in between; the next read loads afresh
+	}
+	c.loading = false
+	if err == nil {
+		c.raw, c.source, c.at = raw, src, s.Now()
+	}
 }
 
 // Check says why value cannot be the setting key at the node: a key no package declares, a
@@ -229,7 +275,7 @@ func (s *Service) Apply(ctx context.Context, path string, changes map[string]jso
 		return err
 	}
 	s.mu.Lock()
-	s.values = map[string]cached{}
+	s.values = map[string]*cached{}
 	s.mu.Unlock()
 	return nil
 }

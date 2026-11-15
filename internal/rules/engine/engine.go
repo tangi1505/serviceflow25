@@ -24,7 +24,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +37,7 @@ import (
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/jobs"
+	"group24.de/itsm/internal/memo"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
 	"group24.de/itsm/internal/rules"
@@ -285,9 +285,9 @@ type Engine struct {
 	// Rights finds the person behind an account for "@actor"; nil leaves those holders out.
 	Rights Rights
 
-	mu     sync.Mutex
-	loaded time.Time
-	byType map[string][]*compiled
+	// rules are the enabled rules by type in memory (PL58): a request takes the last state, a
+	// reload runs in the background, never in a request that holds a transaction.
+	rules memo.Value[map[string][]*compiled]
 }
 
 // New wires the engine; kv may be nil (then only this instance hears of changes).
@@ -295,7 +295,15 @@ func New(rt *db.Router, rec *records.Service, js *jobs.Service, kv *cache.Client
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Engine{db: rt, rec: rec, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault}
+	e := &Engine{db: rt, rec: rec, jobs: js, kv: kv, logger: logger, Queue: jobs.QueueDefault}
+	e.rules = memo.Value[map[string][]*compiled]{MaxAge: reloadAfter, Load: e.read, Logger: logger, Name: "rules"}
+	return e
+}
+
+// Warm loads the rules before the first request (PL58).
+func (e *Engine) Warm(ctx context.Context) error {
+	_, err := e.rules.Refresh(ctx)
+	return err
 }
 
 // ruleDB is the query handle in the database of a rule (PL47b): the tenant's, or the control
@@ -357,7 +365,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		return nil
 	}
 	for ctx.Err() == nil {
-		err := e.kv.Subscribe(ctx, channel, func(string) { e.forget() })
+		err := e.kv.Subscribe(ctx, channel, func(string) { e.rules.Stale() })
 		if err != nil && ctx.Err() == nil {
 			e.logger.Warn("rules: subscription lost, retrying", "error", err.Error())
 			time.Sleep(time.Second)
@@ -366,15 +374,13 @@ func (e *Engine) Run(ctx context.Context) error {
 	return nil
 }
 
-func (e *Engine) forget() {
-	e.mu.Lock()
-	e.byType = nil
-	e.mu.Unlock()
-}
-
-// changed drops the rules here and on the other instances.
+// changed reads the rules anew here, so that the change counts for the next request, and tells
+// the other instances.
 func (e *Engine) changed(ctx context.Context) {
-	e.forget()
+	if _, err := e.rules.Refresh(context.WithoutCancel(ctx)); err != nil {
+		e.logger.Warn("rules: reload after a change failed", "error", err.Error())
+		e.rules.Forget()
+	}
 	if e.kv != nil {
 		if err := e.kv.Publish(ctx, channel, "1"); err != nil {
 			e.logger.Warn("rules: publish", "error", err.Error())
@@ -384,41 +390,45 @@ func (e *Engine) changed(ctx context.Context) {
 
 // of returns the enabled rules of a type for a trigger and mode, in order.
 func (e *Engine) of(ctx context.Context, typeName, trigger, mode string) ([]*compiled, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.byType == nil || time.Since(e.loaded) > reloadAfter {
-		rows, err := e.allRules(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("rules: load: %w", err)
-		}
-		byType := map[string][]*compiled{}
-		for _, row := range rows {
-			if !row.Enabled {
-				continue
-			}
-			r, err := fromRow(row)
-			if err != nil {
-				e.logger.Warn("rules: unreadable rule", "rule", row.Name, "error", err.Error())
-				continue
-			}
-			c := &compiled{Rule: r}
-			if r.Condition != "" {
-				if c.cond, err = rules.CompileRule(r.Condition); err != nil {
-					e.logger.Warn("rules: condition does not compile", "rule", r.Name, "error", err.Error())
-					continue
-				}
-			}
-			byType[r.TypeName] = append(byType[r.TypeName], c)
-		}
-		e.byType, e.loaded = byType, time.Now()
+	byType, err := e.rules.Get(ctx)
+	if err != nil {
+		return nil, err
 	}
 	var out []*compiled
-	for _, c := range e.byType[typeName] {
+	for _, c := range byType[typeName] {
 		if c.Trigger == trigger && c.Mode == mode {
 			out = append(out, c)
 		}
 	}
 	return out, nil
+}
+
+// read reads and compiles the enabled rules.
+func (e *Engine) read(ctx context.Context) (map[string][]*compiled, error) {
+	rows, err := e.allRules(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("rules: load: %w", err)
+	}
+	byType := map[string][]*compiled{}
+	for _, row := range rows {
+		if !row.Enabled {
+			continue
+		}
+		r, err := fromRow(row)
+		if err != nil {
+			e.logger.Warn("rules: unreadable rule", "rule", row.Name, "error", err.Error())
+			continue
+		}
+		c := &compiled{Rule: r}
+		if r.Condition != "" {
+			if c.cond, err = rules.CompileRule(r.Condition); err != nil {
+				e.logger.Warn("rules: condition does not compile", "rule", r.Name, "error", err.Error())
+				continue
+			}
+		}
+		byType[r.TypeName] = append(byType[r.TypeName], c)
+	}
+	return byType, nil
 }
 
 // matches evaluates a rule's condition; a condition that cannot decide (a missing field)

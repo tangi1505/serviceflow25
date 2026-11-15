@@ -356,6 +356,17 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		WebDir:     cfg.WebDir,
 	})
 
+	// The caches are loaded before the first request (PL58): only the very first load runs in a
+	// request, and a burst of writes at the start must not find them empty. A database without
+	// the core package yet has nothing to load; the requests load then.
+	if _, err := rec.Types(ctx); err != nil {
+		logger.Warn("itsm: types not loaded before the start", "error", err.Error())
+	}
+	for name, warm := range map[string]func(context.Context) error{"sla": slaSvc.Warm, "rules": ruleEngine.Warm, "settings": settingsSvc.Warm} {
+		if err := warm(ctx); err != nil {
+			logger.Warn("itsm: cache not loaded before the start", "cache", name, "error", err.Error())
+		}
+	}
 	logger.Info("itsm starting", "version", platform.Version, "role", string(cfg.Role), "addr", cfg.HTTPAddr)
 
 	var wg sync.WaitGroup

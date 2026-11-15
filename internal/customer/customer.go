@@ -230,6 +230,10 @@ func (s *Service) Add(ctx context.Context, typeName string, c meta.Change, expec
 		}
 		return View{}, err
 	}
+	// The types in memory follow the saved layer now, not only when Add returns: numbering and
+	// the search below read the type through them (PL58; before, the notice of PostgreSQL
+	// happened to arrive in time).
+	meta.DefinitionsChanged()
 	// The new column right away, in every database with type tables (PL47): the type is used
 	// with it on the next request.
 	if !eff.IsList() {
