@@ -477,6 +477,9 @@ func (s *Service) Query(ctx context.Context, typeName string, q Query) (Page, *R
 	return s.records(b, q, where)
 }
 
+// neverEmpty are the system columns without empty values (NOT NULL in every type table).
+var neverEmpty = map[string]bool{"version": true, "created_at": true, "updated_at": true}
+
 // records selects records with sort, cursor and field selection.
 func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, error) {
 	t := b.t
@@ -569,6 +572,10 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 			switch {
 			case sortCol == "id":
 				where = append(where, fmt.Sprintf("id %s %s", op, idArg))
+			case neverEmpty[sortCol] && c.V != nil:
+				// A column that is never empty compares as a row with id, which an index on it
+				// serves directly (PL54).
+				where = append(where, fmt.Sprintf("(%s, id) %s (%s, %s)", sortExpr, op, b.arg(c.V), idArg))
 			case c.V == nil:
 				where = append(where, fmt.Sprintf("(%s IS NULL AND id %s %s)", sortExpr, op, idArg))
 			default:
@@ -591,8 +598,14 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 		dir = "DESC"
 	}
 	order := fmt.Sprintf("%s %s NULLS LAST, id %s", sortExpr, dir, dir)
-	if sortCol == "id" {
+	switch {
+	case sortCol == "id":
 		order = "id " + dir
+	case neverEmpty[sortCol]:
+		// No NULLS LAST where there is no empty value: with it PostgreSQL cannot read the index
+		// on the column backwards and sorts every hit instead (PL54, found with H14: the queue of
+		// a team on 18.25 million incidents).
+		order = fmt.Sprintf("%s %s, id %s", sortExpr, dir, dir)
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s LIMIT %d", strings.Join(selects, ", "), table(t), strings.Join(where, " AND "), order, limit+1)
 	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, b.args...)

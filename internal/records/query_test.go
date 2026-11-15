@@ -114,6 +114,22 @@ func TestQuery(t *testing.T) {
 	if !same(titles(page3), []string{"alpha"}) || next3 != "" {
 		t.Fatalf("page 3: %v %q", titles(page3), next3)
 	}
+	// Newest first by the moment of creation, a column without empty values: sorted without
+	// NULLS LAST and paged by (created_at, id), so that its index serves the list (PL54).
+	newest, after := run(`{"sort": ["-created_at"], "limit": 2}`)
+	if !same(titles(newest), []string{"echo", "delta"}) || after == "" {
+		t.Fatalf("newest page 1: %v", titles(newest))
+	}
+	newest2, after2 := run(`{"sort": ["-created_at"], "limit": 2, "after": "` + after + `"}`)
+	if !same(titles(newest2), []string{"charlie", "bravo"}) || after2 == "" {
+		t.Fatalf("newest page 2: %v", titles(newest2))
+	}
+	if newest3, after3 := run(`{"sort": ["-created_at"], "limit": 2, "after": "` + after2 + `"}`); !same(titles(newest3), []string{"alpha"}) || after3 != "" {
+		t.Fatalf("newest page 3: %v %q", titles(newest3), after3)
+	}
+	if oldest, _ := run(`{"sort": ["created_at"], "limit": 3}`); !same(titles(oldest), []string{"alpha", "bravo", "charlie"}) {
+		t.Fatalf("oldest first: %v", titles(oldest))
+	}
 	// Nulls last: due_on is set on echo only.
 	if items, _ := run(`{"sort": ["due_on"], "limit": 10}`); titles(items)[0] != "echo" {
 		t.Fatalf("nulls last: %v", titles(items))
