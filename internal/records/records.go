@@ -379,7 +379,7 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 	if o.Count && len(ps) == 0 {
 		var n int64
 		countSQL := fmt.Sprintf("SELECT count(*) FROM %s WHERE %s", table(t), strings.Join(where, " AND "))
-		if err := s.db.Tenant(ctx).QueryRow(ctx, countSQL, args...).Scan(&n); err != nil {
+		if err := s.db.Tenant(ctx).QueryRow(ctx, countSQL, planned(args)...).Scan(&n); err != nil {
 			return Page{}, fmt.Errorf("records: count %s: %w", t.QualifiedName(), err)
 		}
 		total = &n
@@ -434,7 +434,7 @@ func (s *Service) List(ctx context.Context, typeName string, o ListOptions) (Pag
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s LIMIT %d",
 		strings.Join(selected(t, cols), ", "), table(t), strings.Join(where, " AND "), order, limit+1)
-	rows, err := s.db.Tenant(ctx).Query(ctx, sql, args...)
+	rows, err := s.db.Tenant(ctx).Query(ctx, sql, planned(args)...)
 	if err != nil {
 		return Page{}, fmt.Errorf("records: list %s: %w", typeName, err)
 	}

@@ -380,6 +380,8 @@ func (s *Service) search(ctx context.Context, types []meta.Type, tsq string, arg
 FROM (%s) AS hits
 ORDER BY rank DESC, id
 LIMIT %d`, tsq, strings.Join(subs, " UNION ALL "), limit)
+	// The search keeps the cache of plans (PL57, your decision 2026-11-15): planning its union
+	// over every type anew cost some 8 ms a search, and on ki-lab it had no outliers.
 	rows, err := s.db.Tenant(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("records: search: %w", err)

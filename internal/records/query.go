@@ -477,6 +477,15 @@ func (s *Service) Query(ctx context.Context, typeName string, q Query) (Page, *R
 	return s.records(b, q, where)
 }
 
+// planned runs a list or an aggregate with a plan for its values (PL57, your decision
+// 2026-11-15): pgx prepares statements, and after five runs PostgreSQL may switch to a
+// generic plan that does not know the values; for the queue of a team on 18.25 million
+// incidents that one hashed every actor row of the team (16 s instead of under 1 s, H14). An
+// unnamed statement is planned with its values every time. Single records keep the cache.
+func planned(args []any) []any {
+	return append([]any{pgx.QueryExecModeCacheDescribe}, args...)
+}
+
 // neverEmpty are the system columns without empty values (NOT NULL in every type table).
 var neverEmpty = map[string]bool{"version": true, "created_at": true, "updated_at": true}
 
@@ -548,7 +557,7 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 	if q.Count && len(b.problems) == 0 {
 		var n int64
 		countSQL := fmt.Sprintf("SELECT count(*) FROM %s WHERE %s", table(t), strings.Join(where, " AND "))
-		if err := s.db.Tenant(b.ctx).QueryRow(b.ctx, countSQL, b.args...).Scan(&n); err != nil {
+		if err := s.db.Tenant(b.ctx).QueryRow(b.ctx, countSQL, planned(b.args)...).Scan(&n); err != nil {
 			return Page{}, nil, fmt.Errorf("records: count %s: %w", t.QualifiedName(), err)
 		}
 		total = &n
@@ -608,7 +617,7 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 		order = fmt.Sprintf("%s %s, id %s", sortExpr, dir, dir)
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s LIMIT %d", strings.Join(selects, ", "), table(t), strings.Join(where, " AND "), order, limit+1)
-	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, b.args...)
+	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, planned(b.args)...)
 	if err != nil {
 		return Page{}, nil, fmt.Errorf("records: query %s: %w", t.QualifiedName(), err)
 	}
@@ -788,7 +797,7 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 		sql += " GROUP BY " + strings.Join(groups, ", ") + " ORDER BY " + strings.Join(groups, ", ") + " NULLS LAST"
 	}
 	sql += " LIMIT 1000"
-	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, b.args...)
+	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, planned(b.args)...)
 	if err != nil {
 		return nil, fmt.Errorf("records: aggregate %s: %w", t.QualifiedName(), err)
 	}
