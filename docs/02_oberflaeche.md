@@ -55,6 +55,16 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI30** | Rahmen und Liste nach dem Entwurf (E22): Kopf mit Suchfeld und Mandant, Navigation mit Bereichen und gespeicherten Suchen, Zeilenhöhe kompakt oder normal, Vorschau des gewählten Datensatzes rechts neben der Liste (E35), Fristen auf der Detailseite aus `…/clocks`. Eine Fristspalte in der Liste nur, wenn die API die Restzeit je Zeile liefert, sonst als neue Aufgabe | 🟢 | 2 d | Umschalter „Kompakt“ → Zeilen 36 px, bleibt nach Neuladen; Klick auf eine Zeile zeigt die Vorschau, „Öffnen“ führt zur Detailseite; eine Frist über 75 % erscheint gelb, eine überschrittene rot, beide mit Text; bei 375 px Breite steht die Navigation über der Liste; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI31** | Befehlszeile mit Strg K: Datensätze nach Titel finden über `/api/v1/search` (nach Nummer, sobald PL49 sie durchsuchbar macht), Befehle „Neu“ je Typ, „Gehe zu“ und Darstellung, Kürzel am Suchfeld angezeigt (E22, E36) | 🟢 | 1,5 d | Strg K, einen Teil des Titels tippen → der Datensatz erscheint, Enter öffnet ihn; „neu“ tippen → „Neu: Probe“; leer zeigt sie die zuletzt geöffneten Datensätze; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI34** | Fristspalte in der Liste: die Liste und `:query` liefern je Zeile die nächste Frist der SLA-Uhren (Restzeit, Anteil, Zustand), sortier- und filterbar; Spalte mit dem Baustein Frist (E35, aus UI30 ausgelagert; E37) | 🟢 | 1 d | Liste von `probe` mit Spalte „Frist“: eine Frist über 75 % gelb, eine überschrittene rot, beide mit Text; nach Frist sortiert steht die knappste oben; LZ1 ohne Verschlechterung über die Toleranz; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI35** | Kopfzeile nach dem Mockup (E41, §2.3): Marke mit Name, Mandant als Knopf mit Menü (wie bisher nur bei mehreren Mandanten), Suchfeld in der Mitte, Benachrichtigungen als Symbol mit Zahl, Konto-Kreis mit Konto-Menü (Modus, Sprache, Meine Einstellungen, Zum Portal, Abmelden). Die beschrifteten Auswahlfelder und einzelnen Links der Kopfzeile entfallen, das Theme wählt man nur noch in Meine Einstellungen; Symbole aus `lucide-react` | ⬜ | 1,5 d | Im Browser http://localhost:8092 → die Kopfzeile hat kein beschriftetes Auswahlfeld mehr; Klick auf den Konto-Kreis öffnet das Menü, „Dunkel“ gilt sofort und nach Neuanmeldung; der Knopf mit dem Mandanten wechselt den Mandanten; alles nur mit Tastatur, Esc schließt und gibt den Fokus zurück; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche | ⬜ | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI37** | Favoriten und eigene Anordnung (E41): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | ⬜ | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert | ⬜ | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | ⬜ | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | ⬜ | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | ⬜ | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI42** | Kacheln des Portals mit Symbol (E43): Feld `icon` an `core.portal_tile` als Auswahl aus einer festen Liste, ohne Angabe ein Symbol nach der Art der Kachel; die Zeile mit der Art über dem Namen entfällt | ⬜ | 1 d | Kachel „Störung melden“ mit einem Symbol speichern → das Portal zeigt es im Kasten über dem Namen; eine Kachel ohne Angabe zeigt das Symbol ihrer Art; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI43** | „Meine Vorgänge“ als eine Liste über alle Typen (E43): an der Überschrift die Zahl der offenen, je Zeile Titel, Nummer, Typ, Zeit, Status und ein Hinweis, wenn die Person am Zug ist; Umschalter „Offen, Alle“. Ersetzt die Karte je Typ samt ihrem „Neu“. Der Hinweis „Lösung bestätigen“ kommt aus den Übergängen, die der Anforderer auslöst; für „Rückfrage beantworten“ bekommt der Wartegrund die Angabe, dass er den Anforderer meint (§2.4) | ⬜ | 2 d | Eine Person mit einer Störung und zwei Anfragen sieht eine Liste mit drei Zeilen, die neueste oben, und „3 offen“ an der Überschrift; eine gelöste Anfrage, die auf ihre Bestätigung wartet, zeigt „Lösung bestätigen“; eine Störung mit einem Wartegrund, der den Anforderer meint, zeigt „Rückfrage beantworten“; „Alle“ zeigt auch die geschlossenen; es gibt keine Karte je Typ mehr; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Genehmigen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | ⬜ | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Genehmigen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -76,11 +86,11 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI23** | Feste Berichte und Export als PDF (Inventar G111, G232) | ⬜ | 2 d | Bericht „Verträge, die in 90 Tagen enden" als PDF exportieren, Inhalt stimmt mit der Liste überein; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI24** | Kartenansicht über Orte mit Koordinaten, mit Kartenmaterial ohne Internet (PMTiles und MapLibre nach E2) (Inventar G233) | ⬜ | 2 d | Orte erscheinen auf der Karte, ohne dass der Browser eine Adresse außerhalb des Werkzeugs aufruft (Netzwerkprotokoll); `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 57 d; 43 d geschätzt vor dem Bau (Block A: 4 d), UI28 am 2026-10-29 vor UI4 eingeschoben (Hauptplan E123), UI29 bis UI31 am 2026-10-30 aus dem Designentwurf (E22), UI26 am 2026-10-30 von 2 d auf 3,5 d (E26), UI32 und UI33 am 2026-11-02 für das SLA-Management nach Meilenstein 1 (E32), UI27 am 2026-11-02 von 1,5 d auf 2 d für die Zuweisungen (E33), UI34 am 2026-11-02 aus UI30 ausgelagert (E35). UI13 am 2026-11-13 in UI13a (3 d) und UI13b (1,5 d) geteilt, von 2 d auf 4,5 d für den Editor im Raster, die Startseite, die Portal-Kachel und das Widget in der Seitenleiste (E39): 59,5 d.
+**Summe:** 57 d; 43 d geschätzt vor dem Bau (Block A: 4 d), UI28 am 2026-10-29 vor UI4 eingeschoben (Hauptplan E123), UI29 bis UI31 am 2026-10-30 aus dem Designentwurf (E22), UI26 am 2026-10-30 von 2 d auf 3,5 d (E26), UI32 und UI33 am 2026-11-02 für das SLA-Management nach Meilenstein 1 (E32), UI27 am 2026-11-02 von 1,5 d auf 2 d für die Zuweisungen (E33), UI34 am 2026-11-02 aus UI30 ausgelagert (E35). UI13 am 2026-11-13 in UI13a (3 d) und UI13b (1,5 d) geteilt, von 2 d auf 4,5 d für den Editor im Raster, die Startseite, die Portal-Kachel und das Widget in der Seitenleiste (E39): 59,5 d. UI35 bis UI40 am 2026-11-15 für Kopfzeile, Navigation und eigene Gestaltung (E41), 10 d: 69,5 d. UI41 bis UI44 am 2026-11-15 für das Portal (E43), 5 d: 74,5 d.
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B der Oberfläche kommt nach Block B der Workflow-Engine. Schon gebaut aus WF2 (WF-Plan E7): Das Formular holt die Feldzustände (`:field-states`), blendet Versteckte aus, markiert Pflichtfelder, zeigt Schreibgeschützte als Text und einen gesperrten Datensatz ohne „Speichern“. Offen für Block B: Rollen am Datensatz (WF3), Regeln (WF4), Kalender (WF8), SLAs (WF9), Eskalationsstufen (WF10, Regeln mit Auslöser `clock`), Wartegründe (WF11) und Zeitregeln (WF12), beide mit SLA und Stufen anzulegen, sowie Aufgaben am Vorgang (WF13; der Kalender UI15 liest sie per `:query` über `planned_start`) wiederkehrende Vorgänge (WF14, Vorlage als JSON-Text) und Benachrichtigungen (WF15, Empfänger und Ereignisse als Text) haben außer Liste und Formular der Typen und der Regel-API noch keine Oberfläche; die Uhren eines Datensatzes (`…/clocks`, Restzeit, verletzt) zeigt die Detailseite noch nicht. Für UI3 liefert PL42 (Hauptplan E121) die Zeitleiste: `GET …/{id}/timeline` mit Einträgen und Verlauf in zeitlicher Reihenfolge samt Namen, `POST …/{id}/timeline` für einen neuen Eintrag (Recht `comment`, privat zusätzlich `read_private`).
 
-**Reihenfolge:** Block A mit dem Durchstich (Hauptplan E59): UI1, dann UI2, sobald PL4 steht. Danach Block B: UI3, UI8 und UI10 zuerst, weil der Service Desk (SD) sie als Erstes braucht; dann die Editoren UI25 bis UI27; Formulare UI11 und UI12 vor SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1. Block C und D mit ihren Meilensteinen. UI29, UI30 und UI31 kommen in dieser Folge nach den Editoren UI25 bis UI27 und vor SD (E23). UI32 und UI33 stehen in Block C nach Meilenstein 1 (E32).
+**Reihenfolge:** Block A mit dem Durchstich (Hauptplan E59): UI1, dann UI2, sobald PL4 steht. Danach Block B: UI3, UI8 und UI10 zuerst, weil der Service Desk (SD) sie als Erstes braucht; dann die Editoren UI25 bis UI27; Formulare UI11 und UI12 vor SD; Dashboards UI13 und UI14 zum Ende von Meilenstein 1. Block C und D mit ihren Meilensteinen. UI29, UI30 und UI31 kommen in dieser Folge nach den Editoren UI25 bis UI27 und vor SD (E23). UI32 und UI33 stehen in Block C nach Meilenstein 1 (E32). UI35 bis UI40 (E41): zuerst UI35 und UI36, weil sie den Rahmen ändern, in dem alles andere steht; dann UI38, UI37 und UI39, zuletzt UI40. UI41 bis UI44 (E43): UI41 nach UI35, weil beide dasselbe Konto-Menü nutzen; dann UI43, UI42 und UI44. Die ganze Gruppe UI35 bis UI44 kommt in Block B vor UI15 und UI16 (E44); sie ist damit das Nächste in diesem Plan.
 
 ---
 
@@ -106,7 +116,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E15** | Massenaktionen (Hauptplan E126): Die Auswahl ist der Zeilenzustand von TanStack Table, geschlüsselt nach der Kennung; die Versionen kommen aus den geladenen Zeilen. Die Leiste schickt eine Änderung für alle Gewählten in einem Aufruf an `:batch` und zeigt das Ergebnis je Zeile; danach lädt die Liste neu, die Auswahl bleibt | 2026-10-29 | Umsetzung |
 | **E16** | Formatierter Text (Hauptplan E127): `RichEditor` (TipTap) schreibt HTML, `RichText` zeigt nur HTML, das der Server bereinigt hat (`dangerouslySetInnerHTML` an genau dieser einen Stelle). Bilder lädt der Editor als vorläufige Dateien hoch und zeigt sie aus `/api/v1/files/{id}`; der Server hängt die Bilder eines Eintrags an. `plainText` in `fields.ts` liefert den Klartext für Listen, damit Listen TipTap nicht laden | 2026-10-29 | Umsetzung |
 | **E17** | Live (Hauptplan E130): Der Rahmen hält eine EventSource je Tab; Seiten abonnieren über `useLive`. Eigene Änderungen (gleiches Konto) lösen nichts aus, auch aus einem anderen Fenster; die Konfliktansicht (E10) bleibt dafür zuständig. Anwesenheit über `PUT …/presence` alle 20 s mit `editing`; die Liste patcht nachgelesene Zeilen in die Seiten der Abfrage, statt neu zu laden | 2026-10-29 | Umsetzung |
-| **E18** | Einstellungen (Hauptplan E131): `mySettingsQuery` lädt die Einstellungen der Person einmal; der Rahmen setzt daraus Sprache (`i18n`), Theme (`applyTheme`) und Zeitzone (`setDisplayTimeZone`, gelesen von `formatMoment`). Die Umschalter oben bleiben sofort wirksam und schreiben angemeldet nach `/api/v1/me/settings`. Die globale Seite nutzt die Einstellungen am Baum (`/api/v1/org/nodes/{path}/settings`) | 2026-10-29 | Umsetzung |
+| **E18** | Einstellungen (Hauptplan E131): `mySettingsQuery` lädt die Einstellungen der Person einmal; der Rahmen setzt daraus Sprache (`i18n`), Theme (`applyTheme`) und Zeitzone (`setDisplayTimeZone`, gelesen von `formatMoment`). Die Umschalter oben bleiben sofort wirksam und schreiben angemeldet nach `/api/v1/me/settings`. Die globale Seite nutzt die Einstellungen am Baum (`/api/v1/org/nodes/{path}/settings`). Geändert am 2026-11-15 (E41): Sprache und Modus wandern mit UI35 aus der Kopfzeile ins Konto-Menü, das Theme nach Meine Einstellungen; vorher: Umschalter für Sprache und Theme oben in der Kopfzeile | 2026-10-29 | Umsetzung |
 | **E21** | Bedingungen im Portal (Hauptplan E134): `Form` nimmt eine Sichtbarkeit `visibility(values)`, die ausgeblendete Felder und Gruppen nennt; sie werden weder gezeigt noch geprüft noch gesendet. Der Resolver rechnet sie aus den Werten, die er prüft. Dieselbe Auswertung steht im Server (`internal/forms`) und im Portal (`portal/conditions.ts`) | 2026-10-29 | Umsetzung |
 | **E20** | Formulare (Hauptplan E133): der Baukasten ist die Darstellung des Felds `definition` von `core.form` im Formular des Datensatzes; das Portal füllt ein Formular mit demselben `Form`, dessen Felder aus den Fragen gebildet werden (gebundene mit dem Feld des Zieltyps, freie als Feld ohne Spalte), gruppiert nach Abschnitten | 2026-10-29 | Umsetzung |
 | **E19** | Portal (Hauptplan E132): eigene Routen unter `/portal` mit eigenem Rahmen (`portal/Portal.tsx`); der Rahmen des Arbeitsplatzes prüft `me.workplace` im `beforeLoad` und schickt sonst ins Portal. Das Portal nutzt dieselben Bausteine (Formular mit `only`, Zeitleiste mit `portal`) und dieselbe API; „Meine“ ist eine JSON-Abfrage über Anforderer und Ersteller | 2026-10-29 | Umsetzung |
@@ -130,6 +140,10 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E33** | Rollen-Editor (UI27, deine Entscheidungen 2026-11-02 nach dem Mockup „Rollen-Editor Aufbau“, [Artifact](https://claude.ai/artifact/437B156YyKtxHdik1AGhsG) mit zwei Varianten): **Matrix** je Typ eine Zeile, Spalten lesen, anlegen, ändern, löschen, in jeder Zelle die Reichweite (– , eigene, Gruppe, beteiligt, Einheit, Unterbaum, alle); „…“ an der Zelle öffnet darunter Bedingung, Feldrechte und weitere Reichweiten. **Jede Änderung gilt sofort** und steht im Sicherheitsprotokoll. **Feldrechte:** „Alle Felder“ als Vorgabe, abgewählt die Felder zum Ankreuzen; je Zelle die Spalte, die für ihre Aktion zählt (lesen bei „lesen“, schreiben bei „anlegen“ und „ändern“, keine bei „löschen“), weil der Kern Feldrechte je Aktion auswertet. **Sonderrechte** als Kästchen mit Reichweite „alle“; was weder Matrix noch Kästchen zeigen (etwa `read_private`, `*`), steht als „Weitere Rechte“ in einer Liste. **Zuweisungen** (Person oder Gruppe mit Knoten) als eigener Abschnitt, +0,5 d. Verworfen: Tabelle je Berechtigung, Entwurf mit „Rolle speichern“, Feldrechte als Liste von Ausnahmen | 2026-11-02 | Pascal |
 | **E32** | SLA-Management nach Meilenstein 1 (deine Entscheidung 2026-11-02): Die Mechanik aus WF8 bis WF12 und die Fristen des Service Desk (SD3, SD6, SD7) reichen für Meilenstein 1. Pflegemaske (UI32) und Kennzahlen (UI33) kommen in Block C; ob OLA und Lieferantenverträge eigene Begriffe werden, fragt der Hauptplan die Fachseite (Hauptplan V39). Befund in §2.2 | 2026-11-02 | Pascal |
 | **E6** | Barrierefreiheit prüft `axe-core` direkt: in Vitest je gerenderter Seite (ohne Kontrast, da jsdom kein Layout hat), in Playwright mit `@axe-core/playwright` nach WCAG 2 A und AA im Browser; ein Befund bricht die CI | 2026-10-20 | Umsetzung |
+| **E41** | Rahmen: Kopfzeile, Navigation und eigene Gestaltung (UI35 bis UI40, deine Entscheidungen 2026-11-15 nach dem Mockup „ITSM Rahmen: Navigation und Kopfzeile“, [Artifact](https://claude.ai/artifact/DQ3jJULFyoKUtgTmerteTV) mit sieben Ansichten; Befund in §2.3). **Kopfzeile:** Marke, Mandant, Suchfeld, Benachrichtigungen, Konto-Kreis; alles, was die Person einstellt, hängt am Konto-Kreis. **Mandant** bleibt sichtbar in der Kopfzeile, weil er alle Daten ändert. **Navigation:** Bereiche zum Ein- und Ausklappen, die Leiste scrollt für sich, schmal nur mit Symbolen. **Symbole** je Bereich, vom Paket geliefert; Einträge ohne Symbol. **Bereiche** bleiben nach Paket geordnet, mit dem Namen des Pakets; ob sie fachlich neu geordnet werden, steht wieder an, wenn alle Pakete da sind (V10). **Farbe:** eine Person wählt die Akzentfarbe nur aus sechs festen Farben ohne Rot, Gelb und Grün, weil die überall Frist und Status bedeuten; frei wählt nur die Organisation, mit Kontrastprüfung. **Gemerkt** werden Reihenfolge, Ausblenden, Favoriten, Breite der Leiste und Akzentfarbe in den Einstellungen der Person auf dem Server, auf und zu der Bereiche im Browser je Konto. **Organisation:** legt Name, Logo, Farbe und Vorgaben fest und was jede Person selbst einstellen darf. Verworfen: Mandant im Konto-Menü; ein Symbol je Typ; freie Farbwahl je Person; Anordnung nur im Browser. Offen: das Verhältnis zum Theme-Paket (V8); das Telefon regelt E42 | 2026-11-15 | Pascal |
+| **E42** | Navigation auf dem Telefon (V9, UI40, deine Entscheidung 2026-11-15 nach Ansicht 4 des Mockups aus E41): unter 768 px ist die Navigation eine Schublade. Die Kopfzeile zeigt den Knopf „Navigation öffnen“; die Leiste schiebt sich von links über den Inhalt, der dahinter abgedunkelt ist, und schließt mit dem Knopf, mit einem Tipp daneben, mit Esc und mit der Wahl eines Eintrags. Der Mandant steht dann oben in der Schublade. Ändert UI30: vorher stand die Navigation unter 768 px über dem Inhalt (Prüfweg von UI30 „bei 375 px Breite steht die Navigation über der Liste“). Verworfen: Navigation weiter über dem Inhalt, weil dann 45 Einträge vor dem Inhalt stehen | 2026-11-15 | Pascal |
+| **E43** | Portal: Kopfzeile und Startseite (UI41 bis UI44, deine Entscheidungen 2026-11-15 nach den Ansichten 8 bis 11 des Mockups aus E41 und deinen zwei Kommentaren dort; Befund in §2.4). **Kopfzeile** über die volle Breite, ohne Rand links und rechts: Marke, Bereiche mit Symbol, Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz; „Zum Arbeitsplatz“ steht im Konto-Menü. Das Band „Aktuell“ und der Inhalt bleiben in der mittigen Spalte. **Kacheln** mit Symbol statt mit der Zeile zur Art. **Meine Vorgänge** als eine Liste über alle Typen mit Status und dem Hinweis, wenn die Person am Zug ist; die Zahl der offenen steht an der Überschrift. **Genehmigungen** stehen für die, die welche offen haben, auf der Startseite. **Telefon:** die Bereiche als Zeile zum Wischen. Ein Aufbau für alle: Was jemand sieht, entscheiden weiter die Rechte, nicht eine eigene Ansicht je Rolle. Die Kachelart Kennzahl (UI13b) bleibt möglich. Verworfen: Kopfzeile in der mittigen Spalte; eine Kachel „Meine offenen Vorgänge“ neben der Liste, weil sie dieselbe Zahl doppelt zeigt; eine Karte je Typ. Offen: Suchfeld und „Oft gelesen“ aus dem Entwurf „Klartext“ (V11) | 2026-11-15 | Pascal |
+| **E44** | Reihenfolge von Rahmen und Portal (deine Entscheidung 2026-11-15): UI35 bis UI44 kommen in Block B vor UI15 (Kalender) und UI16 (Sprachpakete), in der Folge aus dem Absatz „Reihenfolge“. Grund: UI35 und UI36 ändern den Rahmen, in dem jede weitere Seite steht; was danach gebaut wird, entsteht gleich im neuen Rahmen | 2026-11-15 | Pascal |
 
 ## 2. Begründung
 
@@ -137,7 +151,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 - **Abgedeckt:** alle 33 Zeilen des Funktionsinventars mit Ziel UI und die Kernfähigkeiten KF8,
   KF10, KF11 als Träger. Dazu die Editoren UI25 bis UI27, die keine GLPI-Zeile haben, aber
   E7 und E37 brauchen.
-- **Barrierefreiheit** (E42) ist keine eigene Aufgabe: `axe` läuft ab UI1 in jeder Prüfung.
+- **Barrierefreiheit** (Hauptplan E42) ist keine eigene Aufgabe: `axe` läuft ab UI1 in jeder Prüfung.
 - **Workflow-Editor mit React Flow** (E26), gelesen am 2026-10-30:
   - Lizenz MIT, Rechteinhaber webkid GmbH
     ([LICENSE](https://github.com/xyflow/xyflow/blob/main/LICENSE)). Knoten und Kanten sind
@@ -330,13 +344,87 @@ Hauptplan nennt das Practice IP29 „Service level management“ mit Priorität 
 - **Anzeige der Uhren** am Vorgang kommt mit UI30 (Detailseite aus `…/clocks`; die Fristspalte in
   der Liste nur, wenn die API die Restzeit je Zeile liefert).
 
+### 2.3 Rahmen: Befund vom 2026-11-15
+
+Angesehen auf der Instanz auf 8092 im Fenster 1440 × 900 mit einem Konto, das alle Bereiche
+sieht, und im Code auf `main` (156cfd6). Der Entwurf dazu ist das Mockup aus E41.
+
+- **Gemessen:** Die Navigation hat 45 Einträge und ist 1764 px hoch, die Seite 1817 px. Bei
+  900 px Fensterhöhe scrollt deshalb die ganze Seite samt Inhalt.
+- **Gelesen:** Der Rahmen ist mindestens so hoch wie das Fenster und wächst mit der Navigation
+  (`web/src/app/AppShell.tsx:104`); die Leiste hat kein eigenes Scrollen (`AppShell.tsx:139`).
+- **Gelesen:** Die Kopfzeile reiht Benachrichtigungen, „Zum Portal“, Mandant, Sprache, Theme,
+  den Namen und „Abmelden“ einzeln nebeneinander (`AppShell.tsx:119` bis `:135`); Mandant,
+  Sprache und Theme sind beschriftete Auswahlfelder (`web/src/app/Switches.tsx:47`).
+- **Gemessen:** Fünf Bereiche zeigen den rohen Paketnamen: catalog, incident, knowledge,
+  request, sd. **Gelesen:** Die Oberfläche kennt nur zwei Namen (`web/src/i18n/de.json:890`),
+  obwohl jedes Paket seinen Namen selbst trägt (`packages/catalog/package.yaml:10`).
+- **Gelesen:** `lucide-react` steht in `web/package.json:41` und wird in `web/src` noch
+  nirgends eingebunden. Symbole brauchen keine neue Bibliothek.
+- **Gelesen:** Die Design-Fläche „Klartext“ (E22) zeigt die Kopfzeile schon mit Symbolen und
+  Konto-Kreis; UI30 hat sie mit Text und Auswahlfeldern gebaut.
+
+**Die sechs Akzentfarben** für UI38. Gerechnet nach der Formel von WCAG 2.1, nicht im Browser
+gemessen; das tut UI38 mit `axe`. Dunkel ist die Farbe mit 58 % Farbe und 42 % Weiß (§2.1).
+
+| Farbe | Hell | auf `--card` · auf `--background` | Dunkel | auf `--card` · auf `--background` |
+| --- | --- | --- | --- | --- |
+| Petrol (Vorgabe) | #0B6E80 | 5,9 · 5,5 | #71ABB5 | 6,8 · 7,3 |
+| Stahlblau | #1F5FA8 | 6,4 · 5,9 | #7DA2CD | 6,6 · 7,0 |
+| Indigo | #3F4BB8 | 7,2 · 6,7 | #9097D6 | 6,3 · 6,7 |
+| Violett | #6B3FA0 | 7,4 · 6,8 | #A990C8 | 6,2 · 6,7 |
+| Umbra | #7A4E1D | 7,2 · 6,6 | #B2987C | 6,4 · 6,8 |
+| Graphit | #15171A | 18,0 · 16,6 | #A9ADB2 (fest) | 7,7 · 8,3 |
+
+- **Graphit** erreicht dunkel mit der Ableitung nur 3,9 : 1 (#77787A auf `--card`). Darum
+  bekommt es dunkel den festen Wert von `--primary`, #A9ADB2.
+- **Text auf der hellen Fläche der Auswahl** (`--accent-soft`): bei allen sechs hell mindestens
+  14,7 : 1, dunkel mindestens 10,5 : 1.
+- **Nicht geprüft:** Das Mockup ist gezeichnet, nicht gebaut. Die Farben sind nicht mit
+  Farbsehschwäche geprüft. Ob die API die Pakete mit Name und Symbol schon liefert, ist nicht
+  nachgesehen; das klärt UI36.
+
+### 2.4 Portal: Befund vom 2026-11-15
+
+Angesehen auf der Instanz auf 8092 im Fenster 1440 × 900 mit einem Konto, das alles darf, und
+im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des Mockups aus E41.
+
+**Was im Portal von Rechten abhängt.** Gelesen, nicht mit einem zweiten Konto gesehen:
+
+| Was | Wovon es abhängt | Fundstelle |
+| --- | --- | --- |
+| Portal oder Arbeitsplatz | Recht `workplace` an `core.ui`; ohne erreicht man nur das Portal | `internal/httpapi/auth.go:221` |
+| Link „Zum Arbeitsplatz“ | dasselbe Recht | `web/src/portal/Portal.tsx:99` |
+| Bereiche in der Kopfzeile | nur Typen mit `portal.read`, die die Person lesen darf | `internal/httpapi/api.go:81`, `web/src/portal/Read.tsx:60` |
+| Kacheln | „Sichtbar für“ an der Kachel; dazu fällt weg, wessen Ziel die Person nicht erreicht | `web/src/portal/Tiles.tsx:61` |
+| Karten „Meine Vorgänge“ | je lesbarem Typ, den man im Portal anlegt | `web/src/portal/Portal.tsx:303` |
+| Formulare | nur wer den Zieltyp anlegen darf | `api/openapi.yaml:2300` |
+| Zahl am Bereich „Genehmigungen“ | die eigenen offenen Fragen | `web/src/portal/Read.tsx:82` |
+
+- **Gelesen:** Einen eigenen Aufbau je Rolle gibt es nicht; alle sehen dieselbe Seite mit mehr
+  oder weniger Inhalt.
+- **Gemessen:** Die Kopfzeile zeigt nebeneinander „itsm Portal“, vier Bereiche, Sprache und
+  Theme als beschriftete Auswahlfelder, „Zum Arbeitsplatz“, den Namen und „Abmelden“. Die
+  Startseite hat vier Kacheln und drei Karten „Meine Vorgänge“ (Störung, Probe, Anfrage), jede
+  mit eigenem „Neu“.
+- **Gelesen:** Ein Wartegrund hat nur Name, Beschreibung und „Aktiv“
+  (`packages/core/types/wait_reason.yaml:12`). Ob ein Vorgang auf den Anforderer wartet, weiß
+  das Portal darum nicht; UI43 ergänzt die Angabe am Wartegrund.
+- **Gelesen:** Eine Kachel hat kein Feld für ein Symbol (`packages/core/types/portal_tile.yaml`).
+- **Nicht geprüft:** Das Mockup ist gezeichnet, nicht gebaut. Wie die Liste über alle Typen
+  abgefragt wird (je Typ und im Browser gemischt oder ein Aufruf am Server), klärt UI43. Ob
+  „Ablehnen“ einen Grund verlangt, ist nicht nachgesehen; UI44 hält sich an die Seite der
+  Genehmigung.
+
 ## 3. Offene Fragen
 
 | # | Frage | Hängt daran |
 | --- | --- | --- |
-Keine offen.
+| **V8** 🟡 | Bleibt neben dem Erscheinungsbild der Organisation (UI39) ein Theme-Paket als Datei (E4, Hauptplan E62), oder ersetzt die Seite es? Empfehlung: Die Seite ersetzt es für Name, Logo und Farbe; ein Paket bleibt nur für das, was die Seite nicht kann, etwa eine andere Schrift | UI39 |
+| **V10** 🟡 | Bereiche der Navigation fachlich neu ordnen, etwa die 21 Einträge der Stammdaten aufteilen? Zurückgestellt am 2026-11-15, bis alle Pakete da sind | – |
+| **V11** 🟡 | Sollen das große Suchfeld „Wobei können wir helfen?“ und die Liste „Oft gelesen“ aus dem Entwurf „Klartext“ (E22) auf die Startseite des Portals? Empfehlung: nein; beides ist nicht gebaut und bräuchte eine Suche über alle Bereiche und eine Zählung der Aufrufe im Kern | – |
 
-**Beantwortet am 2026-10-20:** V1 (E1), V2 (E2). **Am 2026-10-30:** V3 (E24), V4 (E25), V5 (E23), V6 (E27). **Am 2026-11-02:** V7 (E28).
+**Beantwortet am 2026-10-20:** V1 (E1), V2 (E2). **Am 2026-10-30:** V3 (E24), V4 (E25), V5 (E23), V6 (E27). **Am 2026-11-02:** V7 (E28). **Am 2026-11-15:** V9 (E42).
 
 Die Fragen an die Fachseite stehen im Hauptplan.
 
