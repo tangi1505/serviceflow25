@@ -64,6 +64,10 @@ func TestRolesAtTheRecordOverHTTP(t *testing.T) {
 		if r := call(t, admin, http.MethodPost, "/api/v1/assignments", `{"role": "wf3_involved", "person_id": "`+pid.String()+`", "org_path": "root"}`, nil); r.code != 201 {
 			t.Fatalf("assign: %d %s", r.code, r.raw)
 		}
+		// The same assignment again is a conflict (PL57).
+		if r := call(t, admin, http.MethodPost, "/api/v1/assignments", `{"role": "wf3_involved", "person_id": "`+pid.String()+`", "org_path": "root"}`, nil); r.code != 409 {
+			t.Fatalf("assign twice: %d %s", r.code, r.raw)
+		}
 		in := call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "`+name+`", "password": "`+testPassword+`"}`, map[string]string{"Cookie": ""})
 		if in.code != 200 {
 			t.Fatalf("login %s: %d %s", name, in.code, in.raw)
@@ -73,6 +77,12 @@ func TestRolesAtTheRecordOverHTTP(t *testing.T) {
 	anna, ben := login("apitest_wf3_anna"), login("apitest_wf3_ben")
 	if r := call(t, admin, http.MethodPost, "/api/v1/records/core.group_member", `{"group": "`+gid+`", "person": "`+anna.person+`"}`, nil); r.code != 201 {
 		t.Fatalf("member: %d %s", r.code, r.raw)
+	}
+	// A person is a member of a group once (PL57): the second membership is a conflict that
+	// names both fields.
+	if r := call(t, admin, http.MethodPost, "/api/v1/records/core.group_member", `{"group": "`+gid+`", "person": "`+anna.person+`"}`, nil); r.code != 409 ||
+		!strings.Contains(r.raw, "group, person must be unique together") {
+		t.Fatalf("member twice: %d %s", r.code, r.raw)
 	}
 
 	// A record with the group as assigned and Ben as requester.

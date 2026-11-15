@@ -14,8 +14,11 @@ import (
 
 // Index is an index a package declares for the frequent lists of its type (PL54, Kern-Plan
 // E65): its columns in order. The core indexes the moment of creation of every type itself.
+// A unique index allows each combination of its columns once per tenant, outside the trash
+// (PL57: a membership of a person in a group once).
 type Index struct {
 	Fields []string `json:"fields" yaml:"fields"`
+	Unique bool     `json:"unique,omitempty" yaml:"unique"`
 }
 
 // MaxIndexFields is the most columns one declared index takes.

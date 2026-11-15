@@ -331,10 +331,18 @@ func (a *Access) MyGroups() []uuid.UUID {
 // involved lists the person and their groups: the holders the scope "involved" looks for.
 func (a *Access) involved() []uuid.UUID {
 	out := make([]uuid.UUID, 0, len(a.Groups)+1)
+	seen := map[uuid.UUID]bool{}
 	if a.PersonID != nil {
 		out = append(out, *a.PersonID)
+		seen[*a.PersonID] = true
 	}
-	return append(out, a.Groups...)
+	for _, g := range a.Groups {
+		if !seen[g] {
+			out = append(out, g)
+			seen[g] = true
+		}
+	}
+	return out
 }
 
 // Allowed reports whether the action on the type is granted at all (for some records).
@@ -497,7 +505,17 @@ func (a *Access) filter(typeName, action string, args []any) (string, []any) {
 		}
 	}
 	var parts []string
+	// The grants "involved" without a condition become one condition over all their nodes
+	// (PL57): each of them as an OR of its own made PostgreSQL hash every actor row of the
+	// person's groups for every query (found with H14: the queue of a team, 3 s).
+	var involvedAt []string
 	for _, g := range a.grantsFor(typeName, action) {
+		if g.Scope == ScopeInvolved && g.Condition == "" {
+			if !slices.Contains(involvedAt, g.OrgPath) {
+				involvedAt = append(involvedAt, g.OrgPath)
+			}
+			continue
+		}
 		var scope string
 		switch g.Scope {
 		case ScopeAll:
@@ -533,6 +551,16 @@ func (a *Access) filter(typeName, action string, args []any) (string, []any) {
 			scope = "(" + scope + " AND " + cond + ")"
 		}
 		parts = append(parts, scope)
+	}
+	if len(involvedAt) > 0 {
+		var at []string
+		for _, p := range involvedAt {
+			args = append(args, p)
+			at = append(at, fmt.Sprintf("org_path <@ $%d::ltree", len(args)))
+		}
+		args = append(args, typeName, a.involved())
+		parts = append(parts, fmt.Sprintf("((%s) AND id IN (SELECT act.record_id FROM actor act WHERE act.type_name = $%d AND act.target_id = ANY($%d::uuid[])))",
+			strings.Join(at, " OR "), len(args)-1, len(args)))
 	}
 	if len(parts) == 0 {
 		if listVis != "" {
@@ -1035,7 +1063,14 @@ func (s *Service) load(ctx context.Context, accountID uuid.UUID) (*Access, error
 		return nil, err
 	}
 	needMates := false
+	// The same grant through several assignments counts once (PL57).
+	seenGrant := map[string]bool{}
 	for _, r := range rows {
+		key := strings.Join([]string{r.TypeName, r.Action, r.Scope, r.OrgPath, r.RoleName, r.Condition, string(r.Fields)}, "\x00")
+		if seenGrant[key] {
+			continue
+		}
+		seenGrant[key] = true
 		g := Grant{TypeName: r.TypeName, Action: r.Action, Scope: Scope(r.Scope), OrgPath: r.OrgPath, Role: r.RoleName, Condition: r.Condition}
 		if len(r.Fields) > 0 {
 			var f Fields
@@ -1369,6 +1404,11 @@ func (s *Service) Assign(ctx context.Context, roleName string, personID, groupID
 		ID: id, RoleID: r.ID, PersonID: nullUUID(personID), GroupID: nullUUID(groupID), OrgPath: orgPath, CreatedBy: nullUUID(by),
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			// The same role for the same holder at the same node once (PL57).
+			return Assignment{}, fmt.Errorf("%w: the role %s is assigned there already", ErrExists, roleName)
+		}
 		return Assignment{}, fmt.Errorf("authz: assign: %w", err)
 	}
 	s.Invalidate(ctx)

@@ -1381,6 +1381,12 @@ func (s *Service) tx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 func mapDBError(t meta.Type, err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		for _, ix := range t.Indexes {
+			if ix.Unique && schema.DeclaredIndexName(schema.TableName(t), ix) == pgErr.ConstraintName {
+				// A unique index of the type (PL57): the combination exists.
+				return fmt.Errorf("%w: %s must be unique together, this combination exists", ErrConflict, strings.Join(ix.Fields, ", "))
+			}
+		}
 		field := strings.TrimSuffix(strings.TrimPrefix(pgErr.ConstraintName, schema.TableName(t)+"_"), "_key")
 		return fmt.Errorf("%w: %s must be unique, this value exists", ErrConflict, field)
 	}

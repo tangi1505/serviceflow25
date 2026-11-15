@@ -14,6 +14,7 @@ package schema
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"log/slog"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/db/queries"
@@ -270,10 +272,14 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 // go again when the definition no longer names them.
 const declaredMark = "itsm: declared by the type (PL54)"
 
-// DeclaredIndexName is the name of a declared index: the table, "ix" and the columns; a name
-// longer than PostgreSQL keeps ends in a hash instead.
-func DeclaredIndexName(table string, fields []string) string {
-	name := table + "_ix_" + strings.Join(fields, "_")
+// DeclaredIndexName is the name of a declared index: the table, "ix" ("ux" when unique) and
+// the columns; a name longer than PostgreSQL keeps ends in a hash instead.
+func DeclaredIndexName(table string, ix meta.Index) string {
+	kind := "_ix_"
+	if ix.Unique {
+		kind = "_ux_"
+	}
+	name := table + kind + strings.Join(ix.Fields, "_")
 	if len(name) <= 63 {
 		return name
 	}
@@ -288,7 +294,7 @@ func DeclaredIndexName(table string, fields []string) string {
 func ensureDeclared(ctx context.Context, tx pgx.Tx, t meta.Type, table string, run func(change, stmt string) error) error {
 	want := map[string]bool{}
 	for _, ix := range t.Indexes {
-		name := DeclaredIndexName(table, ix.Fields)
+		name := DeclaredIndexName(table, ix)
 		want[name] = true
 		exists, err := indexExists(ctx, tx, table, name)
 		if err != nil {
@@ -301,8 +307,19 @@ func ensureDeclared(ctx context.Context, tx pgx.Tx, t meta.Type, table string, r
 		for i, f := range ix.Fields {
 			cols[i] = pgx.Identifier{f}.Sanitize()
 		}
-		if err := run("index "+name, fmt.Sprintf("CREATE INDEX %s ON %s (%s)",
-			pgx.Identifier{name}.Sanitize(), pgx.Identifier{table}.Sanitize(), strings.Join(cols, ", "))); err != nil {
+		stmt := fmt.Sprintf("CREATE INDEX %s ON %s (%s)",
+			pgx.Identifier{name}.Sanitize(), pgx.Identifier{table}.Sanitize(), strings.Join(cols, ", "))
+		if ix.Unique {
+			// Unique per tenant and outside the trash, like a unique field (PL46).
+			stmt = fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (tenant, %s) WHERE deleted_at IS NULL",
+				pgx.Identifier{name}.Sanitize(), pgx.Identifier{table}.Sanitize(), strings.Join(cols, ", "))
+		}
+		if err := run("index "+name, stmt); err != nil {
+			var pgErr *pgconn.PgError
+			if ix.Unique && errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return fmt.Errorf("schema: %s: %s must be unique, but the table holds doubles; remove them first: %w",
+					t.QualifiedName(), strings.Join(ix.Fields, ", "), err)
+			}
 			return err
 		}
 		if _, err := tx.Exec(ctx, fmt.Sprintf("COMMENT ON INDEX %s IS '%s'", pgx.Identifier{name}.Sanitize(), declaredMark)); err != nil {

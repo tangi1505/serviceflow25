@@ -45,7 +45,7 @@ func NewGroups(rt *db.Router) *Groups { return &Groups{db: rt} }
 // GroupsOfPerson lists the groups a person is a member of (direct memberships, not trashed);
 // the rights of PL8 reach a person through them.
 func (g *Groups) GroupsOfPerson(ctx context.Context, personID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := g.db.Tenant(ctx).Query(ctx, `SELECT "group" FROM rec_core_group_member WHERE person = $1 AND deleted_at IS NULL`, personID)
+	rows, err := g.db.Tenant(ctx).Query(ctx, `SELECT DISTINCT "group" FROM rec_core_group_member WHERE person = $1 AND deleted_at IS NULL`, personID)
 	if err != nil {
 		return nil, fmt.Errorf("query: groups of person: %w", err)
 	}

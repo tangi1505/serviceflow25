@@ -75,6 +75,10 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL52** | Schnellere CI in zwei Stufen (Hauptplan E162): ein Skript für die Teil-CI während der Arbeit (Lint, Format, Typen immer; die geänderten Go-Pakete samt allen, die sie nutzen; Vitest nur für betroffene Dateien; die Browser-Tests des Bereichs); die ganze CI bleibt vor jedem Commit; die Lastmessung läuft nur, wenn sich Go-Code des Servers (`cmd/`, `internal/`) oder Migrationen ändern; die Basislinie der schnellen Stufe wieder messbar machen (heute „login as load: 404“, verglichen werden nur die festen Grenzen); `internal/httpapi` (210 s) in parallele Teile mit eigener Datenbank aufteilen; die wackeligen Browser-Tests (Formular-Baukasten per Tastatur, Zeitleiste in `records.spec`, LZ9-Seitenwechsel nach einem Neustart; in Vitest die Zeitgrenze von Formular-Baukasten und Workflow-Editor unter Last) stabil machen | 🟢 | 1 d | Eine Änderung nur in `web/src` läuft in der Teil-CI ohne Go-Tests und ohne Lastmessung durch und nennt die Tests, die sie gewählt hat; die ganze CI misst LZ1 bis LZ4 wieder gegen die Basislinie; die ganze CI ohne Lastmessung ist mindestens zwei Minuten schneller als 10:27 min (deine Entscheidung 2026-11-03); drei Läufe nacheinander ohne wackelnden Test; `scripts/ci-run.sh` grün |
 | **PL53** | Typen und Kalender im Speicher (gefunden mit H14, E64): die Typdefinitionen werden nicht mehr bei jedem Aufruf aus der Datenbank gelesen und dekodiert, sondern im Speicher gehalten und bei einer Änderung neu geladen (sofort im eigenen Prozess, über `LISTEN itsm_definitions` für andere Instanzen und die Kommandozeile, spätestens nach einer Minute); die SLA-Uhren halten ihren Kalender zehn Sekunden | 🟢 | 1 d | Massenimport von Störungen mindestens dreimal so schnell; ein Feld aus dem Typ-Editor ist sofort da, eine Änderung an der API vorbei binnen Sekunden; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL54** | Indizes je Typ (gefunden mit H14, E65): der Kern legt für jeden Typ einen Index auf dem Anlagedatum an; ein Paket erklärt in der Typdatei weitere unter `indexes:` (bis vier Spalten aus Feldern und Systemspalten wie `state`), der Kern legt sie beim Installieren an und entfernt erklärte, die das Paket nicht mehr nennt; Störung und Anfrage erklären Status mit Anlagedatum | 🟢 | 1 d | die Warteschlange „Störungen meines Teams“ auf 18,25 Mio. Störungen liest nicht mehr die ganze Tabelle; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL55** | Suche über große Mengen (gefunden mit H14, deine Entscheidung 2026-11-14): die Volltextsuche sucht in Zeitfenstern, neueste zuerst (30 Tage, ein Jahr, alles), bis genug Treffer da sind | ⬜ | 1 d | LZ3 auf 18,25 Mio. Störungen p95 ≤ 300 ms; CI grün |
+| **PL56** | Zeitgrenze je API-Anfrage (gefunden mit H14, deine Entscheidung 2026-11-14): PostgreSQL bricht jede Abfrage einer API-Anfrage nach 10 s ab, einstellbar; Export und Bulk-Jobs ausgenommen | ⬜ | 0,5 d | eine zu lange Abfrage blockiert nicht mehr den Server; CI grün |
+| **PL57** | Rechtefilter zusammenfassen (gefunden mit H14, deine Entscheidung 2026-11-15): gleiche Rechte werden eine Bedingung, jede Gruppe zählt einmal; dieselbe Rolle am selben Knoten und dieselbe Mitgliedschaft lassen sich nicht doppelt anlegen | 🟢 | 1 d | LZ2 auf 18,25 Mio. Störungen p95 ≤ 150 ms; CI grün |
+| **PL58** | SLA-Speicher im Hintergrund (gefunden mit H14, deine Entscheidung 2026-11-15): Anfragen nehmen den letzten Stand der SLAs, nachgeladen wird beim Start und im Hintergrund, nie in einer Anfrage; andere Zwischenspeicher mit demselben Muster ebenso | 🟢 | 0,5 d | LZ4 mit 32 gleichzeitigen Anfragen ohne Fehler; CI grün |
 
 ### C — Meilenstein 2
 
@@ -148,6 +152,8 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E67** | **Rechtefilter zusammenfassen (PL57, deine Entscheidung 2026-11-15 nach H14):** Die Warteschlange eines Teams brauchte auf 18,25 Mio. Störungen 3 bis 8 s: die Rolle war viermal zugewiesen und die Mitgliedschaft im Team viermal eingetragen, jede Zuweisung wurde eine eigene ODER-Bedingung `id IN (SELECT … FROM actor …)`, und PostgreSQL hashte für jede alle 365.000 Rollen-Einträge des Teams. Jetzt zählt jedes Recht einmal, jede Gruppe einmal, und alle Rechte „beteiligt“ ohne Bedingung werden eine Bedingung über ihre Knoten. Dieselbe Rolle für denselben Inhaber am selben Knoten lässt sich nicht mehr doppelt zuweisen (Migration 00048, bestehende Doppelungen gehen, die älteste bleibt), und ein Paket kann einen Index als eindeutig erklären (`unique: true`, je Mandant außerhalb des Papierkorbs); das Kernpaket erklärt damit die Mitgliedschaft (Gruppe, Person) eindeutig. Stehen beim Installieren schon Doppelungen in der Tabelle, bricht die Installation mit den Spalten ab | nur den Filter zusammenfassen; erst als Befund | 2026-11-15 | Pascal |
+| **E66** | **Zwischenspeicher laden im Hintergrund (PL58, deine Entscheidung 2026-11-15 nach H14):** Die Speicher des Kerns für SLAs, Kalender der Uhren, Regeln, Einstellungen und Typen luden nach ihrer Frist in der Anfrage nach, die sie fragte. Ein Schreiben hält dabei seine Transaktion und damit eine Verbindung, das Nachladen braucht eine zweite; mit so vielen gleichzeitigen Schreibern wie der Pool Verbindungen hat (auf `ki-lab` 32 Anfragen, 16 Verbindungen) warteten alle aufeinander, bis die Anfragen nach 10 s aufgaben, und jedes Anlegen einer Störung scheiterte. Jetzt gibt ein Speicher immer den letzten Stand sofort heraus; ist er zu alt oder als veraltet gemeldet, liest genau ein Ablauf ihn im Hintergrund neu (`internal/memo`). Eine eigene Änderung (SLA, Kalender, Regel, Einstellung, Typ) liest der schreibende Prozess nach dem Commit gleich selbst, damit sie für seine nächste Anfrage gilt; die Meldung einer anderen Instanz markiert nur als veraltet. Beim Start lädt der Server die Speicher vor der ersten Anfrage | nur mehr Verbindungen; erst als Befund | 2026-11-15 | Pascal |
 | **E65** | **Indizes je Typ (PL54, deine Entscheidung 2026-11-14 nach H14):** Die Tabellen der Typen hatten nur die Indizes des Kerns (Baum, Quelle, Änderung, Frist, Suche, eindeutige Felder). Die Liste „offene Störungen meines Teams, neueste zuerst“ las auf 18,25 Mio. Störungen die ganze Tabelle (13 GB, 6,2 s). Jetzt indiziert der Kern das Anlagedatum jedes Typs, und ein Paket erklärt in der Typdatei weitere Indizes für seine häufigen Listen (`indexes: - fields: [state, created_at]`): bis vier Spalten, Felder des Typs oder die Systemspalten `state`, `created_at`, `created_by`, `updated_at`, `updated_by`, `sla_due_at`, `source`, `external_key`; Textfelder nur mit `max_length` bis 500 (Grenze eines B-Baums). Erklärte Indizes tragen einen Kommentar und gehen wieder, wenn das Paket sie nicht mehr nennt. Der Bau eines Index auf einer großen Tabelle hält deren Schreiben für seine Dauer an, innerhalb der Installation (18,25 Mio. Störungen: zwei Indizes in rund einer Minute). Spalten ohne leere Werte sortieren ohne `NULLS LAST`, sonst kann der Index nicht rückwärts gelesen werden | nur feste Indizes im Kern; erst als Befund | 2026-11-14 | Pascal |
 | **E64** | **Typen und Kalender im Speicher (PL53, deine Entscheidung 2026-11-13 nach dem Profil aus H14):** `records.Service.Type` las bei jedem Aufruf alle Definitionen aus der Steuer-Datenbank und dekodierte sie; beim Schreiben einer Störung war das mehr als die Hälfte der Zeit (Massenimport 55 Zeilen/s). Jetzt hält ein Speicher die Typen und lädt sie neu, wenn sich die Definitionen ändern: sofort nach einem Schreiben des eigenen Prozesses (`meta.DefinitionsChanged`), über einen Trigger mit `pg_notify` auf `itsm_definitions` für andere Instanzen und `itsm package install`, und spätestens nach einer Minute, falls eine Nachricht verloren ging. Die ausgegebenen Typen sind geteilt und werden nicht verändert. Die SLA-Uhren halten ihren Kalender zehn Sekunden (wie die Einstellungen), eine Änderung eines Kalenders oder SLA wirft ihn hier und über Valkey auf den anderen Instanzen sofort weg; der Kalender ordnet seine Zeiten einmal und ist damit zwischen Abläufen teilbar. Eigene Aufgabe vor H14 eingeschoben | jede Definition bei jedem Aufruf lesen; nur Ablaufzeit ohne Nachricht | 2026-11-13 | Pascal |
 | **E63** | Laufende Nummer (PL49, deine Entscheidungen 2026-11-02, Hauptplan E157): **Zähler** ist eine Postgres-Sequenz je Typ, Feld und Mandant, ohne Sperre; Lücken nach abgebrochenen Transaktionen sind erlaubt. **Gespeichert** wird die Zahl (`bigint`), das Präfix kommt aus der Definition und gilt für alle Datensätze; sortiert numerisch, die Suche findet „INC-24817“ und „24817“. **Bestand:** bekommt ein Typ das Feld später, nummeriert ein Job die vorhandenen Datensätze nach Anlagezeit. **Import:** nur Bulk mit `source` darf eine Nummer mitbringen, die Sequenz springt danach über die höchste; Anlegen und PATCH setzen sie nie. Verworfen: Zählertabelle mit Zeilensperre; fertiger Text; nur neue Datensätze; Altnummern nur als Textfeld | 2026-11-02 | Pascal |
@@ -1620,6 +1626,72 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL57 — Rechtefilter zusammenfassen, 2026-11-15
+
+- **Grundlage:** E67; gefunden mit H14 auf `ki-lab`: die echte Abfrage von LZ2 (aus dem Protokoll
+  der Datenbank) hatte vier gleiche ODER-Bedingungen und Team 07 viermal in der Liste der
+  Gruppen; je Abfrage 3 s, mit einer Bedingung 0,2 s. Deine Entscheidung vom 2026-11-15:
+  Filter zusammenfassen und Doppelungen verhindern.
+- **Gebaut:**
+  - `internal/authz`: gleiche Rechte zählen beim Laden einmal; die Inhaber für „beteiligt“
+    (Person und Gruppen) je einmal; alle Rechte „beteiligt“ ohne Bedingung werden eine Bedingung
+    `((org_path <@ … OR …) AND id IN (…))`; dieselbe Zuweisung ein zweites Mal ist ein Konflikt
+    (409). `internal/query`: die Gruppen einer Person ohne Doppelung.
+  - Migration `00048_assignment_unique.sql`: Doppelungen weg, eindeutiger Index über Rolle,
+    Person, Gruppe und Knoten.
+  - `meta.Index.Unique` und `internal/schema`: eindeutiger erklärter Index `<tabelle>_ux_…`
+    über Mandant und Spalten außerhalb des Papierkorbs; ein Konflikt nennt die Spalten
+    („group, person must be unique together“); Doppelungen in der Tabelle halten die
+    Installation mit klarer Meldung an. Kernpaket 0.9.0: `core.group_member` erklärt Gruppe
+    und Person eindeutig.
+- **Belegt:**
+  - Go `TestInvolvedGrantsBecomeOneCondition` (vier gleiche und ein weiteres Recht werden eine
+    Bedingung über zwei Knoten, jeder Inhaber einmal, gelesen wird dasselbe; ein Recht mit
+    Bedingung behält seine eigene), `TestDeclaredIndexesFollowTheDefinition` erweitert
+    (eindeutiger Index, Papierkorb zählt nicht, Doppelungen halten die Installation an),
+    `TestRolesAtTheRecordOverHTTP` erweitert (Zuweisung und Mitgliedschaft doppelt: 409).
+  - `scripts/ci.sh` am 2026-11-15 (PL57 und PL58 zusammen geprüft): alle 19 Schritte grün; die
+    Schnellstufe gegen die Basislinie überall schneller (LZ4 p95 7,1 statt 13,2 ms, LZ2 4,4 statt 6,6 ms).
+- **Nicht geprüft:** Rechte verschiedener Art zugleich (etwa „beteiligt“ ODER „eigene
+  Einheit“) bleiben eine ODER-Bedingung; bei Teams mit Hunderttausenden Vorgängen kostet das
+  weiter rund eine halbe Sekunde (gemessen auf `ki-lab`).
+
+### PL58 — Zwischenspeicher laden im Hintergrund, 2026-11-15
+
+- **Grundlage:** E66; gefunden mit H14 auf `ki-lab`: LZ4 (Störung anlegen) scheiterte bei 32
+  gleichzeitigen Anfragen ohne jede langsame Abfrage, jede Anfrage nach genau 10 s mit
+  `sla: load: … context canceled`. Deine Entscheidung vom 2026-11-15: Nachladen im Hintergrund.
+- **Gebaut:**
+  - `internal/memo`: `Value` gibt den letzten Stand sofort; zu alt oder veraltet gemeldet, liest
+    genau ein Ablauf im Hintergrund neu (mit dem Kontext der Anfrage, ohne deren Ende, höchstens
+    30 s); ein fehlgeschlagenes Nachladen behält den letzten Stand; `Refresh` liest sofort im
+    Aufrufer, ein älteres Nachladen überschreibt es nicht; nur das allererste Laden läuft im
+    Aufrufer.
+  - `internal/sla`: SLAs über `memo`; Kalender der Uhren behalten ihren Stand und werden im
+    Hintergrund neu gelesen; eine eigene Änderung an SLA oder Kalender liest nach dem Commit
+    sofort, die Meldung über Valkey markiert nur.
+  - `internal/rules/engine`: die Regeln ebenso; `internal/settings`: die Erklärungen und die
+    Werte an den Knoten (die Priorität jeder Störung liest einen) ebenso, ein unbekannter
+    Schlüssel liest die Erklärungen sofort.
+  - `internal/records/typecache.go`: der Ablauf der Minute und die Meldung über
+    `itsm_definitions` lesen im Hintergrund; ein Schreiben des eigenen Prozesses liest wie bisher
+    sofort.
+  - `cmd/itsm`: Typen, SLAs, Regeln und Einstellungen werden vor der ersten Anfrage geladen.
+  - `internal/customer`: nach dem Speichern der Kundenschicht gilt der neue Typ sofort für das
+    Nummerieren und die Suche danach (gefunden mit der CI: bisher kam die Nachricht von
+    PostgreSQL zufällig rechtzeitig, `TestSequenceForExistingRecords`).
+- **Belegt:**
+  - Go `TestStaleServesWhileOneLoadRuns` (50 gleichzeitige Aufrufer bekommen den alten Stand
+    sofort, genau ein Nachladen), `TestRefreshForgetAndFailedLoads` (sofortiges Neuladen gewinnt
+    gegen ein älteres im Hintergrund, ein fehlgeschlagenes behält den Stand), beide auch mit dem
+    Race-Detector. Die Tests zu SLA, Kalendern, Regeln, Einstellungen, Typen und Kundenschicht
+    über HTTP unverändert grün.
+  - `scripts/ci.sh` am 2026-11-15 (PL57 und PL58 zusammen geprüft): alle 19 Schritte grün; die
+    Schnellstufe gegen die Basislinie überall schneller (LZ4 p95 7,1 statt 13,2 ms, LZ2 4,4 statt 6,6 ms).
+- **Nicht geprüft:** Das allererste Laden eines Speichers läuft weiter in der Anfrage; der
+  Start lädt darum vor. Andere Stellen, die in einer Transaktion eine zweite Verbindung holen,
+  bleiben möglich; der Pool hat weiter so viele Verbindungen wie der Rechner Kerne.
 
 ### PL54 — Indizes je Typ, 2026-11-14
 

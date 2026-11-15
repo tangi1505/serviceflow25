@@ -262,10 +262,42 @@ func TestDeclaredIndexesFollowTheDefinition(t *testing.T) {
 	}
 
 	// A long name keeps within the 63 characters of PostgreSQL and stays distinct.
-	long := DeclaredIndexName("rec_schematest_a_very_long_type_name_for_names", []string{"state", "created_at", "updated_at"})
-	other := DeclaredIndexName("rec_schematest_a_very_long_type_name_for_names", []string{"state", "created_at", "sla_due_at"})
+	long := DeclaredIndexName("rec_schematest_a_very_long_type_name_for_names", meta.Index{Fields: []string{"state", "created_at", "updated_at"}})
+	other := DeclaredIndexName("rec_schematest_a_very_long_type_name_for_names", meta.Index{Fields: []string{"state", "created_at", "sla_due_at"}})
 	if len(long) > 63 || long == other {
 		t.Fatalf("names %q and %q", long, other)
+	}
+
+	// A unique index (PL57): per tenant, outside the trash; doubles are refused, a trashed one
+	// does not count, and doubles already in the table stop the install with the columns named.
+	ty.Indexes = []meta.Index{{Fields: []string{"kind", "code"}, Unique: true}}
+	if _, err := Apply(ctx, pool, []meta.Type{ty}, quiet); err != nil {
+		t.Fatal(err)
+	}
+	all = indexes()
+	if !strings.Contains(all, "rec_schematest_gamma_ux_kind_code CREATE UNIQUE INDEX rec_schematest_gamma_ux_kind_code ON public.rec_schematest_gamma USING btree (tenant, kind, code) WHERE (deleted_at IS NULL)") ||
+		strings.Contains(all, "_ix_kind_code") {
+		t.Fatalf("unique index:\n%s", all)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO rec_schematest_gamma (id, kind, code, deleted_at) VALUES (gen_random_uuid(), 'a', 'x', now())"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO rec_schematest_gamma (id, kind, code) VALUES (gen_random_uuid(), 'a', 'x')"); err != nil {
+		t.Fatalf("a trashed double must not count: %v", err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO rec_schematest_gamma (id, kind, code) VALUES (gen_random_uuid(), 'a', 'x')"); err == nil {
+		t.Fatal("a double must be refused")
+	}
+	ty.Indexes = nil
+	if _, err := Apply(ctx, pool, []meta.Type{ty}, quiet); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO rec_schematest_gamma (id, kind, code) VALUES (gen_random_uuid(), 'a', 'x')"); err != nil {
+		t.Fatal(err)
+	}
+	ty.Indexes = []meta.Index{{Fields: []string{"kind", "code"}, Unique: true}}
+	if _, err := Apply(ctx, pool, []meta.Type{ty}, quiet); err == nil || !strings.Contains(err.Error(), "kind, code must be unique, but the table holds doubles") {
+		t.Fatalf("doubles in the table: %v", err)
 	}
 }
 

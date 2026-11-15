@@ -282,6 +282,15 @@ E34 und KF9:
   Ein Widget gruppiert auch nach einer Rolle (`actors.<rolle>`, ein Datensatz mit zwei Haltern
   zählt bei beiden); wer ein Dashboard nur liest, kopiert es mit `POST …/copy` in ein eigenes
   (UI14a).
+- **Rechtefilter** (PL57, Kern-Plan E67): jedes Recht und jede Gruppe zählt einmal; die Rechte
+  „beteiligt“ ohne Bedingung werden eine Bedingung über ihre Knoten, damit PostgreSQL die
+  Rollen-Einträge je Datensatz prüft statt sie für jede Abfrage zu hashen. Ein Paket kann einen
+  Index eindeutig erklären (`unique: true`); so ist eine Mitgliedschaft einmalig.
+- **Zwischenspeicher** (PL58, Kern-Plan E66): Speicher, die die Datenbank spiegeln (SLAs,
+  Kalender der Uhren, Regeln, Einstellungen, Typen), geben in einer Anfrage immer den letzten
+  Stand heraus und laden im Hintergrund nach (`internal/memo`); nie lädt eine Anfrage nach, die
+  schon eine Verbindung hält. Eine eigene Änderung liest der Prozess nach dem Commit sofort,
+  der Start lädt vor.
 - **Indizes je Typ** (PL54, Kern-Plan E65): jede Tabelle eines Typs hat einen Index auf
   `created_at`; ein Paket erklärt weitere in der Typdatei (`indexes: - fields: [state,
   created_at]`), `internal/schema` legt sie beim Installieren an, markiert sie mit einem

@@ -6,6 +6,11 @@
 name: group_member
 label: {de: Gruppenmitglied, en: Group member}
 traits: [history]
+# A person is a member of a group once (PL57): a second membership made every right through the
+# group count twice in the rights filter.
+indexes:
+  - fields: [group, person]
+    unique: true
 fields:
   - name: group
     type: reference
