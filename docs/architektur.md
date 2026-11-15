@@ -282,6 +282,10 @@ E34 und KF9:
   Ein Widget gruppiert auch nach einer Rolle (`actors.<rolle>`, ein Datensatz mit zwei Haltern
   zählt bei beiden); wer ein Dashboard nur liest, kopiert es mit `POST …/copy` in ein eigenes
   (UI14a).
+- **Suche und Zeitgrenze** (PL55, PL56, Kern-Plan E68, E69): die Volltextsuche bewertet je Typ
+  die neuesten bis zu 1.000 Treffer der letzten sieben Tage und sucht erst bei zu wenigen über
+  alles; jede API-Anfrage außer Export, Bulk-Strom, Ereignisstrom und Hochladen endet nach
+  `ITSM_REQUEST_TIMEOUT` und bricht ihre Abfrage in PostgreSQL ab.
 - **Rechtefilter** (PL57, Kern-Plan E67): jedes Recht und jede Gruppe zählt einmal; die Rechte
   „beteiligt“ ohne Bedingung werden eine Bedingung über ihre Knoten, damit PostgreSQL die
   Rollen-Einträge je Datensatz prüft statt sie für jede Abfrage zu hashen. Ein Paket kann einen

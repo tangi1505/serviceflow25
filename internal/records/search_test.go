@@ -10,6 +10,7 @@ package records
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -160,6 +161,25 @@ func TestSearch(t *testing.T) {
 	}
 	if unfilled, _ := s.SearchUnfilled(ctx, searchType); unfilled {
 		t.Fatal("still unfilled")
+	}
+
+	// Newest first (PL55): with enough hits of the last days the old ones do not count; with
+	// too few the search reaches every record, an old one with a rare word too.
+	if _, err := pool.Exec(ctx, "UPDATE rec_searchtest_article SET created_at = now() - interval '400 days' WHERE body = 'Papierstau'"); err != nil {
+		t.Fatal(err)
+	}
+	if got := titles(find("Papierstau")); got != "Drucker" {
+		t.Fatalf("an old record with a rare word: %s", got)
+	}
+	recent, err := s.Search(ctx, SearchQuery{Text: "Drucker", Types: []string{searchType}, Limit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := titles(recent); len(recent) != 2 || slices.Contains(strings.Split(got, "|"), "Drucker") {
+		t.Fatalf("two recent hits are enough, the old one stays out: %s", got)
+	}
+	if got := titles(find("Drucker")); !slices.Contains(strings.Split(got, "|"), "Drucker") {
+		t.Fatalf("too few recent hits for 20: every record counts: %s", got)
 	}
 }
 

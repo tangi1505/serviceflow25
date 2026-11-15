@@ -10,7 +10,9 @@ package records
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/google/uuid"
@@ -234,6 +236,17 @@ type SearchQuery struct {
 // MaxAnyText is the length of the text a search with Any takes.
 const MaxAnyText = 2000
 
+// The search looks at the newest records first (PL55, Kern-Plan E68): per type it takes the
+// newest searchCandidates matches of the last searchRecent along the index on created_at and
+// ranks only those. A frequent word ("Drucker" in a million of 18 million incidents) is then
+// ranked over a thousand rows, not a million (found with H14: more than 10 s). Only when that
+// brings fewer hits than asked for does it search every record, through the search index,
+// where a rare word or an old number is cheap.
+const (
+	searchRecent     = 7 * 24 * time.Hour
+	searchCandidates = 1000
+)
+
 // SearchHit is one record found.
 type SearchHit struct {
 	Type    string    `json:"type"`
@@ -275,7 +288,6 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) ([]SearchHit, error
 		}
 		types = all
 	}
-	a := authz.From(ctx)
 	rest, last := prefixParts(text)
 	args := []any{text}
 	tsq := "(websearch_to_tsquery('german', $1) || websearch_to_tsquery('english', $1)"
@@ -293,6 +305,19 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) ([]SearchHit, error
 		tsq += " || (websearch_to_tsquery('german', $2) && to_tsquery('german', $3))"
 	}
 	tsq += ")"
+	// The newest first; only when they are too few, everything.
+	since := time.Now().Add(-searchRecent)
+	hits, err := s.search(ctx, types, tsq, args, limit, &since)
+	if err != nil || len(hits) >= limit {
+		return hits, err
+	}
+	return s.search(ctx, types, tsq, args, limit, nil)
+}
+
+// search runs the search over the types; with since, over the newest matches created after it.
+func (s *Service) search(ctx context.Context, types []meta.Type, tsq string, args []any, limit int, since *time.Time) ([]SearchHit, error) {
+	a := authz.From(ctx)
+	args = slices.Clone(args)
 	var subs []string
 	for _, t := range types {
 		if !t.Searched() || !a.Allowed(t.QualifiedName(), authz.ActionRead) {
@@ -336,8 +361,16 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) ([]SearchHit, error
 		var cond string
 		cond, args = a.Filter(t.QualifiedName(), authz.ActionRead, args)
 		where = append(where, cond)
-		subs = append(subs, fmt.Sprintf("(SELECT '%s'::text AS type_name, id, %s AS title, %s AS doc, %s AS rank FROM %s, (SELECT %s) AS qq(q) WHERE %s ORDER BY rank DESC LIMIT %d)",
-			t.QualifiedName(), titleExpr, doc, rank, table(t), tsq, strings.Join(where, " AND "), limit))
+		if since == nil {
+			subs = append(subs, fmt.Sprintf("(SELECT '%s'::text AS type_name, id, %s AS title, %s AS doc, %s AS rank FROM %s, (SELECT %s) AS qq(q) WHERE %s ORDER BY rank DESC LIMIT %d)",
+				t.QualifiedName(), titleExpr, doc, rank, table(t), tsq, strings.Join(where, " AND "), limit))
+			continue
+		}
+		// The newest matches along the index on created_at, then ranked (PL55).
+		args = append(args, *since)
+		where = append(where, fmt.Sprintf("created_at >= $%d", len(args)))
+		subs = append(subs, fmt.Sprintf("(SELECT '%s'::text AS type_name, id, %s AS title, %s AS doc, %s AS rank FROM (SELECT %s.* FROM %s, (SELECT %s) AS qq(q) WHERE %s ORDER BY created_at DESC LIMIT %d) AS %s, (SELECT %s) AS qq(q) ORDER BY rank DESC LIMIT %d)",
+			t.QualifiedName(), titleExpr, doc, rank, table(t), table(t), tsq, strings.Join(where, " AND "), searchCandidates, table(t), tsq, limit))
 	}
 	if len(subs) == 0 {
 		return []SearchHit{}, nil
