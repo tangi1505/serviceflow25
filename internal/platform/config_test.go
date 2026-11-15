@@ -38,6 +38,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.ShutdownTimeout != 15*time.Second {
 		t.Fatalf("shutdown timeout = %s", cfg.ShutdownTimeout)
 	}
+	if cfg.RequestTimeout != 10*time.Second {
+		t.Fatalf("request timeout = %s (PL56)", cfg.RequestTimeout)
+	}
 	if cfg.Workers["interactive"] != 8 || cfg.Workers["default"] != 8 || cfg.Workers["bulk"] != 2 || cfg.EventRetention != 7*24*time.Hour {
 		t.Fatalf("unexpected job defaults: %+v", cfg)
 	}
@@ -158,6 +161,7 @@ func TestLoadConfigReadsEverything(t *testing.T) {
 	m["ITSM_HTTP_ADDR"] = ":9000"
 	m["ITSM_LOG_LEVEL"] = "debug"
 	m["ITSM_SHUTDOWN_TIMEOUT"] = "3s"
+	m["ITSM_REQUEST_TIMEOUT"] = "0"
 	m["ITSM_FILES_DIR"] = "/data/files"
 	m["ITSM_WEB_DIR"] = "/web"
 	cfg, err := LoadConfig(env(m))
@@ -165,17 +169,17 @@ func TestLoadConfigReadsEverything(t *testing.T) {
 		t.Fatal(err)
 	}
 	if cfg.Role != RoleWorker || cfg.HTTPAddr != ":9000" || cfg.LogLevel != slog.LevelDebug ||
-		cfg.ShutdownTimeout != 3*time.Second || cfg.FilesDir != "/data/files" || cfg.WebDir != "/web" {
+		cfg.ShutdownTimeout != 3*time.Second || cfg.RequestTimeout != 0 || cfg.FilesDir != "/data/files" || cfg.WebDir != "/web" {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
 
 func TestLoadConfigReportsAllErrors(t *testing.T) {
-	_, err := LoadConfig(env(map[string]string{"ITSM_ROLE": "boss", "ITSM_LOG_LEVEL": "loud"}))
+	_, err := LoadConfig(env(map[string]string{"ITSM_ROLE": "boss", "ITSM_LOG_LEVEL": "loud", "ITSM_REQUEST_TIMEOUT": "soon"}))
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	for _, want := range []string{"ITSM_ROLE", "ITSM_LOG_LEVEL", "ITSM_DATABASE_URL", "ITSM_VALKEY_ADDR"} {
+	for _, want := range []string{"ITSM_ROLE", "ITSM_LOG_LEVEL", "ITSM_DATABASE_URL", "ITSM_VALKEY_ADDR", "ITSM_REQUEST_TIMEOUT"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not mention %s", err, want)
 		}

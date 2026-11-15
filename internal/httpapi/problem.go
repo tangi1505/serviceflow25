@@ -8,6 +8,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -70,6 +71,10 @@ func writeProblem(w http.ResponseWriter, r *http.Request, status int, code, deta
 // writeError maps the errors of the records package to problems; anything else is 500 and logged.
 func writeError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
 	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		// The time limit of the request (PL56): the statement was cancelled in PostgreSQL.
+		logger.Warn("request took too long", "method", r.Method, "path", r.URL.Path)
+		writeProblem(w, r, http.StatusServiceUnavailable, "timeout", "the request took longer than the server allows; narrow it down", nil)
 	case errors.Is(err, records.ErrNotFound):
 		writeProblem(w, r, http.StatusNotFound, "not_found", err.Error(), nil)
 	case errors.Is(err, records.ErrConflict), errors.Is(err, records.ErrNotAllowed),

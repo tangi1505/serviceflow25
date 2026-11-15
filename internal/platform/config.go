@@ -61,6 +61,10 @@ type Config struct {
 	WebDir          string
 	LogLevel        slog.Level
 	ShutdownTimeout time.Duration
+	// RequestTimeout ends an API request and its statements in PostgreSQL after this long
+	// (PL56), ITSM_REQUEST_TIMEOUT, 10 s unless set, 0 for none; export, bulk stream, event
+	// stream and file upload are left out.
+	RequestTimeout time.Duration
 	// Workers per queue for the worker role (Hauptplan E85): ITSM_WORKERS_INTERACTIVE,
 	// ITSM_WORKERS_DEFAULT, ITSM_WORKERS_BULK; 0 leaves a queue unworked on this instance.
 	Workers map[string]int
@@ -143,6 +147,7 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		WebDir:          getenv("ITSM_WEB_DIR"),
 		LogLevel:        slog.LevelInfo,
 		ShutdownTimeout: 15 * time.Second,
+		RequestTimeout:  10 * time.Second,
 		Workers:         map[string]int{},
 		EventRetention:  7 * 24 * time.Hour,
 	}
@@ -239,6 +244,14 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 			errs = append(errs, fmt.Errorf("ITSM_SHUTDOWN_TIMEOUT: %w", err))
 		}
 		cfg.ShutdownTimeout = d
+	}
+	if v := getenv("ITSM_REQUEST_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d < 0 {
+			errs = append(errs, fmt.Errorf("ITSM_REQUEST_TIMEOUT: %q is no duration like 10s (0 for none)", v))
+		} else {
+			cfg.RequestTimeout = d
+		}
 	}
 	cfg.TenantMode = TenantModeShared
 	if v := getenv("ITSM_TENANT_MODE"); v != "" {

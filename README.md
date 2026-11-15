@@ -191,6 +191,7 @@ Nur über Umgebungsvariablen / environment variables only:
 | `ITSM_FILES_DIR` | nein | leer, im Image `/data/files` | Ablage der Dateien (PL18) und der NDJSON-Ströme des asynchronen Bulk (PL32); leer schaltet beides ab (503) |
 | `ITSM_LOG_LEVEL` | nein | `info` | `debug`, `info`, `warn`, `error` |
 | `ITSM_SHUTDOWN_TIMEOUT` | nein | `15s` | Zeit zum geordneten Beenden |
+| `ITSM_REQUEST_TIMEOUT` | nein | `10s` | Zeitgrenze einer API-Anfrage samt ihrer Abfragen in PostgreSQL (PL56); `0` für keine; Export, Bulk-Strom, Ereignisstrom und Hochladen ausgenommen |
 | `ITSM_WORKERS_INTERACTIVE` | nein | `8` | Worker je Instanz für die Warteschlange `interactive` (Rolle `worker`) |
 | `ITSM_WORKERS_DEFAULT` | nein | `8` | Worker je Instanz für `default` |
 | `ITSM_WORKERS_BULK` | nein | `2` | Worker je Instanz für `bulk`; `0` lässt eine Warteschlange auf dieser Instanz liegen |

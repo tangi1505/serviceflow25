@@ -127,6 +127,8 @@ type Options struct {
 	SLA *sla.Service
 	// WebDir is the directory of the built web interface; empty disables it.
 	WebDir string
+	// RequestTimeout ends an API request after this long (PL56); 0 sets no limit.
+	RequestTimeout time.Duration
 }
 
 // NewRouter builds the HTTP handler.
@@ -143,7 +145,7 @@ func NewRouter(o Options) http.Handler {
 	}
 
 	s := &server{o: o}
-	r.Use(authenticate(o), withLanguage)
+	r.Use(withDeadline(o.RequestTimeout), authenticate(o), withLanguage)
 	gen.HandlerWithOptions(s, gen.ChiServerOptions{
 		BaseRouter: r,
 		// Bad path or query parameters (an id that is no UUID, a limit that is no number).
