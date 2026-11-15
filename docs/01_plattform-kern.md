@@ -79,6 +79,12 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL56** | Zeitgrenze je API-Anfrage (gefunden mit H14, deine Entscheidung 2026-11-14): PostgreSQL bricht jede Abfrage einer API-Anfrage nach 10 s ab, einstellbar; Export und Bulk-Jobs ausgenommen | 🟢 | 0,5 d | eine zu lange Abfrage blockiert nicht mehr den Server; CI grün |
 | **PL57** | Rechtefilter zusammenfassen (gefunden mit H14, deine Entscheidung 2026-11-15): gleiche Rechte werden eine Bedingung, jede Gruppe zählt einmal; dieselbe Rolle am selben Knoten und dieselbe Mitgliedschaft lassen sich nicht doppelt anlegen | 🟢 | 1 d | LZ2 auf 18,25 Mio. Störungen p95 ≤ 150 ms; CI grün |
 | **PL58** | SLA-Speicher im Hintergrund (gefunden mit H14, deine Entscheidung 2026-11-15): Anfragen nehmen den letzten Stand der SLAs, nachgeladen wird beim Start und im Hintergrund, nie in einer Anfrage; andere Zwischenspeicher mit demselben Muster ebenso | 🟢 | 0,5 d | LZ4 mit 32 gleichzeitigen Anfragen ohne Fehler; CI grün |
+| **PL59** | Übernahme alter Daten ohne Folgejobs (Befund aus H14): Der Bulk-Import alter, längst erledigter Störungen legt je Zeile Fristen, Benachrichtigungen und Regeln als Jobs an; 18,25 Mio. Störungen ergaben rund 70 Mio. Jobs, `river_job` hielt 35 GB für 7 Tage (E86). Vorschlag: ein Kennzeichen am Bulk-Lauf für eine Übernahme, die nur speichert | ⬜ deine Entscheidung offen | 1 d | 100.000 erledigte Störungen als Übernahme → keine Jobs außer dem Bulk-Job; ohne Kennzeichen wie bisher |
+| **PL60** | Bulk mit Fristen schneller (Befund aus H14): Störungen mit SLA-Uhren laden mit rund 920 Zeilen/s, LZ5 (ein Typ ohne Fristen) mit 8.850. Vorschlag: Uhren und Kalender je Stapel statt je Zeile rechnen | ⬜ deine Entscheidung offen | 1 d | Lastwerkzeug: Bulk von Störungen mit Fristen ≥ 5.000 Zeilen/s |
+| **PL61** | Große Bulk-Ströme ohne Abbruch (Befund aus H14): Rivers Grenze von einer Minute je Job bricht einen Strom von 2.000 Störungen mit Fristen ab; auf `ki-lab` umgangen mit 500 Zeilen je Strom. Vorschlag: eigene Grenze für Bulk-Jobs, einstellbar | ⬜ deine Entscheidung offen | 0,5 d | ein Strom von 50.000 Störungen läuft durch |
+| **PL62** | Rechte verschiedener Art zugleich (Befund aus H14, Rest aus PL57): „beteiligt“ ODER „eigene Einheit“ bleibt eine ODER-Bedingung und kostet bei Teams mit Hunderttausenden Vorgängen rund 0,5 s | ⬜ deine Entscheidung offen | 1 d | Lastwerkzeug: LZ2 mit einer Rolle aus beiden Arten p95 ≤ 150 ms auf `ki-lab` |
+| **PL63** | Index ohne Schreibsperre (Befund aus H14, Rest aus PL54): Ein neuer Index auf einer großen Tabelle hält das Schreiben für die Dauer des Baus an (`CREATE INDEX` statt `CONCURRENTLY`); Kundenschicht und Typ-Editor kennen `indexes` noch nicht | ⬜ deine Entscheidung offen | 1 d | Paket mit neuem Index auf 18,25 Mio. Störungen installieren, währenddessen LZ4 ohne Fehler |
+| **PL64** | Suche nach früher häufigen Wörtern (Befund aus H14, Rest aus PL55): Ein Wort mit wenigen Treffern in den letzten sieben Tagen, aber sehr vielen davor, durchsucht alles und endet an der Zeitgrenze von 10 s. Vorschlag: weitere Fenster (30 Tage, 1 Jahr) vor dem ganzen Bestand | ⬜ deine Entscheidung offen | 0,5 d | Lastwerkzeug: Suche nach einem solchen Wort p95 ≤ 300 ms auf `ki-lab` |
 
 ### C — Meilenstein 2
 
@@ -1695,6 +1701,9 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     `TestRolesAtTheRecordOverHTTP` erweitert (Zuweisung und Mitgliedschaft doppelt: 409).
   - `scripts/ci.sh` am 2026-11-15 (PL57 und PL58 zusammen geprüft): alle 19 Schritte grün; die
     Schnellstufe gegen die Basislinie überall schneller (LZ4 p95 7,1 statt 13,2 ms, LZ2 4,4 statt 6,6 ms).
+  - Nachtrag (Listen jedes Mal geplant): `scripts/ci.sh` am 2026-11-15 alle 19 Schritte grün
+    (LZ2 p95 5,0 statt 7,1 ms, LZ3 7,0 statt 11,8 ms gegen die Basislinie); ein Lauf mit auch
+    neu geplanter Suche war rot (LZ3 14,1 statt 11,2 ms), darum behält die Suche den Plan-Speicher.
 - **Nicht geprüft:** Rechte verschiedener Art zugleich (etwa „beteiligt“ ODER „eigene
   Einheit“) bleiben eine ODER-Bedingung; bei Teams mit Hunderttausenden Vorgängen kostet das
   weiter rund eine halbe Sekunde (gemessen auf `ki-lab`).

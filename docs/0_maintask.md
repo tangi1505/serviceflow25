@@ -70,7 +70,7 @@ grobe Schätzungen der reinen Umsetzung in Arbeitswochen, ohne Abnahme und ohne 
   (PL5 von dir per `curl` bestätigt, ✅); UI1, UI2 und WF1 gebaut: **der Durchstich ist
   am 2026-10-28 abgenommen (H13 ✅).** Block B des Plattform-Kerns ist seit 2026-10-28
   fertig und abgenommen: PL6 bis PL30 ✅, dazu PL31 und PL32 aus Block C vorgezogen (✅). Nach E108 geht es weiter
-  mit Block B der Workflow-Engine: WF2 bis WF4 und WF8 bis WF15 sind gebaut und 🟢, PL41 (Verteiler in Stapeln) eingeschoben und 🟢; Block B der Workflow-Engine ist damit gebaut und wartet auf deine Abnahme. PL42 (Zeitleiste, E121) ist vor UI3 eingeschoben und 🟢. Block B der Oberfläche läuft: UI3 (Detailseite, E122) ist 🟢; UI28 (Auswahlfeld mit Suche, E123, vor UI4 eingeschoben) ist 🟢; UI4 (Filter und gespeicherte Suchen, E124) ist 🟢; UI5 (Export, E125) ist 🟢; UI6 (Massenaktionen, E126) und UI7 (formatierter Text, E127) sind 🟢; UI8 (Live, E130) ist 🟢; UI9 (Einstellungen, E131) ist 🟢; UI10 (Portal und Arbeitsplatz, E132) ist 🟢; UI11 (Formulare, E133) ist 🟢; UI12 (Bedingungen und Übersetzung, E134) ist 🟢; PL43 (Kundenschicht, E135) ist 🟢; PL44 (Mandantengrenze, E138) ist 🟢; PL45 (Nebendaten je Mandant, E139) ist 🟢; PL46 (Anlegen und Eindeutigkeit je Mandant, E140) ist 🟢; PL47 (Datenbank je Mandant) ist in PL47a bis PL47e geteilt (E141), PL47a (Naht) ist 🟢; PL47b (Steuer-Datenbank, E142) ist 🟢; PL47c (Hintergrund je Datenbank, E143) ist 🟢; PL47d (Betrieb, E144) ist 🟢; PL47e (Rundgang in beiden Betriebsarten, E145) ist 🟢, PL47 damit fertig; PL48 (Auswertungen über Mandanten, E146) ist 🟢; seit E149 wieder ein Agent; UI25 (Typ- und Feld-Editor, UI-Plan E29) ist 🟢; PL51 (CI mit eigenem Stand je Lauf, E150) ist 🟢; UI26.1 (Workflow-Editor als Tabelle, UI-Plan E30) ist 🟢; UI26.2 (Graph, E151) ist 🟢; UI27 (Rollen-Editor, E152) ist 🟢; die Editoren UI25 bis UI27 sind damit fertig; UI29 (Design-Kit, E153) ist 🟢; UI30 (Rahmen und Liste, E154) ist 🟢; UI31 (Befehlszeile, E155) ist 🟢; die Sperre der River-Migration (Nachtrag zu PL51 im Kern-Plan) ist gebaut und grün; UI34 (Fristspalte, E156) ist 🟢; PL49 (laufende Nummer, E157) ist 🟢; die Nachträge Spiegelkonto (PL47b, Wiederholung nach Zusammenstoß) und reservierter Feldname `tenant` sind gebaut und grün; SD1 (Grundpaket `sd`, E158) ist 🟢; SD2 (Störung, E159) ist 🟢; SD3 (Fristen der Störung, E160) ist 🟢; SD4 (betroffene Elemente und Bezüge, E161) ist 🟢; PL52 (schnellere CI, E162) ist 🟢; SD5 (Major Incident, E163) ist 🟢; SD7 (Warteschlangen, E164) ist 🟢; SD10 (Mail hinaus, E165) ist 🟢; SD8 (Textbausteine, E166) ist 🟢; SD9 (Notizen im Arbeitsplatz, E167) ist 🟢; SD16 ist in SD16a bis SD16d geteilt (E168), SD16a (Wissen, Artikel im Portal) ist 🟢; SD16b (Fassungen, E169) ist 🟢; SD16c (Sprache der Inhalte, E171) ist 🟢; SD16d (Ablauf, E172) ist 🟢, SD16 damit fertig (offen: Lasttor LZ1 zweimal bei +11 % gegen die Basislinie, die Basislinie erneuerst du); SD18 (Wissen am Vorgang und im Portal, E173) ist 🟢; SD14 (Startseite des Portals, E174) ist 🟢 (offen: Lasttor rot durch die Messung, nicht durch SD14; die Basislinie erneuerst du); WF6 (Genehmigungen, E175) ist 🟢; SD6 (Anfrage, E176) ist 🟢; SD13 (Servicekatalog, E177) ist 🟢 (offen: Lasttor LZ3 rot gegen die alte Basislinie, im A/B gegen SD6 +1 %; die Basislinie erneuerst du); SD17 (Freigabe von Wissen, E178) ist 🟢; WF7 (Genehmigungsvorlagen und Erinnerung, E179) ist 🟢; SD20 (Einstellungen am Organisationsbaum, E180) ist 🟢 (UI-Plan E23, deine Entscheidung 2026-10-30); UI13a (Dashboards, E181) und UI13b (Dashboards eingebettet) sind 🟢; UI14 ist in UI14a und UI14b geteilt (E182), UI14a (Lösungsdatum und -dauer, Gruppieren nach einer Rolle, Kopieren von Dashboards) und UI14b (mitgelieferte Dashboards Helpdesk und Statistik) sind 🟢, die Dashboards von Meilenstein 1 damit fertig; H14 (Leistungsmessung in Prod-Größe, E128) läuft, deine Entscheidungen 2026-11-13: neue Basislinie aus dem Stand nach UI14b freigegeben, Daten voll über die Bulk-API mit der Geschichte per SQL, neue Ziele LZ14 bis LZ17; dabei gefunden und vorgezogen PL53 (Typen und Kalender im Speicher, E183) 🟢; die volle Messung und das Docker-Deploy ziehen auf einen eigenen Server um (E184): Server `ki-lab`, Deploy über Docker Compose in 44 s bereit, 18,25 Mio. Störungen in 5 h 30 min über die Bulk-API geladen; dabei gefunden: LZ2 liest ohne Index die ganze Tabelle, darum vorgezogen PL54 (Indizes je Typ, E185) 🟢; der Import hinterließ rund 70 Mio. Hintergrund-Jobs, die im Testbestand abgeräumt sind (deine Entscheidung 2026-11-14), der Befund kommt in den Bericht; die volle Stufe auf `ki-lab` (2026-11-14/15): LZ1, LZ5, LZ13 bis LZ17 erfüllt; LZ2, LZ3 und LZ4 verfehlt, dafür nach deinen Entscheidungen die Kernaufgaben PL55 (Suche neueste zuerst, E188) und PL56 (Zeitgrenze, E188) 🟢, PL57 (Rechtefilter, E187) und PL58 (Zwischenspeicher im Hintergrund, E186) 🟢, danach misst H14 neu;
+  mit Block B der Workflow-Engine: WF2 bis WF4 und WF8 bis WF15 sind gebaut und 🟢, PL41 (Verteiler in Stapeln) eingeschoben und 🟢; Block B der Workflow-Engine ist damit gebaut und wartet auf deine Abnahme. PL42 (Zeitleiste, E121) ist vor UI3 eingeschoben und 🟢. Block B der Oberfläche läuft: UI3 (Detailseite, E122) ist 🟢; UI28 (Auswahlfeld mit Suche, E123, vor UI4 eingeschoben) ist 🟢; UI4 (Filter und gespeicherte Suchen, E124) ist 🟢; UI5 (Export, E125) ist 🟢; UI6 (Massenaktionen, E126) und UI7 (formatierter Text, E127) sind 🟢; UI8 (Live, E130) ist 🟢; UI9 (Einstellungen, E131) ist 🟢; UI10 (Portal und Arbeitsplatz, E132) ist 🟢; UI11 (Formulare, E133) ist 🟢; UI12 (Bedingungen und Übersetzung, E134) ist 🟢; PL43 (Kundenschicht, E135) ist 🟢; PL44 (Mandantengrenze, E138) ist 🟢; PL45 (Nebendaten je Mandant, E139) ist 🟢; PL46 (Anlegen und Eindeutigkeit je Mandant, E140) ist 🟢; PL47 (Datenbank je Mandant) ist in PL47a bis PL47e geteilt (E141), PL47a (Naht) ist 🟢; PL47b (Steuer-Datenbank, E142) ist 🟢; PL47c (Hintergrund je Datenbank, E143) ist 🟢; PL47d (Betrieb, E144) ist 🟢; PL47e (Rundgang in beiden Betriebsarten, E145) ist 🟢, PL47 damit fertig; PL48 (Auswertungen über Mandanten, E146) ist 🟢; seit E149 wieder ein Agent; UI25 (Typ- und Feld-Editor, UI-Plan E29) ist 🟢; PL51 (CI mit eigenem Stand je Lauf, E150) ist 🟢; UI26.1 (Workflow-Editor als Tabelle, UI-Plan E30) ist 🟢; UI26.2 (Graph, E151) ist 🟢; UI27 (Rollen-Editor, E152) ist 🟢; die Editoren UI25 bis UI27 sind damit fertig; UI29 (Design-Kit, E153) ist 🟢; UI30 (Rahmen und Liste, E154) ist 🟢; UI31 (Befehlszeile, E155) ist 🟢; die Sperre der River-Migration (Nachtrag zu PL51 im Kern-Plan) ist gebaut und grün; UI34 (Fristspalte, E156) ist 🟢; PL49 (laufende Nummer, E157) ist 🟢; die Nachträge Spiegelkonto (PL47b, Wiederholung nach Zusammenstoß) und reservierter Feldname `tenant` sind gebaut und grün; SD1 (Grundpaket `sd`, E158) ist 🟢; SD2 (Störung, E159) ist 🟢; SD3 (Fristen der Störung, E160) ist 🟢; SD4 (betroffene Elemente und Bezüge, E161) ist 🟢; PL52 (schnellere CI, E162) ist 🟢; SD5 (Major Incident, E163) ist 🟢; SD7 (Warteschlangen, E164) ist 🟢; SD10 (Mail hinaus, E165) ist 🟢; SD8 (Textbausteine, E166) ist 🟢; SD9 (Notizen im Arbeitsplatz, E167) ist 🟢; SD16 ist in SD16a bis SD16d geteilt (E168), SD16a (Wissen, Artikel im Portal) ist 🟢; SD16b (Fassungen, E169) ist 🟢; SD16c (Sprache der Inhalte, E171) ist 🟢; SD16d (Ablauf, E172) ist 🟢, SD16 damit fertig (offen: Lasttor LZ1 zweimal bei +11 % gegen die Basislinie, die Basislinie erneuerst du); SD18 (Wissen am Vorgang und im Portal, E173) ist 🟢; SD14 (Startseite des Portals, E174) ist 🟢 (offen: Lasttor rot durch die Messung, nicht durch SD14; die Basislinie erneuerst du); WF6 (Genehmigungen, E175) ist 🟢; SD6 (Anfrage, E176) ist 🟢; SD13 (Servicekatalog, E177) ist 🟢 (offen: Lasttor LZ3 rot gegen die alte Basislinie, im A/B gegen SD6 +1 %; die Basislinie erneuerst du); SD17 (Freigabe von Wissen, E178) ist 🟢; WF7 (Genehmigungsvorlagen und Erinnerung, E179) ist 🟢; SD20 (Einstellungen am Organisationsbaum, E180) ist 🟢 (UI-Plan E23, deine Entscheidung 2026-10-30); UI13a (Dashboards, E181) und UI13b (Dashboards eingebettet) sind 🟢; UI14 ist in UI14a und UI14b geteilt (E182), UI14a (Lösungsdatum und -dauer, Gruppieren nach einer Rolle, Kopieren von Dashboards) und UI14b (mitgelieferte Dashboards Helpdesk und Statistik) sind 🟢, die Dashboards von Meilenstein 1 damit fertig; H14 (Leistungsmessung in Prod-Größe, E128) läuft, deine Entscheidungen 2026-11-13: neue Basislinie aus dem Stand nach UI14b freigegeben, Daten voll über die Bulk-API mit der Geschichte per SQL, neue Ziele LZ14 bis LZ17; dabei gefunden und vorgezogen PL53 (Typen und Kalender im Speicher, E183) 🟢; die volle Messung und das Docker-Deploy ziehen auf einen eigenen Server um (E184): Server `ki-lab`, Deploy über Docker Compose in 44 s bereit, 18,25 Mio. Störungen in 5 h 30 min über die Bulk-API geladen; dabei gefunden: LZ2 liest ohne Index die ganze Tabelle, darum vorgezogen PL54 (Indizes je Typ, E185) 🟢; der Import hinterließ rund 70 Mio. Hintergrund-Jobs, die im Testbestand abgeräumt sind (deine Entscheidung 2026-11-14), der Befund kommt in den Bericht; die volle Stufe auf `ki-lab` (2026-11-14/15): LZ1, LZ5, LZ13 bis LZ17 erfüllt; LZ2, LZ3 und LZ4 verfehlt, dafür nach deinen Entscheidungen die Kernaufgaben PL55 (Suche neueste zuerst, E188) und PL56 (Zeitgrenze, E188) 🟢, PL57 (Rechtefilter, E187) und PL58 (Zwischenspeicher im Hintergrund, E186) 🟢, H14 hat am 2026-11-15 neu gemessen: alle messbaren Ziele erfüllt (LZ1 p95 1,7 ms, LZ2 139 ms, LZ3 101 ms, LZ4 29 ms, LZ5 8.850 Zeilen/s, LZ13 bis LZ17), LZ6 bis LZ12 warten auf ihre Aufgaben; H14 ist 🟢, die Schwachstellen aus der Messung stehen als PL59 bis PL64 zu deiner Entscheidung im Kern-Plan;
   Block C und D des Kerns nach Meilenstein 1. Aufgabe für Aufgabe, jede selbst getestet, mit
   Prüfanleitung für dich. H11 stand vor dem ersten Code von PL, weil ab dann jede Änderung
   gemessen wird (E32).
@@ -107,7 +107,7 @@ grobe Schätzungen der reinen Umsetzung in Arbeitswochen, ohne Abnahme und ohne 
 | **H11** | Leistungsmessung als Gate (E32, E63 bis E65): Lastwerkzeug und Datensatzgenerator unter `test/load/`, Ausstattung des Messrechners, schnelle Stufe gegen die Basislinie in jedem CI-Lauf, volle Stufe mit den Zielen LZ1 bis LZ12 als eigener Befehl; Ziele, deren Endpunkt es noch nicht gibt, stehen als „wartet auf …" im Bericht | ✅ | 2 d | In WSL in `~/police/itsm`: `docker compose run --rm tools scripts/ci.sh` endet mit `Leistungsgate bestanden` und `ci: all steps passed`. Mit `docker compose run --rm -e ITSM_LOAD_INJECT_DELAY=3ms tools scripts/ci.sh` endet sie mit `FAIL LP1 …` und Rückgabe 1. `docker compose run --rm tools go run ./test/load generate --size=prod --out=/tmp/prod` erzeugt 70.000 Personen, 50.000 Computer, 100 Hypervisoren, 500 Switches und 18.250.000 Tickets. In `test/load/baseline.json` trägst du bei Freigabe `approved_by` ein |
 | **H12** | Auf TypeScript 7 und ESLint 10 wechseln, sobald `typescript-eslint` und `eslint-plugin-jsx-a11y` sie unterstützen (E58) | 🔒 Upstream | 0,25 d | `pnpm peers check` meldet nichts, `scripts/ci.sh` ist grün, `pnpm list typescript eslint` zeigt 7.x und 10.x |
 | **H13** | Durchstich abnehmen (E59): Ein Typ `probe` aus einem Paket bekommt seine Tabelle, ist über die API les- und schreibbar, erscheint als Liste und Formular und hat einen Status mit Übergang; die Messung aus H11 läuft dagegen | ✅ | 0,5 d, du und ich | In WSL `docker compose up -d --build`, anmelden unter http://localhost:8092, Typ `probe` in der Liste, Datensatz im Formular anlegen und ändern, Status wechseln; `docker compose run --rm tools go run ./test/load run --scenario durchstich` zeigt LZ1, LZ2 und LZ4 eingehalten |
-| **H14** | Leistungsmessung in Prod-Größe für Meilenstein 1 (E128): neue Basislinie mit Anmeldung (Freigabe durch dich), volle Stufe gegen LZ1 bis LZ13 mit `generate --size=prod`, Lastszenarien für `:export`, `:batch`, gespeicherte Suche mit Rollenfilter und lange Zeitleiste, Hinweis bei LZ6 bis LZ8 berichtigen; Profil eines Bulk-Laufs (Einlesen, JSON, Datenbank) als Grundlage für E129 | ⬜ nach Abnahme von Block B UI und WF | 1,5 d | `docker compose run --rm tools scripts/ci.sh` grün mit freigegebener Basislinie; Bericht der vollen Stufe mit jedem LZ gegen sein Ziel; jedes verfehlte Ziel als eigene Aufgabe im passenden Nebenplan |
+| **H14** | Leistungsmessung in Prod-Größe für Meilenstein 1 (E128): neue Basislinie mit Anmeldung (Freigabe durch dich), volle Stufe gegen LZ1 bis LZ13 mit `generate --size=prod`, Lastszenarien für `:export`, `:batch`, gespeicherte Suche mit Rollenfilter und lange Zeitleiste, Hinweis bei LZ6 bis LZ8 berichtigen; Profil eines Bulk-Laufs (Einlesen, JSON, Datenbank) als Grundlage für E129 | 🟢 | 1,5 d | `docker compose run --rm tools scripts/ci.sh` grün mit freigegebener Basislinie; Bericht der vollen Stufe mit jedem LZ gegen sein Ziel; jedes verfehlte Ziel als eigene Aufgabe im passenden Nebenplan |
 | **H15** | Datenübernahme aus GLPI: Umfang mit der Fachseite klären (V37) und als Aufgaben einem Nebenplan zuordnen, IN oder BT; Befund im [SD-Plan](05_service-desk.md) §2.5 | 🔒 V37 | 0,5 d | Der Umfang steht als Entscheidung in §1; die Aufgaben stehen im gewählten Nebenplan mit Prüfweg, etwa „Kategorien und Wissensartikel aus einer GLPI-Sicherung eingelesen, Anzahl stimmt“ |
 
 **Reihenfolge:** Der Durchstich (PL1 bis PL5, UI1, UI2, WF1) ist mit H13 am 2026-10-28 abgenommen. H12 wartet auf neue Fassungen von `typescript-eslint` und
@@ -463,7 +463,8 @@ und werden mit H10 vermutlich ebenso wachsen.
 Muss-Anforderungen nach E31, gemessen ab H11 bei jeder Änderung (E32). **Prod-Größe** heißt:
 70.000 Personen, 50.000 Computer mit je 150 Softwareeinträgen (7,5 Mio. Installationen), die
 Phase 1 aus §2.2 und Tickets für 10 Jahre zu 5.000 je Tag, also gut 18 Mio. (V14). Gemessen wird
-vorerst auf deinem Rechner in WSL (E50); H11 hält dessen Ausstattung fest. „p95" heißt:
+die schnelle Stufe auf deinem Rechner in WSL (E50); H11 hält dessen Ausstattung fest. Die volle
+Stufe in Prod-Größe läuft seit E184 auf dem Server `ki-lab` (Ausstattung in §7 H14). „p95" heißt:
 95 % aller Anfragen sind mindestens so schnell.
 
 | # | Was | Ziel | Gemessen |
@@ -485,6 +486,12 @@ vorerst auf deinem Rechner in WSL (E50); H11 hält dessen Ausstattung fest. „p
 | **LZ15** | Massenaktion über 1.000 gewählte Zeilen | ≤ 10 s | Lastwerkzeug, ein `:batch` mit 1.000 Zeilen (UI6; neu mit H14) |
 | **LZ16** | Liste einer gespeicherten Suche mit Filter auf „meine Gruppen“ | p95 ≤ 150 ms | Lastwerkzeug, `actors.observer eq @my_groups` (UI4; neu mit H14) |
 | **LZ17** | Zeitleiste eines Datensatzes mit 1.000 Einträgen | p95 ≤ 150 ms | Lastwerkzeug, `GET …/timeline` (PL42; neu mit H14) |
+
+**Gemessen mit H14** (2026-11-15, 70.000 Personen und 18,25 Mio. Störungen auf `ki-lab`, Stand
+`be24055`): LZ1 p95 1,68 ms, LZ2 139 ms, LZ3 101 ms, LZ4 29 ms, LZ5 8.850 Zeilen/s, LZ13
+9.280 Zeilen/s, LZ14 0,30 s, LZ15 1,55 s, LZ16 5,3 ms, LZ17 23,7 ms, alle ohne Fehler und
+erfüllt. LZ6 bis LZ12 warten auf PL33, das Asset-Paket, die Messung der Oberfläche und Helm.
+Einzelheiten und Schwachstellen in §7 H14.
 
 **Herkunft:** Deine Wahl der strengen Stufe am 2026-10-20. Zum Vergleich: Im GLPI-Vorhaben lag das
 Ziel für Phase 2 bei 56 bis 83 Minuten (`..\glpi\docs\01_schnittstellen.md`, K3).
@@ -840,3 +847,92 @@ wird, bis eine Antwort da ist, stehen dort in §2.4. V39 kommt aus dem [UI-Plan]
     fünf Läufe lagen eng beieinander, ein späterer Lauf unter Last kann trotzdem rot werden.
   - Das Laden des Datensatzes über die Bulk-API kommt mit PL31 bis PL33.
   - LZ9 misst die Oberfläche mit Playwright; das kommt mit UI2.
+
+### H14 — Leistungsmessung in Prod-Größe, 2026-11-15
+
+- **Grundlage:** E128; deine Entscheidungen vom 2026-11-13 (Basislinie aus dem Stand nach UI14b,
+  Daten voll über die Bulk-API und die Geschichte per SQL, neue Ziele LZ14 bis LZ17) und E184
+  (volle Stufe und Deploy auf dem Server `ki-lab`, nur Code und erfundene Lastdaten).
+- **Gebaut im Lastwerkzeug `test/load`:**
+  - `fill` lädt 70.000 Personen, Teams und 18,25 Mio. Störungen über die Bulk-API, in Strömen
+    (`--chunk`, auf `ki-lab` 500 Zeilen) und wieder aufsetzbar (`--from`). Danach setzt ein
+    Schritt nur des Werkzeugs die Geschichte per SQL: Anlagedatum über 10 Jahre, offen nur in den
+    letzten 30 Tagen, Status über eine Prüfsumme des Schlüssels verteilt (nicht nach Team),
+    „Gelöst am“, laufende und angehaltene SLA-Uhren. Zum Schluss räumt er die Hintergrund-Jobs
+    des Imports ab. `scripts/check-type-tables.sh` nimmt `test/load/fill.go` aus.
+  - `run --data=prod` misst LZ1, LZ2 und LZ4 auf diesen Störungen: lesen, die Warteschlange eines
+    Teams mit einer Rolle nur für beteiligte Gruppen, Anlegen mit den Regeln und Fristen der
+    Pakete. Neu sind LZ14 bis LZ17 (Export, Massenaktion, gespeicherte Suche mit „meine
+    Gruppen“, Zeitleiste mit 1.000 Einträgen). `--only=` misst einzelne Ziele.
+  - Aufräumen nach jedem Lauf (deine Entscheidung 2026-11-15): LZ4 legt je Lauf 350.000 bis
+    390.000 Störungen an (gemessen 354.455 und 390.711, aufgeräumt in 22 und 31 min); das Werkzeug wirft sie danach mit `:batch` in den Papierkorb und löscht sie
+    mit `:purge` endgültig, nur Datensätze ohne Quelle mit dem Titel des Szenarios. Dasselbe von
+    Hand mit `load cleanup --data=prod --target=…`.
+  - Das Gate meldete bei lauter Fehlern „p95 0,00 ms, ok“; jetzt heißt es „keine erfolgreiche
+    Anfrage“ und ist rot.
+  - Die Basislinie ist neu aus dem Stand nach UI14b gebaut und von dir freigegeben
+    (`approved_by` in `test/load/baseline.json`).
+- **Server `ki-lab`:** AMD Ryzen 7 PRO 8700GE, 16 Kerne, 61 GB, Ubuntu 24.04 mit Kernel 6.8,
+  Docker 29.9.3, bei Hetzner in Deutschland. Deploy als Compose-Projekt `itsm-h14` mit einer
+  Ergänzungsdatei (PostgreSQL mit 8 GB `shared_buffers`, acht Bulk-Worker), die API nur auf
+  `127.0.0.1:18092`; das Werkzeug läuft in einem eigenen Container im selben Netz. Ein Deploy
+  ist nach 20 bis 44 s bereit.
+- **Laden:** 18,25 Mio. Störungen in 5 h 30 min, rund 920 je Sekunde; die Datenbank ist 112 GB
+  groß.
+- **Ergebnis der vollen Stufe** (Stand `be24055`, 32 Arbeiter, je Ziel drei Läufe zu 60 s, der
+  beste zählt; LZ2 und LZ4 nach dem Nachtrag zu PL57 nachgemessen):
+
+  | Ziel | Gemessen | Soll | |
+  | --- | --- | --- | --- |
+  | LZ1 lesen | p95 1,68 ms, 31.852/s | ≤ 50 ms | ✅ |
+  | LZ2 Warteschlange eines Teams | p95 139 ms, 344/s, 0 Fehler | ≤ 150 ms | ✅ |
+  | LZ3 Volltextsuche | p95 101 ms, 365/s | ≤ 300 ms | ✅ |
+  | LZ4 Störung anlegen | p95 29 ms, 2.199/s | ≤ 100 ms | ✅ |
+  | LZ5 Bulk | 8.850 Zeilen/s | ≥ 5.000 | ✅ |
+  | LZ13 Ereignisse eines Bulk-Laufs | 9.280/s | ≥ 5.000 | ✅ |
+  | LZ14 Export 10.000 Zeilen | 0,30 s | ≤ 10 s | ✅ |
+  | LZ15 Massenaktion 1.000 Zeilen | 1,55 s | ≤ 10 s | ✅ |
+  | LZ16 gespeicherte Suche „meine Gruppen“ | p95 5,3 ms | ≤ 150 ms | ✅ |
+  | LZ17 Zeitleiste mit 1.000 Einträgen | p95 23,7 ms | ≤ 150 ms | ✅ |
+  | LZ6 bis LZ12 | wartet auf PL33, das Asset-Paket, die Messung der Oberfläche (UI2) und Helm | | – |
+
+  Dazu LP1 `/healthz` p95 0,54 ms bei 149.451/s und LP2 `/readyz` 0,77 ms bei 67.610/s.
+- **Der Weg dahin:** Die erste volle Stufe am 2026-11-14 verfehlte LZ2, LZ3 und LZ4. Jeder Befund
+  wurde nach deiner Entscheidung eine Kernaufgabe:
+  - LZ2 6,2 s: kein Index auf Status oder Anlagedatum → PL54 (E185), dazu die Sortierung ohne
+    `NULLS LAST`.
+  - LZ3 über 10 s, und solche Suchen hielten alle Verbindungen → PL55 und PL56 (E188).
+  - LZ4: alle Anfragen scheiterten, weil das Nachladen der SLAs in der Anfrage den Pool
+    verklemmte → PL58 (E186).
+  - LZ2 3 bis 8 s: die Rolle war viermal zugewiesen und Mitgliedschaften doppelt → PL57 (E187).
+  - LZ2 danach 431 ms mit 191 Fehlern: nach fünf Ausführungen nahm PostgreSQL einen allgemeinen
+    Plan ohne die Werte (16 s) → Nachtrag zu PL57, Listen werden jedes Mal mit ihren Werten
+    geplant; die Suche behält den Plan-Speicher (deine Entscheidung 2026-11-15).
+  - Schon vorher PL53 (E183): Typen und Kalender im Speicher.
+- **Profil eines Bulk-Laufs (Grundlage für E129):** Vor PL53 ging beim Schreiben einer Störung
+  mehr als die Hälfte der Zeit in das Lesen und Dekodieren der Typdefinitionen (Import 55
+  Zeilen/s). Danach liegt der Import von Störungen bei rund 920 Zeilen/s, weil jede Zeile ihre
+  SLA-Uhren rechnet und Folgejobs anlegt; LZ5 misst einen Typ ohne Fristen und schafft 8.850.
+- **Schwachstellen, je als Kernaufgabe zu deiner Entscheidung (Kern-Plan PL59 bis PL64):**
+  - PL59: Der Import alter Daten löst je Zeile Fristen, Benachrichtigungen und Regeln aus; für
+    18,25 Mio. Störungen waren das rund 70 Mio. Jobs, `river_job` hielt 35 GB (E86: 7 Tage).
+  - PL60: Bulk mit SLA-Uhren rund 920 Zeilen/s statt der 5.000 aus LZ5.
+  - PL61: Rivers Grenze von einer Minute je Job bricht große Bulk-Ströme ab (2.000 Zeilen mit
+    Fristen); auf `ki-lab` umgangen mit Strömen zu 500 Zeilen.
+  - PL62: Rechte verschiedener Art zugleich (etwa „beteiligt“ ODER „eigene Einheit“) bleiben
+    eine ODER-Bedingung, rund eine halbe Sekunde bei großen Teams.
+  - PL63: Ein neuer Index auf einer großen Tabelle hält das Schreiben für die Dauer des Baus an;
+    Kundenschicht und Typ-Editor kennen `indexes` noch nicht.
+  - PL64: Suchwörter, die nur vor langer Zeit häufig waren, durchsuchen alles und enden an der
+    Zeitgrenze von 10 s.
+- **Belegt:** die Läufe oben in `itsm-h14/run.log` auf `ki-lab`, die Berichte `full.json` und
+  `only.json` daneben. Unit-Tests des Werkzeugs (Gate ohne erfolgreiche Anfrage, Szenarien,
+  Aufräumen) und `scripts/ci.sh` am 2026-11-15 mit allen 19 Schritten grün; die Schnellstufe gegen
+  die Basislinie überall gleich oder schneller (LZ1 p95 1,07 statt 4,55 ms, LZ4 7,3 statt 13,7 ms).
+  Ein erster Lauf war nur an `TestSecurityEventLog` rot; der Test ist allein grün und sein Code
+  seit PL48 unverändert.
+- **Nicht geprüft:**
+  - LZ6 bis LZ12 (siehe Tabelle).
+  - Eine Instanz; das Werkzeug läuft auf demselben Server und nimmt ihm CPU.
+  - Der Server ist nicht die Hardware des Kunden; das kommt mit Meilenstein 4.
+  - Die Oberfläche mit diesem Bestand siehst du dir auf `ki-lab` an (Zugang im Bericht an dich).

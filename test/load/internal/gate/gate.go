@@ -113,6 +113,10 @@ func throughput(cur Report, r Rules, all []scenario.Scenario) (Report, []Finding
 	targets := map[string]float64{}
 	for _, s := range all {
 		targets[s.ID] = s.Target
+		if s.Kind == scenario.Duration && s.Target > 0 {
+			// A whole run within a time (LZ14, LZ15): rows per second it must reach.
+			targets[s.ID] = -s.Target
+		}
 	}
 	rest := cur
 	rest.Results = map[string]measure.Result{}
@@ -133,6 +137,9 @@ func throughput(cur Report, r Rules, all []scenario.Scenario) (Report, []Finding
 			continue
 		}
 		target := targets[id]
+		if target < 0 {
+			target = float64(c.Rows) / -target
+		}
 		switch {
 		case c.RPS < target:
 			out = append(out, Finding{ID: id, Fail: true, Text: fmt.Sprintf("%d Zeilen, %.0f Zeilen/s, Ziel ≥ %.0f", c.Rows, c.RPS, target)})
@@ -164,6 +171,11 @@ func Full(cur Report, all []scenario.Scenario) []Finding {
 		out = append(out, errorFindings(s.ID, c)...)
 		switch s.Kind {
 		case scenario.P95:
+			if c.Requests > 0 && c.Errors >= c.Requests {
+				// Every request failed: there is no time to judge, and 0 ms is not a pass (H14).
+				out = append(out, Finding{ID: s.ID, Fail: true, Text: fmt.Sprintf("keine erfolgreiche Anfrage, Ziel p95 ≤ %.0f ms", s.Target)})
+				continue
+			}
 			out = append(out, Finding{ID: s.ID, Fail: c.P95ms > s.Target, Text: fmt.Sprintf("p95 %.2f ms, Ziel ≤ %.0f ms", c.P95ms, s.Target)})
 		case scenario.RPS:
 			unit := "Anfragen/s"
@@ -171,6 +183,13 @@ func Full(cur Report, all []scenario.Scenario) []Finding {
 				unit = "Zeilen/s"
 			}
 			out = append(out, Finding{ID: s.ID, Fail: c.RPS < s.Target, Text: fmt.Sprintf("%.0f %s, Ziel ≥ %.0f", c.RPS, unit, s.Target)})
+		case scenario.Duration:
+			// A whole run within Target seconds (LZ14, LZ15): its rows at its rate.
+			secs := 0.0
+			if c.RPS > 0 {
+				secs = float64(c.Rows) / c.RPS
+			}
+			out = append(out, Finding{ID: s.ID, Fail: c.RPS <= 0 || secs > s.Target, Text: fmt.Sprintf("%d Zeilen in %.2f s, Ziel ≤ %.0f s", c.Rows, secs, s.Target)})
 		default:
 			out = append(out, Finding{ID: s.ID, Text: fmt.Sprintf("p95 %.2f ms, %.0f Anfragen/s, ohne festes Ziel", c.P95ms, c.RPS)})
 		}

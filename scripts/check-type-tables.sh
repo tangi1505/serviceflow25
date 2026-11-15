@@ -4,13 +4,15 @@
 #
 # Only records and query may touch type tables (Hauptplan E34, architektur.md §5; PL8): any Go
 # string literal naming a table rec_<package>_<type> elsewhere breaks the CI. Tests are free
-# to set up and inspect tables.
+# to set up and inspect tables, and so is the fill of the load tool (test/load/fill.go): it gives
+# the incidents of the load data their ten years of history in SQL (H14, Hauptplan E128).
 set -eu
 cd "$(dirname "$0")/.."
 
 hits=$(grep -rn --include='*.go' -E '"[^"]*rec_[a-z]' internal cmd test 2>/dev/null \
   | grep -v -E '^internal/(records|query)/' \
-  | grep -v -E '_test\.go:' || true)
+  | grep -v -E '_test\.go:' \
+  | grep -v -E '^test/load/fill\.go:' || true)
 if [ -n "$hits" ]; then
   echo "SQL on type tables belongs into internal/records or internal/query (E34):"
   echo "$hits"

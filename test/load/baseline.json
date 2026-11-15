@@ -4,34 +4,34 @@
     "cpu": "Intel(R) Core(TM) Ultra 7 255H",
     "cores": 16,
     "memory_gb": 31.1,
-    "kernel": "6.18.54.1-microsoft-standard-WSL2",
+    "kernel": "6.18.58.1-microsoft-standard-WSL2",
     "go_version": "go1.27.3"
   },
-  "load1": 3.57,
+  "load1": 7.32,
   "results": {
     "LP1": {
-      "requests": 181555,
+      "requests": 169715,
       "errors": 0,
-      "p50_ms": 0.146,
-      "p95_ms": 0.392,
-      "p99_ms": 0.718,
-      "rps": 45388.75
+      "p50_ms": 0.155,
+      "p95_ms": 0.427,
+      "p99_ms": 0.782,
+      "rps": 42428.75
     },
     "LP2": {
-      "requests": 78487,
+      "requests": 73243,
       "errors": 0,
-      "p50_ms": 0.369,
-      "p95_ms": 0.664,
-      "p99_ms": 1.011,
-      "rps": 19621.75
+      "p50_ms": 0.407,
+      "p95_ms": 0.677,
+      "p99_ms": 0.977,
+      "rps": 18310.75
     },
     "LZ1": {
-      "requests": 16279,
+      "requests": 12683,
       "errors": 0,
-      "p50_ms": 1.795,
-      "p95_ms": 3.316,
-      "p99_ms": 4.523,
-      "rps": 4069.75
+      "p50_ms": 2.366,
+      "p95_ms": 3.981,
+      "p99_ms": 5.216,
+      "rps": 3170.75
     },
     "LZ13": {
       "requests": 1,
@@ -39,32 +39,32 @@
       "p50_ms": 0,
       "p95_ms": 0,
       "p99_ms": 0,
-      "rps": 6720.371040072146,
+      "rps": 8121.992750202873,
       "rows": 20000
     },
     "LZ2": {
-      "requests": 7876,
+      "requests": 7140,
       "errors": 0,
-      "p50_ms": 3.931,
-      "p95_ms": 6.285,
-      "p99_ms": 7.657,
-      "rps": 1969
+      "p50_ms": 4.433,
+      "p95_ms": 6.344,
+      "p99_ms": 8.745,
+      "rps": 1785
     },
     "LZ3": {
-      "requests": 6820,
+      "requests": 4527,
       "errors": 0,
-      "p50_ms": 4.369,
-      "p95_ms": 7.272,
-      "p99_ms": 9.644,
-      "rps": 1705
+      "p50_ms": 6.705,
+      "p95_ms": 10.296,
+      "p99_ms": 13.498,
+      "rps": 1131.75
     },
     "LZ4": {
-      "requests": 5306,
+      "requests": 4990,
       "errors": 0,
-      "p50_ms": 5.726,
-      "p95_ms": 9.374,
-      "p99_ms": 11.95,
-      "rps": 1326.5
+      "p50_ms": 6.016,
+      "p95_ms": 10.237,
+      "p99_ms": 13.484,
+      "rps": 1247.5
     },
     "LZ5": {
       "requests": 1,
@@ -72,7 +72,7 @@
       "p50_ms": 0,
       "p95_ms": 0,
       "p99_ms": 0,
-      "rps": 11576.849576863167,
+      "rps": 9169.704911225499,
       "rows": 20000
     }
   },
@@ -85,6 +85,7 @@
     "LZ8": "PL32, PL33",
     "LZ9": "UI2 (Messung mit Playwright)"
   },
-  "binary_sha256": "b0ac8f7cab397fcd654b608979f926f3d55e84bbc130d034fd8089c532c51ac4",
-  "note": "Basislinie nach PL52 (Hauptplan E162), 2026-11-03: Stand nach SD4 mit allen Szenarien der schnellen Stufe"
+  "binary_sha256": "bc8bfb9a2706fdb11d5d65580241e8f1457e129005d639f51a406733e7021bde",
+  "note": "H14 (Hauptplan E128): Stand nach UI14b, Commit 3b024c8, mit Anmeldung; gemessen am 2026-11-13",
+  "approved_by": "Pascal Frechen, 2026-11-13 (H14, im Chat)"
 }

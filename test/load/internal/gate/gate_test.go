@@ -100,6 +100,19 @@ func TestFullJudgesTargetsAndReportsWaiting(t *testing.T) {
 	if !waiting {
 		t.Errorf("LZ3 must be reported as waiting: %+v", f)
 	}
+
+	// Every request failed: no "p95 0.00 ms, ok" line, the target itself fails (H14).
+	f = Full(Report{Results: map[string]measure.Result{"LZ1": {Requests: 192, Errors: 192}}}, all[:1])
+	var lines []string
+	for _, x := range f {
+		lines = append(lines, x.Text)
+		if !x.Fail {
+			t.Errorf("all failed, but %q passes", x.Text)
+		}
+	}
+	if !strings.Contains(strings.Join(lines, "|"), "keine erfolgreiche Anfrage") {
+		t.Errorf("lines %q", lines)
+	}
 }
 
 // A throughput run (LZ5, PL32) is judged by its target, and against the baseline when the

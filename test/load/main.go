@@ -9,6 +9,7 @@
 //
 //	go run ./test/load machine
 //	go run ./test/load generate --size=ci --out=/tmp/data
+//	go run ./test/load fill --size=prod --target=http://127.0.0.1:18080 --database=postgres://…
 //	go run ./test/load run --stage=quick --target=http://127.0.0.1:18080 \
 //	    --baseline-target=http://127.0.0.1:18081 --out=/tmp/quick.json
 //	go run ./test/load gate --stage=quick --result=/tmp/quick.json
@@ -91,7 +92,7 @@ func main() {
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("command missing: machine, generate, run, gate, baseline")
+		return errors.New("command missing: machine, generate, fill, run, cleanup, gate, baseline")
 	}
 	switch args[0] {
 	case "machine":
@@ -103,8 +104,12 @@ func run(args []string, out io.Writer) error {
 		}{m, load})
 	case "generate":
 		return cmdGenerate(args[1:], out)
+	case "fill":
+		return cmdFill(args[1:], out)
 	case "run":
 		return cmdRun(args[1:], out)
+	case "cleanup":
+		return cmdCleanup(args[1:], out)
 	case "gate":
 		return cmdGate(args[1:], out)
 	case "baseline":
@@ -112,6 +117,39 @@ func run(args []string, out io.Writer) error {
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+// cmdCleanup removes what the scenarios created on a target without measuring (H14): for
+// incidents of LZ4 left by a run that stopped before its cleanup.
+//
+//	go run ./test/load cleanup --data=prod --target=http://127.0.0.1:18080
+func cmdCleanup(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("cleanup", flag.ContinueOnError)
+	target := fs.String("target", "", "base URL of the instance")
+	data := fs.String("data", "", "prod: the scenarios on the data set in Prod size")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *target == "" {
+		return errors.New("cleanup needs --target=URL")
+	}
+	if *data == "prod" {
+		scenario.UseProdData()
+	}
+	ctx := context.Background()
+	client := &http.Client{Timeout: time.Minute}
+	for _, s := range scenario.All() {
+		if s.Cleanup == nil {
+			continue
+		}
+		t0 := time.Now()
+		n, err := s.Cleanup(ctx, client, *target)
+		if err != nil {
+			return fmt.Errorf("%s: %w", s.ID, err)
+		}
+		fmt.Fprintf(out, "%-5s aufgeräumt  %d Datensätze in %s\n", s.ID, n, time.Since(t0).Round(time.Second))
+	}
+	return nil
 }
 
 func cmdGenerate(args []string, out io.Writer) error {
@@ -167,6 +205,8 @@ func cmdRun(args []string, out io.Writer) error {
 	file := fs.String("out", "", "write the report as JSON to this file")
 	delay := fs.Duration("inject-delay", 0, "put a proxy with this extra delay in front of the new build (self-test of the gate)")
 	ignoreLoad := fs.Bool("ignore-load", false, "measure even when the machine is busy")
+	data := fs.String("data", "ci", "ci, or prod for LZ1, LZ2 and LZ4 on the incidents of test/load fill (H14)")
+	only := fs.String("only", "", "comma-separated scenario ids, default all (a partial report never makes a baseline)")
 	waitIdle := fs.Duration("wait-for-idle", 0, "wait up to this long for the load to drop below the limit before measuring")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -228,8 +268,20 @@ func cmdRun(args []string, out io.Writer) error {
 	if oldBase != "" {
 		rep.Baseline = map[string]measure.Result{}
 	}
+	if *data == "prod" {
+		scenario.UseProdData()
+	}
 	opts := measure.Options{Workers: st.workers, Warmup: st.warmup, Duration: st.duration}
+	chosen := map[string]bool{}
+	for _, id := range strings.Split(*only, ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			chosen[id] = true
+		}
+	}
 	for _, s := range scenario.All() {
+		if len(chosen) > 0 && !chosen[s.ID] {
+			continue
+		}
 		if !s.Ready() {
 			rep.Waiting[s.ID] = s.WaitsFor
 			continue
@@ -310,6 +362,19 @@ func cmdRun(args []string, out io.Writer) error {
 		rep.Results[s.ID] = m
 		fmt.Fprintf(out, "%-5s neu        p50 %7.2f ms  p95 %7.2f ms  p99 %7.2f ms  %8.0f/s  Fehler %d  (p95 der Läufe: %s)\n",
 			s.ID, m.P50ms, m.P95ms, m.P99ms, m.RPS, m.Errors, p95s(newRuns))
+		if s.Cleanup != nil {
+			for _, base := range []string{newBase, oldBase} {
+				if base == "" {
+					continue
+				}
+				t0 := time.Now()
+				n, err := s.Cleanup(ctx, client, base)
+				if err != nil {
+					return fmt.Errorf("%s: aufräumen an %s: %w", s.ID, base, err)
+				}
+				fmt.Fprintf(out, "%-5s aufgeräumt  %d Datensätze in %s\n", s.ID, n, time.Since(t0).Round(time.Second))
+			}
+		}
 		switch {
 		case unavailable != "":
 			rep.Baseline[s.ID] = measure.Result{Unavailable: unavailable}

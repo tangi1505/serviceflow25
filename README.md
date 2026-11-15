@@ -162,6 +162,20 @@ Stufe und der Datensatz in Prod-Größe:
 docker compose run --rm tools go run ./test/load generate --size=prod --out=/tmp/data
 ```
 
+Die Messung in Prod-Größe (H14) lädt 70.000 Personen und 18,25 Mio. Störungen über die Bulk-API
+einer laufenden Instanz und setzt die Geschichte direkt in deren Datenbank; danach misst die
+volle Stufe auf diesem Bestand (`--only=LZ2,LZ4` für einzelne Ziele) und räumt die angelegten
+Störungen wieder ab. Die Instanz braucht so viele Bulk-Worker (`ITSM_WORKERS_BULK`) wie
+`--parallel`:
+
+```bash
+go run ./test/load fill --size=prod --target=http://itsm:8080 --database=postgres://… --chunk=500 --parallel=8
+```
+
+```bash
+go run ./test/load run --stage=full --data=prod --target=http://itsm:8080 --out=full.json
+```
+
 ## Aufbau / Layout
 
 | Pfad | Inhalt |

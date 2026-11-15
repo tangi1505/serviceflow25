@@ -56,6 +56,9 @@ type Scenario struct {
 	// Throughput is a run measured as a whole instead of single requests (LZ5, PL32): it sends
 	// rows rows and returns how many were written; the measurement is rows per second.
 	Throughput func(ctx context.Context, client *http.Client, base string, rows int) (int, error)
+	// Cleanup removes what the measurement created, so that the next run starts on the same
+	// data (H14: LZ4 in Prod size creates some 350,000 incidents a run); it returns how many.
+	Cleanup func(ctx context.Context, client *http.Client, base string) (int, error)
 }
 
 // Ready reports whether the scenario can run.
@@ -273,7 +276,7 @@ func (s session) loadRules(ctx context.Context, client *http.Client, base string
 
 // All returns every scenario in report order.
 func All() []Scenario {
-	return []Scenario{
+	return prodScenarios([]Scenario{
 		{ID: "LP1", Title: "Health-Endpunkt (HTTP-Stapel ohne Abhängigkeiten)", Kind: None, Request: get("/healthz")},
 		{ID: "LP2", Title: "Readiness (eine Abfrage an PostgreSQL, ein PING an Valkey)", Kind: None, Request: get("/readyz")},
 		{ID: "LZ1", Title: "Einen Datensatz über die API lesen (mit Sitzung)", Kind: P95, Target: 50, Prepare: prepareRead},
@@ -281,13 +284,17 @@ func All() []Scenario {
 		{ID: "LZ3", Title: "Volltextsuche über alle lesbaren Typen", Kind: P95, Target: 300, Prepare: prepareSearch},
 		{ID: "LZ4", Title: "Einen Datensatz schreiben, mit zehn Regeln (WF4)", Kind: P95, Target: 100, Prepare: prepareCreate},
 		{ID: "LZ5", Title: "Bulk-Abgleich je Instanz (asynchron, probe.probe und core.person gemischt)", Kind: RPS, Target: 5000, Throughput: bulkRun},
-		{ID: "LZ6", Title: "Phase 2 voll: 50.000 Computer mit je 150 Softwareeinträgen", Kind: Duration, Target: 300, WaitsFor: "PL32, PL33"},
-		{ID: "LZ7", Title: "Phase 2 Delta: 1 % geändert", Kind: Duration, Target: 30, WaitsFor: "PL32, PL33"},
-		{ID: "LZ8", Title: "Phase 1 voll: 4.600 Geräte", Kind: Duration, Target: 30, WaitsFor: "PL32, PL33"},
+		{ID: "LZ6", Title: "Phase 2 voll: 50.000 Computer mit je 150 Softwareeinträgen", Kind: Duration, Target: 300, WaitsFor: "PL33 und das Asset-Paket (Meilenstein 2)"},
+		{ID: "LZ7", Title: "Phase 2 Delta: 1 % geändert", Kind: Duration, Target: 30, WaitsFor: "PL33 und das Asset-Paket (Meilenstein 2)"},
+		{ID: "LZ8", Title: "Phase 1 voll: 4.600 Geräte", Kind: Duration, Target: 30, WaitsFor: "PL33 und die Typen der Phase 1 (Meilenstein 2)"},
 		{ID: "LZ9", Title: "Seitenwechsel in der Oberfläche", Kind: P95, Target: 500, WaitsFor: "UI2 (Messung mit Playwright)"},
 		{ID: "LZ10", Title: "LZ1 bis LZ4 und LZ9 während eines Massenlaufs", Kind: P95, Target: 0, WaitsFor: "LZ1 bis LZ9"},
 		{ID: "LZ11", Title: "Gesamtlast", Kind: RPS, Target: 2000, WaitsFor: "LZ1 bis LZ4"},
 		{ID: "LZ12", Title: "Durchsatz wächst mit der Zahl der Instanzen", Kind: RPS, Target: 0, WaitsFor: "LZ11, Helm (BT)"},
 		{ID: "LZ13", Title: "Verteiler: Bulk-Lauf, bis Webhooks und Regeln alle Ereignisse haben (PL41)", Kind: RPS, Target: 5000, Throughput: dispatchRun},
-	}
+		{ID: "LZ14", Title: "Export von 10.000 Zeilen als CSV (UI5)", Kind: Duration, Target: 10, Throughput: exportRun},
+		{ID: "LZ15", Title: "Massenaktion über 1.000 gewählte Zeilen (UI6, :batch)", Kind: Duration, Target: 10, Throughput: batchRun},
+		{ID: "LZ16", Title: "Liste einer gespeicherten Suche mit Rollenfilter „meine Gruppen“ (UI4)", Kind: P95, Target: 150, Prepare: prepareMyGroups},
+		{ID: "LZ17", Title: "Zeitleiste eines Datensatzes mit 1.000 Einträgen (PL42)", Kind: P95, Target: 150, Prepare: prepareTimeline},
+	})
 }

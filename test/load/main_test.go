@@ -63,6 +63,44 @@ func fakeITSM() *httptest.Server {
 			_, _ = w.Write([]byte(`{"id":"01a15a3c-8545-7691-b780-9b915e555b1c","username":"load"}`))
 			return
 		}
+		// LZ14 to LZ17 (H14): an export of 10,000 rows, the pages of a query, a batch whose
+		// rows all succeed, and the person of the account.
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, ":export") {
+			w.Header().Set("ITSM-Rows", "10000")
+			_, _ = w.Write([]byte("title\n"))
+			return
+		}
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, ":query") {
+			raw, _ := io.ReadAll(r.Body)
+			items := make([]string, 500)
+			for i := range items {
+				items[i] = fmt.Sprintf(`{"id":"01a15a3c-8545-7691-b780-%012d","version":1}`, i)
+			}
+			next := `"p2"`
+			if bytes.Contains(raw, []byte(`"after"`)) {
+				next = `""`
+			}
+			_, _ = fmt.Fprintf(w, `{"items":[%s],"next":%s}`, strings.Join(items, ","), next)
+			return
+		}
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, ":batch") {
+			var in struct {
+				Rows []struct {
+					ID string `json:"id"`
+				} `json:"rows"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&in)
+			res := make([]string, len(in.Rows))
+			for i, row := range in.Rows {
+				res[i] = fmt.Sprintf(`{"id":%q,"status":"ok","version":2}`, row.ID)
+			}
+			_, _ = fmt.Fprintf(w, `{"results":[%s]}`, strings.Join(res, ","))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v1/auth/me" {
+			_, _ = w.Write([]byte(`{"person_id":"01a15a3c-8545-7691-b780-9b915e555b1d"}`))
+			return
+		}
 		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/api/v1/records/") {
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"01a15a3c-8545-7691-b780-9b915e555b1c","version":1}`))

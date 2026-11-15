@@ -703,6 +703,11 @@ Meilenstein. Werkzeug: `test/load` (E51).
   Endpunkt, Pool, Jobs, Outbox-Rückstand), `pprof` hinter einem Admin-Recht.
 - **Wovon die Zahlen abhängen:** von der Hardware der Messung (V19) und von der Ticketmenge (V14).
   Beides ist offen.
+- **Gemessen mit H14** (2026-11-15, 18,25 Mio. Störungen auf dem Server `ki-lab`, E184): LZ1 bis
+  LZ5 und LZ13 bis LZ17 erfüllt. Dafür nötig waren Indizes je Typ (PL54), die Suche neueste
+  zuerst (PL55), eine Zeitgrenze von 10 s je API-Anfrage (PL56), zusammengefasste Rechtefilter
+  und Listen, die jedes Mal mit ihren Werten geplant werden (PL57), und Zwischenspeicher, die
+  im Hintergrund nachladen (PL58). Offene Schwachstellen: Kern-Plan PL59 bis PL64.
 
 ---
 

@@ -30,8 +30,12 @@ import (
 // bulkSource is the source of the LZ5 rows.
 const bulkSource = "load-lz5"
 
-// bulkWait is how long a run may take before it counts as failed.
-const bulkWait = 5 * time.Minute
+// bulkWait is how long a run may take before it counts as failed; the fill in Prod size
+// (SetBulkWait) waits longer for its larger streams.
+var bulkWait = 5 * time.Minute
+
+// SetBulkWait sets how long a bulk job may take (test/load fill).
+func SetBulkWait(d time.Duration) { bulkWait = d }
 
 // bulkRun sends rows rows and returns how many were written.
 func bulkRun(ctx context.Context, client *http.Client, base string, rows int) (int, error) {
@@ -60,7 +64,7 @@ func bulkRun(ctx context.Context, client *http.Client, base string, rows int) (i
 	)
 	for _, st := range streams {
 		wg.Go(func() {
-			n, err := s.bulkStream(ctx, client, base, st.typ, st.body)
+			n, err := s.bulkStream(ctx, client, base, st.typ, bulkSource, st.body)
 			mu.Lock()
 			defer mu.Unlock()
 			total += n
@@ -83,8 +87,8 @@ func ndjson(n int, row func(i int) map[string]any) []byte {
 }
 
 // bulkStream sends one stream and waits for its job.
-func (s session) bulkStream(ctx context.Context, client *http.Client, base, typ string, body []byte) (int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/v1/records/"+typ+":bulk?source="+bulkSource, bytes.NewReader(body))
+func (s session) bulkStream(ctx context.Context, client *http.Client, base, typ, source string, body []byte) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/v1/records/"+typ+":bulk?source="+source, bytes.NewReader(body))
 	if err != nil {
 		return 0, err
 	}
@@ -125,7 +129,11 @@ func (s session) bulkStream(ctx context.Context, client *http.Client, base, typ 
 			}
 			return n, nil
 		case job.State == "discarded" || job.State == "cancelled" || len(job.Errors) > 0:
-			return 0, fmt.Errorf("job %s: %d errors", job.State, len(job.Errors))
+			first := ""
+			if len(job.Errors) > 0 {
+				first = ": " + string(job.Errors[len(job.Errors)-1])
+			}
+			return 0, fmt.Errorf("job %s: %d errors%s", job.State, len(job.Errors), first)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
