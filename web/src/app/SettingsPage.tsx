@@ -13,7 +13,7 @@
 // the organisation tree, for those who hold manage_settings there (Kern-Plan E59; SD20).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Star } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -28,6 +28,7 @@ import {
   type MySettings,
   type SettingsChange,
 } from "@/api/client";
+import { arrange, pinned, useAreas } from "@/app/Nav";
 import { languages } from "@/i18n";
 import { FieldValue } from "@/render/Batch";
 import { fieldLabel, isCalculated } from "@/render/fields";
@@ -67,13 +68,29 @@ function useSave() {
   const [message, setMessage] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: (change: SettingsChange) => api.setMySettings(change),
-    onMutate: () => setMessage(null),
+    onMutate: (change) => {
+      setMessage(null);
+      // The lists of the navigation show at once (UI37), so that a second click builds on the
+      // first; the server's answer replaces them.
+      const lists = Object.fromEntries(
+        (["nav_order", "nav_hidden", "favorites"] as const)
+          .filter((k) => k in change)
+          .map((k) => [k, change[k] ?? []]),
+      );
+      if (Object.keys(lists).length > 0) {
+        queryClient.setQueryData(mySettingsQuery.queryKey, (old) =>
+          old ? { ...old, ...lists } : old,
+        );
+      }
+    },
     onSuccess: (saved) => {
       queryClient.setQueryData(mySettingsQuery.queryKey, saved);
       setMessage(t("form.saved"));
     },
-    onError: (err) =>
-      setMessage(t("settings.error", { detail: err instanceof Error ? err.message : String(err) })),
+    onError: (err) => {
+      void queryClient.invalidateQueries({ queryKey: mySettingsQuery.queryKey });
+      setMessage(t("settings.error", { detail: err instanceof Error ? err.message : String(err) }));
+    },
   });
   return {
     keep: (change: SettingsChange) => save.mutate(change),
@@ -158,6 +175,182 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
       </div>
       {children}
     </section>
+  );
+}
+
+// Move is the pair of buttons that moves a row up or down in a list.
+function Move({
+  up,
+  down,
+  at,
+  count,
+  onMove,
+}: {
+  up: string;
+  down: string;
+  at: number;
+  count: number;
+  onMove: (from: number, to: number) => void;
+}) {
+  const button =
+    "inline-grid size-7 flex-none place-items-center rounded-md text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground/50 disabled:hover:bg-transparent";
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={up}
+        title={up}
+        disabled={at === 0}
+        onClick={() => onMove(at, at - 1)}
+        className={button}
+      >
+        <ArrowUp aria-hidden="true" className="size-4" />
+      </button>
+      <button
+        type="button"
+        aria-label={down}
+        title={down}
+        disabled={at === count - 1}
+        onClick={() => onMove(at, at + 1)}
+        className={button}
+      >
+        <ArrowDown aria-hidden="true" className="size-4" />
+      </button>
+    </>
+  );
+}
+
+// moved is the list with the item at from put at to.
+function moved<T>(list: T[], from: number, to: number): T[] {
+  const out = [...list];
+  const [item] = out.splice(from, 1);
+  out.splice(to, 0, item!);
+  return out;
+}
+
+// Navigation is the part of Darstellung for the bar (UI37, UI-Plan E50): its width, the order
+// and visibility of the areas, and the favourites in their order.
+function Navigation({
+  settings,
+  keep,
+}: {
+  settings: MySettings;
+  keep: (c: SettingsChange) => void;
+}) {
+  const { t } = useTranslation();
+  const all = useAreas();
+  const areas = arrange(all, settings.nav_order);
+  const hidden = new Set(settings.nav_hidden);
+  const favorites = pinned(all, settings.favorites);
+  const areaOf = new Map(all.flatMap((a) => a.entries.map((e) => [e.id, a.label] as const)));
+  const width = settings.nav.value;
+  const row = "flex min-h-11 items-center gap-2.5 border-b py-1 pr-2 pl-3 last:border-b-0";
+  return (
+    <Section title={t("settings.nav")} hint={t("settings.navHint")}>
+      <div
+        role="group"
+        aria-label={t("settings.navWidth")}
+        className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
+      >
+        {(["wide", "narrow"] as const).map((w) => (
+          <button
+            key={w}
+            type="button"
+            aria-pressed={width === w}
+            onClick={() => keep({ nav: w })}
+            className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              width === w
+                ? "bg-segment-active font-medium text-foreground shadow-sm"
+                : "text-foreground-2"
+            }`}
+          >
+            {t(`settings.navWidths.${w}`)}
+          </button>
+        ))}
+      </div>
+      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        {t("settings.areas")}
+      </h3>
+      <ul className="flex flex-col rounded-md border">
+        {areas.map((a, i) => {
+          const Icon = a.icon;
+          const shown = !hidden.has(a.id);
+          return (
+            <li key={a.id} className={row}>
+              <Icon aria-hidden="true" className="size-4 flex-none text-foreground-2" />
+              <span
+                className={`min-w-0 flex-1 truncate text-sm font-medium ${shown ? "" : "text-muted-foreground"}`}
+              >
+                {a.label}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {t("settings.entries", { count: a.entries.length })}
+              </span>
+              <Move
+                up={t("settings.up", { name: a.label })}
+                down={t("settings.down", { name: a.label })}
+                at={i}
+                count={areas.length}
+                onMove={(from, to) => keep({ nav_order: moved(areas, from, to).map((x) => x.id) })}
+              />
+              <label className="flex w-24 items-center gap-1.5 text-sm text-foreground-2">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-[var(--accent)]"
+                  aria-label={t("settings.show", { name: a.label })}
+                  checked={shown}
+                  onChange={() =>
+                    keep({
+                      nav_hidden: shown
+                        ? [...settings.nav_hidden, a.id]
+                        : settings.nav_hidden.filter((h) => h !== a.id),
+                    })
+                  }
+                />
+                <span aria-hidden="true">{t("settings.shown")}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        {t("nav.favorites")}
+      </h3>
+      {favorites.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("settings.noFavorites")}</p>
+      ) : (
+        <ul className="flex flex-col rounded-md border">
+          {favorites.map((e, i) => (
+            <li key={e.id} className={row}>
+              <Star aria-hidden="true" className="size-4 flex-none text-foreground-2" />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{e.label}</span>
+              <span className="truncate text-sm text-muted-foreground">{areaOf.get(e.id)}</span>
+              <Move
+                up={t("settings.favoriteUp", { name: e.label })}
+                down={t("settings.favoriteDown", { name: e.label })}
+                at={i}
+                count={favorites.length}
+                onMove={(from, to) => {
+                  // Favourites that lead nowhere now stay kept, after the others.
+                  const shownIds = favorites.map((f) => f.id);
+                  const rest = settings.favorites.filter((f) => !shownIds.includes(f));
+                  keep({ favorites: [...moved(shownIds, from, to), ...rest] });
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("settings.unpinFavorite", { name: e.label })}
+                onClick={() => keep({ favorites: settings.favorites.filter((f) => f !== e.id) })}
+              >
+                {t("settings.unpin")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-sm text-muted-foreground">{t("settings.favoritesHint")}</p>
+    </Section>
   );
 }
 
@@ -267,6 +460,7 @@ function Appearance({
           ))}
         </div>
       </Section>
+      {workplace && <Navigation settings={settings} keep={keep} />}
       {workplace && (
         <div className="rounded-md border bg-card p-4">
           <Choice
@@ -462,7 +656,15 @@ export function MySettingsPage() {
         color_scheme: null,
         accent: null,
         density: null,
-        ...(workplace ? { start_dashboard: null } : {}),
+        ...(workplace
+          ? {
+              start_dashboard: null,
+              nav: null,
+              nav_order: null,
+              nav_hidden: null,
+              favorites: null,
+            }
+          : {}),
       }),
     presets: () =>
       keep({ defaults: Object.fromEntries(Object.keys(s.defaults).map((k) => [k, null])) }),

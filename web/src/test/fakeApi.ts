@@ -820,6 +820,9 @@ export function fakeApi(state: FakeState) {
         start_dashboard: val("start_dashboard", ""),
         nav: val("nav", "wide"),
         accent: val("accent", "petrol"),
+        nav_order: state.settings["nav_order"] ?? [],
+        nav_hidden: state.settings["nav_hidden"] ?? [],
+        favorites: state.settings["favorites"] ?? [],
         defaults: state.settings["defaults"] ?? {},
       });
     }

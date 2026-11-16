@@ -93,6 +93,17 @@ func isNav(v string) bool { return v == "wide" || v == "narrow" }
 // DefaultNav is the width of the navigation without an own setting.
 const DefaultNav = "wide"
 
+// The arrangement of the navigation (UI37, UI-Plan E50): lists of keys the interface knows
+// (areas such as package.incident, entries such as package.incident/incident.incident). The
+// server only bounds them; a key without its area or entry is passed by in the interface.
+var navKeyRe = regexp.MustCompile(`^[A-Za-z0-9_.:/-]{1,200}$`)
+
+// MaxNavKeys bounds each list of the arrangement.
+const MaxNavKeys = 200
+
+// navLists are the settings that are lists of keys.
+var navLists = []string{"nav_order", "nav_hidden", "favorites"}
+
 // Value is one setting with where it comes from: own, a node path, or default.
 type Value struct {
 	Value  string `json:"value"`
@@ -114,8 +125,14 @@ type Prefs struct {
 	// Accent is the accent colour, one of Accents (UI38).
 	Accent Value `json:"accent"`
 	// Nav is the width of the navigation, wide or narrow (UI36); only the person sets it.
-	Nav      Value                     `json:"nav"`
-	Defaults map[string]map[string]any `json:"defaults"`
+	Nav Value `json:"nav"`
+	// NavOrder is the own order of the areas of the navigation, NavHidden the areas left out,
+	// Favorites the entries pinned under Favoriten in their order (UI37); only the person sets
+	// them, empty without.
+	NavOrder  []string                  `json:"nav_order"`
+	NavHidden []string                  `json:"nav_hidden"`
+	Favorites []string                  `json:"favorites"`
+	Defaults  map[string]map[string]any `json:"defaults"`
 }
 
 // Settings reads a setting of the tree with the node it comes from.
@@ -241,6 +258,17 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	if v := str("nav"); isNav(v) {
 		out.Nav = Value{v, SourceOwn}
 	}
+	list := func(key string) []string {
+		v := []string{}
+		_ = json.Unmarshal(own[key], &v)
+		if v == nil {
+			v = []string{}
+		}
+		return v
+	}
+	out.NavOrder = list("nav_order")
+	out.NavHidden = list("nav_hidden")
+	out.Favorites = list("favorites")
 	return out, nil
 }
 
@@ -274,9 +302,45 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "defaults":
+		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "nav_order", "nav_hidden", "favorites", "defaults":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav and defaults")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites and defaults")
+		}
+	}
+	// The lists of the navigation (UI37): keys without repeats; null or an empty list takes
+	// them away.
+	for _, name := range navLists {
+		v, given := input[name]
+		if !given {
+			continue
+		}
+		items, ok := v.([]any)
+		if v != nil && !ok {
+			bad(name, "type", "must be a list of keys or null")
+			continue
+		}
+		if len(items) == 0 {
+			writes = append(writes, write{name, nil})
+			continue
+		}
+		if len(items) > MaxNavKeys {
+			bad(name, "invalid", fmt.Sprintf("holds at most %d keys", MaxNavKeys))
+			continue
+		}
+		keys := make([]string, 0, len(items))
+		seen := map[string]bool{}
+		for _, it := range items {
+			k, ok := it.(string)
+			if !ok || !navKeyRe.MatchString(k) || seen[k] {
+				bad(name, "invalid", "must hold distinct keys of letters, digits and _ . : / - (at most 200 characters)")
+				keys = nil
+				break
+			}
+			seen[k] = true
+			keys = append(keys, k)
+		}
+		if keys != nil {
+			writes = append(writes, write{name, keys})
 		}
 	}
 	text("language", func(v string) bool { return v == "de" || v == "en" }, "must be de or en")

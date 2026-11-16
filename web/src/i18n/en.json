@@ -50,7 +50,10 @@
     "saved": "Saved searches",
     "work": "Work",
     "approvals": "To approve",
-    "dashboards": "Dashboards"
+    "dashboards": "Dashboards",
+    "favorites": "Favourites",
+    "pin": "Pin to favourites: {{name}}",
+    "unpin": "Unpin from favourites: {{name}}"
   },
   "header": {
     "tenant": "Tenant: {{name}}",
@@ -469,7 +472,27 @@
       "appearance": "Appearance",
       "presets": "Presets",
       "substitutes": "Substitutes"
-    }
+    },
+    "nav": "Navigation",
+    "navHint": "Narrow shows only the symbols of the areas.",
+    "navWidth": "Width of the bar",
+    "navWidths": {
+      "wide": "Wide",
+      "narrow": "Narrow"
+    },
+    "areas": "Areas: order and visibility",
+    "entries_one": "1 entry",
+    "entries_other": "{{count}} entries",
+    "up": "Move {{name}} up",
+    "down": "Move {{name}} down",
+    "show": "Show {{name}}",
+    "shown": "show",
+    "unpin": "Unpin",
+    "noFavorites": "No favourites yet.",
+    "favoritesHint": "Pin entries under Favourites with the star at the entry in the bar. Hidden areas stay reachable with Ctrl K.",
+    "favoriteUp": "Move favourite {{name}} up",
+    "favoriteDown": "Move favourite {{name}} down",
+    "unpinFavorite": "Unpin favourite {{name}}"
   },
   "versions": {
     "title": "Versions",

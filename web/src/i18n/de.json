@@ -50,7 +50,10 @@
     "saved": "Gespeicherte Suchen",
     "work": "Arbeit",
     "approvals": "Zu genehmigen",
-    "dashboards": "Dashboards"
+    "dashboards": "Dashboards",
+    "favorites": "Favoriten",
+    "pin": "Unter Favoriten anheften: {{name}}",
+    "unpin": "Von den Favoriten lösen: {{name}}"
   },
   "header": {
     "tenant": "Mandant: {{name}}",
@@ -469,7 +472,27 @@
       "appearance": "Darstellung",
       "presets": "Vorbelegung",
       "substitutes": "Vertretung"
-    }
+    },
+    "nav": "Navigation",
+    "navHint": "Schmal zeigt nur die Symbole der Bereiche.",
+    "navWidth": "Breite der Leiste",
+    "navWidths": {
+      "wide": "Breit",
+      "narrow": "Schmal"
+    },
+    "areas": "Bereiche: Reihenfolge und Sichtbarkeit",
+    "entries_one": "1 Eintrag",
+    "entries_other": "{{count}} Einträge",
+    "up": "{{name}} nach oben",
+    "down": "{{name}} nach unten",
+    "show": "{{name}} anzeigen",
+    "shown": "anzeigen",
+    "unpin": "Lösen",
+    "noFavorites": "Noch keine Favoriten.",
+    "favoritesHint": "Einträge heftest du mit dem Stern am Eintrag in der Leiste unter „Favoriten“ an. Ausgeblendete Bereiche erreichst du weiter über Strg K.",
+    "favoriteUp": "Favorit {{name}} nach oben",
+    "favoriteDown": "Favorit {{name}} nach unten",
+    "unpinFavorite": "Favorit {{name}} lösen"
   },
   "versions": {
     "title": "Fassungen",

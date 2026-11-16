@@ -2685,6 +2685,9 @@ paths:
                 density: { type: string, nullable: true, enum: [compact, normal, null], description: "the row height of lists, 36 or 52 px (UI30)" }
                 nav: { type: string, nullable: true, enum: [wide, narrow, null], description: "the width of the navigation: with names, or 60 px with symbols only (UI36)" }
                 accent: { type: string, nullable: true, enum: [petrol, steel, indigo, violet, umber, graphite, null], description: "the accent colour for focus, selection and links (UI38); null takes ui.accent of the unit" }
+                nav_order: { type: array, nullable: true, maxItems: 200, items: { type: string, pattern: '^[A-Za-z0-9_.:/-]{1,200}$' }, description: "the order of the areas of the navigation (UI37); null or empty for the usual one" }
+                nav_hidden: { type: array, nullable: true, maxItems: 200, items: { type: string, pattern: '^[A-Za-z0-9_.:/-]{1,200}$' }, description: "the areas of the navigation to leave out (UI37)" }
+                favorites: { type: array, nullable: true, maxItems: 200, items: { type: string, pattern: '^[A-Za-z0-9_.:/-]{1,200}$' }, description: "the entries pinned under Favoriten, in their order (UI37)" }
                 start_dashboard: { type: string, nullable: true, description: "the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13)" }
                 defaults:
                   type: object
@@ -4512,7 +4515,7 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, defaults]
+      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites, defaults]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
@@ -4522,6 +4525,18 @@ components:
         start_dashboard: { $ref: "#/components/schemas/SettingValue" }
         accent: { $ref: "#/components/schemas/SettingValue" }
         nav: { $ref: "#/components/schemas/SettingValue" }
+        nav_order:
+          type: array
+          items: { type: string }
+          description: "the own order of the areas of the navigation, by key such as package.incident (UI37); empty: the usual order"
+        nav_hidden:
+          type: array
+          items: { type: string }
+          description: the areas of the navigation the person left out (UI37)
+        favorites:
+          type: array
+          items: { type: string }
+          description: "the entries pinned under Favoriten in their order, by area and entry such as package.incident/incident.incident (UI37)"
         defaults:
           type: object
           additionalProperties: { type: object, additionalProperties: true }

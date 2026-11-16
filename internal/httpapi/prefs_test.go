@@ -8,9 +8,12 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
+
+	"group24.de/itsm/internal/prefs"
 )
 
 // One's own settings (UI9): each value with where it comes from; own before the tree before
@@ -134,6 +137,37 @@ func TestSettingsOverHTTP(t *testing.T) {
 	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"accent": null}`, nil)
 	if v, _ := value(r, "accent"); v != "petrol" {
 		t.Fatalf("accent removed: %s", r.raw)
+	}
+	// The arrangement of the navigation (UI37, UI-Plan E50): empty lists without own ones; kept
+	// in their order; repeats, odd keys and too many are refused; null and [] take them away.
+	for _, name := range []string{"nav_order", "nav_hidden", "favorites"} {
+		if l, ok := r.body[name].([]any); !ok || len(l) != 0 {
+			t.Fatalf("%s empty by default: %s", name, r.raw)
+		}
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"nav_order": ["package.probe", "dashboards"],
+		"nav_hidden": ["saved"], "favorites": ["package.probe/probe.probe", "dashboards/7c9e6679-7425-40de-944b-e07fc1f90ae7"]}`, nil)
+	if r.code != 200 || fmt.Sprint(r.body["nav_order"]) != "[package.probe dashboards]" || fmt.Sprint(r.body["nav_hidden"]) != "[saved]" ||
+		fmt.Sprint(r.body["favorites"]) != "[package.probe/probe.probe dashboards/7c9e6679-7425-40de-944b-e07fc1f90ae7]" {
+		t.Fatalf("own arrangement: %d %s", r.code, r.raw)
+	}
+	many := make([]string, prefs.MaxNavKeys+1)
+	for i := range many {
+		many[i] = fmt.Sprintf(`"k%d"`, i)
+	}
+	for body, want := range map[string]string{
+		`{"favorites": ["a", "a"]}`:                         "distinct keys",
+		`{"favorites": ["<script>"]}`:                       "distinct keys",
+		`{"nav_order": "package.probe"}`:                    "list of keys",
+		`{"nav_hidden": [` + strings.Join(many, ",") + `]}`: "at most 200",
+	} {
+		if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", body, nil); r.code != 422 || !strings.Contains(r.raw, want) {
+			t.Fatalf("%s: %d %s", body, r.code, r.raw)
+		}
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"nav_order": null, "nav_hidden": [], "favorites": null}`, nil)
+	if r.code != 200 || fmt.Sprint(r.body["nav_order"], r.body["nav_hidden"], r.body["favorites"]) != "[] [] []" {
+		t.Fatalf("arrangement removed: %d %s", r.code, r.raw)
 	}
 	// The packages with label and symbol (UI36): every session reads them; the core is
 	// „Stammdaten“ with the symbol database.

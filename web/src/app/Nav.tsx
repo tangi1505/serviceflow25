@@ -12,7 +12,7 @@
 // the person on the server), it is 60 px of symbols, and a click shows the entries beside it.
 // Open and closed areas are kept in the browser per account. Below 768 px the navigation
 // stands above the content (UI30) until UI40.
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -23,12 +23,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Shield,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  api,
   dashboardsQuery,
   labelOf,
   meQuery,
@@ -44,9 +46,17 @@ import { packageIcon } from "@/app/icons";
 import { usePersist } from "@/app/Switches";
 import { usePopover } from "@/ui/popover";
 
-// An entry of an area: a link with its route.
-type Entry = { key: string; label: string; link: ReactNode };
-type Area = { id: string; label: string; icon: LucideIcon; entries: Entry[]; add?: ReactNode };
+// An entry of an area: a link with its route; id is the area and the key, as kept among the
+// favourites (UI37).
+export type Entry = { id: string; key: string; label: string; link: ReactNode };
+export type Area = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  entries: Entry[];
+  add?: ReactNode;
+};
+type RawArea = Omit<Area, "entries"> & { entries: Omit<Entry, "id">[] };
 
 const itemClass =
   "block truncate rounded-md py-1.5 pr-1 pl-9 text-sm text-foreground hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -87,8 +97,8 @@ function useDesktop(): boolean {
   return desktop;
 }
 
-// useAreas builds the areas from what the session may see.
-function useAreas(): Area[] {
+// useAreas builds the areas from what the session may see, in the usual order.
+export function useAreas(): Area[] {
   const { t, i18n } = useTranslation();
   const me = useQuery(meQuery);
   const signedIn = me.data !== undefined;
@@ -97,7 +107,7 @@ function useAreas(): Area[] {
   const saved = useQuery({ ...savedSearchesQuery, enabled: signedIn });
   const dashboards = useQuery({ ...dashboardsQuery, enabled: signedIn });
 
-  const areas: Area[] = [];
+  const areas: RawArea[] = [];
   areas.push({
     id: "dashboards",
     label: t("nav.dashboards"),
@@ -126,7 +136,7 @@ function useAreas(): Area[] {
     byPackage.set(pkg, [...(byPackage.get(pkg) ?? []), ty]);
   }
   const info = new Map((packages.data ?? []).map((p) => [p.name, p]));
-  const packageAreas: Area[] = [...byPackage.entries()].map(([pkg, list]) => ({
+  const packageAreas: RawArea[] = [...byPackage.entries()].map(([pkg, list]) => ({
     id: `package.${pkg}`,
     label: labelOf(info.get(pkg)?.label, i18n.language, pkg),
     icon: packageIcon(info.get(pkg)?.icon),
@@ -178,7 +188,7 @@ function useAreas(): Area[] {
       })),
     });
   }
-  const admin: Entry[] = [];
+  const admin: Omit<Entry, "id">[] = [];
   if (me.data?.manage_rights === true) {
     admin.push({
       key: "roles",
@@ -204,8 +214,67 @@ function useAreas(): Area[] {
   if (admin.length > 0) {
     areas.push({ id: "admin", label: t("nav.admin"), icon: Shield, entries: admin });
   }
-  return areas;
+  return areas.map((a) => ({
+    ...a,
+    entries: a.entries.map((e) => ({ ...e, id: `${a.id}/${e.key}` })),
+  }));
 }
+
+// arrange puts the areas in the order of the person (UI37, UI-Plan E50); an area the order does
+// not name yet (a package installed later) comes after the one it usually follows.
+export function arrange(areas: Area[], order: string[]): Area[] {
+  const byId = new Map(areas.map((a) => [a.id, a]));
+  const out = [...new Set(order)].flatMap((id) => byId.get(id) ?? []);
+  areas.forEach((a, i) => {
+    if (out.includes(a)) {
+      return;
+    }
+    let at = 0;
+    for (let k = i - 1; k >= 0; k--) {
+      const j = out.indexOf(areas[k]!);
+      if (j >= 0) {
+        at = j + 1;
+        break;
+      }
+    }
+    out.splice(at, 0, a);
+  });
+  return out;
+}
+
+// pinned are the favourites that still lead somewhere the session may go, in their order.
+export function pinned(areas: Area[], favorites: string[]): Entry[] {
+  const byId = new Map(areas.flatMap((a) => a.entries.map((e) => [e.id, e] as const)));
+  return favorites.flatMap((id) => byId.get(id) ?? []);
+}
+
+export type Arrangement = { nav_order?: string[]; nav_hidden?: string[]; favorites?: string[] };
+
+// useArrangement reads the arrangement of the navigation and keeps a change at once: shown
+// before the server answers, so a star reacts without delay.
+export function useArrangement() {
+  const queryClient = useQueryClient();
+  const settings = useQuery(mySettingsQuery);
+  const s = settings.data;
+  const save = (change: Arrangement) => {
+    queryClient.setQueryData(mySettingsQuery.queryKey, (old) =>
+      old ? { ...old, ...change } : old,
+    );
+    void api
+      .setMySettings(change)
+      .then((saved) => queryClient.setQueryData(mySettingsQuery.queryKey, saved))
+      .catch(() => queryClient.invalidateQueries({ queryKey: mySettingsQuery.queryKey }));
+  };
+  return {
+    order: s?.nav_order ?? [],
+    hidden: s?.nav_hidden ?? [],
+    favorites: s?.favorites ?? [],
+    save,
+  };
+}
+
+// Pins are the favourites with the way to change them, for the stars of the entries.
+type Pins = { has: (id: string) => boolean; toggle: (id: string) => void };
 
 export function Nav() {
   const { t } = useTranslation();
@@ -214,7 +283,24 @@ export function Nav() {
   const approvals = useQuery({ ...myApprovalsQuery, enabled: me.data !== undefined });
   const types = useQuery(typesQuery);
   const keep = usePersist(true);
-  const areas = useAreas();
+  const all = useAreas();
+  const arrangement = useArrangement();
+  const { favorites, save } = arrangement;
+  const favoriteEntries = pinned(all, favorites);
+  const hidden = new Set(arrangement.hidden);
+  const areas: Area[] = [
+    ...(favoriteEntries.length > 0
+      ? [{ id: "favorites", label: t("nav.favorites"), icon: Star, entries: favoriteEntries }]
+      : []),
+    ...arrange(all, arrangement.order).filter((a) => !hidden.has(a.id)),
+  ];
+  const pins: Pins = {
+    has: (id) => favorites.includes(id),
+    toggle: (id) =>
+      save({
+        favorites: favorites.includes(id) ? favorites.filter((f) => f !== id) : [...favorites, id],
+      }),
+  };
   const account = me.data?.id ?? "";
   const [open, setOpen] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -278,6 +364,7 @@ export function Nav() {
             area={area}
             open={open[area.id] ?? true}
             onToggle={() => toggle(area.id)}
+            pins={pins}
           />
         ))}
         {types.isError && <p className="text-sm text-destructive">{t("nav.typesError")}</p>}
@@ -298,11 +385,46 @@ export function Nav() {
   if (!narrow || !desktop) {
     return wide;
   }
-  return <Rail areas={areas} approvals={count} onWide={() => width("wide")} />;
+  return <Rail areas={areas} approvals={count} onWide={() => width("wide")} pins={pins} />;
+}
+
+// EntryRow is an entry with its star (UI37): shown when pointed at or focused, always when
+// pinned.
+function EntryRow({ entry, pins }: { entry: Entry; pins: Pins }) {
+  const { t } = useTranslation();
+  const on = pins.has(entry.id);
+  const label = t(on ? "nav.unpin" : "nav.pin", { name: entry.label });
+  return (
+    <li className="group/entry flex items-center gap-0.5 [&>a]:min-w-0 [&>a]:flex-1">
+      {entry.link}
+      <button
+        type="button"
+        aria-pressed={on}
+        aria-label={label}
+        title={label}
+        onClick={() => pins.toggle(entry.id)}
+        className={`inline-grid size-7 flex-none place-items-center rounded-md text-muted-foreground hover:bg-surface-active hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          on ? "" : "md:opacity-0 md:group-hover/entry:opacity-100"
+        }`}
+      >
+        <Star aria-hidden="true" className="size-3.5" fill={on ? "currentColor" : "none"} />
+      </button>
+    </li>
+  );
 }
 
 // AreaBlock is one area of the wide bar: its head opens and closes it.
-function AreaBlock({ area, open, onToggle }: { area: Area; open: boolean; onToggle: () => void }) {
+function AreaBlock({
+  area,
+  open,
+  onToggle,
+  pins,
+}: {
+  area: Area;
+  open: boolean;
+  onToggle: () => void;
+  pins: Pins;
+}) {
   const id = useId();
   const Icon = area.icon;
   return (
@@ -332,7 +454,7 @@ function AreaBlock({ area, open, onToggle }: { area: Area; open: boolean; onTogg
       {open && (
         <ul id={`${id}-list`} className="flex flex-col gap-px">
           {area.entries.map((e) => (
-            <li key={e.key}>{e.link}</li>
+            <EntryRow key={e.id} entry={e} pins={pins} />
           ))}
         </ul>
       )}
@@ -348,10 +470,12 @@ function Rail({
   areas,
   approvals,
   onWide,
+  pins,
 }: {
   areas: Area[];
   approvals: number | undefined;
   onWide: () => void;
+  pins: Pins;
 }) {
   const { t } = useTranslation();
   return (
@@ -388,7 +512,7 @@ function Rail({
           )}
         </Link>
         {areas.map((area) => (
-          <RailArea key={area.id} area={area} />
+          <RailArea key={area.id} area={area} pins={pins} />
         ))}
       </div>
       <div className="flex flex-none justify-center border-t px-2.5 py-2">
@@ -408,7 +532,7 @@ function Rail({
 
 // RailArea is the symbol of an area; a click shows its entries beside the bar, Esc closes them,
 // and so does going to one of them.
-function RailArea({ area }: { area: Area }) {
+function RailArea({ area, pins }: { area: Area; pins: Pins }) {
   const pop = usePopover();
   const Icon = area.icon;
   const [top, setTop] = useState(64);
@@ -455,7 +579,7 @@ function RailArea({ area }: { area: Area }) {
           </div>
           <ul className="flex flex-col gap-px [&_a]:pl-2">
             {area.entries.map((e) => (
-              <li key={e.key}>{e.link}</li>
+              <EntryRow key={e.id} entry={e} pins={pins} />
             ))}
           </ul>
         </div>

@@ -57,7 +57,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI34** | Fristspalte in der Liste: die Liste und `:query` liefern je Zeile die nächste Frist der SLA-Uhren (Restzeit, Anteil, Zustand), sortier- und filterbar; Spalte mit dem Baustein Frist (E35, aus UI30 ausgelagert; E37) | 🟢 | 1 d | Liste von `probe` mit Spalte „Frist“: eine Frist über 75 % gelb, eine überschrittene rot, beide mit Text; nach Frist sortiert steht die knappste oben; LZ1 ohne Verschlechterung über die Toleranz; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI35** | Kopfzeile nach dem Mockup (E41, §2.3): Marke mit Name, Mandant als Knopf mit Menü (wie bisher nur bei mehreren Mandanten), Suchfeld in der Mitte, Benachrichtigungen als Symbol mit Zahl, Konto-Kreis mit Konto-Menü (Modus, Sprache, Meine Einstellungen, Zum Portal, Abmelden). Die beschrifteten Auswahlfelder und einzelnen Links der Kopfzeile entfallen, das Theme wählt man nur noch in Meine Einstellungen; Symbole aus `lucide-react`; das Fenster der Glocke nach E47 | 🟢 | 1,5 d | Im Browser http://localhost:8092 → die Kopfzeile hat kein beschriftetes Auswahlfeld mehr; Klick auf den Konto-Kreis öffnet das Menü, „Dunkel“ gilt sofort und nach Neuanmeldung; der Knopf mit dem Mandanten wechselt den Mandanten; alles nur mit Tastatur, Esc schließt und gibt den Fokus zurück; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche (E48) | 🟢 | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI37** | Favoriten und eigene Anordnung (E41): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | ⬜ | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI37** | Favoriten und eigene Anordnung (E41, E50): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | 🟢 | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert; dazu E49 | 🟢 | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41; ersetzt für Name, Logo und Farbe das Theme-Paket, E45): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | ⬜ | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | ⬜ | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -149,6 +149,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E47** | Glocke der Kopfzeile (UI35, deine Entscheidung 2026-11-16): die Zahl der ungelesenen aus dem Posteingang (Workflow-Plan WF19); ein Klick öffnet ein kleines Fenster mit den 10 neuesten Einträgen (Betreff, Typ, Zeit, Auslöser; ungelesene fett mit Punkt). Ein Klick auf einen Eintrag öffnet den Vorgang und markiert ihn gelesen; dazu „Alle gelesen“ und, solange die Person nicht entschieden hat, „Browser-Meldungen erlauben“. Die Zahl folgt dem Ereignis `inbox` des Ereignisstroms. Verworfen: eine eigene Seite mit allen Einträgen (später, wenn gebraucht); erst ein Mockup | 2026-11-16 | Pascal |
 | **E48** | Namen der Bereiche (UI36, deine Entscheidung 2026-11-16): Die Navigation zeigt den Namen des Pakets; das Kernpaket heißt dafür „Stammdaten“ (englisch „Master data“), alle anderen behalten ihren Namen (Servicekatalog, Störungen, Anfragen, Wissen, Service Desk, Probe). Zum Bau: das Symbol steht als `icon` in `package.yaml`, ein Name aus einer festen Liste von `lucide`-Symbolen, die der Kern prüft; die Oberfläche liest Name und Symbol über `GET /api/v1/packages`; die Breite der Leiste (breit oder schmal) ist eine Einstellung der Person auf dem Server (`nav`), auf und zu der Bereiche bleibt im Browser je Konto (E41). Verworfen: immer der Paketname („Kern“); alle Namen wie im Mockup (Katalog, Probepaket) | 2026-11-16 | Pascal |
 | **E49** | Meine Einstellungen (UI38, deine Entscheidungen 2026-11-16): jede Änderung wirkt sofort und wird sofort gespeichert, ohne Knopf „Speichern“, mit kurzer Bestätigung; „Auf Vorgabe zurücksetzen“ nimmt die eigenen Werte des offenen Reiters weg. Die Auswahl „Theme“ entfällt für Personen, auch auf der Anmeldeseite und im Portal; ein Theme-Paket setzt nur noch die Organisation (E45, UI39). Zum Bau: Reiter „Sprache und Zeit“, „Darstellung“ (Modus als drei Karten, Akzentfarbe aus den sechs Farben aus §2.3, Zeilenhöhe, Startseite), „Vorbelegung“ und, nicht im Mockup, „Vertretung“; die Akzentfarbe ist eine Einstellung der Person (`accent`) mit der Vorgabe der Organisation `ui.accent` (eine der sechs, bis UI39 eine freie Farbe erlaubt). Verworfen: Darstellung sofort, Rest mit Speichern; alles mit Speichern; Theme unter Darstellung | 2026-11-16 | Pascal |
+| **E50** | Favoriten und eigene Anordnung (UI37, deine Entscheidungen 2026-11-16): den Stern bekommt jeder Eintrag der Leiste (Listen der Typen, Dashboards, gespeicherte Suchen, Seiten der Verwaltung); „Favoriten“ steht als eigener Bereich oben, seine Einträge sind in Meine Einstellungen › Darstellung frei verschiebbar. Umstellen und ausblenden lassen sich alle Bereiche (Dashboards, die Bereiche der Pakete, Gespeicherte Suchen, Verwaltung); ein Bereich, der später dazukommt, erscheint an seinem üblichen Platz. Verschoben wird mit den Knöpfen „nach oben“ und „nach unten“. Zum Bau: persönliche Einstellungen `nav_order`, `nav_hidden` und `favorites` (Listen von Schlüsseln, nur der Person, ohne Vorgabe der Organisation); ein Favorit, dessen Ziel fehlt oder nicht mehr lesbar ist, wird nicht gezeigt. Verworfen: Stern nur an Listen und Suchen; Favoriten in der Folge des Anheftens oder der Bereiche; nur die Bereiche der Pakete umstellen; Ziehen mit der Maus | 2026-11-16 | Pascal |
 
 ## 2. Begründung
 
@@ -432,6 +433,48 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI37 — Favoriten und eigene Anordnung, 2026-11-16
+
+- **Grundlage:** E41 (Mockup), E50 (deine Entscheidungen 2026-11-16).
+- **Gebaut:**
+  - `web/src/app/Nav.tsx`: jeder Eintrag der Leiste hat einen Stern (sichtbar beim Zeigen oder
+    mit dem Fokus, angeheftet immer, unter 768 px immer), auch im Fenster neben der schmalen
+    Leiste. Angeheftete Einträge stehen im Bereich „Favoriten“ oben. Die Bereiche folgen der
+    eigenen Reihenfolge, ausgeblendete fehlen; ein Bereich, den die Reihenfolge noch nicht kennt
+    (ein später eingespieltes Paket), kommt hinter den, dem er sonst folgt. Ein Favorit, dessen
+    Ziel fehlt oder nicht lesbar ist, wird nicht gezeigt und bleibt gespeichert. Der Stern wirkt
+    sofort, der Server bestätigt danach.
+  - `web/src/app/SettingsPage.tsx`, Reiter „Darstellung“: Teil „Navigation“ mit der Breite der
+    Leiste (Breit, Schmal), den Bereichen mit Zahl der Einträge, „nach oben“, „nach unten“ und
+    „anzeigen“, und den Favoriten mit „nach oben“, „nach unten“ und „Lösen“. Änderungen an den
+    Listen zeigen sich sofort, damit ein zweiter Klick auf dem ersten aufbaut; lehnt der Server
+    ab, kommt der gespeicherte Stand zurück. „Auf Vorgabe zurücksetzen“ nimmt auch Breite,
+    Reihenfolge, Ausblenden und Favoriten weg.
+  - Kern: persönliche Einstellungen `nav_order`, `nav_hidden` und `favorites` (Listen von
+    Schlüsseln wie `package.incident` und `package.incident/incident.incident`, ohne
+    Wiederholung, höchstens 200, `null` oder `[]` nimmt sie weg), nur der Person, ohne Vorgabe
+    der Organisation (`internal/prefs`, `api/openapi.yaml`).
+- **Belegt, 2026-11-16:**
+  - Vitest `Nav.test.tsx`: der Stern an „Probe“ heftet an, „Favoriten“ steht oben, gespeichert;
+    lösen nimmt den Bereich weg; in Meine Einstellungen „Probe nach oben“ stellt die Leiste um,
+    „Probe anzeigen“ blendet aus, der Favorit bleibt, ein Favorit ohne Ziel bleibt gespeichert,
+    „Auf Vorgabe zurücksetzen“ nimmt alles weg; axe ohne Befund.
+  - Playwright `nav.spec.ts` mit eigenem Konto `anordner`: Stern an „Probe“, „Stammdaten“ vor
+    „Dashboards“, „Probe“ ausgeblendet, in einem zweiten Browser gleich, die Liste über Strg K
+    weiter erreichbar; axe ohne Befund.
+  - Go `TestSettingsOverHTTP`: leere Listen ohne eigene, die Listen in ihrer Reihenfolge,
+    Wiederholung, fremde Zeichen, kein Array und 201 Schlüssel sind 422, `null` und `[]` nehmen
+    sie weg.
+  - Auf 8092 angesehen: Stern an „Störung“, „Favoriten“ oben, der Teil „Navigation“ in Meine
+    Einstellungen mit allen Bereichen; danach wieder gelöst.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab` im dritten Lauf: Go, Web (142 Vitest-Fälle,
+    20 Playwright-Fälle mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %),
+    LZ2 2,94 ms (−33 %), LZ3 5,12 ms (−43 %), LZ4 3,74 ms (−46 %), LZ5 9.975 Zeilen/s, LZ13 8.736
+    Ereignisse/s. Der erste Lauf fand meinen Fehler im Test (der Name „Favoriten“ passte auch auf
+    die Sterne); der zweite einen echten: das Häkchen „anzeigen“ sprang erst nach der Antwort des
+    Servers um, zwei schnelle Klicks hätten mit dem alten Stand gerechnet.
+- **Nicht geprüft:** das Telefon (UI40); was die Organisation einer Person erlaubt (UI39).
 
 ### UI38 — Meine Einstellungen mit Darstellung, 2026-11-16
 

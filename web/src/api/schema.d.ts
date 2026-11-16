@@ -3671,6 +3671,12 @@ export interface components {
             start_dashboard: components["schemas"]["SettingValue"];
             accent: components["schemas"]["SettingValue"];
             nav: components["schemas"]["SettingValue"];
+            /** @description the own order of the areas of the navigation, by key such as package.incident (UI37); empty: the usual order */
+            nav_order: string[];
+            /** @description the areas of the navigation the person left out (UI37) */
+            nav_hidden: string[];
+            /** @description the entries pinned under Favoriten in their order, by area and entry such as package.incident/incident.incident (UI37) */
+            favorites: string[];
             defaults: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -7830,6 +7836,12 @@ export interface operations {
                      * @enum {string|null}
                      */
                     accent?: "petrol" | "steel" | "indigo" | "violet" | "umber" | "graphite" | null;
+                    /** @description the order of the areas of the navigation (UI37); null or empty for the usual one */
+                    nav_order?: string[] | null;
+                    /** @description the areas of the navigation to leave out (UI37) */
+                    nav_hidden?: string[] | null;
+                    /** @description the entries pinned under Favoriten, in their order (UI37) */
+                    favorites?: string[] | null;
                     /** @description the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13) */
                     start_dashboard?: string | null;
                     /** @description per type an object of field values, or null to remove */

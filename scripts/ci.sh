@@ -272,6 +272,11 @@ prepare_instance() {
   printf 'Dunkel-Hell29!' | /tmp/itsm user create gestalter --display-name "Gestalter" >/dev/null 2>&1 ||
     printf 'Dunkel-Hell29!' | /tmp/itsm user passwd gestalter >/dev/null 2>&1 || true
   /tmp/itsm user grant gestalter admin >/dev/null 2>&1 || true
+  # The browser test of UI37 pins favourites and orders the areas; an account of its own keeps
+  # the bar of the other tests as usual.
+  printf 'Eigene-Ordnung37!' | /tmp/itsm user create anordner --display-name "Anordner" >/dev/null 2>&1 ||
+    printf 'Eigene-Ordnung37!' | /tmp/itsm user passwd anordner >/dev/null 2>&1 || true
+  /tmp/itsm user grant anordner admin >/dev/null 2>&1 || true
 }
 
 load_quick() {
