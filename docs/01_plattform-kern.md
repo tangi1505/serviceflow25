@@ -16,6 +16,16 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 
 ---
 
+## Unterpläne
+
+**Stand eines Plans:** ✅ abgeschlossen · 🔨 läuft · ⬜ nicht begonnen · 🔒 wartet · 💤 ruht
+
+| Nr | Kürzel | Unterplan | Ergebnis | Etappe | Aufwand | Stand |
+| --- | --- | --- | --- | --- | --- | --- |
+| 011 | **AP** | [API und Agenten](01_plattform-kern/011_api-und-agenten.md) | die API vollständig beschrieben und getestet, gegen eine Flut geschützt (Limits in vier Schichten) und von einem Agenten ohne Wissen aus dem Code bedienbar; der MCP-Server selbst bleibt im Nebenplan 09 | 2 bis 4 | 18,5 d | ⬜ angelegt am 2026-11-16 auf deine Entscheidung, 18 Aufgaben; die Limits (AP6 bis AP9) warten auf deine Antwort zu V1 dort |
+
+---
+
 ## Aufgaben
 
 ### A — Durchstich (Meilenstein 1, zuerst)

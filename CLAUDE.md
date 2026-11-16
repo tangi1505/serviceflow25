@@ -435,9 +435,10 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
 | Kurzzeichen | Plan | Datei |
 | --- | --- | --- |
 | `H` | Hauptplan | `0_maintask.md` |
-| `PL` | Plattform-Kern | `01_plattform-kern.md` (geplant) |
-| `UI` | Oberfläche | `02_oberflaeche.md` (geplant) |
-| `WF` | Workflow-Engine | `03_workflow-engine.md` (geplant) |
+| `PL` | Plattform-Kern | `01_plattform-kern.md` |
+| `AP` | API und Agenten, Unterplan des Plattform-Kerns | `01_plattform-kern/011_api-und-agenten.md` |
+| `UI` | Oberfläche | `02_oberflaeche.md` |
+| `WF` | Workflow-Engine | `03_workflow-engine.md` |
 | `EX` | Erweiterungen | `04_erweiterungen.md` (geplant) |
 | `SD` | Service Desk | `05_service-desk.md` |
 | `CM` | CMDB und Discovery | `06_cmdb-discovery.md` (geplant) |
@@ -448,4 +449,5 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
 
   Für neue Listen gesperrt, weil schon belegt: `E` und `V` (§4), `H` und die Kürzel oben, dazu
   `IP` (Practices im Hauptplan §2.1), `KF` (Kernfähigkeiten im Hauptplan §2.1.1), `G` (Funktionen
-  im Funktionsinventar) und `B` (Befunde im Funktionsinventar).
+  im Funktionsinventar), `B` (Befunde im Funktionsinventar), `LZ` (Leistungsziele im Hauptplan
+  §2.5) und `LP` (Lastproben im Lastwerkzeug, H11).
