@@ -401,7 +401,6 @@
     "title": "My settings",
     "language": "Language",
     "time_zone": "Time zone",
-    "theme": "Theme",
     "inherit": "– as set for my unit –",
     "inForce": "In force: {{value}} ({{source}})",
     "source": {
@@ -414,7 +413,6 @@
     "type": "Type",
     "preset": "Preset {{n}}",
     "addPreset": "Add field",
-    "savePresets": "Save presets",
     "global": "Global settings",
     "globalTitle": "Global settings",
     "globalHint": "Defaults for everyone below a node; personal settings come first. Changing needs the right manage_settings for the node.",
@@ -458,7 +456,20 @@
     "matrixHint": "Outlined in blue: differs from the default of the package.",
     "start_dashboard": "Start page",
     "startNone": "Greeting only",
-    "inForceNone": "In force: the greeting (nothing set)"
+    "inForceNone": "In force: the greeting (nothing set)",
+    "intro": "Only for you, on every device. Every change applies at once.",
+    "reset": "Reset to the default",
+    "mode": "Mode",
+    "accent": "Accent colour",
+    "accentHint": "For focus, selection and links. Red, yellow and green are not offered: they mean deadline and state everywhere.",
+    "densityHint": "Compact shows more rows, normal adds requester and unit.",
+    "tabs": {
+      "label": "Parts of the settings",
+      "language": "Language and time",
+      "appearance": "Appearance",
+      "presets": "Presets",
+      "substitutes": "Substitutes"
+    }
   },
   "versions": {
     "title": "Versions",
@@ -1121,5 +1132,13 @@
     "noSidebar": "– on the dashboard only –",
     "queryJson": "Condition (JSON)",
     "queryHint": "Like the where of the JSON query, e.g. {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In a sidebar @record stands for the record shown, @record.field for one of its fields."
+  },
+  "accent": {
+    "petrol": "Petrol",
+    "steel": "Steel blue",
+    "indigo": "Indigo",
+    "violet": "Violet",
+    "umber": "Umber",
+    "graphite": "Graphite"
   }
 }

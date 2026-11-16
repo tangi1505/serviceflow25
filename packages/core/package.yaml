@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.11.0
+version: 0.12.0
 # The symbol of the area in the navigation (UI36), from the fixed list of the core.
 icon: database
 # The area of the navigation is called so (UI plan E48).
@@ -46,6 +46,19 @@ settings:
       - {value: light, label: {de: Hell, en: Light}}
       - {value: dark, label: {de: Dunkel, en: Dark}}
     default: system
+  - key: ui.accent
+    kind: choice
+    group: {de: Oberfläche, en: Interface}
+    label: {de: Akzentfarbe, en: Accent colour}
+    description: {de: "Für Fokus, Auswahl und Links, solange eine Person keine eigene wählt.", en: "For focus, selection and links, unless a person chooses her own."}
+    options:
+      - {value: petrol, label: {de: Petrol, en: Petrol}}
+      - {value: steel, label: {de: Stahlblau, en: Steel blue}}
+      - {value: indigo, label: {de: Indigo, en: Indigo}}
+      - {value: violet, label: {de: Violett, en: Violet}}
+      - {value: umber, label: {de: Umbra, en: Umber}}
+      - {value: graphite, label: {de: Graphit, en: Graphite}}
+    default: petrol
   - key: ui.density
     kind: choice
     group: {de: Oberfläche, en: Interface}

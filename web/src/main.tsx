@@ -19,6 +19,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { initI18n } from "@/i18n";
+import { applyAccent, currentAccent } from "@/ui/accent";
 import { applyColorScheme, currentColorScheme } from "@/ui/colorScheme";
 import { applyTheme, currentTheme } from "@/ui/theme";
 import { createAppRouter, createQueryClient } from "@/app/router";
@@ -27,6 +28,7 @@ initI18n(navigator.language);
 applyTheme(currentTheme());
 // The last known scheme before the settings load, so that a dark page does not flash light.
 applyColorScheme(currentColorScheme());
+applyAccent(currentAccent());
 
 const queryClient = createQueryClient();
 const router = createAppRouter({ queryClient });

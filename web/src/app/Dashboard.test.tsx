@@ -252,12 +252,13 @@ describe("Dashboards", () => {
     first.unmount();
 
     renderAt("/settings");
+    // Since UI38 the start page is in the tab Darstellung and kept at once.
+    await user.click(await screen.findByRole("tab", { name: "Darstellung" }));
     const start = await screen.findByLabelText("Startseite");
     expect(
       await within(start).findByRole("option", { name: "Service Desk Überblick" }),
     ).toBeInTheDocument();
     await user.selectOptions(start, "none");
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(state.settings).toMatchObject({ start_dashboard: "none" }));
   });
 

@@ -22,18 +22,15 @@ async function expectNoViolations(page: Page) {
   ).toEqual([]);
 }
 
-test("sign in, navigate, switch the theme, sign out", async ({ page }) => {
+test("sign in, navigate, sign out", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Anmelden" })).toBeVisible();
   await expectNoViolations(page);
 
+  // The theme is no choice of a person any more (UI38, E49): the sign-in page has none.
   const button = page.getByRole("button", { name: "Anmelden" });
-  const neutral = await button.evaluate((el) => getComputedStyle(el).backgroundColor);
-  await page.getByLabel("Theme").selectOption("probe");
-  const probe = await button.evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(probe).not.toBe(neutral);
-  await page.getByLabel("Theme").selectOption("neutral");
+  await expect(page.getByLabel("Theme")).toHaveCount(0);
 
   await page.getByLabel("Benutzername").fill(user);
   await page.getByLabel("Kennwort").fill(password);

@@ -3669,6 +3669,7 @@ export interface components {
             color_scheme: components["schemas"]["SettingValue"];
             density: components["schemas"]["SettingValue"];
             start_dashboard: components["schemas"]["SettingValue"];
+            accent: components["schemas"]["SettingValue"];
             nav: components["schemas"]["SettingValue"];
             defaults: {
                 [key: string]: {
@@ -7824,6 +7825,11 @@ export interface operations {
                      * @enum {string|null}
                      */
                     nav?: "wide" | "narrow" | null;
+                    /**
+                     * @description the accent colour for focus, selection and links (UI38); null takes ui.accent of the unit
+                     * @enum {string|null}
+                     */
+                    accent?: "petrol" | "steel" | "indigo" | "violet" | "umber" | "graphite" | null;
                     /** @description the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13) */
                     start_dashboard?: string | null;
                     /** @description per type an object of field values, or null to remove */

@@ -819,6 +819,7 @@ export function fakeApi(state: FakeState) {
         density: val("density", "normal"),
         start_dashboard: val("start_dashboard", ""),
         nav: val("nav", "wide"),
+        accent: val("accent", "petrol"),
         defaults: state.settings["defaults"] ?? {},
       });
     }

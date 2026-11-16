@@ -8,8 +8,9 @@
 // The Prüfweg of UI29 in a real browser: the font is IBM Plex from the tool itself, the main
 // button graphite, the focus ring petrol; no request leaves the tool; the theme "probe" still
 // changes the components; "Dunkel" in the settings turns every page dark, also after signing in
-// again; axe with contrast finds nothing on the main pages, light and dark. The account
-// gestalter (made by scripts/ci.sh) goes back to "like the system" at the end.
+// again; axe with contrast finds nothing on the main pages, light and dark. UI38: each of the
+// six accent colours in both modes, with axe and its contrast, on the list and the settings.
+// The account gestalter (made by scripts/ci.sh) goes back to "like the system" at the end.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -53,7 +54,7 @@ test.afterAll(async ({ browser }) => {
   await signIn(page);
   await page.request.patch("/api/v1/me/settings", {
     headers,
-    data: { color_scheme: null, theme: null },
+    data: { color_scheme: null, theme: null, accent: null },
   });
 });
 
@@ -115,8 +116,8 @@ test("IBM Plex, graphite and petrol from the tool itself; dark after signing in 
 
   // Dark in the settings: at once, on every page, and after signing in again.
   await page.goto("/settings");
-  await page.getByLabel("Darstellung").selectOption("dark");
-  await page.getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("tab", { name: "Darstellung" }).click();
+  await page.getByRole("button", { name: "Dunkel" }).click();
   await expect(page.getByText("Gespeichert.")).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "dark");
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
@@ -130,4 +131,33 @@ test("IBM Plex, graphite and petrol from the tool itself; dark after signing in 
   await pages(page, id, "dark");
 
   expect(outside).toEqual([]);
+});
+
+// UI38: every accent colour in both modes passes axe with contrast where the accent shows: the
+// focus, the chosen row and tab, the links (§2.3).
+test("six accent colours, light and dark, without findings of axe", async ({ page }) => {
+  await signIn(page);
+  for (const mode of ["light", "dark"] as const) {
+    for (const accent of ["petrol", "steel", "indigo", "violet", "umber", "graphite"]) {
+      const r = await page.request.patch("/api/v1/me/settings", {
+        headers,
+        data: { color_scheme: mode, accent },
+      });
+      expect(r.status()).toBe(200);
+      await page.goto("/settings");
+      await page.getByRole("tab", { name: "Darstellung" }).click();
+      await expect(
+        page.getByRole("button", {
+          name: /^(Petrol|Stahlblau|Indigo|Violett|Umbra|Graphit)$/,
+          pressed: true,
+        }),
+      ).toBeVisible();
+      await axe(page, `${mode} ${accent} /settings`);
+      await page.goto("/types/probe.probe");
+      await expect(
+        page.getByRole("heading", { name: "Probe", exact: false }).first(),
+      ).toBeVisible();
+      await axe(page, `${mode} ${accent} /types/probe.probe`);
+    }
+  }
 });

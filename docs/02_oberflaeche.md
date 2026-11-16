@@ -58,7 +58,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI35** | Kopfzeile nach dem Mockup (E41, §2.3): Marke mit Name, Mandant als Knopf mit Menü (wie bisher nur bei mehreren Mandanten), Suchfeld in der Mitte, Benachrichtigungen als Symbol mit Zahl, Konto-Kreis mit Konto-Menü (Modus, Sprache, Meine Einstellungen, Zum Portal, Abmelden). Die beschrifteten Auswahlfelder und einzelnen Links der Kopfzeile entfallen, das Theme wählt man nur noch in Meine Einstellungen; Symbole aus `lucide-react`; das Fenster der Glocke nach E47 | 🟢 | 1,5 d | Im Browser http://localhost:8092 → die Kopfzeile hat kein beschriftetes Auswahlfeld mehr; Klick auf den Konto-Kreis öffnet das Menü, „Dunkel“ gilt sofort und nach Neuanmeldung; der Knopf mit dem Mandanten wechselt den Mandanten; alles nur mit Tastatur, Esc schließt und gibt den Fokus zurück; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche (E48) | 🟢 | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI37** | Favoriten und eigene Anordnung (E41): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | ⬜ | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert | ⬜ | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert; dazu E49 | 🟢 | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41; ersetzt für Name, Logo und Farbe das Theme-Paket, E45): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | ⬜ | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | ⬜ | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | ⬜ | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -148,6 +148,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E46** | Portal ohne großes Suchfeld und ohne „Oft gelesen“ (V11, deine Entscheidung 2026-11-15): Die Startseite des Portals bekommt beides aus dem Entwurf „Klartext“ (E22) nicht. Grund: Beides ist nicht gebaut und bräuchte eine Suche über alle Bereiche und eine Zählung der Aufrufe im Kern. Die Startseite bleibt bei dem, was E43 nennt | 2026-11-15 | Pascal |
 | **E47** | Glocke der Kopfzeile (UI35, deine Entscheidung 2026-11-16): die Zahl der ungelesenen aus dem Posteingang (Workflow-Plan WF19); ein Klick öffnet ein kleines Fenster mit den 10 neuesten Einträgen (Betreff, Typ, Zeit, Auslöser; ungelesene fett mit Punkt). Ein Klick auf einen Eintrag öffnet den Vorgang und markiert ihn gelesen; dazu „Alle gelesen“ und, solange die Person nicht entschieden hat, „Browser-Meldungen erlauben“. Die Zahl folgt dem Ereignis `inbox` des Ereignisstroms. Verworfen: eine eigene Seite mit allen Einträgen (später, wenn gebraucht); erst ein Mockup | 2026-11-16 | Pascal |
 | **E48** | Namen der Bereiche (UI36, deine Entscheidung 2026-11-16): Die Navigation zeigt den Namen des Pakets; das Kernpaket heißt dafür „Stammdaten“ (englisch „Master data“), alle anderen behalten ihren Namen (Servicekatalog, Störungen, Anfragen, Wissen, Service Desk, Probe). Zum Bau: das Symbol steht als `icon` in `package.yaml`, ein Name aus einer festen Liste von `lucide`-Symbolen, die der Kern prüft; die Oberfläche liest Name und Symbol über `GET /api/v1/packages`; die Breite der Leiste (breit oder schmal) ist eine Einstellung der Person auf dem Server (`nav`), auf und zu der Bereiche bleibt im Browser je Konto (E41). Verworfen: immer der Paketname („Kern“); alle Namen wie im Mockup (Katalog, Probepaket) | 2026-11-16 | Pascal |
+| **E49** | Meine Einstellungen (UI38, deine Entscheidungen 2026-11-16): jede Änderung wirkt sofort und wird sofort gespeichert, ohne Knopf „Speichern“, mit kurzer Bestätigung; „Auf Vorgabe zurücksetzen“ nimmt die eigenen Werte des offenen Reiters weg. Die Auswahl „Theme“ entfällt für Personen, auch auf der Anmeldeseite und im Portal; ein Theme-Paket setzt nur noch die Organisation (E45, UI39). Zum Bau: Reiter „Sprache und Zeit“, „Darstellung“ (Modus als drei Karten, Akzentfarbe aus den sechs Farben aus §2.3, Zeilenhöhe, Startseite), „Vorbelegung“ und, nicht im Mockup, „Vertretung“; die Akzentfarbe ist eine Einstellung der Person (`accent`) mit der Vorgabe der Organisation `ui.accent` (eine der sechs, bis UI39 eine freie Farbe erlaubt). Verworfen: Darstellung sofort, Rest mit Speichern; alles mit Speichern; Theme unter Darstellung | 2026-11-16 | Pascal |
 
 ## 2. Begründung
 
@@ -431,6 +432,47 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI38 — Meine Einstellungen mit Darstellung, 2026-11-16
+
+- **Grundlage:** E41 (Mockup), E49 (deine Entscheidungen 2026-11-16), §2.1 und §2.3.
+- **Gebaut:**
+  - `web/src/app/SettingsPage.tsx` neu: Reiter „Sprache und Zeit“, „Darstellung“, „Vorbelegung“
+    und „Vertretung“ (mit Pfeiltasten wechselbar). Jede Änderung wird sofort gespeichert, ohne
+    „Speichern“; eine kurze Bestätigung steht neben „Auf Vorgabe zurücksetzen“, das die eigenen
+    Werte des offenen Reiters wegnimmt. Die Vorbelegung speichert 600 ms nach der letzten
+    Eingabe. Darstellung: Modus als drei Karten (Hell, Dunkel, Wie das System), Akzentfarbe aus
+    den sechs Farben (Petrol, Stahlblau, Indigo, Violett, Umbra, Graphit) mit Haken an der
+    gewählten, Zeilenhöhe der Listen, Startseite; unter jeder Gruppe, woher der Wert gerade kommt.
+  - `web/src/ui/accent.ts`: aus der hellen Farbe die dunkle (58 % Farbe, 42 % Weiß; Graphit fest
+    `#a9adb2`) und die hellen Flächen (10 % auf Weiß, 20 % auf der dunklen Karte); gesetzt als
+    `--pick-accent-…` an der Seite, die Tokens in `tokens.css` lesen sie, sonst gilt Petrol.
+    Im Browser gemerkt, damit die nächste Seite gleich in der Farbe startet; Arbeitsplatz und
+    Portal setzen sie aus den Einstellungen.
+  - Kern: persönliche Einstellung `accent` (eine der sechs), Vorgabe der Organisation
+    `ui.accent` im Paket core 0.12.0 (Vorgabe Petrol). Das Theme gehört nur noch der
+    Organisation (`ui.theme`): ein eigenes Theme von früher wird übergangen, `PATCH` mit einem
+    Theme gibt 422, `null` nimmt es weg. Die Auswahl „Theme“ ist von der Anmeldeseite, aus dem
+    Portal und aus der Kopfzeile weg.
+- **Belegt, 2026-11-16:**
+  - Vitest `SettingsPage.test.tsx`: Englisch wirkt sofort und nach neuer Anmeldung; „Dunkel“
+    und „Indigo“ wirken sofort und beim nächsten Start, sind gespeichert, „Auf Vorgabe
+    zurücksetzen“ stellt Petrol wieder her;
+    `Dashboard.test.tsx` wählt die Startseite im Reiter „Darstellung“.
+  - Playwright `design.spec.ts`: alle sechs Farben in Hell und Dunkel mit axe samt Kontrast ohne
+    Befund; `settings.spec.ts` und `login.spec.ts` auf die Reiter und ohne Theme umgestellt.
+  - Go `TestSettingsOverHTTP`: `accent` mit Vorgabe Petrol, eigene Farbe, unbekannte Farbe ist
+    422, null wieder Vorgabe; Theme: eigenes ist 422, null 200, gilt die Vorgabe.
+  - Gefunden beim Bauen: ein eigenes Theme „probe“ von früher überdeckte die Akzentfarbe; darum
+    übergeht der Server es jetzt (E49). Auf 8092 angesehen: Stahlblau gewählt, Variable und
+    gespeicherter Wert stimmen, „Auf Vorgabe zurücksetzen“ führt zu Petrol zurück.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab` im zweiten Lauf: Go, Web (140 Vitest-Fälle,
+    19 Playwright-Fälle mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %),
+    LZ2 2,97 ms (−33 %), LZ3 5,09 ms (−44 %), LZ4 3,75 ms (−46 %), LZ5 9.629 Zeilen/s, LZ13 8.914
+    Ereignisse/s. Der erste Lauf fand meine Fehler: zwei Felder hießen „Sprache“, die Tests der
+    Browser waren nicht formatiert.
+- **Nicht geprüft:** die Breite der Navigation in Meine Einstellungen (kommt mit UI37), eine freie
+  Farbe der Organisation (UI39), das Telefon (UI40).
 
 ### UI36 — Navigation, 2026-11-16
 

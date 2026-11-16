@@ -257,8 +257,8 @@ E34 und KF9:
     (Kern-Plan E58);
   - **Bedingung** in CEL, etwa „nur nicht geschlossene";
   - **Feldrechte.**
-- **Persönliche Einstellungen** (Sprache an der Person, Zeitzone, Theme, Darstellung hell, dunkel oder wie das System, Zeilenhöhe der Listen, Vorbelegung je Konto,
-  `internal/prefs`) gehen vor den Vorgaben am Baum (`ui.*`, E131). Nur im Browser liegen je
+- **Persönliche Einstellungen** (Sprache an der Person, Zeitzone, Darstellung hell, dunkel oder wie das System, Akzentfarbe aus sechs festen Farben, Zeilenhöhe der Listen, Breite der Navigation, Vorbelegung je Konto,
+  `internal/prefs`) gehen vor den Vorgaben am Baum (`ui.*`, E131). Das Theme setzt nur die Organisation (`ui.theme`, UI-Plan E49). Nur im Browser liegen je
   Konto die zuletzt geöffneten Datensätze der Befehlszeile (Typ, ID, Titel; UI31, UI-Plan E36);
   die Abmeldung löscht sie.
 - **Den Baum selbst** ändern die Sonderrechte `manage_org` (Knoten) und `manage_settings`

@@ -2684,6 +2684,7 @@ paths:
                 color_scheme: { type: string, nullable: true, enum: [light, dark, system, null], description: "light, dark or like the system of the device (UI29)" }
                 density: { type: string, nullable: true, enum: [compact, normal, null], description: "the row height of lists, 36 or 52 px (UI30)" }
                 nav: { type: string, nullable: true, enum: [wide, narrow, null], description: "the width of the navigation: with names, or 60 px with symbols only (UI36)" }
+                accent: { type: string, nullable: true, enum: [petrol, steel, indigo, violet, umber, graphite, null], description: "the accent colour for focus, selection and links (UI38); null takes ui.accent of the unit" }
                 start_dashboard: { type: string, nullable: true, description: "the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13)" }
                 defaults:
                   type: object
@@ -4511,7 +4512,7 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, color_scheme, density, start_dashboard, nav, defaults]
+      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, defaults]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
@@ -4519,6 +4520,7 @@ components:
         color_scheme: { $ref: "#/components/schemas/SettingValue" }
         density: { $ref: "#/components/schemas/SettingValue" }
         start_dashboard: { $ref: "#/components/schemas/SettingValue" }
+        accent: { $ref: "#/components/schemas/SettingValue" }
         nav: { $ref: "#/components/schemas/SettingValue" }
         defaults:
           type: object

@@ -16,7 +16,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
-import { LanguageSwitch, ThemeSwitch } from "@/app/Switches";
+import { LanguageSwitch } from "@/app/Switches";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/ui/card";
@@ -129,7 +129,6 @@ export function LoginPage() {
         </CardContent>
         <CardFooter className="flex-wrap">
           <LanguageSwitch />
-          <ThemeSwitch />
         </CardFooter>
       </Card>
     </main>

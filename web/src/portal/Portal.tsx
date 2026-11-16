@@ -33,7 +33,7 @@ import {
 } from "@/api/client";
 import { useContentLanguage } from "@/app/contentLanguage";
 import { forget } from "@/app/recent";
-import { LanguageSwitch, ThemeSwitch } from "@/app/Switches";
+import { LanguageSwitch } from "@/app/Switches";
 import { Form } from "@/render/Form";
 
 import { FormFill, inLanguage } from "./FormFill";
@@ -46,6 +46,7 @@ import { Timeline } from "@/render/Timeline";
 import { Transitions } from "@/render/Transitions";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { applyAccent, isAccent } from "@/ui/accent";
 import { applyColorScheme, isColorScheme } from "@/ui/colorScheme";
 import { applyTheme, isTheme } from "@/ui/theme";
 
@@ -72,6 +73,8 @@ export function PortalShell() {
     if (isColorScheme(s.color_scheme?.value)) {
       applyColorScheme(s.color_scheme.value);
     }
+    // The accent of the person or the organisation (UI38).
+    applyAccent(isAccent(s.accent?.value) ? s.accent.value : null);
     setDisplayTimeZone(s.time_zone.value);
   }, [settings.data, i18n]);
   const logout = async () => {
@@ -95,7 +98,6 @@ export function PortalShell() {
         <AreaNav />
         <div className="ml-auto flex flex-wrap items-center gap-4">
           <LanguageSwitch persist />
-          <ThemeSwitch persist />
           {me.data?.workplace && (
             <Link to="/" className="text-sm underline">
               {t("portal.toWorkplace")}

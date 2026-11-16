@@ -401,7 +401,6 @@
     "title": "Meine Einstellungen",
     "language": "Sprache",
     "time_zone": "Zeitzone",
-    "theme": "Theme",
     "inherit": "– wie für meine Einheit eingestellt –",
     "inForce": "Gilt jetzt: {{value}} ({{source}})",
     "source": {
@@ -414,7 +413,6 @@
     "type": "Typ",
     "preset": "Vorbelegung {{n}}",
     "addPreset": "Feld hinzufügen",
-    "savePresets": "Vorbelegung speichern",
     "global": "Globale Einstellungen",
     "globalTitle": "Globale Einstellungen",
     "globalHint": "Vorgaben für alle unterhalb eines Knotens; persönliche Einstellungen gehen vor. Ändern braucht das Recht manage_settings für den Knoten.",
@@ -458,7 +456,20 @@
     "matrixHint": "Blau umrandet: anders als die Vorgabe des Pakets.",
     "start_dashboard": "Startseite",
     "startNone": "Nur Begrüßung",
-    "inForceNone": "Gilt jetzt: die Begrüßung (nichts eingestellt)"
+    "inForceNone": "Gilt jetzt: die Begrüßung (nichts eingestellt)",
+    "intro": "Gilt nur für dich, auf jedem Gerät. Jede Änderung wirkt sofort.",
+    "reset": "Auf Vorgabe zurücksetzen",
+    "mode": "Modus",
+    "accent": "Akzentfarbe",
+    "accentHint": "Für Fokus, Auswahl und Links. Rot, Gelb und Grün stehen nicht zur Wahl: Sie bedeuten überall Frist und Status.",
+    "densityHint": "Kompakt zeigt mehr Zeilen, Normal dazu Anforderer und Einheit.",
+    "tabs": {
+      "label": "Bereiche der Einstellungen",
+      "language": "Sprache und Zeit",
+      "appearance": "Darstellung",
+      "presets": "Vorbelegung",
+      "substitutes": "Vertretung"
+    }
   },
   "versions": {
     "title": "Fassungen",
@@ -1121,5 +1132,13 @@
     "noSidebar": "– nur im Dashboard –",
     "queryJson": "Bedingung (JSON)",
     "queryHint": "Wie die where der JSON-Abfrage, etwa {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In der Seitenleiste steht @record für den gezeigten Datensatz, @record.feld für ein Feld von ihm."
+  },
+  "accent": {
+    "petrol": "Petrol",
+    "steel": "Stahlblau",
+    "indigo": "Indigo",
+    "violet": "Violett",
+    "umber": "Umbra",
+    "graphite": "Graphit"
   }
 }

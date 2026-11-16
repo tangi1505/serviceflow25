@@ -5,9 +5,11 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// Settings (UI9): English on "Meine Einstellungen" makes the interface English, also when it
-// starts again (signed in anew); presets of a type fill the form of a new record; the global
-// page sets a default at a node, and says when the right is missing.
+// Settings (UI9, UI38): English on "Meine Einstellungen" makes the interface English at once,
+// also when it starts again (signed in anew); in the tab Darstellung dark and the accent apply
+// at once and go back with "Auf Vorgabe zurücksetzen"; presets of a type are kept a moment
+// after the change and fill the form of a new record; the global page sets a default at a node,
+// and says when the right is missing.
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -46,17 +48,22 @@ describe("Settings", () => {
     const user = userEvent.setup();
     const first = renderAt("/settings");
     await screen.findByRole("heading", { name: "Meine Einstellungen" });
-    expect(screen.getByText("Gilt jetzt: de (Vorgabe)")).toBeInTheDocument();
-    await expectAccessible(first.container);
-    await user.selectOptions(
-      screen.getByLabelText("Sprache", { selector: "select:not([class*='h-9'])" }),
-      "en",
+    expect(screen.getByRole("tab", { name: "Sprache und Zeit" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
-    await user.selectOptions(screen.getByLabelText("Zeitzone"), "Europe/London");
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(screen.getByText("Gilt jetzt: de (Vorgabe)")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Speichern" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Theme")).not.toBeInTheDocument();
+    await expectAccessible(first.container);
+    // Every change applies at once (E49).
+    await user.selectOptions(screen.getByLabelText("Sprache"), "en");
     expect(await screen.findByRole("heading", { name: "My settings" })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("en");
-    expect(state.settings).toMatchObject({ language: "en", time_zone: "Europe/London" });
+    await user.selectOptions(screen.getByLabelText("Time zone"), "Europe/London");
+    await waitFor(() =>
+      expect(state.settings).toMatchObject({ language: "en", time_zone: "Europe/London" }),
+    );
     first.unmount();
 
     // A new start (the browser says German): the person's language wins.
@@ -66,38 +73,66 @@ describe("Settings", () => {
     expect(screen.getByRole("button", { name: "Account of Pascal" })).toBeInTheDocument();
   });
 
-  it("chooses dark, and the page turns dark at once and on the next start", async () => {
+  it("chooses dark and indigo, at once and on the next start, and goes back to the default", async () => {
     const user = userEvent.setup();
     const first = renderAt("/settings");
     await screen.findByRole("heading", { name: "Meine Einstellungen" });
-    const scheme = screen.getByLabelText("Darstellung");
-    expect(scheme).toHaveValue("");
-    expect(screen.getByText("Gilt jetzt: system (Vorgabe)")).toBeInTheDocument();
-    await user.selectOptions(scheme, "dark");
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("tab", { name: "Darstellung" }));
+    expect(screen.getByText("Gilt jetzt: Wie das System (Vorgabe)")).toBeInTheDocument();
+    await expectAccessible(first.container);
+    await user.click(screen.getByRole("button", { name: "Dunkel" }));
     expect(await screen.findByText("Gespeichert.")).toBeInTheDocument();
     expect(state.settings).toMatchObject({ color_scheme: "dark" });
+    expect(screen.getByRole("button", { name: "Dunkel" })).toHaveAttribute("aria-pressed", "true");
     expect(document.documentElement.dataset.colorScheme).toBe("dark");
+    // Indigo: light, dark and the soft accent derived (§2.3).
+    await user.click(screen.getByRole("button", { name: "Indigo" }));
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue("--pick-accent-light")).toBe(
+        "#3F4BB8",
+      ),
+    );
+    expect(document.documentElement.style.getPropertyValue("--pick-accent-dark")).toBe("#9097d6");
+    expect(state.settings).toMatchObject({ accent: "indigo" });
+    await user.click(screen.getByRole("button", { name: "Kompakt" }));
+    await waitFor(() => expect(state.settings).toMatchObject({ density: "compact" }));
     first.unmount();
     // A new start begins light (the browser of the test), the person's setting turns it dark.
     document.documentElement.dataset.colorScheme = "light";
     renderAt("/");
     await screen.findByRole("navigation", { name: "Typen" });
     await waitFor(() => expect(document.documentElement.dataset.colorScheme).toBe("dark"));
+    expect(document.documentElement.style.getPropertyValue("--pick-accent-light")).toBe("#3F4BB8");
+
+    // Back to the default: the unit's values or the core's, petrol again.
+    await user.click(await screen.findByRole("button", { name: /^Konto von / }));
+    await user.click(screen.getByRole("link", { name: "Meine Einstellungen" }));
+    await user.click(await screen.findByRole("tab", { name: "Darstellung" }));
+    await user.click(screen.getByRole("button", { name: "Auf Vorgabe zurücksetzen" }));
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue("--pick-accent-light")).toBe(
+        "#0B6E80",
+      ),
+    );
+    expect(state.settings?.["accent"]).toBeUndefined();
+    expect(state.settings?.["color_scheme"]).toBeUndefined();
   });
 
   it("fills a new record with the presets of its type", async () => {
     const user = userEvent.setup();
     const first = renderAt("/settings");
     await screen.findByRole("heading", { name: "Meine Einstellungen" });
+    await user.click(screen.getByRole("tab", { name: "Vorbelegung" }));
     const presets = screen.getByRole("region", { name: "Vorbelegung beim Anlegen" });
     await user.selectOptions(within(presets).getByLabelText("Typ"), "probe.probe");
     await user.click(within(presets).getByRole("button", { name: "Feld hinzufügen" }));
     const row = within(presets).getByRole("listitem", { name: "Vorbelegung 1" });
     await user.selectOptions(within(row).getByRole("combobox", { name: "Feld" }), "kind");
     await user.selectOptions(within(row).getByRole("combobox", { name: "Neuer Wert" }), "fault");
-    await user.click(within(presets).getByRole("button", { name: "Vorbelegung speichern" }));
-    expect(await within(presets).findByText("Gespeichert.")).toBeInTheDocument();
+    // Kept a moment after the last change, without a button (E49).
+    expect(
+      await within(presets).findByText("Gespeichert.", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
     expect(state.settings?.["defaults"]).toEqual({ "probe.probe": { kind: "fault" } });
     first.unmount();
 

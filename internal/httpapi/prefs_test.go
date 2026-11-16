@@ -45,7 +45,7 @@ func TestSettingsOverHTTP(t *testing.T) {
 	}
 
 	// Own values win; the language goes to the person although the role may only read probe.
-	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"language": "en", "time_zone": "America/New_York", "theme": "probe",
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"language": "en", "time_zone": "America/New_York",
 		"defaults": {"probe.probe": {"kind": "fault", "priority": 2}}}`, nil)
 	if v, src := value(r, "time_zone"); r.code != 200 || v != "America/New_York" || src != "own" {
 		t.Fatalf("own: %d %s", r.code, r.raw)
@@ -64,8 +64,15 @@ func TestSettingsOverHTTP(t *testing.T) {
 	if v, src := value(r, "language"); v != "de" || src != "default" || strings.Contains(r.raw, "probe.probe") {
 		t.Fatalf("language back to the default: %s", r.raw)
 	}
-	if v, src := value(r, "theme"); v != "probe" || src != "own" {
-		t.Fatalf("theme stays: %s", r.raw)
+	// The theme is the organisation's (UI38, E49): a person sets none, null still goes.
+	if v, src := value(r, "theme"); v != "neutral" || src != "default" {
+		t.Fatalf("theme: %s", r.raw)
+	}
+	if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"theme": "probe"}`, nil); r.code != 422 || !strings.Contains(r.raw, "organisation") {
+		t.Fatalf("own theme: %d %s", r.code, r.raw)
+	}
+	if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"theme": null}`, nil); r.code != 200 {
+		t.Fatalf("theme null: %d %s", r.code, r.raw)
 	}
 
 	// The colour scheme (UI29): system by default, the tree's value, then one's own.
@@ -112,6 +119,21 @@ func TestSettingsOverHTTP(t *testing.T) {
 	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"nav": null}`, nil)
 	if v, _ := value(r, "nav"); v != "wide" {
 		t.Fatalf("nav removed: %s", r.raw)
+	}
+	// The accent colour (UI38): petrol by default, one of the six as one's own, others refused.
+	if v, src := value(r, "accent"); v != "petrol" || src != "default" {
+		t.Fatalf("accent default: %s", r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"accent": "indigo"}`, nil)
+	if v, src := value(r, "accent"); r.code != 200 || v != "indigo" || src != "own" {
+		t.Fatalf("own accent: %d %s", r.code, r.raw)
+	}
+	if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"accent": "red"}`, nil); r.code != 422 || !strings.Contains(r.raw, "petrol, steel") {
+		t.Fatalf("red accent: %d %s", r.code, r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"accent": null}`, nil)
+	if v, _ := value(r, "accent"); v != "petrol" {
+		t.Fatalf("accent removed: %s", r.raw)
 	}
 	// The packages with label and symbol (UI36): every session reads them; the core is
 	// „Stammdaten“ with the symbol database.

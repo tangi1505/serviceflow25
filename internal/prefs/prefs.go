@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,7 +43,18 @@ const (
 	GlobalDensity = "ui.density"
 	// GlobalStartDashboard is the dashboard on the start page of the workplace (UI13).
 	GlobalStartDashboard = "ui.start_dashboard"
+	// GlobalAccent is the accent colour of the organisation (UI38, UI-Plan E49): one of Accents.
+	GlobalAccent = "ui.accent"
 )
+
+// Accents are the six accent colours a person chooses from (UI38, UI-Plan §2.3): without red,
+// yellow and green, which mean deadline and state everywhere.
+var Accents = []string{"petrol", "steel", "indigo", "violet", "umber", "graphite"}
+
+// DefaultAccent is the accent without a setting of the person or the tree.
+const DefaultAccent = "petrol"
+
+func isAccent(v string) bool { return slices.Contains(Accents, v) }
 
 // StartNone is the own start page without a dashboard: the greeting only (UI13).
 const StartNone = "none"
@@ -99,6 +111,8 @@ type Prefs struct {
 	// StartDashboard is the id of the dashboard on the start page, or "none" for the greeting
 	// only; empty without one (UI13).
 	StartDashboard Value `json:"start_dashboard"`
+	// Accent is the accent colour, one of Accents (UI38).
+	Accent Value `json:"accent"`
 	// Nav is the width of the navigation, wide or narrow (UI36); only the person sets it.
 	Nav      Value                     `json:"nav"`
 	Defaults map[string]map[string]any `json:"defaults"`
@@ -204,7 +218,8 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	out.Language = pick(lang, GlobalLanguage, DefaultLanguage)
 	out.TimeZone = pick(str("time_zone"), GlobalTimeZone, DefaultTimeZone)
-	out.Theme = pick(str("theme"), GlobalTheme, DefaultTheme)
+	// The theme is the organisation's only (UI38, UI-Plan E49): an own value of before is passed by.
+	out.Theme = pick("", GlobalTheme, DefaultTheme)
 	scheme := pick(str("color_scheme"), GlobalColorScheme, DefaultColorScheme)
 	if !isColorScheme(scheme.Value) {
 		// A wrong value at the tree falls back, the interface stays usable.
@@ -217,6 +232,11 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	out.Density = density
 	out.StartDashboard = pick(str("start_dashboard"), GlobalStartDashboard, "")
+	accent := pick(str("accent"), GlobalAccent, DefaultAccent)
+	if !isAccent(accent.Value) {
+		accent = Value{DefaultAccent, SourceDefault}
+	}
+	out.Accent = accent
 	out.Nav = Value{DefaultNav, SourceDefault}
 	if v := str("nav"); isNav(v) {
 		out.Nav = Value{v, SourceOwn}
@@ -254,17 +274,23 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "nav", "defaults":
+		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "defaults":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, nav and defaults")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav and defaults")
 		}
 	}
 	text("language", func(v string) bool { return v == "de" || v == "en" }, "must be de or en")
 	text("time_zone", func(v string) bool { _, err := time.LoadLocation(v); return err == nil && v != "" && v != "Local" }, "must be an IANA time zone such as Europe/Berlin")
-	text("theme", themeRe.MatchString, "must be the name of a theme")
+	// A person sets no theme any more (E49); null still takes an own value of before away.
+	if v, given := input["theme"]; given && v != nil {
+		bad("theme", "invalid", "is set by the organisation (ui.theme), not by a person")
+	} else {
+		text("theme", themeRe.MatchString, "must be the name of a theme")
+	}
 	text("color_scheme", isColorScheme, "must be light, dark or system")
 	text("density", isDensity, "must be compact or normal")
 	text("nav", isNav, "must be wide or narrow")
+	text("accent", isAccent, "must be one of petrol, steel, indigo, violet, umber, graphite")
 	text("start_dashboard", func(v string) bool {
 		if v == StartNone {
 			return true
