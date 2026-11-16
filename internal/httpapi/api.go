@@ -85,6 +85,17 @@ func (s *server) ListTypes(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, visible)
 }
 
+// ListPackages names the installed packages with label and symbol (UI36); every session may
+// read them, the navigation groups the types by them.
+func (s *server) ListPackages(w http.ResponseWriter, r *http.Request) {
+	list, err := s.o.Records.Packages(r.Context())
+	if err != nil {
+		writeError(w, r, s.o.Logger, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
 func (s *server) GetType(w http.ResponseWriter, r *http.Request, typeName gen.TypeName) {
 	t, err := s.o.Records.Type(r.Context(), typeName)
 	if err != nil {

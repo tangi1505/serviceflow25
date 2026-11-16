@@ -82,6 +82,20 @@ paths:
           content:
             application/json:
               schema: { type: object }
+  /api/v1/packages:
+    get:
+      operationId: listPackages
+      summary: "The installed packages with label and symbol (UI36): the areas of the navigation"
+      tags: [types]
+      responses:
+        "200":
+          description: packages by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PackageInfo" }
+        "401": { $ref: "#/components/responses/Problem" }
   /api/v1/types:
     get:
       operationId: listTypes
@@ -2669,6 +2683,7 @@ paths:
                 theme: { type: string, nullable: true }
                 color_scheme: { type: string, nullable: true, enum: [light, dark, system, null], description: "light, dark or like the system of the device (UI29)" }
                 density: { type: string, nullable: true, enum: [compact, normal, null], description: "the row height of lists, 36 or 52 px (UI30)" }
+                nav: { type: string, nullable: true, enum: [wide, narrow, null], description: "the width of the navigation: with names, or 60 px with symbols only (UI36)" }
                 start_dashboard: { type: string, nullable: true, description: "the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13)" }
                 defaults:
                   type: object
@@ -4166,6 +4181,14 @@ components:
         decision: { type: string, enum: [approve, reject] }
         comment: { type: string, description: required with reject }
         step: { type: string, format: uuid, description: "the question to answer; without, the first the session may answer" }
+    PackageInfo:
+      type: object
+      required: [name, version, label]
+      properties:
+        name: { type: string }
+        version: { type: string }
+        label: { type: object, additionalProperties: { type: string } }
+        icon: { type: string, description: "a symbol of the fixed list of the core (lucide name); missing: the interface's own" }
     InboxEntry:
       type: object
       required: [id, kind, type_name, record_id, actor, subject, body, created_at]
@@ -4488,7 +4511,7 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, color_scheme, density, start_dashboard, defaults]
+      required: [language, time_zone, theme, color_scheme, density, start_dashboard, nav, defaults]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
@@ -4496,6 +4519,7 @@ components:
         color_scheme: { $ref: "#/components/schemas/SettingValue" }
         density: { $ref: "#/components/schemas/SettingValue" }
         start_dashboard: { $ref: "#/components/schemas/SettingValue" }
+        nav: { $ref: "#/components/schemas/SettingValue" }
         defaults:
           type: object
           additionalProperties: { type: object, additionalProperties: true }

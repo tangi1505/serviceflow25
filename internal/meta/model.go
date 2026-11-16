@@ -425,6 +425,9 @@ type Package struct {
 	Name    string `json:"name" yaml:"name"`
 	Version string `json:"version" yaml:"version"`
 	Label   Label  `json:"label" yaml:"label"`
+	// Icon is the symbol of the package's area in the navigation (UI36), one of PackageIcons;
+	// empty gives the interface's own.
+	Icon string `json:"icon,omitempty" yaml:"icon"`
 	// Depends lists packages that must be installed first.
 	Depends []string `json:"depends,omitempty" yaml:"depends"`
 	// Extends names the package this one extends (layer "extension", E37); empty for a base package.

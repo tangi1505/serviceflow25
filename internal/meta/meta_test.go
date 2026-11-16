@@ -273,3 +273,17 @@ transitions:
 		t.Errorf("declare is fine: %s", all)
 	}
 }
+
+// A package names its symbol from the fixed list (UI36); another is refused.
+func TestPackageIcon(t *testing.T) {
+	p := Package{Name: "demo", Version: "1.0.0", Label: Label{"de": "Demo", "en": "Demo"}, Icon: "database",
+		Types: []Type{{Name: "thing", Label: Label{"de": "Ding", "en": "Thing"},
+			Fields: []Field{{Name: "title", Type: FieldText, Label: Label{"de": "Titel", "en": "Title"}}}}}}
+	if err := Validate(p, nil); err != nil {
+		t.Fatalf("database: %v", err)
+	}
+	p.Icon = "https://example.org/logo.svg"
+	if err := Validate(p, nil); err == nil || !strings.Contains(err.Error(), "icon") {
+		t.Fatalf("a picture from elsewhere: %v", err)
+	}
+}

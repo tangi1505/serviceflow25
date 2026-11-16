@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The installed packages with label and symbol (UI36): the areas of the navigation */
+        get: operations["listPackages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/types": {
         parameters: {
             query?: never;
@@ -3270,6 +3287,15 @@ export interface components {
              */
             step?: string;
         };
+        PackageInfo: {
+            name: string;
+            version: string;
+            label: {
+                [key: string]: string;
+            };
+            /** @description a symbol of the fixed list of the core (lucide name); missing: the interface's own */
+            icon?: string;
+        };
         InboxEntry: {
             /** Format: uuid */
             id: string;
@@ -3643,6 +3669,7 @@ export interface components {
             color_scheme: components["schemas"]["SettingValue"];
             density: components["schemas"]["SettingValue"];
             start_dashboard: components["schemas"]["SettingValue"];
+            nav: components["schemas"]["SettingValue"];
             defaults: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -4187,6 +4214,27 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+        };
+    };
+    listPackages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description packages by name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageInfo"][];
+                };
+            };
+            401: components["responses"]["Problem"];
         };
     };
     listTypes: {
@@ -7771,6 +7819,11 @@ export interface operations {
                      * @enum {string|null}
                      */
                     density?: "compact" | "normal" | null;
+                    /**
+                     * @description the width of the navigation: with names, or 60 px with symbols only (UI36)
+                     * @enum {string|null}
+                     */
+                    nav?: "wide" | "narrow" | null;
                     /** @description the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13) */
                     start_dashboard?: string | null;
                     /** @description per type an object of field values, or null to remove */

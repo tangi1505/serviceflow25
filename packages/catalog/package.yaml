@@ -6,7 +6,9 @@
 # fill in and the fulfilment template of the request it becomes, its delivery time and costs;
 # who sees it says "Sichtbar für", as at the tiles.
 name: catalog
-version: 0.1.0
+version: 0.1.1
+# The symbol of the area in the navigation (UI36), from the fixed list of the core.
+icon: layout-grid
 label:
   de: Servicekatalog
   en: Service catalogue

@@ -6,7 +6,9 @@
 # (SD2) and request (SD6) share. The values are provisional (SD-Plan E3, E4) until the business
 # side answers Hauptplan V32; they can be changed in operation.
 name: sd
-version: 0.5.0
+version: 0.5.1
+# The symbol of the area in the navigation (UI36), from the fixed list of the core.
+icon: headset
 label:
   de: Service Desk
   en: Service desk

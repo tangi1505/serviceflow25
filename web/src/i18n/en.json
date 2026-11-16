@@ -33,6 +33,9 @@
     }
   },
   "nav": {
+    "start": "Start",
+    "collapse": "Collapse the bar",
+    "expand": "Expand the bar",
     "types": "Types",
     "typesError": "The types could not be loaded.",
     "user": "Signed in as {{name}}",
@@ -901,10 +904,6 @@
       "close": "Esc close"
     },
     "form": "Form: {{name}}"
-  },
-  "area": {
-    "core": "Master data",
-    "probe": "Probe package"
   },
   "approvals": {
     "title": "Approval",

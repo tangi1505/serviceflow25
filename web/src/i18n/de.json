@@ -33,6 +33,9 @@
     }
   },
   "nav": {
+    "start": "Start",
+    "collapse": "Leiste einklappen",
+    "expand": "Leiste ausklappen",
     "types": "Typen",
     "typesError": "Die Typen konnten nicht geladen werden.",
     "user": "Angemeldet als {{name}}",
@@ -901,10 +904,6 @@
       "close": "Esc schließen"
     },
     "form": "Formular: {{name}}"
-  },
-  "area": {
-    "core": "Stammdaten",
-    "probe": "Probepaket"
   },
   "approvals": {
     "title": "Genehmigung",

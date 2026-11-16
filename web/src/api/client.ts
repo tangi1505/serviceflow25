@@ -262,6 +262,8 @@ export const api = {
     unwrap(await client.POST("/api/v1/auth/password", { body }));
   },
   types: async () => unwrap(await client.GET("/api/v1/types")) as unknown as TypeDefinition[],
+  // packages are the installed packages with label and symbol: the areas of the navigation (UI36).
+  packages: async () => unwrap(await client.GET("/api/v1/packages")),
   list: async (typeName: string, query: ListParams) =>
     unwrap(
       await client.GET("/api/v1/records/{typeName}", { params: { path: { typeName }, query } }),
@@ -746,6 +748,12 @@ export const formsQuery = queryOptions({
 export const typesQuery = queryOptions({
   queryKey: ["types"],
   queryFn: api.types,
+  staleTime: 5 * 60_000,
+});
+
+export const packagesQuery = queryOptions({
+  queryKey: ["packages"],
+  queryFn: api.packages,
   staleTime: 5 * 60_000,
 });
 

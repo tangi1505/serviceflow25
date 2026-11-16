@@ -453,6 +453,7 @@ E11:
 
 | Pfad | Zweck |
 | --- | --- |
+| `GET /api/v1/packages` | installierte Pakete mit Name und Symbol, die Bereiche der Navigation (UI36) |
 | `GET /api/v1/types`, `GET /api/v1/types/{typ}` | wirksame Definitionen |
 | `GET /api/v1/records/{typ}` | Liste mit einfachen Parametern (`?state=open&sort=-created_at&fields=…&limit=50&after=…`) |
 | `POST /api/v1/records/{typ}:query` | JSON-Abfrage (§6.3) |

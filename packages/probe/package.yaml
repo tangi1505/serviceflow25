@@ -4,7 +4,9 @@
 # The probe package: the thin thread through all layers (Hauptplan E59, H13). It has no
 # business meaning and is replaced by the real packages after the Durchstich.
 name: probe
-version: 0.3.0
+version: 0.3.1
+# The symbol of the area in the navigation (UI36), from the fixed list of the core.
+icon: flask-conical
 label:
   de: Probe
   en: Probe

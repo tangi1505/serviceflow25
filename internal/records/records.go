@@ -468,6 +468,35 @@ func (s *Service) Traits(ctx context.Context) ([]meta.Trait, error) {
 	return meta.Traits(ctx, queries.New(s.db.Control()))
 }
 
+// PackageInfo is an installed package as the navigation shows it (UI36): its name, its label
+// and its symbol.
+type PackageInfo struct {
+	Name    string     `json:"name"`
+	Version string     `json:"version"`
+	Label   meta.Label `json:"label"`
+	Icon    string     `json:"icon,omitempty"`
+}
+
+// Packages are the installed packages by name; they belong to the installation (control
+// database).
+func (s *Service) Packages(ctx context.Context) ([]PackageInfo, error) {
+	rows, err := queries.New(s.db.Control()).ListPackages(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("records: packages: %w", err)
+	}
+	out := make([]PackageInfo, 0, len(rows))
+	for _, r := range rows {
+		var p meta.Package
+		if err := json.Unmarshal(r.Spec, &p); err != nil {
+			return nil, fmt.Errorf("records: package %s: %w", r.Name, err)
+		}
+		var label meta.Label
+		_ = json.Unmarshal(r.Label, &label)
+		out = append(out, PackageInfo{Name: r.Name, Version: r.Version, Label: label, Icon: p.Icon})
+	}
+	return out, nil
+}
+
 // Types returns the installed types in name order.
 func (s *Service) Types(ctx context.Context) ([]meta.Type, error) {
 	m, err := s.types(ctx)

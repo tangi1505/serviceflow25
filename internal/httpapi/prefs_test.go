@@ -98,6 +98,27 @@ func TestSettingsOverHTTP(t *testing.T) {
 	if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"density": "tight"}`, nil); r.code != 422 || !strings.Contains(r.raw, "compact or normal") {
 		t.Fatalf("bad density: %d %s", r.code, r.raw)
 	}
+	// The width of the navigation (UI36): wide by default, narrow one's own, null back.
+	if v, src := value(r, "nav"); v != "wide" || src != "default" {
+		t.Fatalf("nav default: %s", r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"nav": "narrow"}`, nil)
+	if v, src := value(r, "nav"); r.code != 200 || v != "narrow" || src != "own" {
+		t.Fatalf("own nav: %d %s", r.code, r.raw)
+	}
+	if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"nav": "half"}`, nil); r.code != 422 || !strings.Contains(r.raw, "wide or narrow") {
+		t.Fatalf("bad nav: %d %s", r.code, r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"nav": null}`, nil)
+	if v, _ := value(r, "nav"); v != "wide" {
+		t.Fatalf("nav removed: %s", r.raw)
+	}
+	// The packages with label and symbol (UI36): every session reads them; the core is
+	// „Stammdaten“ with the symbol database.
+	pk := call(t, u.api, http.MethodGet, "/api/v1/packages", "", nil)
+	if pk.code != 200 || !strings.Contains(pk.raw, `"name":"core"`) || !strings.Contains(pk.raw, `"Stammdaten"`) || !strings.Contains(pk.raw, `"icon":"database"`) {
+		t.Fatalf("packages: %d %s", pk.code, pk.raw)
+	}
 
 	for body, field := range map[string]string{
 		`{"time_zone": "Mars/Base"}`:                       "time_zone",

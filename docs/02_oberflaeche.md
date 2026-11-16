@@ -56,7 +56,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI31** | Befehlszeile mit Strg K: Datensätze nach Titel finden über `/api/v1/search` (nach Nummer, sobald PL49 sie durchsuchbar macht), Befehle „Neu“ je Typ, „Gehe zu“ und Darstellung, Kürzel am Suchfeld angezeigt (E22, E36) | 🟢 | 1,5 d | Strg K, einen Teil des Titels tippen → der Datensatz erscheint, Enter öffnet ihn; „neu“ tippen → „Neu: Probe“; leer zeigt sie die zuletzt geöffneten Datensätze; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI34** | Fristspalte in der Liste: die Liste und `:query` liefern je Zeile die nächste Frist der SLA-Uhren (Restzeit, Anteil, Zustand), sortier- und filterbar; Spalte mit dem Baustein Frist (E35, aus UI30 ausgelagert; E37) | 🟢 | 1 d | Liste von `probe` mit Spalte „Frist“: eine Frist über 75 % gelb, eine überschrittene rot, beide mit Text; nach Frist sortiert steht die knappste oben; LZ1 ohne Verschlechterung über die Toleranz; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI35** | Kopfzeile nach dem Mockup (E41, §2.3): Marke mit Name, Mandant als Knopf mit Menü (wie bisher nur bei mehreren Mandanten), Suchfeld in der Mitte, Benachrichtigungen als Symbol mit Zahl, Konto-Kreis mit Konto-Menü (Modus, Sprache, Meine Einstellungen, Zum Portal, Abmelden). Die beschrifteten Auswahlfelder und einzelnen Links der Kopfzeile entfallen, das Theme wählt man nur noch in Meine Einstellungen; Symbole aus `lucide-react`; das Fenster der Glocke nach E47 | 🟢 | 1,5 d | Im Browser http://localhost:8092 → die Kopfzeile hat kein beschriftetes Auswahlfeld mehr; Klick auf den Konto-Kreis öffnet das Menü, „Dunkel“ gilt sofort und nach Neuanmeldung; der Knopf mit dem Mandanten wechselt den Mandanten; alles nur mit Tastatur, Esc schließt und gibt den Fokus zurück; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche | ⬜ | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche (E48) | 🟢 | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI37** | Favoriten und eigene Anordnung (E41): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | ⬜ | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert | ⬜ | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41; ersetzt für Name, Logo und Farbe das Theme-Paket, E45): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | ⬜ | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -147,6 +147,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E45** | Erscheinungsbild statt Theme-Paket (V8, UI39, deine Entscheidung 2026-11-15): Name, Logo und Akzentfarbe je Kunde kommen aus der Seite „Erscheinungsbild“ unter Verwaltung, gespeichert als Einstellungen am Organisationsbaum; dafür gibt es kein Theme-Paket als Datei. Ein Theme-Paket bleibt nur für das, was die Seite nicht kann, etwa eine andere Schrift. Die Regeln zu den Farben in §2.1 gelten für die Seite genauso: gesetzt werden `--accent` und auf Wunsch `--primary`, alles andere wird abgeleitet. Stand im Code: Es gibt die Themes `neutral` und `probe` (`web/src/ui/theme.ts:10`) und die Einstellung `ui.theme` (`packages/core/package.yaml:31`), aber kein Theme-Paket eines Kunden. Ändert E4 und E25, verfeinert Hauptplan E62. Verworfen: Seite und Paket nebeneinander für dieselben Werte, weil dann zwei Stellen dieselbe Farbe bestimmen | 2026-11-15 | Pascal |
 | **E46** | Portal ohne großes Suchfeld und ohne „Oft gelesen“ (V11, deine Entscheidung 2026-11-15): Die Startseite des Portals bekommt beides aus dem Entwurf „Klartext“ (E22) nicht. Grund: Beides ist nicht gebaut und bräuchte eine Suche über alle Bereiche und eine Zählung der Aufrufe im Kern. Die Startseite bleibt bei dem, was E43 nennt | 2026-11-15 | Pascal |
 | **E47** | Glocke der Kopfzeile (UI35, deine Entscheidung 2026-11-16): die Zahl der ungelesenen aus dem Posteingang (Workflow-Plan WF19); ein Klick öffnet ein kleines Fenster mit den 10 neuesten Einträgen (Betreff, Typ, Zeit, Auslöser; ungelesene fett mit Punkt). Ein Klick auf einen Eintrag öffnet den Vorgang und markiert ihn gelesen; dazu „Alle gelesen“ und, solange die Person nicht entschieden hat, „Browser-Meldungen erlauben“. Die Zahl folgt dem Ereignis `inbox` des Ereignisstroms. Verworfen: eine eigene Seite mit allen Einträgen (später, wenn gebraucht); erst ein Mockup | 2026-11-16 | Pascal |
+| **E48** | Namen der Bereiche (UI36, deine Entscheidung 2026-11-16): Die Navigation zeigt den Namen des Pakets; das Kernpaket heißt dafür „Stammdaten“ (englisch „Master data“), alle anderen behalten ihren Namen (Servicekatalog, Störungen, Anfragen, Wissen, Service Desk, Probe). Zum Bau: das Symbol steht als `icon` in `package.yaml`, ein Name aus einer festen Liste von `lucide`-Symbolen, die der Kern prüft; die Oberfläche liest Name und Symbol über `GET /api/v1/packages`; die Breite der Leiste (breit oder schmal) ist eine Einstellung der Person auf dem Server (`nav`), auf und zu der Bereiche bleibt im Browser je Konto (E41). Verworfen: immer der Paketname („Kern“); alle Namen wie im Mockup (Katalog, Probepaket) | 2026-11-16 | Pascal |
 
 ## 2. Begründung
 
@@ -430,6 +431,51 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI36 — Navigation, 2026-11-16
+
+- **Grundlage:** E41 (Mockup, Ansichten 1 und 3), E48 (Namen der Bereiche, deine Entscheidung
+  2026-11-16), §2.3.
+- **Gebaut:**
+  - `web/src/app/Nav.tsx`: oben Start und Zu genehmigen mit Zahl, dann die Bereiche mit Symbol
+    zum Auf- und Zuklappen (zu mit der Zahl ihrer Einträge): Dashboards mit Plus für ein neues,
+    je Paket einer (Name und Symbol aus dem Paket, die Fachpakete nach Namen, Stammdaten danach),
+    Gespeicherte Suchen, Verwaltung. Ab 768 px scrollt die Leiste für sich, Kopfzeile und Fuß
+    mit „Leiste einklappen“ bleiben stehen, die Seite scrollt in ihrem eigenen Bereich. Schmal
+    ist die Leiste 60 px mit Symbolen; ein Klick zeigt die Einträge daneben, Esc oder ein
+    gewählter Eintrag schließt; „Leiste ausklappen“ unten. Unter 768 px steht die breite
+    Navigation weiter über dem Inhalt (UI30, bis UI40), und es gibt nur eine Navigation zur Zeit.
+    Auf und zu der Bereiche im Browser je Konto (`itsm.nav.open.<konto>`).
+  - Kern: `icon` in `package.yaml` aus einer festen Liste (`meta.PackageIcons`, gleich
+    `web/src/app/icons.ts`), geprüft beim Laden; `GET /api/v1/packages` (Name, Fassung,
+    Bezeichnung, Symbol) für jede Sitzung; persönliche Einstellung `nav` (`wide`, `narrow`,
+    Vorgabe `wide`). Die Befehlszeile nennt als Bereich eines Typs den Paketnamen; die Texte
+    `area.*` der Oberfläche sind weg.
+  - Pakete mit Symbol und neuer Fassung: catalog 0.1.1 (`layout-grid`), core 0.11.0
+    (`database`, Name „Stammdaten“, englisch „Master data“), incident 0.12.1 (`triangle-alert`),
+    knowledge 0.7.1 (`book-open`), probe 0.3.1 (`flask-conical`), request 0.6.1 (`inbox`),
+    sd 0.5.1 (`headset`).
+- **Belegt, 2026-11-16:**
+  - Vitest `Nav.test.tsx`: der Bereich heißt nach dem Paket („Probe“), Start, Dashboards mit
+    „Neues Dashboard“, axe ohne Befund; zugeklappt mit Zahl und ohne Einträge, nach neuem Laden
+    weiter zu; „Leiste einklappen“ speichert `nav: narrow`, es bleibt eine Navigation mit
+    Symbolen, ein Klick zeigt „Probe“ daneben, axe ohne Befund, Esc schließt und gibt den Fokus
+    zurück, ein gewählter Eintrag führt zur Liste und schließt; „Leiste ausklappen“.
+  - Go `TestSettingsOverHTTP`: `nav` breit als Vorgabe, schmal als eigene, `half` ist 422, null
+    wieder breit; `GET /api/v1/packages` nennt „Stammdaten“ mit `database`.
+    `TestPackageIcon`: ein Symbol der Liste geht, eine Adresse nicht.
+  - Gefunden beim Bauen: axe meldete in der schmalen Ansicht zwei Navigationen mit gleichem
+    Namen (die breite war nur per CSS versteckt); jetzt wird nur eine gerendert. Auf 8092
+    angesehen: alle Bereiche mit Paketnamen, die Leiste scrollt für sich (2.018 px Inhalt in
+    663 px), die Seite nicht; das Fenster neben dem Symbol stand zu hoch und steht jetzt neben
+    dem Symbol.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab` im zweiten Lauf: Go, Web (140 Vitest-Fälle,
+    18 Playwright-Fälle mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %),
+    LZ2 2,94 ms (−34 %), LZ3 5,02 ms (−44 %), LZ4 3,69 ms (−50 %), LZ5 9.648 Zeilen/s, LZ13 8.752
+    Ereignisse/s. Der erste Lauf fand meinen Fehler: dem neuen Test fehlten englische Namen.
+- **Nicht geprüft:** Favoriten und eigene Anordnung (UI37), die Breite in Meine Einstellungen
+  (UI37, UI38), das Telefon (UI40). Die Reihenfolge der Bereiche ist nach Namen, nicht wie im
+  Mockup; sie ordnet UI37 je Person.
 
 ### UI35 — Kopfzeile, 2026-11-16
 

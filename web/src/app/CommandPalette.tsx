@@ -21,6 +21,7 @@ import {
   labelOf,
   meQuery,
   mySettingsQuery,
+  packagesQuery,
   qualifiedName,
   savedSearchesQuery,
   typesQuery,
@@ -55,6 +56,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const q = useDebounced(text.trim(), 200);
   const me = useQuery(meQuery);
   const types = useQuery(typesQuery);
+  const packages = useQuery({ ...packagesQuery, enabled: me.data !== undefined });
   const saved = useQuery({ ...savedSearchesQuery, enabled: me.data !== undefined });
   const forms = useQuery({ ...workplaceFormsQuery, enabled: me.data !== undefined });
   const hits = useQuery({
@@ -139,7 +141,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         key: `type:${name}`,
         group: "goto" as const,
         label: labelOf(ty.label, lang, name),
-        hint: t(`area.${pkg}`, { defaultValue: pkg }),
+        // The area is named by its package (UI36, E48).
+        hint: labelOf(packages.data?.find((p) => p.name === pkg)?.label, lang, pkg),
         run: () => void navigate({ to: "/types/$typeName", params: { typeName: name } }),
       };
     }),

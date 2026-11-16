@@ -75,6 +75,12 @@ func isColorScheme(v string) bool { return v == "light" || v == "dark" || v == "
 // isDensity says whether v is compact or normal.
 func isDensity(v string) bool { return v == "compact" || v == "normal" }
 
+// isNav is the width of the navigation (UI36): wide with names, narrow with symbols only.
+func isNav(v string) bool { return v == "wide" || v == "narrow" }
+
+// DefaultNav is the width of the navigation without an own setting.
+const DefaultNav = "wide"
+
 // Value is one setting with where it comes from: own, a node path, or default.
 type Value struct {
 	Value  string `json:"value"`
@@ -92,8 +98,10 @@ type Prefs struct {
 	Density Value `json:"density"`
 	// StartDashboard is the id of the dashboard on the start page, or "none" for the greeting
 	// only; empty without one (UI13).
-	StartDashboard Value                     `json:"start_dashboard"`
-	Defaults       map[string]map[string]any `json:"defaults"`
+	StartDashboard Value `json:"start_dashboard"`
+	// Nav is the width of the navigation, wide or narrow (UI36); only the person sets it.
+	Nav      Value                     `json:"nav"`
+	Defaults map[string]map[string]any `json:"defaults"`
 }
 
 // Settings reads a setting of the tree with the node it comes from.
@@ -209,6 +217,10 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	out.Density = density
 	out.StartDashboard = pick(str("start_dashboard"), GlobalStartDashboard, "")
+	out.Nav = Value{DefaultNav, SourceDefault}
+	if v := str("nav"); isNav(v) {
+		out.Nav = Value{v, SourceOwn}
+	}
 	return out, nil
 }
 
@@ -242,9 +254,9 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "defaults":
+		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "nav", "defaults":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard and defaults")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, nav and defaults")
 		}
 	}
 	text("language", func(v string) bool { return v == "de" || v == "en" }, "must be de or en")
@@ -252,6 +264,7 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	text("theme", themeRe.MatchString, "must be the name of a theme")
 	text("color_scheme", isColorScheme, "must be light, dark or system")
 	text("density", isDensity, "must be compact or normal")
+	text("nav", isNav, "must be wide or narrow")
 	text("start_dashboard", func(v string) bool {
 		if v == StartNone {
 			return true

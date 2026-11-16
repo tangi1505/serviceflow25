@@ -30,6 +30,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -1220,7 +1221,9 @@ function CopyButton({ id, name }: { id: string; name: string }) {
 }
 
 // NewDashboardButton creates a dashboard and opens it.
-export function NewDashboardButton() {
+// NewDashboardButton creates a dashboard and opens it; small is the plus at the head of the area
+// "Dashboards" in the navigation (UI36).
+export function NewDashboardButton({ small = false }: { small?: boolean }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -1229,7 +1232,13 @@ export function NewDashboardButton() {
     <>
       <button
         type="button"
-        className="block w-full rounded-md px-2 py-1 text-left text-sm text-muted-foreground hover:bg-surface-active"
+        aria-label={small ? t("dashboard.new") : undefined}
+        title={small ? t("dashboard.new") : undefined}
+        className={
+          small
+            ? "inline-grid size-7 flex-none place-items-center rounded-md text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            : "block w-full rounded-md px-2 py-1 text-left text-sm text-muted-foreground hover:bg-surface-active"
+        }
         onClick={() =>
           void api.create("core.dashboard", { name: t("dashboard.newName") }).then(
             (d) => {
@@ -1240,7 +1249,7 @@ export function NewDashboardButton() {
           )
         }
       >
-        {t("dashboard.new")}
+        {small ? <Plus aria-hidden="true" className="size-4" /> : t("dashboard.new")}
       </button>
       {failed && <p className="text-sm text-destructive">{t("dashboard.newFailed")}</p>}
     </>

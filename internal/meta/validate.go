@@ -58,6 +58,9 @@ func Validate(p Package, known map[string]bool) error {
 		add("package", "version %q must look like 1.2.3", p.Version)
 	}
 	checkLabel(add, "package", "label", p.Label)
+	if p.Icon != "" && !IsPackageIcon(p.Icon) {
+		add("package", "icon %q is no symbol of the list; use one of %v", p.Icon, PackageIcons)
+	}
 	for _, d := range p.Depends {
 		if !IsIdent(d) {
 			add("package", "depends on %q, which is not a valid package name", d)

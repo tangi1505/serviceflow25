@@ -8,10 +8,13 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.10.0
+version: 0.11.0
+# The symbol of the area in the navigation (UI36), from the fixed list of the core.
+icon: database
+# The area of the navigation is called so (UI plan E48).
 label:
-  de: Kern
-  en: Core
+  de: Stammdaten
+  en: Master data
 
 settings:
   # Interface (UI9, UI29, UI30): what a person did not set herself.

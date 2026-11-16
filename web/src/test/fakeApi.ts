@@ -538,6 +538,23 @@ export function fakeApi(state: FakeState) {
       state.signedIn = false;
       return new Response(null, { status: 204 });
     }
+    if (url.pathname === "/api/v1/packages") {
+      // The packages of the types with label and symbol (UI36).
+      return json(200, [
+        {
+          name: "core",
+          version: "0.11.0",
+          label: { de: "Stammdaten", en: "Master data" },
+          icon: "database",
+        },
+        {
+          name: "probe",
+          version: "0.3.1",
+          label: { de: "Probe", en: "Probe" },
+          icon: "flask-conical",
+        },
+      ]);
+    }
     if (url.pathname === "/api/v1/types") {
       return json(200, [
         {
@@ -801,6 +818,7 @@ export function fakeApi(state: FakeState) {
         color_scheme: val("color_scheme", "system"),
         density: val("density", "normal"),
         start_dashboard: val("start_dashboard", ""),
+        nav: val("nav", "wide"),
         defaults: state.settings["defaults"] ?? {},
       });
     }
