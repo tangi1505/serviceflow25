@@ -986,7 +986,7 @@ paths:
   /api/v1/events/stream:
     get:
       operationId: streamEvents
-      summary: Server-Sent Events (PL24, UI8). With after (or the Last-Event-ID header on reconnect) the missed events come first, then live; without, the stream starts now. Each message has the position as id, the kind as event and the event as JSON data; a position too old ends the stream with the event gone
+      summary: Server-Sent Events (PL24, UI8). With after (or the Last-Event-ID header on reconnect) the missed events come first, then live; without, the stream starts now. Each message has the position as id, the kind as event and the event as JSON data; a position too old ends the stream with the event gone. The event inbox (WF19, no id) tells the number of the unread entries of the session's inbox when it changes
       tags: [events]
       parameters:
         - name: after
@@ -2567,6 +2567,76 @@ paths:
         "204": { description: removed }
         "403": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/me/inbox:
+    get:
+      operationId: myInbox
+      summary: "The inbox of the session's person (WF19): entries of the notifications with the way inbox, newest first, with the number of the unread"
+      description: >-
+        Subject and text are rendered in the language of the person when the entry was made.
+        A new entry, and every change of the unread, is told on the event stream of the session as
+        the event inbox with {"unread": n}. Entries older than the setting notify.inbox_days
+        (default 90) are removed, read or not.
+      tags: [auth]
+      parameters:
+        - name: unread
+          in: query
+          description: only the unread entries
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: after
+          in: query
+          description: the next of the page before
+          schema: { type: string }
+      responses:
+        "200":
+          description: a page of the inbox
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InboxPage" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/me/inbox:read:
+    post:
+      operationId: readMyInbox
+      summary: "Mark entries of one's inbox as read, or all of them (WF19); entries of others are left alone"
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids: { type: array, items: { type: string, format: uuid }, maxItems: 500 }
+                all: { type: boolean, description: all entries of the person }
+      responses:
+        "200":
+          description: the number of the unread left
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unread]
+                properties:
+                  unread: { type: integer }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+  /api/v1/me/inbox/{entryId}:
+    delete:
+      operationId: removeInboxEntry
+      summary: "Remove an entry of one's inbox for good (WF19)"
+      tags: [auth]
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: removed }
+        "401": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/v1/me/settings:
     get:
       operationId: mySettings
@@ -4096,6 +4166,27 @@ components:
         decision: { type: string, enum: [approve, reject] }
         comment: { type: string, description: required with reject }
         step: { type: string, format: uuid, description: "the question to answer; without, the first the session may answer" }
+    InboxEntry:
+      type: object
+      required: [id, kind, type_name, record_id, actor, subject, body, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        notification_id: { type: string, format: uuid, description: "the core.notification; missing for the notify of a rule" }
+        kind: { type: string, description: the kind of the event }
+        type_name: { type: string }
+        record_id: { type: string, format: uuid }
+        actor: { type: string, description: "the name of whoever caused the event, System for the system" }
+        subject: { type: string }
+        body: { type: string, description: plain text }
+        created_at: { type: string, format: date-time }
+        read_at: { type: string, format: date-time }
+    InboxPage:
+      type: object
+      required: [items, unread]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/InboxEntry" } }
+        next: { type: string, description: "after for the next page; missing on the last" }
+        unread: { type: integer, description: the number of the unread entries of the person }
     MyApproval:
       type: object
       required: [approval, step, type_name, record_id, title, stage, stages, stage_name, approver, state, requested_at]

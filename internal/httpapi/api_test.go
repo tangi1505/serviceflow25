@@ -293,7 +293,8 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	notifyJobs := jobs.New(rt, jobs.Options{Logger: quiet, Workers: map[string]int{notifyTestQueue: 2}})
 	notifySvc := notify.New(rt, recs, notifyJobs, az.Load,
 		notify.NewMailer(notify.SMTP{Host: mailbox.Host, Port: mailbox.Port, From: "ITSM Test <itsm@test.local>"}), quiet)
-	notifySvc.Queue, notifySvc.PublicURL = notifyTestQueue, "http://itsm.test"
+	notifySvc.Queue, notifySvc.PublicURL, notifySvc.Settings = notifyTestQueue, "http://itsm.test", orgSvc.Setting
+	notifySvc.SetKV(kv)
 	notifySvc.Register(notifyJobs)
 	if err := notifyJobs.Start(runCtx); err != nil {
 		t.Fatal(err)
@@ -335,7 +336,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
 	rels := relations.New(rt, recs)
 	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Settings: settingsSvc, Dashboards: dashboards, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
-		Calendars: calendars, SLA: slaSvc})
+		Calendars: calendars, SLA: slaSvc, Notify: notifySvc})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	an.SetPublicURL(srv.URL)

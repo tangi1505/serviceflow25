@@ -720,7 +720,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Server-Sent Events (PL24, UI8). With after (or the Last-Event-ID header on reconnect) the missed events come first, then live; without, the stream starts now. Each message has the position as id, the kind as event and the event as JSON data; a position too old ends the stream with the event gone */
+        /** Server-Sent Events (PL24, UI8). With after (or the Last-Event-ID header on reconnect) the missed events come first, then live; without, the stream starts now. Each message has the position as id, the kind as event and the event as JSON data; a position too old ends the stream with the event gone. The event inbox (WF19, no id) tells the number of the unread entries of the session's inbox when it changes */
         get: operations["streamEvents"];
         put?: never;
         post?: never;
@@ -1889,6 +1889,60 @@ export interface paths {
         post?: never;
         /** End a substitution by removing it (WF6) */
         delete: operations["removeSubstitute"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The inbox of the session's person (WF19): entries of the notifications with the way inbox, newest first, with the number of the unread
+         * @description Subject and text are rendered in the language of the person when the entry was made. A new entry, and every change of the unread, is told on the event stream of the session as the event inbox with {"unread": n}. Entries older than the setting notify.inbox_days (default 90) are removed, read or not.
+         */
+        get: operations["myInbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox:read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark entries of one's inbox as read, or all of them (WF19); entries of others are left alone */
+        post: operations["readMyInbox"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an entry of one's inbox for good (WF19) */
+        delete: operations["removeInboxEntry"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3215,6 +3269,36 @@ export interface components {
              * @description the question to answer; without, the first the session may answer
              */
             step?: string;
+        };
+        InboxEntry: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description the core.notification; missing for the notify of a rule
+             */
+            notification_id?: string;
+            /** @description the kind of the event */
+            kind: string;
+            type_name: string;
+            /** Format: uuid */
+            record_id: string;
+            /** @description the name of whoever caused the event, System for the system */
+            actor: string;
+            subject: string;
+            /** @description plain text */
+            body: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            read_at?: string;
+        };
+        InboxPage: {
+            items: components["schemas"]["InboxEntry"][];
+            /** @description after for the next page; missing on the last */
+            next?: string;
+            /** @description the number of the unread entries of the person */
+            unread: number;
         };
         MyApproval: {
             /** Format: uuid */
@@ -7556,6 +7640,88 @@ export interface operations {
                 content?: never;
             };
             403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    myInbox: {
+        parameters: {
+            query?: {
+                /** @description only the unread entries */
+                unread?: boolean;
+                limit?: number;
+                /** @description the next of the page before */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description a page of the inbox */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxPage"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    readMyInbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ids?: string[];
+                    /** @description all entries of the person */
+                    all?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description the number of the unread left */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unread: number;
+                    };
+                };
+            };
+            401: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    removeInboxEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
         };
     };

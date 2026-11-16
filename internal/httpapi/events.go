@@ -18,6 +18,7 @@ import (
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/httpapi/gen"
+	"group24.de/itsm/internal/notify"
 	"group24.de/itsm/internal/records"
 )
 
@@ -107,6 +108,22 @@ func (s *server) StreamEvents(w http.ResponseWriter, r *http.Request, p gen.Stre
 	// overflow, the client is told to reconnect, and Last-Event-ID replays what it missed.
 	live := make(chan records.Event, 1024)
 	overflow := make(chan struct{}, 1)
+	// The inbox of the session's person (WF19): the number of the unread when it changes.
+	inbox := make(chan int, 16)
+	if acc := authz.From(ctx); s.o.Notify != nil && acc != nil && acc.PersonID != nil {
+		person := *acc.PersonID
+		go func() {
+			_ = s.o.Notify.SubscribeInbox(ctx, func(n notify.InboxNotice) {
+				if n.Person != person {
+					return
+				}
+				select {
+				case inbox <- n.Unread:
+				default:
+				}
+			})
+		}()
+	}
 	go func() {
 		_ = s.o.Events.Subscribe(ctx, func(e records.Event) {
 			select {
@@ -175,6 +192,10 @@ func (s *server) StreamEvents(w http.ResponseWriter, r *http.Request, p gen.Stre
 				send(e)
 				flusher.Flush()
 			}
+		case n := <-inbox:
+			// No id: the position of the stream stays where it is.
+			fmt.Fprintf(w, "event: inbox\ndata: {\"unread\":%d}\n\n", n)
+			flusher.Flush()
 		case <-tick.C:
 			fmt.Fprint(w, ": ping\n\n")
 			flusher.Flush()

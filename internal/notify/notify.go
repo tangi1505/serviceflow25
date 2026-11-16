@@ -5,7 +5,8 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// Package notify sends notifications as mail (WF15; Hauptplan KF14; Inventar G160, G161). A
+// Package notify sends notifications as mail (WF15; Hauptplan KF14; Inventar G160, G161) and
+// keeps them in the inbox of the person (WF19, inbox.go). A
 // notification is a record of the core type core.notification: for the records of one type,
 // on some kinds of events, if a CEL condition holds, to recipients (roles at the record,
 // groups, persons), with a subject and a text that are translatable (PL21) and know a few
@@ -14,9 +15,11 @@
 //
 // The consumer notify of the dispatcher (PL41) turns each event into one job per matching
 // notification; that job finds the recipients and queues one job per person, which renders
-// the mail in the person's language and sends it over SMTP. A person gets one mail per event
-// and notification, also when named twice, and none for what the person did. A mail that
-// fails on its last attempt is kept with the failures.
+// subject and text in the person's language, keeps them in her inbox when the notification
+// has the way inbox, and sends them over SMTP when it has the way mail and a mail server is
+// set. A person gets one mail and one entry per event and notification, also when named
+// twice, and none for what the person did. A mail that fails on its last attempt is kept with
+// the failures.
 package notify
 
 import (
@@ -35,6 +38,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/events"
@@ -75,6 +79,10 @@ type Service struct {
 	rights Rights
 	mail   *Mailer
 	logger *slog.Logger
+	// kv tells the open tabs of new inbox entries (SetKV); nil tells none.
+	kv *cache.Client
+	// Settings reads a setting of a node (org.Service.Setting); nil keeps the defaults.
+	Settings func(ctx context.Context, path, key string) (json.RawMessage, string, error)
 	// PublicURL is the address of the web interface, for {{link}}.
 	PublicURL string
 	// Queue is the River queue of the jobs; tests use their own.
@@ -188,6 +196,9 @@ type notification struct {
 	NotifyActor bool
 	Subject     string
 	Body        string
+	// Mail and Inbox are the ways (WF19); a notification from before them has both.
+	Mail  bool
+	Inbox bool
 }
 
 func fromRecord(r records.Record) (notification, error) {
@@ -202,7 +213,17 @@ func fromRecord(r records.Record) (notification, error) {
 	n.NotifyActor, _ = r["notify_actor"].(bool)
 	n.Subject, _ = r["subject"].(string)
 	n.Body, _ = r["body"].(string)
+	mail, set := r["mail"].(bool)
+	n.Mail = mail || !set
+	inbox, set := r["inbox"].(bool)
+	n.Inbox = inbox || !set
 	return n, nil
+}
+
+// reaches says whether a notification goes anywhere: to the inbox, or as mail where a mail
+// server is set.
+func (s *Service) reaches(n notification) bool {
+	return n.Inbox || (n.Mail && s.mail.Enabled())
 }
 
 // active reads the active notifications; without the type (an instance not updated yet)
@@ -245,7 +266,8 @@ type FanoutArgs struct {
 // Kind names the job.
 func (FanoutArgs) Kind() string { return "notify.fanout" }
 
-// SendArgs is one mail: an event, the notification (nil for a rule's notify) and a person.
+// SendArgs is one delivery, to the inbox, as mail or both: an event, the notification (nil for
+// a rule's notify) and a person.
 type SendArgs struct {
 	Position     int64      `json:"position"`
 	Notification *uuid.UUID `json:"notification,omitempty"`
@@ -280,7 +302,7 @@ func (s *Service) HandleBatch(ctx context.Context, tx pgx.Tx, batch []records.Ev
 		// A notification acts on the events of its own tenant only (PL45).
 		tenant := org.TenantOf(tenants, records.EventPath(e))
 		for _, n := range notes {
-			if n.TypeName == e.TypeName && slices.Contains(n.Events, e.Kind) && org.TenantOf(tenants, n.OrgPath) == tenant {
+			if n.TypeName == e.TypeName && slices.Contains(n.Events, e.Kind) && org.TenantOf(tenants, n.OrgPath) == tenant && s.reaches(n) {
 				id := n.ID
 				params = append(params, river.InsertManyParams{Args: FanoutArgs{Position: e.Position, Notification: &id}, InsertOpts: opts})
 			}
@@ -638,8 +660,9 @@ type sendWorker struct {
 	s *Service
 }
 
-// Work sends one mail; one that fails on its last attempt, or is given up, is kept with the
-// failures of the dispatcher.
+// Work delivers to one person; a mail that fails on its last attempt, or is given up, is kept
+// with the failures of the dispatcher. The inbox entry is kept before the mail is tried, and
+// once only, however often the job runs.
 func (w *sendWorker) Work(ctx context.Context, job *river.Job[SendArgs]) error {
 	to, err := w.s.Send(ctx, job.Args)
 	var cancel *rivertype.JobCancelError
@@ -663,9 +686,10 @@ func (w *sendWorker) Work(ctx context.Context, job *river.Job[SendArgs]) error {
 	return err
 }
 
-// Send renders one mail in the person's language and sends it; it returns the address. A
-// person without an address, a record or event gone, or a notification switched off end the
-// job without a mail.
+// Send renders subject and text in the person's language, keeps them in her inbox and sends
+// them as mail, as the notification's ways say (a rule's notify: both); it returns the address
+// mailed to. A record or event gone, or a notification switched off end the job without
+// either; a person without an address gets no mail, a mail server not set sends none.
 func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 	ctx = system(ctx)
 	person, err := s.rec.Get(ctx, "core.person", a.Person)
@@ -676,10 +700,7 @@ func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 		return "", err
 	}
 	to, _ := person["email"].(string)
-	if strings.TrimSpace(to) == "" {
-		s.logger.Info("notify: person without mail address", "person", a.Person)
-		return "", nil
-	}
+	to = strings.TrimSpace(to)
 	lang, _ := person["language"].(string)
 	if lang == "" {
 		lang = "de"
@@ -729,6 +750,7 @@ func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 		}
 	}
 	subject, body := defaultSubject, defaultBody
+	toInbox, toMail := true, true
 	if a.Notification == nil {
 		var payload struct {
 			Message string `json:"message"`
@@ -741,8 +763,24 @@ func (s *Service) Send(ctx context.Context, a SendArgs) (string, error) {
 			return "", err
 		}
 		subject, body = n.Subject, n.Body
+		toInbox, toMail = n.Inbox, n.Mail
 	}
-	msg := Message{To: to, Subject: Render(subject, data), Body: Render(body, data), Date: time.Now()}
+	subject, body = Render(subject, data), Render(body, data)
+	if toInbox {
+		e := Entry{NotificationID: a.Notification, Kind: ev.Kind, TypeName: ev.TypeName, RecordID: ev.RecordID,
+			Actor: data.Actor, Subject: subject, Body: body}
+		if err := s.deliver(ctx, e, a.Person, a.Position); err != nil {
+			return "", err
+		}
+	}
+	if !toMail || !s.mail.Enabled() {
+		return "", nil
+	}
+	if to == "" {
+		s.logger.Info("notify: person without mail address", "person", a.Person)
+		return "", nil
+	}
+	msg := Message{To: to, Subject: subject, Body: body, Date: time.Now()}
 	if err := s.mail.Send(ctx, msg); err != nil {
 		return to, fmt.Errorf("notify: mail to %s: %w", to, err)
 	}

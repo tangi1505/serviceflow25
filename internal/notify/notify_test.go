@@ -102,3 +102,27 @@ func TestMailer(t *testing.T) {
 		t.Fatal("no server, no error")
 	}
 }
+
+// A notification from before WF19 has no ways yet and goes both; one that names them keeps them.
+func TestWaysOfANotification(t *testing.T) {
+	base := map[string]any{"id": "0b6f1d3e-2a4c-4e8f-9a1b-3c5d7e9f1a2b"}
+	n, err := fromRecord(base)
+	if err != nil || !n.Mail || !n.Inbox {
+		t.Fatalf("without ways: %+v %v", n, err)
+	}
+	base["mail"], base["inbox"] = false, true
+	if n, _ := fromRecord(base); n.Mail || !n.Inbox {
+		t.Fatalf("inbox only: %+v", n)
+	}
+	s := &Service{mail: NewMailer(SMTP{})}
+	if s.reaches(notification{Mail: true}) {
+		t.Fatal("mail only reaches someone without a mail server")
+	}
+	if !s.reaches(notification{Inbox: true}) {
+		t.Fatal("the inbox needs no mail server")
+	}
+	s.mail = NewMailer(SMTP{Host: "mail.test"})
+	if !s.reaches(notification{Mail: true}) {
+		t.Fatal("mail with a mail server")
+	}
+}

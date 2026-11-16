@@ -58,6 +58,10 @@ func NewMailer(cfg SMTP) *Mailer {
 	return &Mailer{cfg: cfg, Timeout: 30 * time.Second}
 }
 
+// Enabled says whether a mail server is set; without one no mail goes out (WF19: the inbox
+// still fills).
+func (m *Mailer) Enabled() bool { return m != nil && m.cfg.Host != "" }
+
 // Send delivers one message.
 func (m *Mailer) Send(ctx context.Context, msg Message) error {
 	if _, err := mail.ParseAddress(msg.To); err != nil {

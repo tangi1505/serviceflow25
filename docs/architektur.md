@@ -78,7 +78,7 @@ Tabellen. Abhängigkeiten zeigen nur nach unten; ein Linter (`depguard`) prüft 
 | Ablauf | Fristen | `internal/calendar`, `internal/sla` | Kalender mit Arbeitszeit und Feiertagen (gebaut, E113); SLAs und Uhren mit Pause und Verstoß (gebaut, E114); Eskalationsstufen als Regeln mit Auslöser `clock` (gebaut, E115) | KF5 | WF |
 | Ablauf | Regeln | `internal/rules`, `internal/rules/engine`, `internal/recurrence` | CEL für Bedingungen (E45); die Regeln „wenn, dann“ vor dem Schreiben und als Job danach, nach Zeitplan (gebaut, E111); wiederkehrende Vorgänge (gebaut, E119) | KF7 | WF |
 | Ablauf | Formulare | `internal/forms` | Kerntyp `core.form`, Prüfung des Aufbaus, Absenden mit erstem Eintrag (UI11), Bedingungen und Übersetzung (UI12), angeboten im Portal oder Arbeitsplatz, Fragen nach Rollen und feste Werte (SD9, E167), Bestellen über ein Angebot mit Block `order` am Typ, `:order` und Beziehung zum Angebot (SD13, E177); Formularziele (was ein Formular anlegt), Zugriff auch anonym mit Captcha, Umfragen als Formular mit Auswertung | KF8, KF15 | UI, SD |
-| Ablauf | Benachrichtigung | `internal/notify` | Einstellungen mit übersetzbaren Vorlagen, Empfänger aus Rollen, Gruppen, Personen und den Verantwortlichen der Gruppen einer Rolle (`actors.<rolle>.responsible`, SD-Plan N10), Bedingung über den Datensatz und die Rollen des Auslösers (`by`, E165), Verweise in Platzhaltern mit ihrem Titel (SD8), Mail hinaus über SMTP (gebaut, E120); Mail hinein (IMAP), Browser (SD) | KF14 | WF, SD |
+| Ablauf | Benachrichtigung | `internal/notify` | Einstellungen mit übersetzbaren Vorlagen, Empfänger aus Rollen, Gruppen, Personen und den Verantwortlichen der Gruppen einer Rolle (`actors.<rolle>.responsible`, SD-Plan N10), Bedingung über den Datensatz und die Rollen des Auslösers (`by`, E165), Verweise in Platzhaltern mit ihrem Titel (SD8), Mail hinaus über SMTP (gebaut, E120); Posteingang je Person in der Tabelle `inbox_entry` mit den Wegen Mail und Posteingang je Benachrichtigung, neue Einträge als Ereignis `inbox` im Ereignisstrom der Sitzung über Valkey, Aufbewahrung nach `notify.inbox_days` (gebaut, WF19); Mail hinein (IMAP), Browser (SD) | KF14 | WF, SD |
 | Ablauf | Textbausteine | `internal/snippets` | Kerntyp `core.snippet`; Prüfung der Platzhalter beim Speichern, Einsetzen mit den Rechten der schreibenden Person über die Platzhalter der Benachrichtigungen, als formatierter Text (gebaut, E166) | — | SD |
 | Erweiterung | Pakete | `internal/packages` | Paketformat, Installation, Aktualisierung, Export | KF16 | EX |
 | Erweiterung | Sandbox | `internal/sandbox` | WASM per `wazero`, Host-Funktionen, Grenzen (§9) | KF6 | EX |
@@ -544,8 +544,8 @@ E39, E46:
   partitioniert.
 - **Verteiler im Worker (seit PL41, E112):** Jeder Abnehmer hat seine eigene Position in
   `event_consumer`: `live` (Valkey Pub/Sub für SSE an alle `api`-Instanzen), `webhooks` (signiert,
-  Zustellung als River-Job), `rules` (Regeln danach als Job), `notify` (Mails als Jobs, nur wo
-  ein Mailserver gesetzt ist, E120). Die SLA-Uhren sind kein Abnehmer: sie bewegen sich in der
+  Zustellung als River-Job), `rules` (Regeln danach als Job), `notify` (Posteingang und Mails als Jobs;
+  seit WF19 läuft er immer, Mails gehen nur, wo ein Mailserver gesetzt ist, E120). Die SLA-Uhren sind kein Abnehmer: sie bewegen sich in der
   Transaktion des Schreibens (E114). Ein Durchgang sperrt die Zeile des Abnehmers (`FOR UPDATE SKIP
   LOCKED`, so arbeitet je Abnehmer eine Instanz), liest bis zu 1.000 Ereignisse und schreibt die
   Jobs des Stapels und die neue Position in einer Transaktion. Scheitert er, bleibt der Abnehmer

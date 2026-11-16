@@ -265,13 +265,16 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	if err := recurSvc.Register(js); err != nil {
 		return err
 	}
-	// Notifications (WF15): a consumer of the dispatcher and the jobs that find the persons and
-	// send; without a mail server no consumer, the settings can still be kept.
+	// Notifications (WF15, WF19): a consumer of the dispatcher and the jobs that find the persons,
+	// keep the entries of the inbox and send the mail; without a mail server the inbox still
+	// fills. A job every night removes old entries of the inbox.
 	notifySvc := notify.New(rt, rec, js, az.Load, notify.NewMailer(notify.SMTP(cfg.SMTP)), logger)
-	notifySvc.PublicURL = cfg.PublicURL
-	if cfg.SMTP.Host != "" {
-		notifySvc.Register(js)
-		ev.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
+	notifySvc.PublicURL, notifySvc.Settings = cfg.PublicURL, orgSvc.Setting
+	notifySvc.SetKV(kv)
+	notifySvc.Register(js)
+	ev.Consume(events.ConsumerNotify, notifySvc.HandleBatch)
+	if err := notifySvc.RegisterInboxRetention(js); err != nil {
+		return err
 	}
 	// Dashboards (UI13): their widgets are checked like the saved searches.
 	dashboards := dashboard.New(rec)
@@ -354,6 +357,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Rules:          ruleEngine,
 		Calendars:      calendars,
 		SLA:            slaSvc,
+		Notify:         notifySvc,
 		WebDir:         cfg.WebDir,
 	})
 

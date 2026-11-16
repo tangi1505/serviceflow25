@@ -272,6 +272,21 @@ type Identity struct {
 	Tenant       pgtype.Text
 }
 
+type InboxEntry struct {
+	ID             uuid.UUID
+	PersonID       uuid.UUID
+	NotificationID uuid.NullUUID
+	EventPosition  int64
+	Kind           string
+	TypeName       string
+	RecordID       uuid.UUID
+	Actor          string
+	Subject        string
+	Body           string
+	CreatedAt      pgtype.Timestamptz
+	ReadAt         pgtype.Timestamptz
+}
+
 type JobSchedule struct {
 	Name      string
 	Schedule  string

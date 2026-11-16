@@ -53,6 +53,7 @@ type upgradeEnv struct {
 var upgrades = []upgrade{
 	{pkg: "request", below: "0.3.0", name: "Genehmigungsstufen der Erfüllungsvorlagen in Genehmigungsvorlagen", run: moveTemplateStages},
 	{pkg: "incident", below: "0.9.0", name: "Automatisches Schließen aus der Einstellung incident.close_after", run: closeFromSetting},
+	{pkg: "core", below: "0.10.0", name: "Benachrichtigungen als Mail und in den Posteingang", run: notificationWays},
 }
 
 // runUpgrades runs the steps of the package for an installed version below theirs.
@@ -97,6 +98,37 @@ func versionBelow(v, than string) bool {
 		}
 	}
 	return false
+}
+
+// notificationWays gives every notification from before WF19 both ways, mail and inbox (your
+// decision 2026-11-16, WF-Plan E19): the new columns came empty.
+func notificationWays(ctx context.Context, u upgradeEnv, scope string) (int, error) {
+	ctx = u.rt.BindFor(authz.WithAccess(ctx, authz.SystemIn(scope)), scope)
+	where, _ := json.Marshal(map[string]any{"or": []any{
+		map[string]any{"field": "mail", "null": true},
+		map[string]any{"field": "inbox", "null": true},
+	}})
+	moved := 0
+	for {
+		page, _, err := u.recs.Query(ctx, "core.notification", records.Query{Where: where, Limit: 200})
+		if err != nil {
+			return moved, err
+		}
+		if len(page.Items) == 0 {
+			return moved, nil
+		}
+		for _, n := range page.Items {
+			id, err := uuid.Parse(fmt.Sprint(n["id"]))
+			if err != nil {
+				return moved, err
+			}
+			version, _ := n["version"].(int64)
+			if _, err := u.recs.Update(ctx, "core.notification", id, version, map[string]any{"mail": true, "inbox": true}, nil); err != nil {
+				return moved, err
+			}
+			moved++
+		}
+	}
 }
 
 // moveTemplateStages makes a core.approval_template of the stages of every fulfilment template

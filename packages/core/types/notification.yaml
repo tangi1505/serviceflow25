@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # A notification (WF15; Inventar G160, G161): for the records of one type, on the events
-# named, if the condition holds, a mail to the recipients. Subject and text are translatable
+# named, if the condition holds, a mail to the recipients and an entry in their inbox (WF19),
+# as the ways mail and inbox say. Subject and text are translatable
 # (German in the column, other languages as translations, PL21); each person gets the mail in
 # the language of the person. Placeholders: {{record.<field>}}, {{type}}, {{title}}, {{link}},
 # {{actor}}, {{message}}, {{entry}} (the text of a new entry of the timeline, PL42).
@@ -58,6 +59,18 @@ fields:
     required: true
     translatable: true
     max_length: 20000
+  - name: mail
+    type: boolean
+    label: {de: Als Mail, en: As mail}
+    description: {de: "Nur wenn ein Mailserver eingerichtet ist und die Person eine Adresse hat.", en: "Only where a mail server is set and the person has an address."}
+    required: true
+    default: true
+  - name: inbox
+    type: boolean
+    label: {de: In den Posteingang, en: Into the inbox}
+    description: {de: "Die Glocke oben zeigt neue Einträge; sie bleiben nach der Einstellung notify.inbox_days.", en: "The bell at the top shows new entries; they stay as the setting notify.inbox_days says."}
+    required: true
+    default: true
   - name: active
     type: boolean
     label: {de: Aktiv, en: Active}

@@ -41,7 +41,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **WF13** | Untervorgänge (Aufgaben) mit Zeit, Planung und Bearbeiter (Inventar G41; Hauptplan E118) | 🟢 | 1,5 d | Drei Aufgaben an einem Vorgang, die Summe der Zeiten erscheint am Vorgang; eine Aufgabe mit Termin erscheint im Kalender (UI15); `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF14** | Zeitpläne, die Datensätze anlegen (wiederkehrende Vorgänge) (Inventar G61, G62; Hauptplan E119) | 🟢 | 1 d | Zeitplan „jeden Montag" legt in der Testzeit genau einen Vorgang je Montag an; `docker compose run --rm tools scripts/ci.sh` grün |
 | **WF15** | Benachrichtigungen: Ereignis, Empfänger aus Rollen am Datensatz, Vorlage mit Platzhaltern je Sprache, Mail hinaus über SMTP; Mailpit als Compose-Profil zum Testen (trägt KF14; Inventar G160, G161; Hauptplan E120) | 🟢 | 2 d | Neuer Vorgang → Mail an die Bearbeitergruppe in Mailpit (http://localhost:8025), auf Deutsch oder Englisch nach Einstellung der Person; `docker compose run --rm tools scripts/ci.sh` grün |
-| **WF19** | Posteingang: Benachrichtigungen auch im Werkzeug (E19). `core.notification` bekommt die Wege `mail` und `inbox` als zwei Schalter, beide als Vorgabe an, bestehende per Umzug auch; je Person ein Eintrag mit Betreff und Text in ihrer Sprache, Link zum Datensatz, Auslöser, Zeit und gelesen; der Abnehmer `notify` läuft auch ohne Mailserver (dann nur der Posteingang); API `GET /api/v1/me/inbox` (Seite und Zahl der ungelesenen), `POST /api/v1/me/inbox:read` (einzelne oder alle), `DELETE /api/v1/me/inbox/{id}`; ein neuer Eintrag meldet sich im Ereignisstrom der Sitzung als `inbox` mit der Zahl der ungelesenen; ein Job löscht Einträge nach der Frist (Einstellung `inbox_retention_days` am Organisationsbaum, Vorgabe 90). Die Glocke baut UI35 | 🔨 | 2 d | Ohne Mailserver: Benachrichtigung bei `create` an `actors.assigned`, neue Störung mit Annas Gruppe als Bearbeiter → `GET /api/v1/me/inbox` als Anna zeigt einen ungelesenen Eintrag mit deutschem Betreff und Link, `:read` setzt die Zahl auf 0, `DELETE` entfernt ihn; ein Eintrag älter als die Frist ist nach dem Job weg; nur `mail` an → kein Eintrag; mit Mailpit (`--profile mail`) kommt die Mail dazu; eine offene Verbindung zu `/api/v1/events/stream` bekommt `event: inbox`; `docker compose run --rm tools scripts/ci.sh` grün, LZ4 und LZ13 nicht mehr als 10 % langsamer |
+| **WF19** | Posteingang: Benachrichtigungen auch im Werkzeug (E19). `core.notification` bekommt die Wege `mail` und `inbox` als zwei Schalter, beide als Vorgabe an, bestehende per Umzug auch; je Person ein Eintrag mit Betreff und Text in ihrer Sprache, Link zum Datensatz, Auslöser, Zeit und gelesen; der Abnehmer `notify` läuft auch ohne Mailserver (dann nur der Posteingang); API `GET /api/v1/me/inbox` (Seite und Zahl der ungelesenen), `POST /api/v1/me/inbox:read` (einzelne oder alle), `DELETE /api/v1/me/inbox/{id}`; ein neuer Eintrag meldet sich im Ereignisstrom der Sitzung als `inbox` mit der Zahl der ungelesenen; ein Job löscht Einträge nach der Frist (Einstellung `notify.inbox_days` an der Wurzel, Vorgabe 90). Die Glocke baut UI35 | 🟢 | 2 d | Ohne Mailserver: Benachrichtigung bei `create` an `actors.assigned`, neue Störung mit Annas Gruppe als Bearbeiter → `GET /api/v1/me/inbox` als Anna zeigt einen ungelesenen Eintrag mit deutschem Betreff und Link, `:read` setzt die Zahl auf 0, `DELETE` entfernt ihn; ein Eintrag älter als die Frist ist nach dem Job weg; nur `mail` an → kein Eintrag; mit Mailpit (`--profile mail`) kommt die Mail dazu; eine offene Verbindung zu `/api/v1/events/stream` bekommt `event: inbox`; `docker compose run --rm tools scripts/ci.sh` grün, LZ4 und LZ13 nicht mehr als 10 % langsamer |
 
 ### C — Meilenstein 2
 
@@ -145,6 +145,62 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Feldzustände je Status mit WF2, Rechte je Übergang mit PL8; der Ereignisstrom hat weder
   Aufbewahrung noch SSE noch Verteiler (PL24); Übergänge laufen nur über die API, nicht per
   Bulk (PL31); die Bedingung sieht nur den Datensatz, nicht die Person (kommt mit PL8).
+
+### WF19 — Posteingang, 2026-11-16
+
+- **Grundlage:** E19 dieses Plans; Hauptplan E189 (vor UI35, weil die Glocke der Kopfzeile die
+  Zahl zeigt); deine Entscheidungen vom 2026-11-16: Einträge nur aus den Benachrichtigungen,
+  bestehende an Mail und Posteingang, 90 Tage einstellbar, eigene Kerntabelle, Meldung über den
+  Ereignisstrom.
+- **Gebaut:**
+  - Migration `00049_inbox.sql`: Tabelle `inbox_entry` in der Datenbank des Mandanten (Person,
+    Benachrichtigung, Ereignis, Art, Typ, Datensatz, Auslöser, Betreff, Text, angelegt, gelesen);
+    ein Eintrag je Person, Ereignis und Benachrichtigung (`NULLS NOT DISTINCT`), Indizes für die
+    Seite, die ungelesenen und die Aufbewahrung.
+  - `internal/notify/inbox.go`: Eintrag ablegen (doppelt läuft ins Leere), Seite neueste zuerst
+    mit Zahl der ungelesenen, gelesen (einzelne oder alle), löschen, Meldung `{person, unread}`
+    über Valkey (Kanal `inbox`), nächtlicher Job `notify.inbox_retention` (2:45 Uhr, Warteschlange
+    `bulk`) nach der Einstellung `notify.inbox_days` an der Wurzel, Vorgabe 90.
+  - `internal/notify/notify.go`: Wege `mail` und `inbox` je Benachrichtigung, ohne Angabe beide;
+    eine Benachrichtigung, die nirgends ankommt (nur Mail ohne Mailserver), erzeugt keinen Job;
+    der Versand rendert einmal in der Sprache der Person, legt den Eintrag vor der Mail ab und
+    schickt die Mail nur mit Mailserver und Adresse. Die Mitteilung einer Regel (`notify`) geht an
+    beide Wege. `Mailer.Enabled`.
+  - `cmd/itsm/main.go`: der Abnehmer `notify` läuft immer, nicht mehr nur mit Mailserver; dazu
+    der Job der Aufbewahrung.
+  - API: `GET /api/v1/me/inbox` (`unread`, `limit` bis 200, `after`), `POST
+    /api/v1/me/inbox:read` (`ids` bis 500 oder `all`), `DELETE /api/v1/me/inbox/{entryId}`; nur
+    die eigenen Einträge, sonst 404; ohne Person 422. Der Ereignisstrom der Sitzung meldet
+    `event: inbox` mit `{"unread": n}`, ohne `id`, damit die Position bleibt.
+  - Paket `core` 0.10.0: Felder „Als Mail“ und „In den Posteingang“ an `core.notification`
+    (Pflicht, Vorgabe ja), Einstellung „Einträge im Posteingang entfernen nach“ (Tage, 1 bis
+    3.650, nur an der Wurzel); Umzug in `cmd/itsm/upgrade.go` setzt bei vorhandenen
+    Benachrichtigungen beide Wege.
+- **Belegt, 2026-11-16:**
+  - Go `TestInboxOverHTTP` (Prüfweg): Benachrichtigung nur in den Posteingang an die Person der
+    Sitzung → ein ungelesener Eintrag mit Betreff „Eingang: … Drucker“, Text „Probe von API Test“,
+    Art, Typ, Datensatz, Benachrichtigung und Auslöser; der offene Ereignisstrom meldet
+    `data: {"unread":n+1}`; Anna mit „nur Mail“ bekommt ihre Mail und keinen Eintrag; gelesen
+    setzt die Zahl zurück, „nichts genannt“ ist 422, löschen 204, noch einmal 404; drei Einträge
+    über zwei Seiten, „alle gelesen“ lässt 0; ein kaputtes `after` ist 422; nach dem Job ist der
+    Eintrag von 91 Tagen weg, der von 89 bleibt. `TestNotificationsOverHTTP` (WF15) unverändert
+    grün. Einzeln `TestWaysOfANotification`: ohne Wege beide, „nur Mail“ ohne Mailserver kommt
+    nirgends an.
+  - 8092 auf Kern 0.10.0: alle 12 vorhandenen Benachrichtigungen haben Mail und Posteingang,
+    die Tabelle `inbox_entry` ist da.
+  - Ganze CI grün am 2026-11-16, zum ersten Mal auf `ki-lab` (Hauptplan E194), mit allen 19
+    Schritten: Go und Web (134 Vitest-Fälle, 18 Playwright-Fälle mit axe), Leistungsgate
+    bestanden gegen die Basislinie im selben Lauf: LZ1 p95 0,43 ms (−83 %), LZ2 3,06 ms (−33 %),
+    LZ3 5,18 ms (−43 %), LZ4 3,89 ms (−44 %), LZ5 10.949 Zeilen/s, LZ13 8.846 Ereignisse/s.
+  - Davor zwei rote Läufe in WSL, beide wegen Last von außen (ein anderes Projekt mit
+    Browser-Tests, Last 30 bis 50 auf 16 Kernen): die Lastmessung lehnte ab, `TestBulkStreamOverHTTP`
+    lief an die Grenze von einer Minute je Job (allein 10 s grün), im ersten Lauf dazu sieben
+    Web-Tests zu langsam. Daraus kam E194.
+- **Nicht geprüft:** Die Glocke selbst (UI35). Wer eine Benachrichtigung bekommt, sieht Betreff
+  und Text auch dann, wenn er den Datensatz nicht lesen darf, wie bei der Mail (WF15); der Link
+  führt dann auf 404. Gruppen in Gruppen werden weiter nicht aufgelöst. Die Last durch Einträge
+  bei 70.000 Personen ist nicht gemessen; der Abnehmer läuft jetzt auch auf Instanzen ohne
+  Mailserver.
 
 ### WF7 — Genehmigungsvorlagen und Erinnerung, 2026-11-12
 

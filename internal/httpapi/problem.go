@@ -18,6 +18,7 @@ import (
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/events"
 	"group24.de/itsm/internal/jobs"
+	"group24.de/itsm/internal/notify"
 	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/query"
 	"group24.de/itsm/internal/records"
@@ -88,7 +89,7 @@ func writeError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err
 		writeProblem(w, r, http.StatusUnprocessableEntity, "validation", err.Error(), nil)
 	case errors.Is(err, org.ErrNotFound), errors.Is(err, query.ErrNotFound), errors.Is(err, authz.ErrNotFound):
 		writeProblem(w, r, http.StatusNotFound, "not_found", err.Error(), nil)
-	case errors.Is(err, org.ErrInvalid), errors.Is(err, jobs.ErrInvalid):
+	case errors.Is(err, org.ErrInvalid), errors.Is(err, jobs.ErrInvalid), errors.Is(err, notify.ErrInvalid):
 		writeProblem(w, r, http.StatusUnprocessableEntity, "validation", err.Error(), nil)
 	case errors.Is(err, jobs.ErrNotFound):
 		writeProblem(w, r, http.StatusNotFound, "not_found", err.Error(), nil)
