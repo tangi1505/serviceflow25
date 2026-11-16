@@ -526,7 +526,6 @@
     "title": "itsm Portal",
     "toWorkplace": "Zum Arbeitsplatz",
     "mine": "Meine Vorgänge",
-    "new": "Neu",
     "none": "Noch nichts angelegt.",
     "nothing": "Hier gibt es noch nichts anzulegen.",
     "newTitle": "{{type}} anlegen",
@@ -547,7 +546,14 @@
     "changedOn": "zuletzt geändert am {{time}}",
     "readHelp": "Hilft das nicht weiter?",
     "order": "Bestellen",
-    "tileNumber": "Kennzahl"
+    "tileNumber": "Kennzahl",
+    "openCount": "{{count}} offen",
+    "show": "Anzeigen",
+    "open": "Offen",
+    "all": "Alle",
+    "noneOpen": "Nichts offen.",
+    "answer": "Rückfrage beantworten",
+    "moreRecords": "Weitere anzeigen"
   },
   "builder": {
     "section": "Abschnitt {{n}}",

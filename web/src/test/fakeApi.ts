@@ -282,19 +282,28 @@ export function customized(base: TypeDefinition, layer?: CustomerLayer): TypeDef
 }
 
 // matches mirrors the where of the JSON query for the operators the filters write (UI4).
-function matches(rec: RecordData, where: unknown): boolean {
+// person is the person of the session: "actors.<role>" with "@me" asks whether she holds the
+// role at the record ("Meine Vorgänge", UI43).
+function matches(rec: RecordData, where: unknown, person?: string): boolean {
   if (!where || typeof where !== "object") {
     return true;
   }
   const node = where as Record<string, unknown>;
   if (Array.isArray(node["and"])) {
-    return (node["and"] as unknown[]).every((w) => matches(rec, w));
+    return (node["and"] as unknown[]).every((w) => matches(rec, w, person));
   }
   if (Array.isArray(node["or"])) {
-    return (node["or"] as unknown[]).some((w) => matches(rec, w));
+    return (node["or"] as unknown[]).some((w) => matches(rec, w, person));
   }
-  const v = rec[String(node["field"])];
+  const field = String(node["field"]);
   const [op, given] = Object.entries(node).find(([k]) => k !== "field") ?? ["", undefined];
+  if (field.startsWith("actors.") && given === "@me") {
+    const holders = (rec["actors"] as Record<string, { id: string }[]> | undefined)?.[
+      field.slice(7)
+    ];
+    return op === "eq" && person !== undefined && (holders ?? []).some((a) => a.id === person);
+  }
+  const v = rec[field];
   // "@now" is the moment of the query on a system time (UI34).
   const want = given === "@now" ? new Date().toISOString() : given;
   switch (op) {
@@ -304,6 +313,8 @@ function matches(rec: RecordData, where: unknown): boolean {
       return v !== want;
     case "in":
       return Array.isArray(want) && want.includes(v);
+    case "nin":
+      return Array.isArray(want) && !want.includes(v);
     case "contains":
       return String(v ?? "")
         .toLowerCase()
@@ -617,13 +628,20 @@ export function fakeApi(state: FakeState) {
     const extraList = extra ? state.extraRecords?.[extra[1]!] : undefined;
     if (extra && extraList) {
       if (extra[2] === ":query" && method === "POST") {
-        const body = JSON.parse(bodyText) as { where?: unknown; limit?: number; sort?: string[] };
+        const body = JSON.parse(bodyText) as {
+          where?: unknown;
+          limit?: number;
+          sort?: string[];
+          count?: boolean;
+        };
         // One sort column, as the server takes it (the second is always the id).
         if ((body.sort?.length ?? 0) > 1) {
           return problem(422, "validation");
         }
-        const items = extraList.filter((r) => matches(r, body.where)).slice(0, body.limit ?? 50);
-        return json(200, { items });
+        const found = extraList.filter((r) => matches(r, body.where, state.personId));
+        const items = found.slice(0, body.limit ?? 50);
+        // count gives the number over all pages, as the server does.
+        return json(200, { items, ...(body.count ? { total: found.length } : {}) });
       }
       if (method === "GET") {
         const rec = extraList.find((r) => r["id"] === extra[2]!.slice(1));
@@ -1133,9 +1151,10 @@ export function fakeApi(state: FakeState) {
       return json(200, { body: String(found["body"]).replace("{{record.title}}", title) });
     }
     if (url.pathname === "/api/v1/records/probe.probe:query" && method === "POST") {
-      const body = JSON.parse(bodyText) as { where?: unknown; limit?: number };
-      const items = state.records.filter((r) => matches(r, body.where)).slice(0, body.limit ?? 50);
-      return json(200, { items });
+      const body = JSON.parse(bodyText) as { where?: unknown; limit?: number; count?: boolean };
+      const found = state.records.filter((r) => matches(r, body.where, state.personId));
+      const items = found.slice(0, body.limit ?? 50);
+      return json(200, { items, ...(body.count ? { total: found.length } : {}) });
     }
     if (url.pathname === "/api/v1/forms") {
       // The forms of a place (SD9): portal when none is named, a form for both at either.

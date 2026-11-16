@@ -125,8 +125,8 @@ describe("Reading area of the portal", () => {
       "aria-current",
       "page",
     );
-    // Only the type to create has a card; the one to read has its area.
-    expect(await screen.findByRole("region", { name: "Meldung" })).toBeInTheDocument();
+    // One's own records are one list (UI43); the type to read has its area, no card.
+    expect(await screen.findByRole("region", { name: "Meine Vorgänge" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Artikel" })).toBeNull();
 
     await user.click(within(areas).getByRole("link", { name: "Wissen" }));

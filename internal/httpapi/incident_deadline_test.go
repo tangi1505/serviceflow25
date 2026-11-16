@@ -208,6 +208,10 @@ func TestIncidentDeadlinesOverHTTP(t *testing.T) {
 	}
 	now = at(time.November, 9, 9, 0)
 	transition(p2, `{"transition": "wait", "fields": {"wait_reason": "`+ref("sd", "warten_rueckmeldung")+`"}}`)
+	// The portal reads through the reference that this reason means the requester (UI43).
+	if r := call(t, api, http.MethodPost, "/api/v1/records/incident.incident:query", `{"where": {"field": "id", "eq": "`+p2+`"}, "fields": ["wait_reason.awaits_requester"]}`, nil); r.code != 200 || len(r.body["items"].([]any)) != 1 || r.body["items"].([]any)[0].(map[string]any)["wait_reason.awaits_requester"] != true {
+		t.Fatalf("the reason means the requester: %d %s", r.code, r.raw)
+	}
 	if c := clockOf(p2, "sla_p2_solution"); c.state != sla.StatePaused {
 		t.Fatalf("solution while waiting: %+v", c)
 	}

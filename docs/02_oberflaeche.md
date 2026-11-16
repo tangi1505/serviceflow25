@@ -63,7 +63,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | 🟢 | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | 🟢 | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI42** | Kacheln des Portals mit Symbol (E43): Feld `icon` an `core.portal_tile` als Auswahl aus einer festen Liste, ohne Angabe ein Symbol nach der Art der Kachel; die Zeile mit der Art über dem Namen entfällt | ⬜ | 1 d | Kachel „Störung melden“ mit einem Symbol speichern → das Portal zeigt es im Kasten über dem Namen; eine Kachel ohne Angabe zeigt das Symbol ihrer Art; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI43** | „Meine Vorgänge“ als eine Liste über alle Typen (E43): an der Überschrift die Zahl der offenen, je Zeile Titel, Nummer, Typ, Zeit, Status und ein Hinweis, wenn die Person am Zug ist; Umschalter „Offen, Alle“. Ersetzt die Karte je Typ samt ihrem „Neu“. Der Hinweis „Lösung bestätigen“ kommt aus den Übergängen, die der Anforderer auslöst; für „Rückfrage beantworten“ bekommt der Wartegrund die Angabe, dass er den Anforderer meint (§2.4) | ⬜ | 2 d | Eine Person mit einer Störung und zwei Anfragen sieht eine Liste mit drei Zeilen, die neueste oben, und „3 offen“ an der Überschrift; eine gelöste Anfrage, die auf ihre Bestätigung wartet, zeigt „Lösung bestätigen“; eine Störung mit einem Wartegrund, der den Anforderer meint, zeigt „Rückfrage beantworten“; „Alle“ zeigt auch die geschlossenen; es gibt keine Karte je Typ mehr; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI43** | „Meine Vorgänge“ als eine Liste über alle Typen (E43): an der Überschrift die Zahl der offenen, je Zeile Titel, Nummer, Typ, Zeit, Status und ein Hinweis, wenn die Person am Zug ist; Umschalter „Offen, Alle“. Ersetzt die Karte je Typ samt ihrem „Neu“. Der Hinweis „Lösung bestätigen“ kommt aus den Übergängen, die der Anforderer auslöst; für „Rückfrage beantworten“ bekommt der Wartegrund die Angabe, dass er den Anforderer meint (§2.4) | 🟢 | 2 d | Eine Person mit einer Störung und zwei Anfragen sieht eine Liste mit drei Zeilen, die neueste oben, und „3 offen“ an der Überschrift; eine gelöste Anfrage, die auf ihre Bestätigung wartet, zeigt „Lösung bestätigen“; eine Störung mit einem Wartegrund, der den Anforderer meint, zeigt „Rückfrage beantworten“; „Alle“ zeigt auch die geschlossenen; es gibt keine Karte je Typ mehr; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Genehmigen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | ⬜ | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Genehmigen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
@@ -151,6 +151,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E49** | Meine Einstellungen (UI38, deine Entscheidungen 2026-11-16): jede Änderung wirkt sofort und wird sofort gespeichert, ohne Knopf „Speichern“, mit kurzer Bestätigung; „Auf Vorgabe zurücksetzen“ nimmt die eigenen Werte des offenen Reiters weg. Die Auswahl „Theme“ entfällt für Personen, auch auf der Anmeldeseite und im Portal; ein Theme-Paket setzt nur noch die Organisation (E45, UI39). Zum Bau: Reiter „Sprache und Zeit“, „Darstellung“ (Modus als drei Karten, Akzentfarbe aus den sechs Farben aus §2.3, Zeilenhöhe, Startseite), „Vorbelegung“ und, nicht im Mockup, „Vertretung“; die Akzentfarbe ist eine Einstellung der Person (`accent`) mit der Vorgabe der Organisation `ui.accent` (eine der sechs, bis UI39 eine freie Farbe erlaubt). Verworfen: Darstellung sofort, Rest mit Speichern; alles mit Speichern; Theme unter Darstellung | 2026-11-16 | Pascal |
 | **E50** | Favoriten und eigene Anordnung (UI37, deine Entscheidungen 2026-11-16): den Stern bekommt jeder Eintrag der Leiste (Listen der Typen, Dashboards, gespeicherte Suchen, Seiten der Verwaltung); „Favoriten“ steht als eigener Bereich oben, seine Einträge sind in Meine Einstellungen › Darstellung frei verschiebbar. Umstellen und ausblenden lassen sich alle Bereiche (Dashboards, die Bereiche der Pakete, Gespeicherte Suchen, Verwaltung); ein Bereich, der später dazukommt, erscheint an seinem üblichen Platz. Verschoben wird mit den Knöpfen „nach oben“ und „nach unten“. Zum Bau: persönliche Einstellungen `nav_order`, `nav_hidden` und `favorites` (Listen von Schlüsseln, nur der Person, ohne Vorgabe der Organisation); ein Favorit, dessen Ziel fehlt oder nicht mehr lesbar ist, wird nicht gezeigt. Verworfen: Stern nur an Listen und Suchen; Favoriten in der Folge des Anheftens oder der Bereiche; nur die Bereiche der Pakete umstellen; Ziehen mit der Maus | 2026-11-16 | Pascal |
 | **E51** | Erscheinungsbild der Organisation (UI39, deine Entscheidungen 2026-11-16): gilt für den ganzen Mandanten, eingestellt an seinem Knoten (ohne Mandanten an der Wurzel) mit dem Recht `manage_settings` dort, nicht je Einheit; die Werte sind nur dort setzbar. Name, Logo und Farbe stehen auch auf der Anmeldeseite: dort gilt noch kein Mandant (Benutzernamen sind in der Installation eindeutig, Hauptplan E138), also das Erscheinungsbild der Wurzel, ohne Mandanten genau das der Organisation, mit Mandanten das der Installation; ohne Anmeldung lesbar sind nur Name, Logo, Farbe und Hauptaktion. Geändert wird mit Vorschau und Knopf „Speichern“, nicht sofort. Die freie Farbe muss auf Weiß 4,5 : 1 erreichen; die dunkle Fassung rechnet das Werkzeug, bei zu wenig Kontrast auf der dunklen Karte mit mehr Weiß, bis 4,5 : 1 erreicht ist. Zum Bau: `ui.accent` wird eine Farbe `#rrggbb` (die sechs Farben der Personen sind darin enthalten, ein Umzugsschritt setzt bestehende Namen um), dazu `ui.app_name`, `ui.primary_accent` (Hauptaktion in der Akzentfarbe, E25), `ui.nav` (Breite der Leiste als Vorgabe) und je ein Schalter, ob eine Person Modus, Akzentfarbe, Zeilenhöhe und Navigation selbst einstellen darf; ist er aus, gilt ihr eigener Wert nicht mehr und die Wahl fehlt in Meine Einstellungen. Das Logo (PNG oder SVG, je hell und dunkel, höchstens 256 KB) liegt in einer eigenen Kerntabelle am Knoten, nicht im Dateispeicher: Dateien hängen an Datensätzen und deren Rechten, die Anmeldeseite braucht das Logo ohne Anmeldung; ausgeliefert nur als Bild mit `Content-Security-Policy: sandbox`. Verworfen: je Einheit vererbt; Name und Logo erst nach der Anmeldung; sofort speichern; eine zweite Farbe für dunkel | 2026-11-16 | Pascal |
+| **E52** | „Meine Vorgänge“ als eine Liste (UI43, deine Entscheidungen 2026-11-16): nur der Wartegrund „Rückmeldung Anforderer“ wartet auf den Anforderer (Angabe `awaits_requester` am Wartegrund); die Liste zeigt 20 Zeilen, dann „Weitere anzeigen“; sortiert nach der letzten Änderung, die Zeit ist die der letzten Änderung. Die bestehenden Installationen sind nur zum Testen da: kein Update-Schritt, auf 8092 von Hand gesetzt. Von mir ergänzt: als offen zählt auch ein erledigter Vorgang, an dem die Person noch etwas tun muss (etwa eine Lösung bestätigen), sonst fehlte die gelöste Anfrage des Prüfwegs unter „Offen“. Abgefragt wird je Typ im Browser (ein Pfad über den Wartegrund liefert die Angabe auch ohne Leserecht auf die Wartegründe). Verworfen: auch „Termin mit Anforderer“; alle Zeilen auf einmal; nach Anlage sortiert | 2026-11-16 | Pascal |
 
 ## 2. Begründung
 
@@ -434,6 +435,42 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI43 — „Meine Vorgänge“ als eine Liste, 2026-11-16
+
+- **Grundlage:** E43, E52 (Mockup, Ansichten 8 bis 11), §2.4.
+- **Gebaut:**
+  - `web/src/portal/MyRecords.tsx`: eine Liste über alle Typen, die das Portal anlegt, die zuletzt
+    geänderten oben; je Zeile Titel, Nummer, Typ, Zeit der letzten Änderung, Status und der
+    Hinweis, wenn die Person am Zug ist. An der Überschrift die Zahl der offenen, daneben
+    „Offen“ und „Alle“; 20 Zeilen, dann „Weitere anzeigen“. Der Browser fragt je Typ und mischt.
+    Die Karte je Typ samt „Neu“ ist weg; angelegt wird über Kacheln und Formulare.
+  - Hinweis: der erste Übergang des Status, den eine Rolle der Person am Vorgang auslöst
+    (bei Störung und Anfrage „Lösung bestätigen“); sonst „Rückfrage beantworten“, solange der
+    Wartegrund den Anforderer meint. Als offen zählt alles außer erledigt, und erledigt nur dann,
+    wenn die Person dort noch einen Übergang hat.
+  - Kern 0.14.0: `awaits_requester` („Wartet auf den Anforderer“) am Wartegrund; sd 0.5.2 setzt
+    es an „Rückmeldung Anforderer“.
+- **Belegt, 2026-11-16:**
+  - Vitest `MyRecords.test.tsx`: eine Störung und zwei Anfragen in einer Liste, die zuletzt
+    geänderte oben, „3 offen“, „Lösung bestätigen“ an der gelösten Anfrage, „Rückfrage
+    beantworten“ an der wartenden Störung, keine Karte und kein „Neu“; „Alle“ zeigt auch die
+    geschlossene; 25 Anfragen zeigen 20, „Weitere anzeigen“ die übrigen 5; ohne Vorgang „Nichts
+    offen.“; ein Typ, dessen Abfrage scheitert, hält die anderen nicht auf; axe ohne Befund.
+  - Go `TestIncidentDeadlinesOverHTTP`: die wartende Störung liefert über den Pfad
+    `wait_reason.awaits_requester` den Wert wahr.
+  - Playwright `portal.spec.ts`: keine Karte je Typ, die neue Probe steht oben mit Typ und
+    Status, die Zahl der offenen steigt um eins, „Alle“ schaltet um; axe ohne Befund.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab`: Go, Web (148 Vitest-Fälle, 21 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %), LZ2 2,95 ms, LZ3 4,83 ms, LZ4 3,70 ms,
+    LZ5 10622 Zeilen/s, LZ13 8916 Zeilen/s.
+  - Auf 8092 im Browser am 2026-11-16 (Konto mit Arbeitsplatz; Wartegrund „Rückmeldung
+    Anforderer“ von Hand gesetzt, eine Störung und zwei Anfragen angelegt): „UI43 Drucker
+    streikt“ (INC-2, Wartet) mit „Rückfrage beantworten“, „UI43 Neuer Monitor“ (REQ-3, Erledigt)
+    mit „Erledigung bestätigen“ (so heißt der Übergang der Anfrage) und als offen gezählt,
+    „UI43 Zugang Laufwerk“ (REQ-2, Neu) ohne Hinweis. Dabei gefunden: die Nummer stand ohne
+    Präfix; behoben (wie in den Listen des Arbeitsplatzes), Test und Browser-Test prüfen es.
+- **Nicht geprüft:** mit einem Konto nur für das Portal auf 8092 (in der CI mit `nutzerin`).
 
 ### UI41 — Kopfzeile des Portals, 2026-11-16
 

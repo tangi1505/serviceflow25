@@ -8,6 +8,8 @@
   values:
     name: Rückmeldung Anforderer
     description: Der Vorgang wartet auf eine Antwort der anfragenden Person.
+    # The portal shows her "Rückfrage beantworten" (UI43).
+    awaits_requester: true
 - key: warten_termin
   type: core.wait_reason
   values:

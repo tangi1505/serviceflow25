@@ -526,7 +526,6 @@
     "title": "itsm portal",
     "toWorkplace": "To the workplace",
     "mine": "My records",
-    "new": "New",
     "none": "Nothing created yet.",
     "nothing": "Nothing to create here yet.",
     "newTitle": "Create {{type}}",
@@ -547,7 +546,14 @@
     "changedOn": "last changed on {{time}}",
     "readHelp": "Didn't that help?",
     "order": "Order",
-    "tileNumber": "Number"
+    "tileNumber": "Number",
+    "openCount": "{{count}} open",
+    "show": "Show",
+    "open": "Open",
+    "all": "All",
+    "noneOpen": "Nothing open.",
+    "answer": "Answer the question",
+    "moreRecords": "Show more"
   },
   "builder": {
     "section": "Section {{n}}",

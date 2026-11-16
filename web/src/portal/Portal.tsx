@@ -11,8 +11,8 @@
 // may read and change the API decides with the rights at the records; the portal only shows
 // less. Agents reach it too, to see what users see. The forms (UI11) are offered to whoever may
 // create their target type; filling one in creates its record. Under the head a band shows
-// what is going on, such as an open major incident, on every page of the portal (SD5); the
-// cards of the start page stand side by side where there is room.
+// what is going on, such as an open major incident, on every page of the portal (SD5). One's
+// own records are one list over the types (UI43, MyRecords.tsx).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -39,6 +39,7 @@ import { forget } from "@/app/recent";
 import { Form } from "@/render/Form";
 
 import { FormFill, inLanguage } from "./FormFill";
+import { MyRecords } from "./MyRecords";
 import { AreaNav, creates, FieldValue } from "./Read";
 import { PortalSuggestions } from "./Suggest";
 import { TileGrid, useTiles } from "./Tiles";
@@ -193,76 +194,6 @@ function Notice({ notice }: { notice: PortalNotice }) {
   );
 }
 
-// mine is the condition of one's own records: as requester, or created oneself.
-function mine(type: TypeDefinition, account: string): Record<string, unknown> {
-  const created = { field: "created_by", eq: account };
-  return type.actors?.some((r) => r.name === "requester")
-    ? { or: [{ field: "actors.requester", eq: "@me" }, created] }
-    : created;
-}
-
-function MyRecords({ type }: { type: TypeDefinition }) {
-  const { t, i18n } = useTranslation();
-  const me = useQuery(meQuery);
-  const typeName = qualifiedName(type);
-  const title = type.title_field ?? type.fields[0]?.name ?? "id";
-  const list = useQuery({
-    queryKey: ["records", typeName, "list", "portal", me.data?.id],
-    queryFn: () =>
-      api.query(typeName, {
-        where: mine(type, me.data!.id),
-        fields: [title, "state", "updated_at"],
-        sort: ["-updated_at"],
-        limit: 50,
-      }),
-    enabled: Boolean(me.data),
-  });
-  const headingId = `portal-${typeName.replace(".", "-")}`;
-  return (
-    <section
-      aria-labelledby={headingId}
-      className="flex flex-col gap-3 rounded-md border bg-card p-4"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={headingId} className="text-lg font-semibold">
-          {labelOf(type.label, i18n.language, typeName)}
-        </h2>
-        <Link
-          to="/portal/$typeName/new"
-          params={{ typeName }}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
-        >
-          {t("portal.new")}
-        </Link>
-      </div>
-      {list.data && list.data.items.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t("portal.none")}</p>
-      )}
-      <ul className="flex flex-col divide-y">
-        {(list.data?.items ?? []).map((r) => {
-          const state = type.states?.find((s) => s.name === r["state"]);
-          return (
-            <li key={String(r["id"])} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
-              <Link
-                to="/portal/$typeName/$id"
-                params={{ typeName, id: String(r["id"]) }}
-                className="underline"
-              >
-                {String(r[title] ?? r["id"])}
-              </Link>
-              <span className="text-muted-foreground">
-                {state ? labelOf(state.label, i18n.language, state.name) : ""}
-                {" · "}
-                {formatMoment(r["updated_at"], i18n.language)}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
 // formsQuery are the forms offered to the session (UI11).
 
 function Forms() {
@@ -302,28 +233,18 @@ function Forms() {
 }
 
 export function PortalHome() {
-  const { t } = useTranslation();
   const types = useQuery(typesQuery);
   const offered = (types.data ?? []).filter(creates);
   // The tiles first (SD14, SD-Plan E13); they take the place of the card of the forms, which
-  // only a person without any tile still gets.
+  // only a person without any tile still gets. Below them one's own records as one list over
+  // the types (UI43, UI plan E52); creating starts at a tile or a form.
   const tiles = useTiles();
   const withTiles = !tiles.pending && tiles.tiles.length > 0;
-  const Heading = withTiles ? "h2" : "h1";
-  // Side by side where each card keeps 22.5 rem, below each other on a phone (SD5).
   return (
     <div className="flex flex-col gap-6">
       {withTiles && <TileGrid tiles={tiles.tiles} />}
-      <Heading className={withTiles ? "text-xl font-semibold" : "text-2xl font-semibold"}>
-        {t("portal.mine")}
-      </Heading>
-      {types.isSuccess && offered.length === 0 && <p>{t("portal.nothing")}</p>}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22.5rem),1fr))] items-start gap-4">
-        {offered.map((type) => (
-          <MyRecords key={qualifiedName(type)} type={type} />
-        ))}
-        {!tiles.pending && !withTiles && <Forms />}
-      </div>
+      {types.isSuccess && <MyRecords types={offered} heading={withTiles ? "h2" : "h1"} />}
+      {!tiles.pending && !withTiles && <Forms />}
     </div>
   );
 }

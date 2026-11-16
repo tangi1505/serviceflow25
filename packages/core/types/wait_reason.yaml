@@ -5,6 +5,8 @@
 # has a reference field wait_reason to it. What happens while a record waits for a reason
 # (reminders, a solution after some days) is an SLA that holds while it waits and counts from
 # then (start_from applies), with escalation levels as rules (trigger clock, WF10).
+# awaits_requester says that the record waits for the person who asked (UI43): the portal
+# shows her "Rückfrage beantworten" in "Meine Vorgänge".
 name: wait_reason
 label: {de: Wartegrund, en: Reason to wait}
 title_field: name
@@ -26,3 +28,10 @@ fields:
     label: {de: Aktiv, en: Active}
     required: true
     default: true
+  - name: awaits_requester
+    type: boolean
+    label: {de: Wartet auf den Anforderer, en: Waits for the requester}
+    description:
+      de: Das Portal zeigt der anfragenden Person „Rückfrage beantworten“.
+      en: The portal shows the person who asked "Answer the question".
+    default: false

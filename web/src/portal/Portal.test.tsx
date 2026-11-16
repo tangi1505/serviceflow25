@@ -115,9 +115,10 @@ describe("Portal", () => {
     state.workplace = false;
     state.personId = person;
     const { router, container } = renderAt("/portal");
-    const section = await screen.findByRole("region", { name: "Probe" });
-    expect(await within(section).findByText("Noch nichts angelegt.")).toBeInTheDocument();
-    await user.click(within(section).getByRole("link", { name: "Neu" }));
+    // Since UI43 the start page has no "Neu" per type: creating starts at a tile or a form.
+    const start = await screen.findByRole("region", { name: "Meine Vorgänge" });
+    expect(await within(start).findByText("Nichts offen.")).toBeInTheDocument();
+    await router.navigate({ to: "/portal/$typeName/new", params: { typeName: "probe.probe" } });
     await screen.findByRole("heading", { name: "Probe anlegen" });
     expect(screen.getByLabelText(/Titel/)).toBeInTheDocument();
     expect(screen.getByLabelText("Art")).toBeInTheDocument();
@@ -144,7 +145,7 @@ describe("Portal", () => {
     await user.click(
       within(screen.getByRole("main")).getByRole("link", { name: "Meine Vorgänge" }),
     );
-    const mine = await screen.findByRole("region", { name: "Probe" });
+    const mine = await screen.findByRole("region", { name: "Meine Vorgänge" });
     expect(await within(mine).findByRole("link", { name: "Drucker im Flur" })).toBeInTheDocument();
   });
 

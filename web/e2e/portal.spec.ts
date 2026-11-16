@@ -30,9 +30,15 @@ test("a user stays in the portal and creates there", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Zum Arbeitsplatz" })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
+  // "Meine Vorgänge" is one list since UI43, without a card and a "Neu" per type.
+  const start = page.getByRole("region", { name: "Meine Vorgänge" });
+  await expect(start).toBeVisible();
+  await expect(page.getByRole("region", { name: "Probe" })).toHaveCount(0);
+  await expect(start.getByRole("link", { name: "Neu" })).toHaveCount(0);
+  const before = Number((await start.getByText(/^\d+ offen$/).textContent())!.split(" ")[0]);
+
   const title = `UI10 ${Date.now()}`;
-  const section = page.getByRole("region", { name: "Probe" });
-  await section.getByRole("link", { name: "Neu" }).click();
+  await page.goto("/portal/probe.probe/new");
   await expect(page.getByLabel("Priorität")).toHaveCount(0);
   await page.getByLabel(/Titel/).fill(title);
   await page.getByRole("button", { name: "Anlegen" }).click();
@@ -55,9 +61,20 @@ test("a user stays in the portal and creates there", async ({ page }) => {
     .getByRole("navigation", { name: "breadcrumb" })
     .getByRole("link", { name: "Meine Vorgänge" })
     .click();
-  await expect(
-    page.getByRole("region", { name: "Probe" }).getByRole("link", { name: title }),
-  ).toBeVisible();
+  // The new record stands first, with its number and type, and counts as open (UI43).
+  const mine = page.getByRole("region", { name: "Meine Vorgänge" });
+  await expect(mine.getByText(`${before + 1} offen`)).toBeVisible();
+  const first = mine.getByRole("listitem").first();
+  await expect(first.getByRole("link", { name: title })).toBeVisible();
+  await expect(first).toContainText("Probe");
+  // The running number with its prefix, as in the lists of the workplace.
+  await expect(first).toContainText(/PRB-\d+/);
+  await expect(first).toContainText("Neu");
+  await mine.getByRole("button", { name: "Alle" }).click();
+  await expect(mine.getByRole("button", { name: "Alle" })).toHaveAttribute("aria-pressed", "true");
+  await expect(mine.getByRole("link", { name: title })).toBeVisible();
+  const list = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(list.violations.map((v) => v.id)).toEqual([]);
 
   // The head of the portal (UI41, UI plan E43): from edge to edge, without a labelled select;
   // at 375 px the areas are a row to swipe and the head does not wrap the account away.
