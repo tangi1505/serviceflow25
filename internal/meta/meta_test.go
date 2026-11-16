@@ -286,6 +286,16 @@ func TestPackageIcon(t *testing.T) {
 	if err := Validate(p, nil); err == nil || !strings.Contains(err.Error(), "icon") {
 		t.Fatalf("a picture from elsewhere: %v", err)
 	}
+	// The reading area in the portal takes a symbol of the same list (UI41, UI-Plan E43).
+	p.Icon = "database"
+	p.Types[0].Portal = &Portal{Read: &PortalRead{Label: Label{"de": "Dinge", "en": "Things"}, Fields: []string{"title"}, Icon: "book-open"}}
+	if err := Validate(p, nil); err != nil {
+		t.Fatalf("portal area with book-open: %v", err)
+	}
+	p.Types[0].Portal.Read.Icon = "smiley"
+	if err := Validate(p, nil); err == nil || !strings.Contains(err.Error(), "portal read: icon") {
+		t.Fatalf("portal area with an unknown symbol: %v", err)
+	}
 }
 
 // A colour of the organisation (UI39, UI-Plan E51) reaches 4.5 : 1 on white as text; the

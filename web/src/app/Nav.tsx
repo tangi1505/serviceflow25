@@ -24,9 +24,10 @@ import {
   PanelLeftOpen,
   Shield,
   Star,
+  X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -42,6 +43,7 @@ import {
   typesQuery,
 } from "@/api/client";
 import { NewDashboardButton } from "@/app/Dashboard";
+import { TenantMenu } from "@/app/Header";
 import { packageIcon } from "@/app/icons";
 import { usePersist } from "@/app/Switches";
 import { usePopover } from "@/ui/popover";
@@ -81,7 +83,7 @@ function readOpen(account: string): Record<string, boolean> {
 // useDesktop says whether the window is at least 768 px wide; only there the bar can be
 // narrow. Without matchMedia (tests) it is.
 const desktopQuery = "(min-width: 768px)";
-function useDesktop(): boolean {
+export function useDesktop(): boolean {
   const media = () =>
     typeof window.matchMedia === "function" ? window.matchMedia(desktopQuery) : null;
   const [desktop, setDesktop] = useState(() => media()?.matches ?? true);
@@ -287,7 +289,10 @@ export function useArrangement() {
 // Pins are the favourites with the way to change them, for the stars of the entries.
 type Pins = { has: (id: string) => boolean; toggle: (id: string) => void; off?: boolean };
 
-export function Nav() {
+// Drawer is the navigation below 768 px (UI40, UI plan E42): open or closed, and how it closes.
+export type Drawer = { open: boolean; onClose: () => void };
+
+export function Nav({ drawer }: { drawer?: Drawer }) {
   const { t } = useTranslation();
   const me = useQuery(meQuery);
   const settings = useQuery(mySettingsQuery);
@@ -342,49 +347,56 @@ export function Nav() {
   };
   const count = approvals.data?.length;
 
+  const body = (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-2.5 pt-3 pb-4">
+      <ul className="flex flex-col gap-px">
+        <li>
+          <Link
+            to="/"
+            className={headClass}
+            activeOptions={{ exact: true }}
+            activeProps={{ className: activeClass }}
+          >
+            <House aria-hidden="true" className="size-4 flex-none text-foreground-2" />
+            {t("nav.start")}
+          </Link>
+        </li>
+        <li>
+          {/* Zu genehmigen with the open questions (WF6), for everyone signed in. */}
+          <Link to="/approvals" className={headClass} activeProps={{ className: activeClass }}>
+            <ListChecks aria-hidden="true" className="size-4 flex-none text-foreground-2" />
+            <span className="flex-1">{t("nav.approvals")}</span>
+            {count !== undefined && (
+              <span className="font-mono text-xs text-foreground-2">{count}</span>
+            )}
+          </Link>
+        </li>
+      </ul>
+      {areas.map((area) => (
+        <AreaBlock
+          key={area.id}
+          area={area}
+          open={open[area.id] ?? true}
+          onToggle={() => toggle(area.id)}
+          pins={pins}
+        />
+      ))}
+      {types.isError && <p className="text-sm text-destructive">{t("nav.typesError")}</p>}
+    </div>
+  );
+  // Below 768 px the navigation is a drawer over the content (UI40, E42), else the bar.
+  if (!desktop) {
+    return drawer?.open ? <NavDrawer onClose={drawer.onClose}>{body}</NavDrawer> : null;
+  }
   const wide = (
     <nav
       aria-label={t("nav.types")}
-      className="flex w-full flex-col border-b bg-surface-subtle md:min-h-0 md:w-60 md:flex-none md:border-r md:border-b-0"
+      className="flex min-h-0 w-60 flex-none flex-col border-r bg-surface-subtle"
     >
-      <div className="flex flex-col gap-3 px-2.5 pt-3 pb-4 md:min-h-0 md:flex-1 md:overflow-y-auto">
-        <ul className="flex flex-col gap-px">
-          <li>
-            <Link
-              to="/"
-              className={headClass}
-              activeOptions={{ exact: true }}
-              activeProps={{ className: activeClass }}
-            >
-              <House aria-hidden="true" className="size-4 flex-none text-foreground-2" />
-              {t("nav.start")}
-            </Link>
-          </li>
-          <li>
-            {/* Zu genehmigen with the open questions (WF6), for everyone signed in. */}
-            <Link to="/approvals" className={headClass} activeProps={{ className: activeClass }}>
-              <ListChecks aria-hidden="true" className="size-4 flex-none text-foreground-2" />
-              <span className="flex-1">{t("nav.approvals")}</span>
-              {count !== undefined && (
-                <span className="font-mono text-xs text-foreground-2">{count}</span>
-              )}
-            </Link>
-          </li>
-        </ul>
-        {areas.map((area) => (
-          <AreaBlock
-            key={area.id}
-            area={area}
-            open={open[area.id] ?? true}
-            onToggle={() => toggle(area.id)}
-            pins={pins}
-          />
-        ))}
-        {types.isError && <p className="text-sm text-destructive">{t("nav.typesError")}</p>}
-      </div>
+      {body}
       {/* Without arranging, the organisation sets the width (UI39). */}
       {arrangeable && (
-        <div className="hidden flex-none border-t px-2.5 py-2 md:block">
+        <div className="flex-none border-t px-2.5 py-2">
           <button
             type="button"
             onClick={() => width("narrow")}
@@ -397,11 +409,96 @@ export function Nav() {
       )}
     </nav>
   );
-  // One navigation at a time: below 768 px always the wide one (UI30, until UI40).
-  if (!narrow || !desktop) {
+  // One navigation at a time (UI36).
+  if (!narrow) {
     return wide;
   }
   return <Rail areas={areas} approvals={count} onWide={() => width("wide")} pins={pins} />;
+}
+
+// NavDrawer is the navigation on a phone (UI40, UI plan E42): it slides over the content from
+// the left, the content behind is dimmed; it closes with its button, a tap beside it, Esc and
+// the choice of an entry. The tenant stands at its top. The focus stays inside while it is open
+// and goes back to the button of the header when it closes.
+function NavDrawer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const { t } = useTranslation();
+  const panel = useRef<HTMLElement>(null);
+  const href = useLocation({ select: (l) => l.href });
+  const first = useRef(href);
+  useEffect(() => {
+    if (href !== first.current) {
+      onClose();
+    }
+  }, [href, onClose]);
+  useEffect(() => {
+    panel.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
+    // The page behind does not scroll while the drawer is open.
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = before;
+    };
+  }, []);
+  // Esc closes; Tab and Shift Tab go round inside the drawer.
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") {
+        return;
+      }
+      const all = [...el.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")];
+      const at = all.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && at <= 0) {
+        e.preventDefault();
+        all[all.length - 1]?.focus();
+      } else if (!e.shiftKey && at === all.length - 1) {
+        e.preventDefault();
+        all[0]?.focus();
+      }
+    };
+    el.addEventListener("keydown", onKeyDown);
+    return () => el.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-40">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={onClose}
+        className="absolute inset-0 h-full w-full cursor-default bg-black/40"
+      />
+      <nav
+        ref={panel}
+        aria-label={t("nav.types")}
+        className="absolute inset-y-0 left-0 flex w-[312px] max-w-[85vw] flex-col bg-surface-subtle shadow-lg [&_button[aria-expanded]]:h-11 [&_li>a]:py-3"
+      >
+        <div className="flex h-14 flex-none items-center gap-2 border-b px-2.5">
+          <div className="min-w-0 flex-1">
+            <TenantMenu />
+          </div>
+          <button
+            type="button"
+            aria-label={t("nav.close")}
+            title={t("nav.close")}
+            onClick={onClose}
+            className="inline-grid size-11 flex-none place-items-center rounded-md text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X aria-hidden="true" className="size-5" />
+          </button>
+        </div>
+        {children}
+      </nav>
+    </div>
+  );
 }
 
 // EntryRow is an entry with its star (UI37): shown when pointed at or focused, always when

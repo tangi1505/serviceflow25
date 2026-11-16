@@ -14,6 +14,7 @@
 // costs); the page of an orderable record shows its form to order it (SD-Plan N19, N21).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { BookOpen, House, ListChecks } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -28,6 +29,7 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
+import { packageIcon } from "@/app/icons";
 import { fieldLabel, formatMoment, formatValue } from "@/render/fields";
 import { RefName } from "@/render/RefName";
 import { RichText } from "@/render/RichText";
@@ -59,25 +61,35 @@ export function AreaNav() {
   const approvals = useQuery(myApprovalsQuery);
   const areas = (types.data ?? []).filter((x) => x.portal?.read);
   const open = approvals.data?.length ?? 0;
-  const link = "rounded-md px-2.5 py-1.5 text-sm";
+  // Every area with its symbol (UI41, UI plan E43): the start, the reading areas of the
+  // packages, the approvals.
+  const link =
+    "inline-flex h-11 flex-none items-center gap-2 whitespace-nowrap rounded-md px-2.5 text-sm text-foreground hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-9";
   const active = { className: "bg-surface-active font-medium" };
+  const icon = "size-4 flex-none text-foreground-2";
   return (
-    <nav aria-label={t("portal.areas")} className="flex flex-wrap gap-1">
+    <nav aria-label={t("portal.areas")} className="flex gap-0.5">
       <Link to="/portal" activeOptions={{ exact: true }} className={link} activeProps={active}>
+        <House aria-hidden="true" className={icon} />
         {t("portal.mine")}
       </Link>
-      {areas.map((x) => (
-        <Link
-          key={qualifiedName(x)}
-          to="/portal/read/$typeName"
-          params={{ typeName: qualifiedName(x) }}
-          className={link}
-          activeProps={active}
-        >
-          {labelOf(x.portal!.read!.label, i18n.language, qualifiedName(x))}
-        </Link>
-      ))}
+      {areas.map((x) => {
+        const Icon = x.portal?.read?.icon ? packageIcon(x.portal.read.icon) : BookOpen;
+        return (
+          <Link
+            key={qualifiedName(x)}
+            to="/portal/read/$typeName"
+            params={{ typeName: qualifiedName(x) }}
+            className={link}
+            activeProps={active}
+          >
+            <Icon aria-hidden="true" className={icon} />
+            {labelOf(x.portal!.read!.label, i18n.language, qualifiedName(x))}
+          </Link>
+        );
+      })}
       <Link to="/portal/approvals" className={link} activeProps={active}>
+        <ListChecks aria-hidden="true" className={icon} />
         {t("approvals.portalTitle")}
         {open > 0 && (
           <span

@@ -60,8 +60,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI37** | Favoriten und eigene Anordnung (E41, E50): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | 🟢 | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert; dazu E49 | 🟢 | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41, E51; ersetzt für Name, Logo und Farbe das Theme-Paket, E45): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | 🟢 | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | ⬜ | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | ⬜ | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | 🟢 | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | 🟢 | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI42** | Kacheln des Portals mit Symbol (E43): Feld `icon` an `core.portal_tile` als Auswahl aus einer festen Liste, ohne Angabe ein Symbol nach der Art der Kachel; die Zeile mit der Art über dem Namen entfällt | ⬜ | 1 d | Kachel „Störung melden“ mit einem Symbol speichern → das Portal zeigt es im Kasten über dem Namen; eine Kachel ohne Angabe zeigt das Symbol ihrer Art; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI43** | „Meine Vorgänge“ als eine Liste über alle Typen (E43): an der Überschrift die Zahl der offenen, je Zeile Titel, Nummer, Typ, Zeit, Status und ein Hinweis, wenn die Person am Zug ist; Umschalter „Offen, Alle“. Ersetzt die Karte je Typ samt ihrem „Neu“. Der Hinweis „Lösung bestätigen“ kommt aus den Übergängen, die der Anforderer auslöst; für „Rückfrage beantworten“ bekommt der Wartegrund die Angabe, dass er den Anforderer meint (§2.4) | ⬜ | 2 d | Eine Person mit einer Störung und zwei Anfragen sieht eine Liste mit drei Zeilen, die neueste oben, und „3 offen“ an der Überschrift; eine gelöste Anfrage, die auf ihre Bestätigung wartet, zeigt „Lösung bestätigen“; eine Störung mit einem Wartegrund, der den Anforderer meint, zeigt „Rückfrage beantworten“; „Alle“ zeigt auch die geschlossenen; es gibt keine Karte je Typ mehr; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Genehmigen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | ⬜ | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Genehmigen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -434,6 +434,62 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI41 — Kopfzeile des Portals, 2026-11-16
+
+- **Grundlage:** E43 (Mockup, Ansichten 8 bis 11), §2.4.
+- **Gebaut:**
+  - `web/src/portal/Portal.tsx`: die Kopfzeile reicht über die volle Breite: Marke mit Name
+    der Organisation und „Portal“, die Bereiche, rechts der Konto-Kreis. Unter 768 px stehen die
+    Bereiche als eigene Zeile unter Marke und Konto und lassen sich wischen. Sprache, „Meine
+    Einstellungen“, „Abmelden“ und „Zum Arbeitsplatz“ stehen im Konto-Menü; die Zeile mit
+    Auswahlfeld, Namen und Knöpfen ist weg.
+  - Das Konto-Menü ist das des Arbeitsplatzes (`AccountMenu` mit `portal`): „Meine
+    Einstellungen“ führt zu denen des Portals, „Zum Arbeitsplatz“ steht nur mit dem Recht
+    `workplace` darin, im Arbeitsplatz wie bisher „Zum Portal“.
+  - Bereiche mit Symbol (`web/src/portal/Read.tsx`): „Meine Vorgänge“ mit Haus, die
+    Lesebereiche mit dem Symbol aus `portal.read.icon` (sonst ein Buch), „Genehmigungen“ mit
+    Liste und der Zahl der offenen. Kern: `icon` an `portal.read` aus derselben festen Liste wie
+    die Pakete, geprüft beim Laden; Katalog `layout-grid` (catalog 0.1.2), Wissen `book-open`
+    (knowledge 0.7.2).
+- **Belegt, 2026-11-16:**
+  - Vitest `Portal.test.tsx`: ohne `workplace` hat das Konto-Menü „Meine Einstellungen“ zum
+    Portal und kein „Zum Arbeitsplatz“; mit dem Recht führt es zurück; die Bereiche haben ein
+    Symbol. Go `TestPackageIcon`: `book-open` am Lesebereich geht, ein unbekanntes Symbol nicht.
+  - Playwright `portal.spec.ts`: bei 1440 px ist die Kopfzeile 1440 px breit und ohne
+    Auswahlfeld; im Konto-Menü der Person ohne `workplace` fehlt „Zum Arbeitsplatz“; bei 375 px
+    lassen sich die Bereiche wischen, Marke und Konto stehen in einer Zeile; axe ohne Befund.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab`: Go, Web (145 Vitest-Fälle, 21 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %), LZ2 2,95 ms, LZ3 5,06 ms, LZ4 3,76 ms,
+    LZ5 9428 Zeilen/s, LZ13 8569 Zeilen/s. Der erste Lauf war rot an LZ5 (13 % unter
+    einer Basislinie, die selbst zwischen 8104 und 10104 Zeilen/s streute), der zweite grün.
+  - Auf 8092 im Browser angesehen am 2026-11-16 (Fenster 800 px): Kopfzeile über die volle
+    Breite, Katalog und Wissen mit ihren Symbolen, das Konto-Menü mit „Meine Einstellungen“ und
+    „Zum Arbeitsplatz“.
+- **Nicht geprüft:** ein echtes Telefon (nur der Browser mit 375 px).
+
+### UI40 — Navigation auf dem Telefon, 2026-11-16
+
+- **Grundlage:** E42 (Mockup, Ansicht 4); ändert den Prüfweg von UI30.
+- **Gebaut:**
+  - Unter 768 px ist die Navigation eine Schublade (`NavDrawer` in `web/src/app/Nav.tsx`):
+    312 px breit, schiebt sich von links über Kopfzeile und Inhalt, dahinter abgedunkelt; oben
+    der Mandant (bei mehreren) und „Navigation schließen“; Zeilen 44 px hoch. Sie schließt mit
+    dem Knopf, einem Tipp daneben, Esc und der Wahl eines Eintrags; der Fokus bleibt darin
+    (Tab läuft rund) und geht danach an „Navigation öffnen“ zurück; die Seite dahinter scrollt
+    nicht.
+  - Kopfzeile auf dem Telefon: „Navigation öffnen“ links, Marke, statt des Suchfelds eine Lupe
+    für die Befehlszeile, Glocke und Konto; der Mandant steht in der Schublade.
+- **Belegt, 2026-11-16:**
+  - Vitest `Nav.test.tsx` mit schmalem Fenster: keine Navigation bis „Navigation öffnen“, dann
+    der Fokus auf „Navigation schließen“, Tab bleibt drin, Esc schließt und gibt den Fokus
+    zurück, ein Tipp daneben schließt, ein Eintrag führt hin und schließt; axe ohne Befund.
+  - Playwright `frame.spec.ts` (Prüfweg von UI30 umgestellt): bei 375 px keine Navigation,
+    „Navigation öffnen“ zeigt sie bei x 0 und y 0, über 300 px breit, Fokus darin, axe ohne
+    Befund, Esc schließt, Fokus zurück.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab` für UI40 allein (145 Vitest-, 21 Playwright-Fälle;
+    ohne Lastmessung, weil kein Server-Code geändert war) und zusammen mit UI41 (siehe dort).
+- **Nicht geprüft:** ein echtes Telefon (nur der Browser mit 375 px).
 
 ### UI39 — Erscheinungsbild der Organisation, 2026-11-16
 

@@ -16,8 +16,10 @@ import {
   Building,
   Check,
   ChevronDown,
+  ExternalLink,
   LayoutGrid,
   LogOut,
+  Menu,
   Monitor,
   Moon,
   Search,
@@ -70,19 +72,44 @@ export function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
+// The id of the button that opens the navigation on a phone; the drawer gives the focus back
+// to it (UI40).
+export const navOpenerId = "nav-opener";
+
 export function AppHeader({
   onCommand,
   onLogout,
+  onMenu,
+  menuOpen = false,
 }: {
   onCommand: () => void;
   onLogout: () => void;
+  // onMenu opens the navigation on a phone (UI40, UI plan E42); without it the header is the
+  // one of a wide window.
+  onMenu?: () => void;
+  menuOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const branding = useQuery(myBrandingQuery);
   useBranding(branding.data);
+  const phone = onMenu !== undefined;
   return (
-    <header className="relative flex h-14 flex-none items-center gap-3 border-b bg-card pr-3 pl-4">
+    <header
+      className={`relative flex h-14 flex-none items-center border-b bg-card ${phone ? "gap-1 pr-2 pl-1" : "gap-3 pr-3 pl-4"}`}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        {phone && (
+          <button
+            id={navOpenerId}
+            type="button"
+            aria-label={t("nav.open")}
+            aria-expanded={menuOpen}
+            onClick={onMenu}
+            className={iconButton}
+          >
+            <Menu aria-hidden="true" className="size-5" />
+          </button>
+        )}
         <Link to="/" className="flex flex-none items-center gap-2.5 py-1 pr-1.5 text-foreground">
           {/* Logo and name of the organisation (UI39). */}
           <BrandMark branding={branding.data} />
@@ -90,22 +117,36 @@ export function AppHeader({
             {branding.data?.name ?? defaultName}
           </span>
         </Link>
-        <TenantMenu />
+        {/* On a phone the tenant stands at the top of the drawer (E42). */}
+        {!phone && <TenantMenu />}
       </div>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-keyshortcuts="Control+K"
-        onClick={onCommand}
-        className="flex h-9 min-w-0 flex-[0_1_520px] items-center gap-2.5 rounded-md border bg-background pr-2 pl-3 text-left text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Search aria-hidden="true" className="size-4 flex-none" />
-        <span className="min-w-0 flex-1 truncate">{t("command.open")}</span>
-        <kbd className="hidden rounded border border-b-2 border-input bg-card px-1.5 font-mono text-xs text-foreground-2 sm:inline">
-          {t("command.shortcut")}
-        </kbd>
-      </button>
-      <div className="flex flex-1 items-center justify-end gap-1">
+      {phone ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={t("command.open")}
+          title={t("command.open")}
+          onClick={onCommand}
+          className={iconButton}
+        >
+          <Search aria-hidden="true" className="size-5" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-keyshortcuts="Control+K"
+          onClick={onCommand}
+          className="flex h-9 min-w-0 flex-[0_1_520px] items-center gap-2.5 rounded-md border bg-background pr-2 pl-3 text-left text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Search aria-hidden="true" className="size-4 flex-none" />
+          <span className="min-w-0 flex-1 truncate">{t("command.open")}</span>
+          <kbd className="hidden rounded border border-b-2 border-input bg-card px-1.5 font-mono text-xs text-foreground-2 sm:inline">
+            {t("command.shortcut")}
+          </kbd>
+        </button>
+      )}
+      <div className={`flex items-center justify-end gap-1 ${phone ? "flex-none" : "flex-1"}`}>
         <InboxBell />
         <AccountMenu onLogout={onLogout} />
       </div>
@@ -115,8 +156,8 @@ export function AppHeader({
 
 // TenantMenu lets an account of the installation change the tenant it works in (PL44); an
 // account of one tenant does not see it. After the switch nothing of the old tenant stays in
-// the cache, and the page starts at home.
-function TenantMenu() {
+// the cache, and the page starts at home. On a phone it stands in the drawer (UI40).
+export function TenantMenu() {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -329,7 +370,14 @@ const schemeIcons: Record<ColorScheme, LucideIcon> = { system: Monitor, light: S
 
 // AccountMenu is the account circle and its window: mode and language at once, Meine
 // Einstellungen, the portal and signing out.
-function AccountMenu({ onLogout }: { onLogout: () => void }) {
+export function AccountMenu({
+  onLogout,
+  portal = false,
+}: {
+  onLogout: () => void;
+  // portal is the menu of the head of the portal (UI41, UI plan E43).
+  portal?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const me = useQuery(meQuery);
   const settings = useQuery(mySettingsQuery);
@@ -457,14 +505,27 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
             </div>
           </div>
           <div className="flex flex-col gap-px border-t p-1.5">
-            <Link to="/settings" onClick={() => pop.close(false)} className={`${rowClass} h-11`}>
+            <Link
+              to={portal ? "/portal/settings" : "/settings"}
+              onClick={() => pop.close(false)}
+              className={`${rowClass} h-11`}
+            >
               <Settings aria-hidden="true" className="size-4 text-foreground-2" />
               {t("header.settings")}
             </Link>
-            <Link to="/portal" onClick={() => pop.close(false)} className={`${rowClass} h-11`}>
-              <LayoutGrid aria-hidden="true" className="size-4 text-foreground-2" />
-              {t("portal.toPortal")}
-            </Link>
+            {portal ? (
+              me.data?.workplace === true && (
+                <Link to="/" onClick={() => pop.close(false)} className={`${rowClass} h-11`}>
+                  <ExternalLink aria-hidden="true" className="size-4 text-foreground-2" />
+                  {t("portal.toWorkplace")}
+                </Link>
+              )
+            ) : (
+              <Link to="/portal" onClick={() => pop.close(false)} className={`${rowClass} h-11`}>
+                <LayoutGrid aria-hidden="true" className="size-4 text-foreground-2" />
+                {t("portal.toPortal")}
+              </Link>
+            )}
           </div>
           <div className="border-t p-1.5">
             <button

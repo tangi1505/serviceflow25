@@ -372,6 +372,9 @@ func validatePortal(add func(string, string, ...any), where string, t Type) {
 		// The reading area (SD16a): a name for the head, fields to show, a reference to group by.
 		rw := where + ", portal read"
 		checkLabel(add, rw, "label", r.Label)
+		if r.Icon != "" && !IsPackageIcon(r.Icon) {
+			add(rw, "icon %q is no symbol of the list; use one of %v", r.Icon, PackageIcons)
+		}
 		if len(r.Fields) == 0 {
 			add(rw, "fields needs at least one field to show")
 		}

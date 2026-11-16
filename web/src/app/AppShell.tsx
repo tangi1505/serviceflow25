@@ -10,13 +10,13 @@
 // connection to the event stream of the tab (UI8).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CommandPalette } from "@/app/CommandPalette";
 import { LiveProvider } from "@/app/live";
-import { AppHeader } from "@/app/Header";
-import { Nav } from "@/app/Nav";
+import { AppHeader, navOpenerId } from "@/app/Header";
+import { Nav, useDesktop } from "@/app/Nav";
 import { forget } from "@/app/recent";
 import { api, meQuery, mySettingsQuery } from "@/api/client";
 import { useContentLanguage } from "@/app/contentLanguage";
@@ -56,6 +56,18 @@ export function AppShell() {
 
   // The command line (UI31): Strg K from anywhere, or the search field of the head.
   const [command, setCommand] = useState(false);
+  // The navigation on a phone (UI40): a drawer; closed, the focus goes back to its button.
+  const desktop = useDesktop();
+  const [drawer, setDrawer] = useState(false);
+  const closeDrawer = useCallback(() => {
+    setDrawer(false);
+    requestAnimationFrame(() => document.getElementById(navOpenerId)?.focus());
+  }, []);
+  useEffect(() => {
+    if (desktop) {
+      setDrawer(false);
+    }
+  }, [desktop]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
@@ -82,11 +94,16 @@ export function AppShell() {
   return (
     <LiveProvider>
       {/* From 768 px the header stays, and navigation and page scroll each for themselves (UI36);
-          below, the navigation stands above the content (UI30) and the page scrolls. */}
+          below, the navigation is a drawer over the content (UI40) and the page scrolls. */}
       <div className="flex min-h-screen flex-col md:h-screen md:min-h-0">
-        <AppHeader onCommand={() => setCommand(true)} onLogout={() => void logout()} />
+        <AppHeader
+          onCommand={() => setCommand(true)}
+          onLogout={() => void logout()}
+          onMenu={desktop ? undefined : () => setDrawer(true)}
+          menuOpen={drawer}
+        />
         <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
-          <Nav />
+          <Nav drawer={{ open: drawer, onClose: closeDrawer }} />
           <main className="min-w-0 flex-1 p-4 md:overflow-y-auto md:p-6">
             <Outlet />
           </main>

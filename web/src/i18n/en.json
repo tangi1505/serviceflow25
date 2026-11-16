@@ -54,7 +54,9 @@
     "favorites": "Favourites",
     "pin": "Pin to favourites: {{name}}",
     "unpin": "Unpin from favourites: {{name}}",
-    "appearance": "Appearance"
+    "appearance": "Appearance",
+    "open": "Open the navigation",
+    "close": "Close the navigation"
   },
   "header": {
     "tenant": "Tenant: {{name}}",

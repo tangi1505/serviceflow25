@@ -32,10 +32,10 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
-import { BrandMark, useBranding } from "@/app/Brand";
+import { BrandMark, defaultName, useBranding } from "@/app/Brand";
+import { AccountMenu } from "@/app/Header";
 import { useContentLanguage } from "@/app/contentLanguage";
 import { forget } from "@/app/recent";
-import { LanguageSwitch } from "@/app/Switches";
 import { Form } from "@/render/Form";
 
 import { FormFill, inLanguage } from "./FormFill";
@@ -96,27 +96,23 @@ export function PortalShell() {
   };
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex flex-wrap items-center gap-4 border-b bg-card px-4 py-2">
-        <Link to="/portal" className="flex items-center gap-2.5 text-lg font-semibold text-primary">
-          <BrandMark branding={branding.data} />
-          {t("portal.title")}
-        </Link>
-        <AreaNav />
-        <div className="ml-auto flex flex-wrap items-center gap-4">
-          <LanguageSwitch persist />
-          {me.data?.workplace && (
-            <Link to="/" className="text-sm underline">
-              {t("portal.toWorkplace")}
-            </Link>
-          )}
-          {me.data && (
-            <Link to="/portal/settings" className="text-sm text-muted-foreground underline">
-              {t("nav.user", { name: me.data.display_name })}
-            </Link>
-          )}
-          <Button variant="outline" size="sm" onClick={() => void logout()}>
-            {t("nav.logout")}
-          </Button>
+      {/* The head over the full width (UI41, UI plan E43): brand, areas, the account. Below
+          768 px the areas stand as a row to swipe under the brand. */}
+      <header className="border-b bg-card">
+        <div className="flex flex-wrap items-center gap-x-5 px-4 md:flex-nowrap md:px-6">
+          <Link to="/portal" className="flex h-14 flex-none items-center gap-2.5 text-foreground">
+            <BrandMark branding={branding.data} />
+            <span className="font-semibold tracking-tight">
+              {branding.data?.name ?? defaultName}
+            </span>
+            <span className="text-sm text-muted-foreground">{t("portal.title")}</span>
+          </Link>
+          <div className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 pb-2 md:order-none md:mx-0 md:w-auto md:min-w-0 md:flex-1 md:px-0 md:pb-0 [scrollbar-width:none]">
+            <AreaNav />
+          </div>
+          <div className="ml-auto flex flex-none items-center gap-1">
+            <AccountMenu portal onLogout={() => void logout()} />
+          </div>
         </div>
       </header>
       <Notices />

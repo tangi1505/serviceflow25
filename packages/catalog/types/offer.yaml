@@ -99,6 +99,8 @@ readers:
 portal:
   read:
     label: {de: Katalog, en: Catalogue}
+    # The symbol in the head of the portal (UI41).
+    icon: layout-grid
     fields: [description, delivery_days, cost, cost_kind]
     group: area
     facts: [delivery_days, cost, cost_kind]

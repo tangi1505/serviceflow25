@@ -7,7 +7,7 @@
 # suggested at tickets, rated and commented on (SD18); published and changed only with the
 # approval of the editors (SD17).
 name: knowledge
-version: 0.7.1
+version: 0.7.2
 # The symbol of the area in the navigation (UI36), from the fixed list of the core.
 icon: book-open
 label:

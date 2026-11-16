@@ -158,6 +158,8 @@ export type ActorRef = { type: string; id: string };
 // fields its page shows, and the reference field to a tree list it is browsed by.
 // With facts the list shows these fields with each record as cards, sorted by sort (SD13).
 export type PortalRead = {
+  // icon is the symbol of the area in the head of the portal (UI41).
+  icon?: string;
   label: Label;
   fields: string[];
   group?: string;

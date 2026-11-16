@@ -49,6 +49,12 @@ describe("Portal", () => {
     const home = renderAt("/");
     await waitFor(() => expect(home.router.state.location.pathname).toBe("/portal"));
     expect(await screen.findByRole("heading", { name: "Meine Vorgänge" })).toBeInTheDocument();
+    // The account menu of the portal (UI41) offers the workplace only with the right.
+    await userEvent.setup().click(screen.getByRole("button", { name: /^Konto von / }));
+    expect(await screen.findByRole("link", { name: "Meine Einstellungen" })).toHaveAttribute(
+      "href",
+      "/portal/settings",
+    );
     expect(screen.queryByRole("link", { name: "Zum Arbeitsplatz" })).toBeNull();
     home.unmount();
     const list = renderAt("/types/probe.probe");
@@ -284,6 +290,12 @@ describe("Portal", () => {
     await user.click(await screen.findByRole("button", { name: /^Konto von / }));
     await user.click(await screen.findByRole("link", { name: "Zum Portal" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/portal"));
+    // Back through the account menu of the portal (UI41); its areas have symbols.
+    const areas = screen.getByRole("navigation", { name: "Bereiche" });
+    expect(
+      within(areas).getByRole("link", { name: "Meine Vorgänge" }).querySelector("svg"),
+    ).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Konto von / }));
     await user.click(await screen.findByRole("link", { name: "Zum Arbeitsplatz" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
   });

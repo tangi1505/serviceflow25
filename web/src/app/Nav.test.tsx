@@ -191,4 +191,55 @@ describe("Navigation", () => {
     expect(state.settings!["nav_hidden"]).toBeUndefined();
     expect(state.settings!["favorites"]).toBeUndefined();
   });
+
+  it("is a drawer on a phone that keeps the focus and closes in every way", async () => {
+    // Below 768 px (UI40, UI plan E42).
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    const user = userEvent.setup();
+    const view = renderAt("/");
+    const opener = await screen.findByRole("button", { name: "Navigation öffnen" });
+    expect(screen.queryByRole("navigation", { name: "Typen" })).not.toBeInTheDocument();
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(opener);
+    const nav = await screen.findByRole("navigation", { name: "Typen" });
+    const close = within(nav).getByRole("button", { name: "Navigation schließen" });
+    expect(close).toHaveFocus();
+    expect(opener).toHaveAttribute("aria-expanded", "true");
+    await expectAccessible(view.container);
+    // The focus stays inside: back from the first goes to the last, on from the last to the first.
+    await user.tab({ shift: true });
+    expect(nav.contains(document.activeElement)).toBe(true);
+    await user.tab();
+    expect(close).toHaveFocus();
+
+    // Esc closes and gives the focus back.
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("navigation", { name: "Typen" })).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(opener).toHaveFocus());
+
+    // A tap beside it closes.
+    await user.click(opener);
+    await screen.findByRole("navigation", { name: "Typen" });
+    await user.click(view.container.querySelector<HTMLElement>('button[aria-hidden="true"]')!);
+    await waitFor(() =>
+      expect(screen.queryByRole("navigation", { name: "Typen" })).not.toBeInTheDocument(),
+    );
+
+    // Choosing an entry leads there and closes.
+    await user.click(opener);
+    const again = await screen.findByRole("navigation", { name: "Typen" });
+    await user.click(within(again).getByRole("link", { name: "Probe" }));
+    await waitFor(() => expect(view.router.state.location.pathname).toBe("/types/probe.probe"));
+    await waitFor(() =>
+      expect(screen.queryByRole("navigation", { name: "Typen" })).not.toBeInTheDocument(),
+    );
+  });
 });

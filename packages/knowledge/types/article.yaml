@@ -127,5 +127,7 @@ suggest:
 portal:
   read:
     label: {de: Wissen, en: Knowledge}
+    # The symbol in the head of the portal (UI41).
+    icon: book-open
     fields: [category, body]
     group: category

@@ -648,7 +648,8 @@ E5, E41, E42:
 
 ```
 web/src/
-  app/          Rahmen, Navigation, Anmeldung, Einstellungen
+  app/          Rahmen, Navigation (unter 768 px eine Schublade seit UI40), Anmeldung,
+                Einstellungen
   api/          aus OpenAPI erzeugter Client (keine Hand-Typen)
   render/       Listen, Formulare, Detailseiten, Zeitleiste aus der wirksamen Definition;
                 Editor mit Textbausteinen (SD8)
@@ -659,7 +660,9 @@ web/src/
                 Portal-Option read eines Typs seit SD16a; Startseite mit Kacheln aus
                 core.portal_tile und Hinweisen von Hand aus core.announcement seit SD14;
                 Katalog seit SD13: Lesebereich mit Karten (read.facts) und Bestellen auf der
-                Seite des Angebots; Ausfüllen eines Formulars in FormFill.tsx)
+                Seite des Angebots; Ausfüllen eines Formulars in FormFill.tsx; Kopfzeile über
+                die volle Breite mit dem Konto-Menü des Arbeitsplatzes und Symbolen der
+                Bereiche aus read.icon seit UI41)
   dashboards/   Widgets (ECharts)
   i18n/         Deutsch und Englisch von Anfang an; Inhalte werden in der Sprache der Person
                 gelesen, das Formular liest und schreibt Deutsch (SD16c)

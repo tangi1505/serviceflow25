@@ -54,7 +54,9 @@
     "favorites": "Favoriten",
     "pin": "Unter Favoriten anheften: {{name}}",
     "unpin": "Von den Favoriten lösen: {{name}}",
-    "appearance": "Erscheinungsbild"
+    "appearance": "Erscheinungsbild",
+    "open": "Navigation öffnen",
+    "close": "Navigation schließen"
   },
   "header": {
     "tenant": "Mandant: {{name}}",

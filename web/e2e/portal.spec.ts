@@ -8,7 +8,8 @@
 // The Prüfweg of UI10 in a real browser: a person without the right workplace lands in the
 // portal and does not reach the workplace, not by address either; she creates a record with
 // the fields of the portal, answers in its timeline and finds it under her records; axe
-// without findings. The CI gives the account nutzerin the role e2e_portal.
+// without findings. The CI gives the account nutzerin the role e2e_portal. Since UI41 also the
+// head of the portal: over the full width, the account menu, the areas to swipe on a phone.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
@@ -23,7 +24,11 @@ test("a user stays in the portal and creates there", async ({ page }) => {
   // The workplace by address: back to the portal.
   await page.goto("/types/probe.probe");
   await expect(page).toHaveURL(/\/portal$/);
+  // The account menu of the portal (UI41) has no way to the workplace without the right.
+  await page.getByRole("button", { name: /^Konto von / }).click();
+  await expect(page.getByRole("link", { name: "Meine Einstellungen" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Zum Arbeitsplatz" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
 
   const title = `UI10 ${Date.now()}`;
   const section = page.getByRole("region", { name: "Probe" });
@@ -53,4 +58,21 @@ test("a user stays in the portal and creates there", async ({ page }) => {
   await expect(
     page.getByRole("region", { name: "Probe" }).getByRole("link", { name: title }),
   ).toBeVisible();
+
+  // The head of the portal (UI41, UI plan E43): from edge to edge, without a labelled select;
+  // at 375 px the areas are a row to swipe and the head does not wrap the account away.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const head = page.getByRole("banner");
+  expect((await head.boundingBox())!.width).toBe(1440);
+  await expect(head.getByRole("combobox")).toHaveCount(0);
+  await page.setViewportSize({ width: 375, height: 800 });
+  const areas = page.getByRole("navigation", { name: "Bereiche" });
+  const row = areas.locator("xpath=..");
+  expect(await row.evaluate((el) => getComputedStyle(el).overflowX)).toBe("auto");
+  const brand = (await head.getByRole("link").first().boundingBox())!;
+  const account = (await head.getByRole("button", { name: /^Konto von / }).boundingBox())!;
+  expect(Math.abs(account.y - brand.y)).toBeLessThan(16);
+  expect((await areas.boundingBox())!.y).toBeGreaterThan(brand.y + brand.height - 1);
+  const phone = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(phone.violations.map((v) => v.id)).toEqual([]);
 });

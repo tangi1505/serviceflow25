@@ -7,7 +7,8 @@
 
 // The Prüfweg of UI30 in a real browser: "Kompakt" makes the rows 36 px and holds after a
 // reload; a click on a row shows the preview, "Öffnen" leads to the record page; at 375 px the
-// navigation stands above the list; axe without findings with the preview open. The account
+// navigation is a drawer (UI40, before: above the list); axe without findings with the preview
+// and with the drawer open. The account
 // gestalter (scripts/ci.sh) goes back to the normal row height at the end.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -66,12 +67,28 @@ test("compact rows, the preview beside the list, the navigation on a phone", asy
   await expect(page).toHaveURL(new RegExp(`/types/probe.probe/${id}$`));
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
 
-  // On a phone the navigation stands above the list.
+  // On a phone the navigation is a drawer over the list (UI40, UI plan E42; before UI40 it stood
+  // above the list): opened by the button of the header, closed with Esc, the focus back.
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto("/types/probe.probe");
   await expect(page.getByRole("row", { name: new RegExp(title) })).toBeVisible();
-  const nav = (await page.getByRole("navigation", { name: "Typen" }).boundingBox())!;
-  const main = (await page.getByRole("main").boundingBox())!;
-  expect(nav.y + nav.height).toBeLessThanOrEqual(main.y + 1);
-  expect(nav.width).toBeGreaterThan(300);
+  await expect(page.getByRole("navigation", { name: "Typen" })).toHaveCount(0);
+  const opener = page.getByRole("button", { name: "Navigation öffnen" });
+  await opener.click();
+  const drawer = page.getByRole("navigation", { name: "Typen" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole("button", { name: "Navigation schließen" })).toBeFocused();
+  const box = (await drawer.boundingBox())!;
+  expect(box.x).toBe(0);
+  expect(box.y).toBe(0);
+  expect(box.width).toBeGreaterThan(300);
+  const drawerAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(
+    drawerAxe.violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+    ),
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await expect(opener).toBeFocused();
 });

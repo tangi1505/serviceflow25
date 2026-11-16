@@ -81,6 +81,9 @@ type PortalRead struct {
 	Facts []string `json:"facts,omitempty" yaml:"facts"`
 	// Sort orders the list by a field ("-" before it: descending); empty: the newest first.
 	Sort string `json:"sort,omitempty" yaml:"sort"`
+	// Icon is the symbol of the area in the head of the portal (UI41, UI-Plan E43), one of
+	// PackageIcons; empty: a book.
+	Icon string `json:"icon,omitempty" yaml:"icon"`
 }
 
 // Reader is a rule by which signed-in persons read records of a type without a grant (SD16a,
