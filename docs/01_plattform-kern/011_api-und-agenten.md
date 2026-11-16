@@ -27,7 +27,7 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP1** | Flut-Szenario im Lastwerkzeug: eine Stufe mit fester Rate statt fester Arbeiter; fünf Fälle (ohne Anmeldung, Login, Token, eine Sitzung, ein Zugang); daneben misst ein normaler Nutzer LZ1 und LZ4; 2xx, 429 und 503 als eigene Spalten statt als Fehler; kein Teil der CI (§2.3) | ⬜ | 1 d | `docker compose run --rm tools go run ./test/load run --stage=flood --rate=1000 --target=http://itsm:8080` → je Fall eine Zeile mit dem Anteil 2xx, 429 und 503 und dem p95 des normalen Nutzers; der Bericht steht im Umsetzungsstand |
+| **AP1** | Flut-Szenario im Lastwerkzeug: eine Stufe mit fester Rate statt fester Arbeiter; fünf Fälle (ohne Anmeldung, Login, Token, eine Sitzung, ein Zugang); daneben misst ein normaler Nutzer LZ1 und LZ4; 2xx, 429 und 503 als eigene Spalten statt als Fehler; kein Teil der CI (§2.3); gemessen wird auf `ki-lab` (E3) | ⬜ | 1 d | `docker compose run --rm tools go run ./test/load run --stage=flood --rate=1000 --target=http://itsm:8080` → je Fall eine Zeile mit dem Anteil 2xx, 429 und 503 und dem p95 des normalen Nutzers; der Bericht steht im Umsetzungsstand |
 | **AP2** | Vertragstest über alle Operationen: jede Antwort des Mandanten-Rundgangs (PL44), auch Fehler und Schreiben, wird gegen die OpenAPI geprüft (§2.4) | ⬜ | 1,5 d | `docker compose run --rm tools go test ./internal/httpapi -run TestContract -v` meldet 157 von 157 Operationen; eine absichtlich falsche Antwort in einem Probe-Zweig macht ihn rot |
 | **AP3** | Fehlerfälle: 405 unter `/api`, Body über 1 MiB an normalen Endpunkten, unbekannte Felder an Login und Bulk, Seitengrenzen (`limit` 0, negativ, über 500, kaputter `after`), Token nach Ablauf, eine echte langsame Abfrage bis zum 503, zwei PATCH mit derselben Version zugleich (§2.4) | ⬜ | 1 d | die neuen Tests in `internal/httpapi` sind grün; bei den zwei PATCH genau eine 200 und eine 409; jede Antwort ist `application/problem+json` |
 | **AP4** | Fuzzing für JSON-Abfrage, Filter, Sortierung und Cursor, dazu Einschleus-Zeichenketten; der gefundene Korpus läuft als normaler Test in der CI (§2.4) | ⬜ | 1 d | `docker compose run --rm tools go test ./internal/records -fuzz FuzzQuery -fuzztime 60s` endet ohne Fund; `scripts/ci.sh` führt den Korpus aus |
@@ -37,37 +37,50 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP6** | Schutz vor der Anmeldung: Zähler je Adresse in Valkey an Login und Token, geprüft vor Argon2; Sperre auch am Token-Endpunkt; Obergrenze gleichzeitiger Argon2-Rechnungen je Instanz (§2.3, Schicht 1) | 🔒 V1 | 1 d | AP1, Fälle Login und Token: über der Grenze 429 mit `Retry-After` ohne Hash-Rechnung; der normale Nutzer hält daneben LZ1 |
-| **AP7** | Lastabwurf je Instanz: Obergrenze gleichzeitiger Anfragen nahe der Poolgröße, kurze Warteschlange, danach sofort 503 mit `Retry-After`; eigene Budgets für Suche, Export und Aggregate; `ReadTimeout`, `IdleTimeout` und `MaxHeaderBytes` am Server (§2.3, Schicht 2) | 🔒 V1 | 1,5 d | AP1, Fall Sitzung mit 1.000 Suchen je Sekunde: der normale Nutzer hält LZ1 und LZ4, Überzähliges bekommt 503 in unter 100 ms |
-| **AP8** | Rate für jeden Aufrufer, auch Sitzungen, und je Mandant: ein Zähler für alle, Prüfung ohne Datenbank (Zugang und Einstellung im Speicher wie bei PL58), gleitendes Fenster statt Minutenfenster (§2.3, Schicht 3) | 🔒 V1 | 1,5 d | AP1, Fall Zugang: abgewiesene Anfragen erzeugen keine Abfrage in PostgreSQL (`pg_stat_statements` vor und nach dem Lauf); an der Minutengrenze geht nicht mehr die doppelte Menge durch |
-| **AP9** | Metriken im Server: Anfragen, 429, 503, Wartezeit am Pool (Architektur §11, „Sichtbar machen“); Dashboards und Alarme bleiben beim Betrieb (BT) | 🔒 V1 | 1 d | `curl -s localhost:8092/metrics` zeigt die Zähler; nach einem Lauf von AP1 sind 429 und 503 gestiegen |
+| **AP6** | Schutz vor der Anmeldung: Zähler je Adresse in Valkey an Login und Token, geprüft vor Argon2; Sperre auch am Token-Endpunkt; Obergrenze gleichzeitiger Argon2-Rechnungen je Instanz (§2.3, Schicht 1) | ⬜ | 1 d | AP1, Fälle Login und Token: über der Grenze 429 mit `Retry-After` ohne Hash-Rechnung; der normale Nutzer hält daneben LZ1 |
+| **AP7** | Lastabwurf je Instanz: Obergrenze gleichzeitiger Anfragen nahe der Poolgröße, kurze Warteschlange, danach sofort 503 mit `Retry-After`; eigene Budgets für Suche, Export und Aggregate; `ReadTimeout`, `IdleTimeout` und `MaxHeaderBytes` am Server (§2.3, Schicht 2) | ⬜ | 1,5 d | AP1, Fall Sitzung mit 1.000 Suchen je Sekunde: der normale Nutzer hält LZ1 und LZ4, Überzähliges bekommt 503 in unter 100 ms |
+| **AP8** | Rate für jeden Aufrufer, auch Sitzungen, und je Mandant: ein Zähler für alle, Prüfung ohne Datenbank (Zugang und Einstellung im Speicher wie bei PL58), gleitendes Fenster statt Minutenfenster (§2.3, Schicht 3) | ⬜ | 1,5 d | AP1, Fall Zugang: abgewiesene Anfragen erzeugen keine Abfrage in PostgreSQL (`pg_stat_statements` vor und nach dem Lauf); an der Minutengrenze geht nicht mehr die doppelte Menge durch |
+| **AP9** | Metriken im Server: Anfragen, 429, 503, Wartezeit am Pool (Architektur §11, „Sichtbar machen“); Dashboards und Alarme bleiben beim Betrieb (BT) | ⬜ | 1 d | `curl -s localhost:8092/metrics` zeigt die Zähler; nach einem Lauf von AP1 sind 429 und 503 gestiegen |
 
 ### C — API-first
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
 | **AP10** | OpenAPI vervollständigen: Bearer und Client Credentials als Sicherheitsschema, `security` an jeder Operation, 401, 429 und 503 mit `Retry-After`, `If-Match` als Pflicht, die Pfade je Typ für Übergang, Batch, Export und Vorschlag in der Beschreibung der Laufzeit, Beispiele für die 20 wichtigsten Operationen, ein Schema für `TypeDefinition` (§2.5) | ⬜ | 1,5 d | ein Test über die Beschreibung: jede Operation hat `security`, 401 und 429; `curl -s localhost:8092/api/v1/openapi.json` zeigt `/api/v1/records/incident.incident/{id}:transition` |
-| **AP11** | Gleichstand von Oberfläche, API und Kommandozeile: die Liste dessen, was nur die Kommandozeile kann (§2.5), je Zeile entschieden: in die API oder bewusst nur Betrieb; ein CI-Schritt prüft, dass `web/src` nur `/api/v1` ruft | ⬜ | 0,5 d | die Tabelle steht in §2.5, jede Zeile mit Entscheidung; der CI-Schritt wird rot bei einem `fetch` auf einen anderen Pfad in einem Probe-Zweig |
+| **AP11** | Gleichstand von Oberfläche, API und Kommandozeile: die Liste dessen, was nur die Kommandozeile kann (§2.5), ist mit E5 je Zeile entschieden; bleibt: ein CI-Schritt prüft, dass `web/src` nur `/api/v1` ruft | ⬜ | 0,5 d | die Tabelle steht in §2.5, jede Zeile mit Entscheidung; der CI-Schritt wird rot bei einem `fetch` auf einen anderen Pfad in einem Probe-Zweig |
+| **AP24** | Lokale Konten über die API anlegen und verwalten, mit eigenem Recht; die Kommandozeile bleibt für das erste Konto einer Installation (E5; §2.5) | ⬜ | 1 d | ein Admin legt per `POST` ein lokales Konto an, sperrt es und setzt das Kennwort zurück; ohne das Recht → 403; die neuen Operationen stehen in `/api/v1/openapi.json` |
 
 ### D — Agentic-first
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP12** | Die Anforderungen an einen Agenten als Entscheidungen festhalten: Zugang nur zum Lesen, Probelauf, Idempotenz, Protokoll, „Was darf ich“ (§2.6); jede mit deiner Antwort | ⬜ | 0,5 d | die Entscheidungen stehen in §1; AP14 bis AP17 sind danach frei oder entfallen |
-| **AP13** | Der Zugang im Protokoll: die Sitzung eines Tokens trägt den Zugang; Verlauf, Ereignisprotokoll und Anfrageprotokoll nennen ihn (§2.6, Punkt 4) | ⬜ | 1 d | eine Änderung per Token → `GET …/{id}/history` nennt den Zugang; die Zeile im Anfrageprotokoll trägt `client` |
-| **AP14** | `Idempotency-Key` am Anlegen, am Übergang und am Batch, wie heute am Bulk (§2.6, Punkt 3) | 🔒 AP12 | 1 d | zweimal POST mit demselben Schlüssel → ein Datensatz, die zweite Antwort gleich der ersten und mit `Idempotent-Replayed: true` |
-| **AP15** | Probelauf beim Schreiben: prüft Rechte, Eingabe, Regeln und Übergang, schreibt nicht (§2.6, Punkt 2) | 🔒 AP12 | 1 d | POST mit `?dry_run=true` → 200 oder 422 wie beim echten Aufruf; die Zahl der Datensätze, der Verlauf und der Ereignisstrom bleiben gleich |
-| **AP16** | Zugang nur zum Lesen: ein Merkmal am Zugang oder ein Scope am Token (§2.6, Punkt 1) | 🔒 AP12 | 1 d | ein Token nur zum Lesen: GET 200, POST, PATCH und DELETE 403 |
-| **AP17** | „Was darf ich“ je Typ und Aktion; `If-Match` an Papierkorb, Wiederherstellen und endgültigem Löschen; die fehlenden Titel der Problemtypen (§2.6, Punkte 5 und 6) | 🔒 AP12 | 1 d | `curl -s localhost:8092/api/v1/auth/permissions` nennt je Typ die erlaubten Aktionen; DELETE ohne `If-Match` → 428; ein 429 trägt einen deutschen Titel |
+| **AP12** | Die Anforderungen an einen Agenten als Entscheidungen festhalten: Zugang nur zum Lesen, Probelauf, Idempotenz, Protokoll, „Was darf ich“ (§2.6); jede mit deiner Antwort | 🟢 | 0,5 d | die Entscheidungen stehen in §1; AP14 bis AP17 sind danach frei oder entfallen |
+| **AP13** | Der Zugang im Protokoll (E10): die Sitzung eines Tokens trägt den Zugang und, nach AP19, den Menschen; Verlauf und Ereignisprotokoll nennen beide beim Schreiben; das Anfrageprotokoll nennt den Aufrufer bei jeder Anfrage, auch beim Lesen; kein Eintrag je Lesezugriff in der Datenbank (§2.6, Punkt 4) | ⬜ | 1 d | eine Änderung per Token → `GET …/{id}/history` nennt den Zugang; die Zeile im Anfrageprotokoll trägt `client` und `account`, auch bei einem GET |
+| **AP14** | `Idempotency-Key` am Anlegen, am Übergang und am Batch, wie heute am Bulk; freiwillig (E11; §2.6, Punkt 3) | ⬜ | 1 d | zweimal POST mit demselben Schlüssel → ein Datensatz, die zweite Antwort gleich der ersten und mit `Idempotent-Replayed: true` |
+| **AP15** | Probelauf beim Anlegen, Ändern und Übergang: prüft Rechte, Eingabe, Regeln und Übergang, schreibt nicht; nicht an Batch und Bulk (E11; §2.6, Punkt 2) | ⬜ | 1 d | POST mit `?dry_run=true` → 200 oder 422 wie beim echten Aufruf; die Zahl der Datensätze, der Verlauf und der Ereignisstrom bleiben gleich |
+| **AP16** | Zugang nur zum Lesen: ein Merkmal am Zugang, das für jedes seiner Tokens gilt, unabhängig von den Rollen; kein Scope am Token (E6; §2.6, Punkt 1) | ⬜ | 1 d | ein Zugang mit dem Merkmal: GET 200, POST, PATCH und DELETE 403, auch mit einer Rolle, die schreiben darf |
+| **AP17** | „Was darf ich“ je Typ und Aktion; `If-Match` an Papierkorb, Wiederherstellen und endgültigem Löschen; die fehlenden Titel der Problemtypen (§2.6, Punkte 5 und 6) | ⬜ | 1 d | `curl -s localhost:8092/api/v1/auth/permissions` nennt je Typ die erlaubten Aktionen; DELETE ohne `If-Match` → 428; ein 429 trägt einen deutschen Titel |
 | **AP18** | Agenten-Probe: ein Programm arbeitet nur mit der OpenAPI der Laufzeit und einem Dienstkonto: Typ finden, Störung anlegen, einen Fehler anhand der Meldung beheben, Übergang auslösen; ohne fremden Dienst und ohne Sprachmodell (§2.6) | 🔒 AP10 | 1 d | `docker compose run --rm tools go test ./test/agent -v` grün; der Test kennt keinen Pfad und kein Feld außer aus `/api/v1/openapi.json` und `/api/v1/types` |
 
-**Summe:** 18,5 d (Block A 5 d, B 5 d, C 2 d, D 6,5 d), geschätzt vor dem Entwurf.
+### E — OAuth und Benutzerbezug
 
-**Reihenfolge:** AP1 zuerst, damit die Flut gemessen ist, bevor Limits gebaut werden (V2: wo).
-Danach AP6, weil Login und Token der schwerste Fall sind (§2.3) und vor Meilenstein 1 geschützt
-sein sollen, dann AP2 und AP3. Block B vor C und D; AP10 vor AP18. AP12 ist nur eine Runde mit
-dir und kann jederzeit laufen. Aufgaben, die Code ändern, baut der eine Agent, der am Code
-arbeitet (Hauptplan E149), nie zwei zugleich.
+| # | Aufgabe | Status | Aufwand | So prüfst du es |
+| --- | --- | --- | --- | --- |
+| **AP19** | itsm als Autorisierungsserver: OAuth 2 Authorization Code mit PKCE; der Mensch meldet sich wie heute an (lokal, LDAP, OIDC) und stimmt zu; das Token gehört dem Menschen und dem Client und hat höchstens die Rechte des Menschen; Clients legt ein Admin an; Metadaten des Servers abrufbar (E7, E8; §2.6, Punkt 7) | ⬜ | 2 d | ein Test mit einem Probe-Client: Code holen, gegen ein Token tauschen, `GET /api/v1/auth/me` nennt den Menschen; ohne `code_verifier` → 400 `invalid_grant`; ein Aufruf über die Rechte des Menschen hinaus → 403 |
+| **AP20** | Erneuern und Widerrufen: Refresh-Token, das bei jeder Nutzung wechselt; Widerruf durch den Menschen und den Admin; Liste „verbundene Agenten“ je Konto (E7) | 🔒 AP19 | 1 d | nach dem Widerruf → 401 beim nächsten Aufruf; ein schon benutztes Refresh-Token ein zweites Mal → alle Tokens dieser Kette ungültig |
+| **AP21** | Tokens des Identitätsanbieters annehmen: Signatur gegen die Schlüssel des eingestellten OIDC-Anbieters (Hauptplan E88), Aussteller, Empfänger und Ablauf geprüft, Zuordnung zum Konto wie bei der Anmeldung (E8) | 🔒 Hauptplan V41 | 1,5 d | mit dem Probe-Anbieter der Tests aus PL11: gültiges Token → 200 als das Konto; falscher Empfänger, abgelaufen oder fremder Aussteller → 401 |
+| **AP22** | Verantwortliche Person am Dienstkonto: Pflicht beim Anlegen eines Zugangs, sichtbar an der Liste der Zugänge und im Protokoll; Zugänge ohne sie meldet der Start (E7) | ⬜ | 0,5 d | Zugang ohne verantwortliche Person anlegen → 422; die Liste der Zugänge nennt sie |
+| **AP23** | Wächter „kein Aufruf ohne Konto“: ein Test ruft jede Operation der OpenAPI ohne Anmeldung; erlaubt ist nur die Liste aus E9; baut auf dem einen Fall in `internal/httpapi/router_test.go:78` auf (E9) | ⬜ | 0,5 d | `docker compose run --rm tools go test ./internal/httpapi -run TestNoAnonymous -v` → jede andere Operation 401; ein neuer Pfad ohne Anmeldung in einem Probe-Zweig macht ihn rot |
+
+**Summe:** 25 d (Block A 5 d, B 5 d, C 3 d, D 6,5 d, E 5,5 d), geschätzt vor dem Entwurf.
+
+**Reihenfolge:** AP1 zuerst, damit die Flut gemessen ist, bevor Limits gebaut werden (auf
+`ki-lab`, E3). Danach AP6, weil Login und Token der schwerste Fall sind (§2.3) und vor
+Meilenstein 1 geschützt sein sollen, dann AP2 und AP3. Block B vor C und D; AP10 vor AP18. Aus
+Block E kommen AP22 und AP23 früh, weil sie klein sind und die Regel aus E9 absichern; AP19 vor
+AP13, damit das Protokoll Mensch und Zugang zugleich kennt, und vor dem MCP-Server (Nebenplan 09).
+Block D und E liegen vor Meilenstein 3 (E4). Aufgaben, die Code ändern, baut der eine Agent, der
+am Code arbeitet (Hauptplan E149), nie zwei zugleich.
 
 ---
 
@@ -75,11 +88,22 @@ arbeitet (Hauptplan E149), nie zwei zugleich.
 
 Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](../adr/): E11 (eine
 REST-API, kein zweiter Weg an der Oberfläche vorbei), E20 (Valkey für Ratenbegrenzung), E71
-(Fehler nach RFC 9457), E90 (API-Zugänge).
+(Fehler nach RFC 9457), E90 (API-Zugänge), E190 (OAuth als Standard, kein Aufruf ohne Konto; fasst
+E7 bis E10 dieses Plans für alle Pläne zusammen).
 
 | # | Entscheidung | Seit | Quelle |
 | --- | --- | --- | --- |
 | **E1** | Die Prüfung von API-first und Agentic-first ist ein Unterplan des Plattform-Kerns mit dem Kurzzeichen `AP`, nicht eine Reihe von PL-Aufgaben und kein zehnter Nebenplan (Standard §2.2: 01 bis 09 sind vergeben) | 2026-11-16 | Pascal |
+| **E2** | Limits in den vier Schichten aus §2.3 werden gebaut (AP6 bis AP9), der Schutz vor der Anmeldung (AP6) vor Meilenstein 1 (V1). Verworfen: vor Meilenstein 1 nur AP6; erst nach der Flut-Messung entscheiden. Reihenfolge über die Pläne (Hauptplan E189): erst UI35 und UI36, dann AP1 | 2026-11-16 | Pascal |
+| **E3** | Die Flut-Messung aus AP1 läuft auf `ki-lab` (Hauptplan E184), nicht auf dem Laptop: dort liegt der Bestand in Prod-Größe (V2). Verworfen: Laptop; beide | 2026-11-16 | Pascal |
+| **E4** | Block D wird vor Meilenstein 3 gebaut, obwohl der MCP-Server erst dann kommt (Hauptplan V18); Block E ebenso, weil der MCP-Server auf AP19 aufbaut (V3). Verworfen: erst mit dem MCP-Server; nur AP12 und AP13 vorziehen | 2026-11-16 | Pascal |
+| **E5** | Gleichstand (AP11): Lokale Konten kommen in die API (AP24). Mandant anlegen, Paket installieren und die Migration der Datenbank bleiben bewusst bei der Kommandozeile und damit beim Betrieb | 2026-11-16 | Vorschlag der Umsetzung; Pascal ohne Vorgabe |
+| **E6** | Der Zugang nur zum Lesen ist ein Merkmal am Zugang, gesetzt vom Admin, wirksam für jedes Token des Zugangs und unabhängig von den Rollen (AP16). Verworfen: Scope am Token; beides | 2026-11-16 | Pascal |
+| **E7** | **OAuth ist der Standard der API, und jeder Aufruf läuft unter einem Konto.** Ein Agent oder MCP-Client handelt im Namen eines angemeldeten Menschen: OAuth 2 Authorization Code mit PKCE, höchstens dessen Rechte (AP19, AP20). Dienstkonten mit Client Credentials (Hauptplan E90) bleiben für Systeme ohne Menschen, etwa Import und Monitoring, jedes mit einer verantwortlichen Person (AP22). Clients legt ein Admin an; eine Registrierung ohne Anmeldung gibt es nicht (folgt aus E9). Die Sitzung der Oberfläche mit Cookie bleibt (Annahme der Umsetzung, nicht gefragt). Verworfen: nur noch Menschen; bleibt wie heute | 2026-11-16 | Pascal |
+| **E8** | Tokens kommen aus zwei Quellen: itsm stellt selbst aus (AP19, Zufallswert in Valkey, sofort widerrufbar, für alle Kontoarten), und itsm nimmt Tokens des Identitätsanbieters an (AP21). Verworfen: nur itsm (Empfehlung der Umsetzung); nur der Anbieter | 2026-11-16 | Pascal |
+| **E9** | **Kein Aufruf der API ohne Konto.** Ohne Anmeldung erreichbar bleiben nur Zustand (`/healthz`, `/readyz`), Version, die Anmeldung (Login, Liste der Anbieter, Hin- und Rückweg von OIDC) und der Token-Endpunkt (`internal/httpapi/auth.go:37-44`, `router.go:144-147`). Die Regel meint Agenten und die Datensatz-API; freigegebene Formulare mit Captcha (SD15, Hauptplan E26, V34) zählen nicht dazu. AP23 hält die Liste fest. Verworfen: SD15 entfällt; SD15 als einzige Ausnahme | 2026-11-16 | Pascal |
+| **E10** | Protokoll: Schreiben steht im Verlauf mit Mensch und Zugang, Lesen im Anfrageprotokoll mit dem Aufrufer; kein Eintrag je Lesezugriff in der Datenbank (AP13). Verworfen: auch Lesen revisionssicher; nur Schreiben | 2026-11-16 | Pascal |
+| **E11** | Probelauf an Anlegen, Ändern und Übergang, nicht an Batch und Bulk (AP15). `Idempotency-Key` ist freiwillig und gilt am Anlegen, am Übergang und am Batch (AP14). „Was darf ich“ wird gebaut wie in AP17 beschrieben | 2026-11-16 | Vorschlag der Umsetzung, nicht gefragt |
 
 ## 2. Begründung und Befunde
 
@@ -228,14 +252,14 @@ Valkey, in der CI mit Race-Detector.
 - Die Beschreibung der Laufzeit lässt je Typ Übergang, Batch, Export und Vorschlag aus
   (`internal/httpapi/api.go:305`).
 
-**Nur über die Kommandozeile** (AP11 entscheidet je Zeile):
+**Nur über die Kommandozeile** (entschieden mit E5):
 
 | Was | Fundstelle | In die API? |
 | --- | --- | --- |
-| Paket installieren | `cmd/itsm/package.go:60-69` | offen |
-| Mandant anlegen | `cmd/itsm/tenant.go:69-130` | offen |
-| Lokale Konten anlegen und verwalten | `cmd/itsm/user.go:72-191` | offen |
-| Migration der Datenbank | `cmd/itsm/main.go` | offen; Vorschlag: bleibt Betrieb |
+| Paket installieren | `cmd/itsm/package.go:60-69` | nein, bleibt Betrieb: es kommt mit einem Release |
+| Mandant anlegen | `cmd/itsm/tenant.go:69-130` | nein, bleibt Betrieb: es bräuchte eine Ebene über den Mandanten |
+| Lokale Konten anlegen und verwalten | `cmd/itsm/user.go:72-191` | ja, AP24 |
+| Migration der Datenbank | `cmd/itsm/main.go` | nein, bleibt Betrieb |
 
 ### 2.6 Agentic-first
 
@@ -262,18 +286,41 @@ Valkey, in der CI mit Race-Detector.
      (`internal/httpapi/api.go:213-223`); für `rate_limited`, `timeout` und `gone` fehlt der
      Titel (`internal/httpapi/problem.go:38-51`, benutzt in `clients.go:111` und
      `problem.go:77, 96`) → AP17.
+  7. Ein Ablauf, in dem ein Agent im Namen eines Menschen handelt: Ein Token gibt es nur für
+     ein Dienstkonto, das ein eigenes Konto mit eigener Person ist
+     (`internal/authn/client.go:230-277`, `:418-465`); ein Mensch hat nur die Sitzung mit Cookie.
+     Die Autorisierung von MCP baut nach der Erinnerung der Umsetzung auf OAuth 2.1 mit PKCE auf;
+     am Original ist das nicht nachgesehen, das klärt AP19 → AP19 bis AP22.
 
 ## 3. Offene Fragen
 
-| # | Frage | Vorschlag | Hängt daran |
-| --- | --- | --- | --- |
-| **V1** 🟠 | Limits in den vier Schichten aus §2.3 bauen, den Schutz vor der Anmeldung (AP6) vor Meilenstein 1? | ja | AP6 bis AP9 |
-| **V2** 🟡 | Wo läuft die Flut-Messung aus AP1? | auf `ki-lab` (Hauptplan E184), nicht auf dem Laptop: dort liegt der Bestand in Prod-Größe, und der Laptop bleibt frei | AP1 |
-| **V3** 🟡 | Block D vor Meilenstein 3 bauen, obwohl der MCP-Server nach Hauptplan V18 erst dann kommt? | ja: eine Middleware braucht dieselben Dinge (Idempotenz, Zugang im Protokoll, Zugang nur zum Lesen), und AP18 ist die Abnahmeliste für den MCP-Server | AP12 bis AP18 |
+Keine offene Frage, die die Umsetzung selbst klärt.
 
-Die Fragen an die Fachseite stehen im Hauptplan: V18 (MCP-Server) und V22 (Pooler) berühren
-diesen Plan.
+**Beantwortet am 2026-11-16:** V1 (E2), V2 (E3), V3 (E4).
+
+Die Fragen an die Fachseite stehen im Hauptplan: V41 (Identitätsanbieter des Kunden, daran hängt
+AP21; hier zuerst als V4 geführt), V18 (MCP-Server), V22 (Pooler) und V34 (Melder ohne Konto,
+SD15) berühren diesen Plan.
 
 ## 4. Umsetzungsstand
 
-Noch keine Aufgabe begonnen.
+### AP12 — Anforderungen an Agenten entschieden, 2026-11-16
+
+- **Grundlage:** §2.6 dieses Plans; deine Antworten vom 2026-11-16 in zwei Fragerunden.
+- **Belegt:**
+  - Entschieden sind E6 (Zugang nur zum Lesen), E7 (OAuth und Benutzerbezug), E8 (zwei Quellen
+    für Tokens), E9 (kein Aufruf ohne Konto) und E10 (Protokoll); von dir, je mit den verworfenen
+    Wegen.
+  - E11 (Umfang von Probelauf und Idempotenz) ist ein Vorschlag der Umsetzung; dazu warst du
+    nicht gefragt.
+  - AP14 bis AP17 sind damit frei. Aus deiner Vorgabe „immer im Kontext eines Benutzers, nie
+    anonym“ sind Block E (AP19 bis AP23), Hauptplan E190 und die Frage Hauptplan V41 entstanden.
+  - Gelesen für E7 und E9: `internal/authn/client.go:230-277` (ein Zugang ist Konto und Person),
+    `:418-465` (Token mit Ablauf, Standard 3.600 s), `internal/httpapi/auth.go:37-44` (Pfade ohne
+    Sitzung), `internal/httpapi/router.go:144-147` (Zustand), auf `main` bei `49e54e1`.
+- **Nicht geprüft:**
+  - Nichts ausgeführt; AP12 ändert keinen Code.
+  - Die Aufwände von Block E sind geschätzt, ohne Entwurf.
+  - Ob die Autorisierung von MCP genau OAuth 2.1 mit PKCE und abrufbaren Metadaten verlangt; aus
+    der Erinnerung, nicht am Original nachgesehen.
+  - Ob der Anbieter des Kunden Tokens liefert, die AP21 annehmen kann (Hauptplan V41).
