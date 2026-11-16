@@ -43,6 +43,10 @@ func coerce(f meta.Field, v any) (any, *Problem) {
 			// Formatted text (UI7): only what the policy allows is kept; the limit counts the HTML.
 			s = richtext.Sanitize(s)
 		}
+		// A symbol (UI42) is one of the fixed list; empty is none.
+		if f.Format == meta.FormatIcon && s != "" && !meta.IsPackageIcon(s) {
+			return nil, &Problem{Field: f.Name, Code: "icon", Message: fmt.Sprintf("%q is no symbol of the list", s)}
+		}
 		if f.MaxLength > 0 && len([]rune(s)) > f.MaxLength {
 			return nil, &Problem{Field: f.Name, Code: "max_length", Message: fmt.Sprintf("must have at most %d characters", f.MaxLength)}
 		}

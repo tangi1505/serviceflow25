@@ -9,13 +9,16 @@ package meta
 
 import "slices"
 
-// PackageIcons are the symbols a package may name as its icon (UI36, UI plan E48): names of
-// lucide symbols that the interface knows (web/src/app/icons.ts keeps the same list). A fixed
-// list, so that a package never loads a picture from elsewhere.
+// PackageIcons are the symbols a package may name as its icon (UI36, UI plan E48), a reading
+// area of the portal (UI41) and a tile of the portal (UI42, UI plan E53): names of lucide
+// symbols that the interface knows (web/src/app/icons.ts keeps the same list, TestIconsOfWeb
+// holds them equal). A fixed list, so that nothing loads a picture from elsewhere. Since UI42
+// with the topics of a portal: key, monitor, printer, phone, help.
 var PackageIcons = []string{
-	"book-open", "box", "calendar", "chart-column", "clipboard-list", "database", "file-text",
-	"flask-conical", "folder", "headset", "inbox", "layout-grid", "network", "package", "server",
-	"shield", "triangle-alert", "users", "wrench",
+	"book-open", "box", "calendar", "chart-column", "circle-help", "clipboard-list", "database",
+	"file-text", "flask-conical", "folder", "headset", "inbox", "key-round", "layout-grid",
+	"monitor", "network", "package", "phone", "printer", "server", "shield", "triangle-alert",
+	"users", "wrench",
 }
 
 // IsPackageIcon says whether name is one of PackageIcons.

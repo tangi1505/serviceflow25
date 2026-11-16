@@ -46,6 +46,7 @@ import {
   toRecord,
 } from "./fields";
 import { FormBuilder } from "./FormBuilder";
+import { IconPicker } from "./IconPicker";
 import { RefPicker } from "./RefPicker";
 import { RichEditor, RichText } from "./RichEditor";
 
@@ -388,6 +389,26 @@ export function Form({
       case "datetime":
         return <Input type="datetime-local" {...common} {...register(f.name)} />;
       case "text":
+        if (f.format === "icon") {
+          // A symbol of the fixed list as a grid to click (UI42, UI plan E53).
+          return (
+            <Controller
+              name={f.name}
+              control={formControl}
+              render={({ field }) => (
+                <IconPicker
+                  id={common.id}
+                  legend={fieldLabel(f, i18n.language)}
+                  required={f.required}
+                  value={String(field.value ?? "")}
+                  onChange={field.onChange}
+                  invalid={common["aria-invalid"]}
+                  describedBy={common["aria-describedby"]}
+                />
+              )}
+            />
+          );
+        }
         if (f.format !== "rich") {
           return <Input maxLength={f.max_length || undefined} {...common} {...register(f.name)} />;
         }
@@ -455,8 +476,9 @@ export function Form({
   };
 
   const row = (f: Field) => {
-    if (editors[`${typeName}.${f.name}`] && !readOnly.has(f.name)) {
-      // An editor of its own labels itself (a group with a legend).
+    const ownLegend = f.type === "text" && f.format === "icon";
+    if ((editors[`${typeName}.${f.name}`] || ownLegend) && !readOnly.has(f.name)) {
+      // An editor of its own labels itself (a group with a legend), the symbols too (UI42).
       return (
         <div key={f.name} className="flex flex-col gap-2">
           {control(f)}

@@ -120,6 +120,10 @@ const FormatRich = "rich"
 // P1, P2, … instead of a plain number.
 const FormatPriority = "priority"
 
+// FormatIcon makes a text field a symbol of the fixed list PackageIcons (UI42, UI plan E53):
+// the form offers the symbols as a grid to click, the server takes no other name.
+const FormatIcon = "icon"
+
 // FieldTypes lists the supported kinds in a stable order (for messages).
 var FieldTypes = []FieldType{FieldText, FieldNumber, FieldBoolean, FieldDate, FieldDateTime, FieldChoice, FieldReference, FieldSequence}
 
@@ -157,6 +161,7 @@ type Field struct {
 	Translatable bool `json:"translatable,omitempty" yaml:"translatable"`
 	// Format "rich" makes a text field formatted text (UI7, Hauptplan E127): HTML the server
 	// sanitizes on every write; the form shows the editor, lists and exports the plain text.
+	// "icon" makes it a symbol of PackageIcons (UI42); "priority" a number a priority (UI29).
 	Format string `json:"format,omitempty" yaml:"format"`
 	// Snippets names the use of the text modules the editor of a formatted text field offers
 	// (SD8): "solution" for the solution, "task" for the text of a task; the entries of the

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,6 +70,13 @@ func TestPortalStartOverHTTP(t *testing.T) {
 	}
 	if r := call(t, admin, http.MethodPost, tiles, `{"name": "Ohne Ziel", "kind": "form"}`, nil); r.code != 422 {
 		t.Fatalf("a tile for a form without the form: %d %s", r.code, r.raw)
+	}
+	// A symbol of the fixed list (UI42), no other name and no picture from elsewhere.
+	if r := call(t, admin, http.MethodPost, tiles, `{"name": "Telefon", "kind": "link", "url": "https://intranet.example/telefon", "icon": "phone", "active": false}`, nil); r.code != 201 || r.body["icon"] != "phone" {
+		t.Fatalf("a tile with the phone: %d %s", r.code, r.raw)
+	}
+	if r := call(t, admin, http.MethodPost, tiles, `{"name": "Bild", "kind": "link", "url": "https://intranet.example/bild", "icon": "https://example.org/x.svg"}`, nil); r.code != 422 || !strings.Contains(r.raw, "no symbol of the list") {
+		t.Fatalf("a tile with a picture from elsewhere: %d %s", r.code, r.raw)
 	}
 	names := func(api *testAPI) []string {
 		t.Helper()

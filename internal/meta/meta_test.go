@@ -12,6 +12,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -129,7 +131,7 @@ states:
 		`field score: default must be a number`,
 		`field note: label has no "en" text`,
 		// UI29: priority only on numbers, the category of a state from a short list.
-		`field rank: format takes "rich" on text fields and "priority" on number fields`,
+		`field rank: format takes "rich" or "icon" on text fields and "priority" on number fields`,
 		`state odd: category "pending" must be open, active, waiting or done`,
 		// The column of the tenant (PL46) is no field name either (found in UI34).
 		`field tenant: name "tenant" is reserved`,
@@ -295,6 +297,38 @@ func TestPackageIcon(t *testing.T) {
 	p.Types[0].Portal.Read.Icon = "smiley"
 	if err := Validate(p, nil); err == nil || !strings.Contains(err.Error(), "portal read: icon") {
 		t.Fatalf("portal area with an unknown symbol: %v", err)
+	}
+	// A text field may be a symbol (UI42, UI-Plan E53), no other kind of field.
+	p.Types[0].Portal = nil
+	p.Types[0].Fields = append(p.Types[0].Fields, Field{Name: "icon", Type: FieldText, Format: FormatIcon, Label: Label{"de": "Symbol", "en": "Symbol"}})
+	if err := Validate(p, nil); err != nil {
+		t.Fatalf("text field with format icon: %v", err)
+	}
+	p.Types[0].Fields[1].Type = FieldNumber
+	if err := Validate(p, nil); err == nil || !strings.Contains(err.Error(), "format") {
+		t.Fatalf("number field with format icon: %v", err)
+	}
+}
+
+// The web knows the same symbols as the core (UI42): web/src/app/icons.ts maps each name of
+// PackageIcons to a lucide symbol and no other.
+func TestIconsOfWeb(t *testing.T) {
+	raw, err := os.ReadFile("../../web/src/app/icons.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	start := strings.Index(src, "export const packageIcons")
+	end := strings.Index(src[start:], "};")
+	if start < 0 || end < 0 {
+		t.Fatal("no map packageIcons in icons.ts")
+	}
+	var web []string
+	for _, m := range regexp.MustCompile(`(?m)^\s+"?([a-z-]+)"?:`).FindAllStringSubmatch(src[start:start+end], -1) {
+		web = append(web, m[1])
+	}
+	if !slices.Equal(web, PackageIcons) {
+		t.Fatalf("icons.ts has %v, the core %v", web, PackageIcons)
 	}
 }
 

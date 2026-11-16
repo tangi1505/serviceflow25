@@ -122,8 +122,9 @@ export type Field = {
   // formula makes the field calculated by the server (PL22): shown, never sent.
   formula?: string;
   // format "rich" makes a text field formatted text (UI7): the editor, HTML the server cleans.
-  // rich: formatted text (UI7); priority: a number shown as a mark P1 … (UI29).
-  format?: "rich" | "priority";
+  // rich: formatted text (UI7); priority: a number shown as a mark P1 … (UI29); icon: a
+  // symbol of the fixed list, chosen in a grid (UI42).
+  format?: "rich" | "priority" | "icon";
   // snippets names the use of the text modules the editor offers (SD8), e.g. "solution".
   snippets?: string;
   // hidden is set by the customer layer (PL43): left out of forms and lists, kept by the API.

@@ -67,10 +67,17 @@ describe("Start page of the portal", () => {
         }),
         tile(2, { name: "Zugang beantragen", kind: "form", form }),
         tile(3, { name: "Altes Formular", kind: "form", form: id(99) }),
-        tile(4, { name: "Wissen", kind: "area", target_type: "knowledge.article" }),
+        tile(4, {
+          name: "Wissen",
+          kind: "area",
+          target_type: "knowledge.article",
+          icon: "circle-help",
+        }),
         tile(5, {
           name: "VPN im Homeoffice",
           kind: "record",
+          // No symbol of the list: the one of the goal (UI42).
+          icon: "smiley",
           target_type: "knowledge.article",
           target_id: article,
         }),
@@ -110,7 +117,16 @@ describe("Start page of the portal", () => {
       "Intranet",
     ]);
     expect(links[0]).toHaveAttribute("href", "/portal/probe.probe/new");
-    expect(links[0]).toHaveTextContent("ProbeProbe meldenEtwas geht nicht?");
+    // The symbol in its box instead of the kind over the name (UI42, UI plan E53): the tile's
+    // own, else the one of its goal (the package, the reading area, a form, a link outside).
+    expect(links[0]).toHaveTextContent(/^Probe meldenEtwas geht nicht\?$/);
+    expect(links.map((l) => l.querySelector("[data-icon]")?.getAttribute("data-icon"))).toEqual([
+      "flask-conical",
+      "file-text",
+      "circle-help",
+      "book-open",
+      "external-link",
+    ]);
     expect(links[1]).toHaveAttribute("href", `/portal/forms/${form}`);
     expect(links[2]).toHaveAttribute("href", "/portal/read/knowledge.article");
     expect(links[3]).toHaveAttribute("href", `/portal/read/knowledge.article/${article}`);
@@ -155,7 +171,8 @@ describe("Start page of the portal", () => {
     const section = await screen.findByRole("region", { name: "Was möchten Sie tun?" });
     const link = within(section).getByRole("link");
     expect(await within(link).findByText("3")).toBeInTheDocument();
-    expect(link).toHaveTextContent(/Kennzahl.*Meine offenen Vorgänge/);
+    expect(link).toHaveTextContent(/^3Meine offenen Vorgänge$/);
+    expect(link.querySelector("[data-icon]")).toHaveAttribute("data-icon", "chart-column");
     expect(link).toHaveAttribute("href", "/portal");
     await expectAccessible(container);
   });

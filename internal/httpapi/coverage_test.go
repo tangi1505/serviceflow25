@@ -323,6 +323,10 @@ var checkedSamples = map[string]map[string]any{
 func sampleValue(f meta.Field) any {
 	switch f.Type {
 	case meta.FieldText:
+		// A symbol (UI42) is a name of the fixed list.
+		if f.Format == meta.FormatIcon {
+			return meta.PackageIcons[0]
+		}
 		v := fmt.Sprintf("apitest %s %d", f.Name, time.Now().UnixNano())
 		if f.MaxLength > 0 && len(v) > f.MaxLength {
 			v = v[len(v)-f.MaxLength:]

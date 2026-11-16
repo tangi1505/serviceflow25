@@ -659,7 +659,8 @@ web/src/
                 alle Typen in MyRecords.tsx; Band „Aktuell“ aus
                 core.portal_notice seit SD5; Lesebereiche wie „Wissen“ im Kopf aus der
                 Portal-Option read eines Typs seit SD16a; Startseite mit Kacheln aus
-                core.portal_tile und Hinweisen von Hand aus core.announcement seit SD14;
+                core.portal_tile und Hinweisen von Hand aus core.announcement seit SD14, die
+                Kacheln mit Symbol aus der festen Liste seit UI42;
                 Katalog seit SD13: Lesebereich mit Karten (read.facts) und Bestellen auf der
                 Seite des Angebots; Ausfüllen eines Formulars in FormFill.tsx; Kopfzeile über
                 die volle Breite mit dem Konto-Menü des Arbeitsplatzes und Symbolen der

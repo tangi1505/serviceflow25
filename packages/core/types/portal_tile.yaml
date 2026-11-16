@@ -58,6 +58,16 @@ fields:
     type: reference
     label: {de: Widget, en: Widget}
     to: core.dashboard_widget
+  # The symbol in the box over the name (UI42, UI-Plan E53), clicked in a grid from the fixed
+  # list of the core; empty: the symbol of the goal (the package of the type, the reading area).
+  - name: icon
+    type: text
+    format: icon
+    label: {de: Symbol, en: Symbol}
+    description:
+      de: Ohne Auswahl das Symbol des Ziels.
+      en: Without a choice the symbol of the goal.
+    max_length: 40
   - name: position
     type: number
     label: {de: Reihenfolge, en: Order}

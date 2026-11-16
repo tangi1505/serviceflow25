@@ -9,21 +9,24 @@
 // tun?" with the tiles the person may see (core.portal_tile; the server keeps to "Sichtbar
 // für"), in their order. A tile leads to creating a record of a type, a form, a reading area,
 // one record or a link outside; one whose goal the person cannot reach is left out, a link
-// only with http or https.
+// only with http or https. Each tile shows a symbol in a box over its name (UI42, UI plan
+// E53): its own from the fixed list, else the one of its goal.
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { BookOpen, ExternalLink, type LucideIcon } from "lucide-react";
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   api,
   formsQuery,
-  labelOf,
+  packagesQuery,
   qualifiedName,
   typesQuery,
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
+import { packageIcon, packageIcons } from "@/app/icons";
 
 import { creates } from "./Read";
 
@@ -38,12 +41,13 @@ const tilesQuery = {
   retry: false,
 };
 
-// Shown is a tile as the start page draws it: where it leads and what kind of goal that is.
+// Shown is a tile as the start page draws it: where it leads and its symbol, a name of the
+// fixed list or "external-link" for a link outside.
 export type Shown = {
   id: string;
   name: string;
   description: string;
-  kind: string;
+  icon: string;
   // number says the tile shows the number of a dashboard (UI13b).
   number?: boolean;
   goal:
@@ -57,23 +61,26 @@ export type Shown = {
 };
 
 // shown resolves a tile against what the person may do: the types she reads and creates and
-// the forms offered to her.
+// the forms offered to her. iconOf gives the symbol of a type's package.
 export function shown(
   tile: RecordData,
   types: TypeDefinition[],
   forms: string[],
-  kindOf: (type: TypeDefinition) => string,
-  label: { form: string; area: string; link: string; number: string },
+  iconOf: (type: TypeDefinition) => string,
 ): Shown | null {
   const s = (k: string) => (typeof tile[k] === "string" ? String(tile[k]) : "");
   const type = types.find((x) => qualifiedName(x) === s("target_type"));
+  // The tile's own symbol wins; without one, the symbol of its goal (UI42, E53).
+  const own = packageIcons[s("icon")] ? s("icon") : "";
   const base = { id: s("id"), name: s("name"), description: s("description") };
+  const area = (t: TypeDefinition) => t.portal?.read?.icon ?? "book-open";
+  const icon = (fallback: string) => ({ icon: own || fallback });
   switch (s("kind")) {
     case "create":
       return type && creates(type)
         ? {
             ...base,
-            kind: kindOf(type),
+            ...icon(iconOf(type)),
             goal: { to: "/portal/$typeName/new", params: { typeName: qualifiedName(type) } },
           }
         : null;
@@ -81,7 +88,7 @@ export function shown(
       return forms.includes(s("form"))
         ? {
             ...base,
-            kind: label.form,
+            ...icon("file-text"),
             goal: { to: "/portal/forms/$formId", params: { formId: s("form") } },
           }
         : null;
@@ -89,7 +96,7 @@ export function shown(
       return type?.portal?.read
         ? {
             ...base,
-            kind: label.area,
+            ...icon(area(type)),
             goal: { to: "/portal/read/$typeName", params: { typeName: qualifiedName(type) } },
           }
         : null;
@@ -100,7 +107,7 @@ export function shown(
       if (type.portal?.read) {
         return {
           ...base,
-          kind: kindOf(type),
+          ...icon(area(type)),
           goal: {
             to: "/portal/read/$typeName/$id",
             params: { typeName: qualifiedName(type), id: s("target_id") },
@@ -110,7 +117,7 @@ export function shown(
       return creates(type)
         ? {
             ...base,
-            kind: kindOf(type),
+            ...icon(iconOf(type)),
             goal: {
               to: "/portal/$typeName/$id",
               params: { typeName: qualifiedName(type), id: s("target_id") },
@@ -120,11 +127,11 @@ export function shown(
     case "dashboard":
       // The number of a dashboard (UI13b): it leads to one's own records below the tiles.
       return s("widget")
-        ? { ...base, kind: label.number, number: true, goal: { to: "/portal" } }
+        ? { ...base, ...icon("chart-column"), number: true, goal: { to: "/portal" } }
         : null;
     case "link":
       return /^https?:\/\//i.test(s("url"))
-        ? { ...base, kind: label.link, goal: { href: s("url") } }
+        ? { ...base, ...icon("external-link"), goal: { href: s("url") } }
         : null;
   }
   return null;
@@ -132,27 +139,31 @@ export function shown(
 
 // useTiles reads the tiles and resolves them; pending until all it needs is there.
 export function useTiles(): { pending: boolean; tiles: Shown[] } {
-  const { t, i18n } = useTranslation();
   const tiles = useQuery(tilesQuery);
   const types = useQuery(typesQuery);
   const forms = useQuery(formsQuery);
-  if (tiles.isPending || types.isPending || forms.isPending) {
+  // The symbols of the packages (UI36); every session may read them. Without them a box.
+  const packages = useQuery(packagesQuery);
+  if (tiles.isPending || types.isPending || forms.isPending || packages.isPending) {
     return { pending: true, tiles: [] };
   }
   const offered = (forms.data ?? []).map((f) => f.id);
-  const kindOf = (type: TypeDefinition) => labelOf(type.label, i18n.language, qualifiedName(type));
-  const label = {
-    form: t("portal.tileForm"),
-    area: t("portal.tileArea"),
-    link: t("portal.tileLink"),
-    number: t("portal.tileNumber"),
-  };
+  const iconOf = (type: TypeDefinition) =>
+    (packages.data ?? []).find((p) => p.name === type.package)?.icon ?? "box";
   return {
     pending: false,
     tiles: (tiles.data?.items ?? [])
-      .map((x) => shown(x, types.data ?? [], offered, kindOf, label))
+      .map((x) => shown(x, types.data ?? [], offered, iconOf))
       .filter((x): x is Shown => x !== null),
   };
+}
+
+// tileIcon is the lucide symbol of a name of Shown.
+function tileIcon(name: string): LucideIcon {
+  if (name === "external-link") {
+    return ExternalLink;
+  }
+  return name === "book-open" ? BookOpen : packageIcon(name);
 }
 
 const tileClass =
@@ -160,14 +171,25 @@ const tileClass =
 
 export function TileGrid({ tiles }: { tiles: Shown[] }) {
   const { t } = useTranslation();
-  const body = (tile: Shown): ReactNode => (
-    <>
-      <span className="text-xs text-muted-foreground">{tile.kind}</span>
-      {tile.number && <TileNumber id={tile.id} />}
-      <b className="text-[15px] font-semibold">{tile.name}</b>
-      {tile.description && <span className="text-sm">{tile.description}</span>}
-    </>
-  );
+  const body = (tile: Shown): ReactNode => {
+    const Icon = tileIcon(tile.icon);
+    return (
+      <>
+        {/* The symbol in its box over the name (UI42, E53); the kind of goal no longer stands
+          above the name. */}
+        <span
+          aria-hidden="true"
+          data-icon={tile.icon}
+          className="mb-1 inline-grid size-9 flex-none place-items-center rounded-md bg-surface-active text-primary"
+        >
+          <Icon className="size-5" />
+        </span>
+        {tile.number && <TileNumber id={tile.id} />}
+        <b className="text-[15px] font-semibold">{tile.name}</b>
+        {tile.description && <span className="text-sm">{tile.description}</span>}
+      </>
+    );
+  };
   return (
     <section aria-labelledby="portal-tiles" className="flex flex-col gap-3">
       <h1 id="portal-tiles" className="text-2xl font-semibold">

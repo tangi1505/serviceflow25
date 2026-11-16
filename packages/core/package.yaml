@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.14.0
+version: 0.15.0
 # The symbol of the area in the navigation (UI36), from the fixed list of the core.
 icon: database
 # The area of the navigation is called so (UI plan E48).

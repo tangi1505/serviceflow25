@@ -546,8 +546,9 @@ func validateField(add func(string, string, ...any), fw string, f Field, local, 
 	}
 	rich := f.Type == FieldText && f.Format == FormatRich
 	priority := f.Type == FieldNumber && f.Format == FormatPriority
-	if f.Format != "" && !rich && !priority {
-		add(fw, `format takes "rich" on text fields and "priority" on number fields`)
+	icon := f.Type == FieldText && f.Format == FormatIcon
+	if f.Format != "" && !rich && !priority && !icon {
+		add(fw, `format takes "rich" or "icon" on text fields and "priority" on number fields`)
 	}
 	if f.Type != FieldSequence && f.Prefix != "" {
 		add(fw, "prefix only applies to sequence fields")
