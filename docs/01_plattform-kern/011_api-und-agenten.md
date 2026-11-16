@@ -61,8 +61,8 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 | **AP16** | Zugang nur zum Lesen: ein Merkmal am Zugang, das für jedes seiner Tokens gilt, unabhängig von den Rollen; kein Scope am Token (E6; §2.6, Punkt 1) | ⬜ | 1 d | ein Zugang mit dem Merkmal: GET 200, POST, PATCH und DELETE 403, auch mit einer Rolle, die schreiben darf |
 | **AP17** | „Was darf ich“ je Typ und Aktion; `If-Match` an Papierkorb, Wiederherstellen und endgültigem Löschen; die fehlenden Titel der Problemtypen (§2.6, Punkte 5 und 6) | ⬜ | 1 d | `curl -s localhost:8092/api/v1/auth/permissions` nennt je Typ die erlaubten Aktionen; DELETE ohne `If-Match` → 428; ein 429 trägt einen deutschen Titel |
 | **AP18** | Agenten-Probe: ein Programm arbeitet nur mit der OpenAPI der Laufzeit und einem Dienstkonto: Typ finden, Störung anlegen, einen Fehler anhand der Meldung beheben, Übergang auslösen; ohne fremden Dienst und ohne Sprachmodell (§2.6) | 🔒 AP10 | 1 d | `docker compose run --rm tools go test ./test/agent -v` grün; der Test kennt keinen Pfad und kein Feld außer aus `/api/v1/openapi.json` und `/api/v1/types` |
-| **AP25** | Messung zum Leseprotokoll, bevor es gebaut wird: Speicher je Eintrag mit und ohne Indizes, hochgerechnet auf das Mengengerüst (Hauptplan §2.2) für die Umfänge aus V5; LZ1 und LZ2 ohne Protokoll und mit den drei Wegen aus §2.7 (synchron, gesammelt, über Valkey); gemessen auf `ki-lab` in einem Probe-Zweig, der nicht nach `main` geht (E10; §2.7) | ⬜ | 1 d | der Bericht steht im Umsetzungsstand: Byte je Eintrag, GB je Jahr je Umfang, p95 und Durchsatz von LZ1 und LZ2 je Weg; das Ergebnis geht an dich, bevor AP26 beginnt |
-| **AP26** | Leseprotokoll revisionssicher: je Lesezugriff ein Eintrag mit Zeit, Konto, Zugang, Typ, Datensatz und Anfrage; Tabelle nach Monat geteilt, für die Anwendung nur zum Anfügen; Aufbewahrung als Einstellung; Abfrage „wer hat diesen Datensatz gelesen“ mit eigenem Recht; Umfang nach V5, Weg nach AP25 (E10) | 🔒 AP25, V5 | 1,5 d | ein GET per Token → ein Eintrag mit Konto und Zugang; `UPDATE` und `DELETE` auf der Tabelle mit der Rolle der Anwendung → abgelehnt; ohne das Recht → 403 an der Abfrage; LZ1 hält den Wert, den du nach AP25 festlegst |
+| ~~**AP25**~~ | ~~Messung zum Leseprotokoll, bevor es gebaut wird: Speicher je Eintrag und LZ1 und LZ2 mit den drei Wegen aus §2.7~~ — **entfällt am 2026-11-16:** mit E15 stehen Umfang und Weg fest; die Messung von Speicher und Leistung ist jetzt Teil des Prüfwegs von AP26 | | | |
+| **AP26** | Leseprotokoll für Agenten und Dienstkonten, nicht für Menschen an der Oberfläche: je Lesezugriff per Token ein Eintrag mit Zeit, Konto, Zugang, Typ, Datensatz und Anfrage; eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer. Geschrieben wird asynchron: die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie, ein Hintergrundlauf schreibt Stapel; beim geordneten Stopp wird der Puffer geleert; was bei vollem Puffer oder einem Absturz verloren geht, zählt eine Metrik. Tabelle nach Monat geteilt, für die Anwendung nur zum Anfügen; Aufbewahrung als Einstellung; Abfrage „wer hat diesen Datensatz gelesen“ mit eigenem Recht (E10, E15; §2.7) | ⬜ | 2 d | ein GET per Token → nach höchstens zwei Sekunden ein Eintrag mit Konto und Zugang; ein GET mit Sitzung im Browser → kein Eintrag; `UPDATE` und `DELETE` auf der Tabelle mit der Rolle der Anwendung → abgelehnt; ohne das Recht → 403 an der Abfrage; die Leistungsmessung bleibt grün (E32: LZ1 und LZ2 nicht mehr als 10 % langsamer, gemessen mit einem Dienstkonto); im Umsetzungsstand stehen Byte je Eintrag, GB je Jahr und p95 und Durchsatz von LZ1 mit und ohne Protokoll auf `ki-lab` |
 
 ### E — OAuth und Benutzerbezug
 
@@ -74,15 +74,15 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 | **AP22** | Verantwortliche Person am Dienstkonto: Pflicht beim Anlegen eines Zugangs, sichtbar an der Liste der Zugänge und im Protokoll; Zugänge ohne sie meldet der Start; wird das Konto der Person gesperrt oder gelöscht, bekommen die Admins sofort eine Benachrichtigung, und nach 30 Tagen ohne neue Person sperrt ein Job den Zugang (E7, E14) | ⬜ | 1 d | Zugang ohne verantwortliche Person anlegen → 422; die Liste der Zugänge nennt sie; Person sperren → Benachrichtigung an die Admins; mit auf eine Minute gestellter Frist ist der Zugang danach gesperrt und sein Token gibt 401 |
 | **AP23** | Wächter „kein Aufruf ohne Konto“: ein Test ruft jede Operation der OpenAPI ohne Anmeldung; erlaubt ist nur die Liste aus E9; baut auf dem einen Fall in `internal/httpapi/router_test.go:78` auf (E9) | ⬜ | 0,5 d | `docker compose run --rm tools go test ./internal/httpapi -run TestNoAnonymous -v` → jede andere Operation 401; ein neuer Pfad ohne Anmeldung in einem Probe-Zweig macht ihn rot |
 
-**Summe:** 28 d (Block A 5 d, B 5 d, C 3 d, D 9 d, E 6 d), geschätzt vor dem Entwurf.
+**Summe:** 27,5 d (Block A 5 d, B 5 d, C 3 d, D 8,5 d, E 6 d), geschätzt vor dem Entwurf.
 
 **Reihenfolge:** AP1 zuerst, damit die Flut gemessen ist, bevor Limits gebaut werden (auf
 `ki-lab`, E3). Danach AP6, weil Login und Token der schwerste Fall sind (§2.3) und vor
 Meilenstein 1 geschützt sein sollen, dann AP2 und AP3. Block B vor C und D; AP10 vor AP18. Aus
 Block E kommen AP22 und AP23 früh, weil sie klein sind und die Regel aus E9 absichern; AP19 vor
 AP13, damit das Protokoll Mensch und Zugang zugleich kennt, und vor dem MCP-Server (Nebenplan 09).
-Block D und E liegen vor Meilenstein 3 (E4), AP22 und AP23 schon vor Meilenstein 1 (E12). AP25
-vor AP26: erst messen, dann entscheidest du Umfang und Weg (V5). Aufgaben, die Code ändern, baut der eine Agent, der
+Block D und E liegen vor Meilenstein 3 (E4), AP22 und AP23 schon vor Meilenstein 1 (E12). AP13
+vor AP26, weil das Leseprotokoll den Zugang aus der Sitzung des Tokens nimmt. Aufgaben, die Code ändern, baut der eine Agent, der
 am Code arbeitet (Hauptplan E149), nie zwei zugleich.
 
 ---
@@ -105,11 +105,12 @@ E7 bis E10 dieses Plans für alle Pläne zusammen).
 | **E7** | **OAuth ist der Standard der API, und jeder Aufruf läuft unter einem Konto.** Ein Agent oder MCP-Client handelt im Namen eines angemeldeten Menschen: OAuth 2 Authorization Code mit PKCE, höchstens dessen Rechte (AP19, AP20). Dienstkonten mit Client Credentials (Hauptplan E90) bleiben für Systeme ohne Menschen, etwa Import und Monitoring, jedes mit einer verantwortlichen Person (AP22). Clients legt ein Admin an; eine Registrierung ohne Anmeldung gibt es nicht (folgt aus E9). Die Sitzung der Oberfläche mit Cookie bleibt; OAuth gilt für Agenten und Maschinen. Verworfen: nur noch Menschen; bleibt wie heute; auch die Oberfläche als OAuth-Client | 2026-11-16 | Pascal |
 | **E8** | Tokens kommen aus zwei Quellen: itsm stellt selbst aus (AP19, Zufallswert in Valkey, sofort widerrufbar, für alle Kontoarten), und itsm nimmt Tokens des Identitätsanbieters an (AP21). Verworfen: nur itsm (Empfehlung der Umsetzung); nur der Anbieter | 2026-11-16 | Pascal |
 | **E9** | **Kein Aufruf der API ohne Konto.** Ohne Anmeldung erreichbar bleiben nur Zustand (`/healthz`, `/readyz`), Version, die Anmeldung (Login, Liste der Anbieter, Hin- und Rückweg von OIDC) und der Token-Endpunkt (`internal/httpapi/auth.go:37-44`, `router.go:144-147`). Die Regel meint Agenten und die Datensatz-API; freigegebene Formulare mit Captcha (SD15, Hauptplan E26, V34) zählen nicht dazu. AP23 hält die Liste fest. Verworfen: SD15 entfällt; SD15 als einzige Ausnahme | 2026-11-16 | Pascal |
-| **E10** | Protokoll: Schreiben steht im Verlauf mit Mensch und Zugang (AP13). Lesen wird revisionssicher in der Datenbank festgehalten (AP26), nach einer Messung von Speicher und Leistung (AP25); das Anfrageprotokoll nennt daneben den Aufrufer. Wessen Lesezugriffe und was als ein Eintrag zählt, ist offen (V5). Verworfen: Frage an die Fachseite und bis dahin nur das Anfrageprotokoll; nur Schreiben. **Geändert am 2026-11-16;** vorher: Lesen nur im Anfrageprotokoll, kein Eintrag je Lesezugriff in der Datenbank | 2026-11-16 | Pascal |
+| **E10** | Protokoll: Schreiben steht im Verlauf mit Mensch und Zugang (AP13). Lesen wird in der Datenbank festgehalten, in einer Tabelle nur zum Anfügen (AP26); das Anfrageprotokoll nennt daneben den Aufrufer. Umfang und Weg stehen in E15. Verworfen: Frage an die Fachseite und bis dahin nur das Anfrageprotokoll; nur Schreiben. **Geändert am 2026-11-16;** vorher: Lesen nur im Anfrageprotokoll, kein Eintrag je Lesezugriff in der Datenbank | 2026-11-16 | Pascal |
 | **E11** | Probelauf an Anlegen, Ändern und Übergang, nicht an Batch und Bulk (AP15). `Idempotency-Key` ist freiwillig und gilt am Anlegen, am Übergang und am Batch (AP14). „Was darf ich“ wird gebaut wie in AP17 beschrieben. Verworfen: Schlüssel als Pflicht für Agenten; Probelauf auch an Batch und Bulk | 2026-11-16 | Vorschlag der Umsetzung, von Pascal bestätigt |
 | **E12** | Zeitpunkt von Block E: AP22 und AP23 vor Meilenstein 1, AP19 bis AP21 vor Meilenstein 3, zusammen mit dem MCP-Server. Verworfen: alles vor Meilenstein 1; alles vor Meilenstein 3 | 2026-11-16 | Pascal |
 | **E13** | Dauer der Tokens eines Agenten im Namen eines Menschen: beide Werte sind einstellbar. Das Zugriffstoken gilt zwischen 1 h und 6 h; das Refresh-Token reicht von „keins“ (nach Ablauf meldet der Mensch neu an) bis unbegrenzt. Widerruf geht immer (AP20). Vorgabe: Zugriffstoken 1 h, Refresh-Token 12 h; die Vorgabe ist ein Vorschlag der Umsetzung, du hast die Grenzen genannt. Einstellung je Installation, je Client überschreibbar wie heute `api.token_ttl` (`internal/authn/client.go:40, 447-450`) | 2026-11-16 | Pascal; Vorgabe: Umsetzung |
 | **E14** | Fällt die verantwortliche Person eines Dienstkontos weg (Konto gesperrt oder gelöscht), werden die Admins sofort benachrichtigt; nach 30 Tagen ohne neue Person wird der Zugang gesperrt. Die Frist ist eine Einstellung (AP22). Verworfen: nur melden; sofort sperren | 2026-11-16 | Pascal |
+| **E15** | **Leseprotokoll nur für Agenten und Dienstkonten, und Protokolle immer asynchron (V5, Hauptplan E191).** Lesezugriffe von Menschen an der Oberfläche werden nicht festgehalten. Logs und Protokolle dürfen das Lesen und die Anwendung nicht langsamer machen: Die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie; ein Hintergrundlauf schreibt in Stapeln. Die Folge, bewusst in Kauf genommen: Bei einem Absturz fehlen die Einträge der letzten Sekunde, bei vollem Puffer werden Einträge verworfen und gezählt; das Protokoll ist unveränderbar, aber nicht lückenlos garantiert. Eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer (Vorschlag der Umsetzung aus V5, von dir nicht eigens beantwortet). Der Verlauf der Änderungen bleibt in der Transaktion des Schreibens; er ist Teil der Daten, kein Protokoll (Lesart der Umsetzung). Verworfen: auch Menschen; synchron in PostgreSQL; synchron in einen Strom in Valkey (Vorschlag der Umsetzung, kostet 0,1 bis 0,3 ms je Lesen) | 2026-11-16 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -300,7 +301,9 @@ Valkey, in der CI mit Race-Detector.
 
 ### 2.7 Leseprotokoll: was es an Speicher und Leistung kostet
 
-**Gerechnet und angenommen, nicht gemessen.** Die Messung ist AP25.
+**Gerechnet und angenommen, nicht gemessen.** Gemessen wird im Prüfweg von AP26. Entschieden
+ist mit E15: nur Agenten und Dienstkonten (die erste Zeile der ersten Tabelle), geschrieben
+gesammelt aus dem Speicher (die zweite Zeile der zweiten Tabelle).
 
 - **Ein Eintrag:** Zeit, Konto, Zugang, Typ, Datensatz, Anfrage und Adresse. Angenommen sind
   rund 150 Byte in der Tabelle und rund 250 Byte mit zwei Indizes (nach Datensatz und nach
@@ -322,18 +325,17 @@ Valkey, in der CI mit Race-Detector.
 | Gesammelt im Speicher, jede Sekunde ein Stapel | fast nichts | bei einem Absturz fehlt bis zu eine Sekunde; das ist nicht revisionssicher |
 | Synchron in einen Strom in Valkey, ein Job schreibt Stapel nach PostgreSQL | angenommen 0,1 bis 0,3 ms dazu, ein Aufruf im selben Netz | so sicher, wie Valkey dauerhaft schreibt; das ist einzustellen und zu prüfen |
 
-- **Vorschlag:** der dritte Weg, wenn AP25 ihn bestätigt. Mit jedem Weg wird LZ1 messbar
-  langsamer als heute. Das Gate lässt 10 % plus 0,1 ms zu (Hauptplan E32, E76); welche Grenze
-  für das Lesen mit Protokoll gilt, entscheidest du nach AP25.
+- **Was der gewählte Weg bedeutet:** Das Lesen wartet nicht auf das Protokoll; die Kosten je
+  Anfrage sind das Ablegen eines Eintrags im Speicher. Das Gate bleibt bei 10 % plus 0,1 ms
+  (Hauptplan E32, E76), eine eigene Grenze braucht es nicht. Der Preis ist die Lücke bei einem
+  Absturz und bei vollem Puffer (E15).
 - **Aufbewahrung:** offen, Hauptplan V42. Sie bestimmt, wie viele Jahrgänge liegen.
 
 ## 3. Offene Fragen
 
-| # | Frage | Vorschlag | Hängt daran |
-| --- | --- | --- | --- |
-| **V5** 🟠 | Leseprotokoll: Wessen Lesezugriffe werden festgehalten, nur die von Agenten und Dienstkonten oder auch die von Menschen an der Oberfläche? Und zählt eine Liste als ein Eintrag oder jede gezeigte Zeile? | zuerst nur Agenten und Dienstkonten; eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer. AP25 misst beide Umfänge, danach entscheidest du (§2.7) | AP26 |
+Keine offene Frage, die die Umsetzung selbst klärt.
 
-**Beantwortet am 2026-11-16:** V1 (E2), V2 (E3), V3 (E4).
+**Beantwortet am 2026-11-16:** V1 (E2), V2 (E3), V3 (E4), V5 (E15).
 
 Die Fragen an die Fachseite stehen im Hauptplan: V41 (Identitätsanbieter des Kunden, daran hängt
 AP21; hier zuerst als V4 geführt), V42 (Pflicht und Aufbewahrung des Leseprotokolls), V18
@@ -366,3 +368,7 @@ AP21; hier zuerst als V4 geführt), V42 (Pflicht und Aufbewahrung des Leseprotok
   (Zeitpunkt von Block E), E13 (Dauer der Tokens) und E14 (verantwortliche Person fällt weg). Die
   Zahlen in §2.7 sind gerechnet und angenommen, nichts davon gemessen; die Pflicht nach § 76 BDSG
   ist aus der Erinnerung genannt und nicht nachgeschlagen (Hauptplan V42).
+- **Nachtrag 2026-11-16, deine Antwort zu V5:** E15: Leseprotokoll nur für Agenten und
+  Dienstkonten, geschrieben asynchron ohne Kosten für das Lesen. AP25 entfällt, die Messung
+  steht im Prüfweg von AP26. Nicht geprüft: wie groß die Lücke bei einem Absturz wirklich ist
+  und ob sie der Fachseite genügt (Hauptplan V42).
