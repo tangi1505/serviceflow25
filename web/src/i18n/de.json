@@ -49,6 +49,21 @@
     "approvals": "Zu genehmigen",
     "dashboards": "Dashboards"
   },
+  "header": {
+    "tenant": "Mandant: {{name}}",
+    "tenants": "Mandant wechseln",
+    "bell": "Benachrichtigungen",
+    "bellUnread": "Benachrichtigungen, {{count}} neu",
+    "inbox": "Benachrichtigungen",
+    "allRead": "Alle gelesen",
+    "inboxEmpty": "Keine Benachrichtigungen.",
+    "inboxError": "Die Benachrichtigungen konnten nicht geladen werden.",
+    "unread": "Ungelesen:",
+    "account": "Konto von {{name}}",
+    "accountTitle": "Konto",
+    "mode": "Modus",
+    "settings": "Meine Einstellungen"
+  },
   "home": {
     "welcome": "Willkommen, {{name}}",
     "intro": "Wähle links einen Typ: Liste, Anlegen und Ändern kommen aus der Typdefinition."

@@ -60,6 +60,8 @@ test("question B shows only for yes, in English", async ({ page }) => {
     },
   });
   expect(created.status()).toBe(201);
+  // Signing out sits in the account menu of the header (UI35).
+  await page.getByRole("button", { name: /^Konto von / }).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
 
   await signIn(page, "englisch", "Portal-Sprache12!", /\/portal$/);

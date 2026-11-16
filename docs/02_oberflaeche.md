@@ -55,7 +55,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI30** | Rahmen und Liste nach dem Entwurf (E22): Kopf mit Suchfeld und Mandant, Navigation mit Bereichen und gespeicherten Suchen, Zeilenhöhe kompakt oder normal, Vorschau des gewählten Datensatzes rechts neben der Liste (E35), Fristen auf der Detailseite aus `…/clocks`. Eine Fristspalte in der Liste nur, wenn die API die Restzeit je Zeile liefert, sonst als neue Aufgabe | 🟢 | 2 d | Umschalter „Kompakt“ → Zeilen 36 px, bleibt nach Neuladen; Klick auf eine Zeile zeigt die Vorschau, „Öffnen“ führt zur Detailseite; eine Frist über 75 % erscheint gelb, eine überschrittene rot, beide mit Text; bei 375 px Breite steht die Navigation über der Liste; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI31** | Befehlszeile mit Strg K: Datensätze nach Titel finden über `/api/v1/search` (nach Nummer, sobald PL49 sie durchsuchbar macht), Befehle „Neu“ je Typ, „Gehe zu“ und Darstellung, Kürzel am Suchfeld angezeigt (E22, E36) | 🟢 | 1,5 d | Strg K, einen Teil des Titels tippen → der Datensatz erscheint, Enter öffnet ihn; „neu“ tippen → „Neu: Probe“; leer zeigt sie die zuletzt geöffneten Datensätze; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI34** | Fristspalte in der Liste: die Liste und `:query` liefern je Zeile die nächste Frist der SLA-Uhren (Restzeit, Anteil, Zustand), sortier- und filterbar; Spalte mit dem Baustein Frist (E35, aus UI30 ausgelagert; E37) | 🟢 | 1 d | Liste von `probe` mit Spalte „Frist“: eine Frist über 75 % gelb, eine überschrittene rot, beide mit Text; nach Frist sortiert steht die knappste oben; LZ1 ohne Verschlechterung über die Toleranz; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI35** | Kopfzeile nach dem Mockup (E41, §2.3): Marke mit Name, Mandant als Knopf mit Menü (wie bisher nur bei mehreren Mandanten), Suchfeld in der Mitte, Benachrichtigungen als Symbol mit Zahl, Konto-Kreis mit Konto-Menü (Modus, Sprache, Meine Einstellungen, Zum Portal, Abmelden). Die beschrifteten Auswahlfelder und einzelnen Links der Kopfzeile entfallen, das Theme wählt man nur noch in Meine Einstellungen; Symbole aus `lucide-react` | ⬜ | 1,5 d | Im Browser http://localhost:8092 → die Kopfzeile hat kein beschriftetes Auswahlfeld mehr; Klick auf den Konto-Kreis öffnet das Menü, „Dunkel“ gilt sofort und nach Neuanmeldung; der Knopf mit dem Mandanten wechselt den Mandanten; alles nur mit Tastatur, Esc schließt und gibt den Fokus zurück; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI35** | Kopfzeile nach dem Mockup (E41, §2.3): Marke mit Name, Mandant als Knopf mit Menü (wie bisher nur bei mehreren Mandanten), Suchfeld in der Mitte, Benachrichtigungen als Symbol mit Zahl, Konto-Kreis mit Konto-Menü (Modus, Sprache, Meine Einstellungen, Zum Portal, Abmelden). Die beschrifteten Auswahlfelder und einzelnen Links der Kopfzeile entfallen, das Theme wählt man nur noch in Meine Einstellungen; Symbole aus `lucide-react`; das Fenster der Glocke nach E47 | 🟢 | 1,5 d | Im Browser http://localhost:8092 → die Kopfzeile hat kein beschriftetes Auswahlfeld mehr; Klick auf den Konto-Kreis öffnet das Menü, „Dunkel“ gilt sofort und nach Neuanmeldung; der Knopf mit dem Mandanten wechselt den Mandanten; alles nur mit Tastatur, Esc schließt und gibt den Fokus zurück; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche | ⬜ | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI37** | Favoriten und eigene Anordnung (E41): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | ⬜ | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert | ⬜ | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -146,6 +146,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E44** | Reihenfolge von Rahmen und Portal (deine Entscheidung 2026-11-15): UI35 bis UI44 kommen in Block B vor UI15 (Kalender) und UI16 (Sprachpakete), in der Folge aus dem Absatz „Reihenfolge“. Grund: UI35 und UI36 ändern den Rahmen, in dem jede weitere Seite steht; was danach gebaut wird, entsteht gleich im neuen Rahmen | 2026-11-15 | Pascal |
 | **E45** | Erscheinungsbild statt Theme-Paket (V8, UI39, deine Entscheidung 2026-11-15): Name, Logo und Akzentfarbe je Kunde kommen aus der Seite „Erscheinungsbild“ unter Verwaltung, gespeichert als Einstellungen am Organisationsbaum; dafür gibt es kein Theme-Paket als Datei. Ein Theme-Paket bleibt nur für das, was die Seite nicht kann, etwa eine andere Schrift. Die Regeln zu den Farben in §2.1 gelten für die Seite genauso: gesetzt werden `--accent` und auf Wunsch `--primary`, alles andere wird abgeleitet. Stand im Code: Es gibt die Themes `neutral` und `probe` (`web/src/ui/theme.ts:10`) und die Einstellung `ui.theme` (`packages/core/package.yaml:31`), aber kein Theme-Paket eines Kunden. Ändert E4 und E25, verfeinert Hauptplan E62. Verworfen: Seite und Paket nebeneinander für dieselben Werte, weil dann zwei Stellen dieselbe Farbe bestimmen | 2026-11-15 | Pascal |
 | **E46** | Portal ohne großes Suchfeld und ohne „Oft gelesen“ (V11, deine Entscheidung 2026-11-15): Die Startseite des Portals bekommt beides aus dem Entwurf „Klartext“ (E22) nicht. Grund: Beides ist nicht gebaut und bräuchte eine Suche über alle Bereiche und eine Zählung der Aufrufe im Kern. Die Startseite bleibt bei dem, was E43 nennt | 2026-11-15 | Pascal |
+| **E47** | Glocke der Kopfzeile (UI35, deine Entscheidung 2026-11-16): die Zahl der ungelesenen aus dem Posteingang (Workflow-Plan WF19); ein Klick öffnet ein kleines Fenster mit den 10 neuesten Einträgen (Betreff, Typ, Zeit, Auslöser; ungelesene fett mit Punkt). Ein Klick auf einen Eintrag öffnet den Vorgang und markiert ihn gelesen; dazu „Alle gelesen“ und, solange die Person nicht entschieden hat, „Browser-Meldungen erlauben“. Die Zahl folgt dem Ereignis `inbox` des Ereignisstroms. Verworfen: eine eigene Seite mit allen Einträgen (später, wenn gebraucht); erst ein Mockup | 2026-11-16 | Pascal |
 
 ## 2. Begründung
 
@@ -429,6 +430,47 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI35 — Kopfzeile, 2026-11-16
+
+- **Grundlage:** E41 (Mockup „ITSM Rahmen: Navigation und Kopfzeile“, Ansichten 1 und 2), E47
+  (Fenster der Glocke, deine Entscheidung 2026-11-16), §2.3; der Posteingang aus dem
+  Workflow-Plan WF19.
+- **Gebaut:**
+  - `web/src/app/Header.tsx`: Marke, Mandant als Knopf mit Menü (nur bei mehreren Mandanten,
+    `menuitemradio`, Pfeiltasten), Suchfeld der Befehlszeile in der Mitte, Glocke mit Zahl der
+    ungelesenen, Konto-Kreis mit Initialen. Das Konto-Fenster zeigt Name, Kennung und Mandant,
+    Modus als drei Symbole (wie das System, hell, dunkel), Sprache, Meine Einstellungen, Zum
+    Portal und Abmelden; Modus und Sprache gelten sofort und landen in den Einstellungen der
+    Person. Symbole aus `lucide-react`.
+  - Fenster der Glocke: die 10 neuesten Einträge (Betreff, Typ, Zeit, Auslöser; ungelesene fett
+    mit Punkt und für Screenreader „Ungelesen:“), ein Klick öffnet den Vorgang und markiert ihn
+    gelesen, „Alle gelesen“, „Benachrichtigungen erlauben“ solange der Browser nicht gefragt hat.
+    Die Zahl folgt dem Ereignis `inbox` des Ereignisstroms (`live.tsx`).
+  - `web/src/ui/popover.ts`: Menü oder Fenster unter einem Knopf: Fokus hinein, Esc schließt und
+    gibt den Fokus zurück, Klick daneben schließt, Pfeiltasten, Pos1 und Ende im Menü.
+  - `Notifications.tsx` ist jetzt der Haken `useBrowserNotifications`; `Switches.tsx` behält
+    Sprache und Theme nur für Anmeldeseite und Portal, der Mandant ist in die Kopfzeile gezogen.
+    Das Theme wählt man im Arbeitsplatz nur noch in Meine Einstellungen.
+- **Belegt, 2026-11-16:**
+  - Vitest `Header.test.tsx`: Initialen; die Glocke zeigt „1 neu“, das Fenster listet ungelesen
+    zuerst mit Auslöser, axe ohne Befund, Esc schließt und gibt den Fokus an die Glocke, ein
+    Klick öffnet den Vorgang und schickt `:read` mit der Kennung; „Alle gelesen“ setzt die Zahl
+    auf null; im Konto-Fenster gilt „Dunkel“ sofort und wird gespeichert, „English“ schaltet die
+    Oberfläche um, Esc schließt und gibt den Fokus zurück. `TenantSwitch.test.tsx`: Menü mit dem
+    gewählten Mandanten im Fokus, Pfeil nach unten, Esc, Wechsel führt nach Hause. Angepasst,
+    weil Abmelden und „Zum Portal“ jetzt im Konto-Menü stehen und „Benachrichtigungen erlauben“
+    im Fenster der Glocke: `LoginPage`, `SettingsPage`, `live`, `Portal`; dazu die
+    Browser-Tests `design`, `forms`, `form-conditions`, `login`, `settings` (der Test des Themes
+    „probe“ setzt es jetzt direkt an der Seite).
+  - Auf 8092 im Browser angesehen (dunkel): Kopfzeile wie im Mockup, Konto-Fenster und Fenster
+    der Glocke („Keine Benachrichtigungen.“).
+  - Ganze CI grün am 2026-11-16 auf `ki-lab` im zweiten Lauf: Go, Web (138 Vitest-Fälle,
+    18 Playwright-Fälle mit axe); die Lastmessung lief nicht, weil nur die Oberfläche geändert
+    ist. Der erste Lauf fand meinen Fehler: `settings.spec.ts` suchte „Sign out“ noch in der
+    Kopfzeile.
+- **Nicht geprüft:** Das Telefon (UI40); eine Glocke mit Einträgen im echten Browser (nur in
+  Vitest); Name, Logo und Farbe der Organisation in der Marke (UI39).
 
 ### UI14b — Mitgelieferte Dashboards, 2026-11-13
 

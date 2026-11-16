@@ -280,6 +280,8 @@ describe("Portal", () => {
   it("lets an agent switch between workplace and portal", async () => {
     const user = userEvent.setup();
     const { router } = renderAt("/");
+    // Since UI35 the way to the portal is in the account menu of the header.
+    await user.click(await screen.findByRole("button", { name: /^Konto von / }));
     await user.click(await screen.findByRole("link", { name: "Zum Portal" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/portal"));
     await user.click(await screen.findByRole("link", { name: "Zum Arbeitsplatz" }));

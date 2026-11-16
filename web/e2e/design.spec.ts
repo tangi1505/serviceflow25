@@ -99,12 +99,17 @@ test("IBM Plex, graphite and petrol from the tool itself; dark after signing in 
   // State and priority as marks.
   await expect(page.getByText("P1").first()).toBeVisible();
 
-  // The theme "probe" still reaches the components.
-  await page.getByLabel("Theme").selectOption("probe");
+  // The theme "probe" still reaches the components; since UI35 it is chosen in Meine
+  // Einstellungen only, so the test sets it on the page directly.
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = "probe";
+  });
   expect(await create.evaluate((b) => getComputedStyle(b).backgroundColor)).toBe(
     "rgb(63, 75, 184)",
   );
-  await page.getByLabel("Theme").selectOption("neutral");
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.theme;
+  });
 
   await pages(page, id, "light");
 
@@ -117,6 +122,8 @@ test("IBM Plex, graphite and petrol from the tool itself; dark after signing in 
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
     "rgb(17, 19, 21)",
   );
+  // Signing out sits in the account menu of the header (UI35).
+  await page.getByRole("button", { name: /^Konto von / }).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await signIn(page);
   await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "dark");

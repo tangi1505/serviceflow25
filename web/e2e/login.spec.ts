@@ -49,6 +49,8 @@ test("sign in, navigate, switch the theme, sign out", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Probe", exact: true })).toBeVisible();
   await expectNoViolations(page);
 
+  // Signing out sits in the account menu of the header (UI35).
+  await page.getByRole("button", { name: /^Konto von / }).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/");

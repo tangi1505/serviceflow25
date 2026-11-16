@@ -8,6 +8,7 @@
 // Live (UI8, Hauptplan E130): one connection per tab to the event stream (SSE, PL24); pages
 // subscribe to what concerns them. The browser reconnects on its own and sends the last id,
 // so the server replays what was missed. Without EventSource (tests) nothing streams.
+import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 
 // LiveEvent is an event as the stream sends it; mine marks a record where the session's
@@ -49,6 +50,7 @@ const LiveContext = createContext<Set<Listener> | null>(null);
 
 export function LiveProvider({ children }: { children: ReactNode }) {
   const listeners = useRef(new Set<Listener>());
+  const queryClient = useQueryClient();
   useEffect(() => {
     if (typeof EventSource === "undefined") {
       return;
@@ -68,8 +70,12 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     for (const kind of kinds) {
       source.addEventListener(kind, deliver);
     }
+    // The inbox of the person changed (WF19): the bell loads its window anew.
+    source.addEventListener("inbox", () => {
+      void queryClient.invalidateQueries({ queryKey: ["me", "inbox"] });
+    });
     return () => source.close();
-  }, []);
+  }, [queryClient]);
   return <LiveContext.Provider value={listeners.current}>{children}</LiveContext.Provider>;
 }
 

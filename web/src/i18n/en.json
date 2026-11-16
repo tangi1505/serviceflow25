@@ -49,6 +49,21 @@
     "approvals": "To approve",
     "dashboards": "Dashboards"
   },
+  "header": {
+    "tenant": "Tenant: {{name}}",
+    "tenants": "Switch tenant",
+    "bell": "Notifications",
+    "bellUnread": "Notifications, {{count}} new",
+    "inbox": "Notifications",
+    "allRead": "All read",
+    "inboxEmpty": "No notifications.",
+    "inboxError": "The notifications could not be loaded.",
+    "unread": "Unread:",
+    "account": "Account of {{name}}",
+    "accountTitle": "Account",
+    "mode": "Mode",
+    "settings": "My settings"
+  },
   "home": {
     "welcome": "Welcome, {{name}}",
     "intro": "Pick a type on the left: list, create and edit come from the type definition."

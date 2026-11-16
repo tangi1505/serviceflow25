@@ -30,6 +30,7 @@ import type {
   Approval,
   ApprovalDraft,
   ApprovalRequest,
+  InboxEntry,
   MyApproval,
   Substitute,
   RecordData,
@@ -417,6 +418,8 @@ export type FakeState = {
   // approvalTemplates are the drafts of templates by record id (WF7).
   approvalTemplates?: Record<string, ApprovalDraft[]>;
   myApprovals?: { open?: MyApproval[]; done?: MyApproval[] };
+  // inbox is the inbox of the session's person (WF19), newest first.
+  inbox?: InboxEntry[];
   substitutes?: Substitute[];
   // exportJob makes an export a job (UI5, more than 100,000 rows); jobState is its state.
   exportJob?: boolean;
@@ -1432,6 +1435,23 @@ export function fakeApi(state: FakeState) {
         }
       }
       return json(200, found);
+    }
+    if (url.pathname === "/api/v1/me/inbox") {
+      const items = state.inbox ?? [];
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      return json(200, {
+        items: items.slice(0, limit),
+        unread: items.filter((e) => !e.read_at).length,
+      });
+    }
+    if (url.pathname === "/api/v1/me/inbox:read" && method === "POST") {
+      const body = JSON.parse(bodyText) as { ids?: string[]; all?: boolean };
+      for (const e of state.inbox ?? []) {
+        if (!e.read_at && (body.all || body.ids?.includes(e.id))) {
+          e.read_at = "2026-11-16T10:00:00Z";
+        }
+      }
+      return json(200, { unread: (state.inbox ?? []).filter((e) => !e.read_at).length });
     }
     if (url.pathname === "/api/v1/me/approvals") {
       const which = url.searchParams.get("state") === "done" ? "done" : "open";

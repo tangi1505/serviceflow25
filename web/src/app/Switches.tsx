@@ -5,15 +5,15 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// Language, theme and tenant as native selects: keyboard and screen reader support come for
-// free. Signed in (persist), a choice is also kept in the person's settings (UI9), so that it
-// holds on every device and after signing in again.
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+// Language and theme as native selects for the sign-in page and the portal: keyboard and screen
+// reader support come for free. Signed in (persist), a choice is also kept in the person's
+// settings (UI9), so that it holds on every device and after signing in again. The workplace
+// sets mode and language in the account menu of its header (UI35).
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, labelOf, meQuery, mySettingsQuery, type SettingsChange } from "@/api/client";
+import { api, mySettingsQuery, type SettingsChange } from "@/api/client";
 import { languages, type Language } from "@/i18n";
 import { applyTheme, currentTheme, themeEvent, themes, isTheme, type Theme } from "@/ui/theme";
 import { Label } from "@/ui/label";
@@ -22,7 +22,7 @@ const selectClass =
   "h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 // usePersist keeps a change in the settings of the person when persist is set.
-function usePersist(persist: boolean) {
+export function usePersist(persist: boolean) {
   const queryClient = useQueryClient();
   return (change: SettingsChange) => {
     if (!persist) {
@@ -97,44 +97,6 @@ export function ThemeSwitch({ persist = false }: { persist?: boolean }) {
         {themes.map((name) => (
           <option key={name} value={name}>
             {t(`theme.${name}`)}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// TenantSwitch lets an account of the installation change the tenant it works in (PL44); an
-// account of one tenant does not see it. After the switch nothing of the old tenant stays in
-// the cache, and the page starts at home.
-export function TenantSwitch() {
-  const { t, i18n } = useTranslation();
-  const id = useId();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const me = useQuery(meQuery);
-  const tenants = me.data?.tenants ?? [];
-  if (tenants.length < 2) {
-    return null;
-  }
-  const change = async (tenant: string) => {
-    const next = await api.setTenant(tenant);
-    queryClient.setQueryData(meQuery.queryKey, next);
-    queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
-    await navigate({ to: "/" });
-  };
-  return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor={id}>{t("nav.tenant")}</Label>
-      <select
-        id={id}
-        className={selectClass}
-        value={me.data?.tenant ?? ""}
-        onChange={(e) => void change(e.target.value)}
-      >
-        {tenants.map((tenant) => (
-          <option key={tenant.path} value={tenant.path}>
-            {labelOf(tenant.label, i18n.language, tenant.path)}
           </option>
         ))}
       </select>

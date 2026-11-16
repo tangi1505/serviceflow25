@@ -114,6 +114,8 @@ test("a form built by keyboard is filled in in the portal", async ({ page }) => 
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
   // The user of the portal (role e2e_portal: creates probe.probe) fills it in.
+  // Signing out sits in the account menu of the header (UI35).
+  await page.getByRole("button", { name: /^Konto von / }).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await signIn(page, "nutzerin", "Nur-Portal10!", /\/portal$/);
   await page.getByRole("region", { name: "Formulare" }).getByRole("link", { name }).click();

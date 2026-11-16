@@ -36,6 +36,8 @@ export type ApprovalRequest = components["schemas"]["ApprovalRequest"];
 export type ApprovalDraft = components["schemas"]["ApprovalDraft"];
 export type ApproverRef = components["schemas"]["ApproverRef"];
 export type MyApproval = components["schemas"]["MyApproval"];
+export type InboxEntry = components["schemas"]["InboxEntry"];
+export type InboxPage = components["schemas"]["InboxPage"];
 export type Substitute = components["schemas"]["Substitute"];
 export type SuggestGroup = components["schemas"]["SuggestGroup"];
 export type SuggestHit = components["schemas"]["SuggestHit"];
@@ -533,6 +535,12 @@ export const api = {
   // myApprovals is the list "Zu genehmigen": open questions, or those one answered (done).
   myApprovals: async (state: "open" | "done") =>
     unwrap(await client.GET("/api/v1/me/approvals", { params: { query: { state } } })),
+  // The inbox of the session's person (WF19): a page newest first with the number of the
+  // unread, read (some or all), remove.
+  inbox: async (limit = 10) =>
+    unwrap(await client.GET("/api/v1/me/inbox", { params: { query: { limit } } })),
+  readInbox: async (body: { ids?: string[]; all?: boolean }) =>
+    unwrap(await client.POST("/api/v1/me/inbox:read", { body })),
   // substitutes of a person at approvals (WF6): her own, or as the administration.
   substitutes: async (personId: string) =>
     unwrap(
@@ -717,6 +725,15 @@ export const myApprovalsQuery = queryOptions({
   queryFn: () => api.myApprovals("open"),
   retry: false,
   staleTime: 30_000,
+});
+
+// inboxQuery is the window of the bell (UI35, E47): the ten newest entries of the inbox and
+// the number of the unread; the event inbox of the stream refreshes it.
+export const inboxQuery = queryOptions({
+  queryKey: ["me", "inbox"],
+  queryFn: () => api.inbox(10),
+  retry: false,
+  staleTime: 60_000,
 });
 
 // formsQuery are the forms offered in the portal (UI11): their card and the tiles (SD14).

@@ -37,6 +37,8 @@ test("English in my settings holds after signing in again", async ({ page }) => 
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
 
+  // Signing out sits in the account menu of the header (UI35).
+  await page.getByRole("button", { name: /^Account of / }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   // The browser speaks German: the sign-in page is German, the person's setting comes after.
@@ -44,7 +46,7 @@ test("English in my settings holds after signing in again", async ({ page }) => 
   await expect(page.getByLabel("Benutzername")).toBeVisible();
   await signIn(page);
   await expect(page.getByRole("navigation", { name: "Types" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Account of / })).toBeVisible();
 
   await page.request.patch("/api/v1/me/settings", {
     headers: { "X-Requested-With": "itsm" },

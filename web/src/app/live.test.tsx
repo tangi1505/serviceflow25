@@ -147,11 +147,14 @@ describe("Live", () => {
     const user = userEvent.setup();
     renderAt("/types/probe.probe");
     await screen.findByText("3 Datensätze");
+    // Since UI35 the window of the bell asks for the permission.
     const header = screen.getByRole("banner");
+    await user.click(within(header).getByRole("button", { name: /^Benachrichtigungen/ }));
     await user.click(within(header).getByRole("button", { name: "Benachrichtigungen erlauben" }));
     expect(
       within(header).queryByRole("button", { name: "Benachrichtigungen erlauben" }),
     ).toBeNull();
+    await user.keyboard("{Escape}");
 
     const id = String(state.records[0]!["id"]);
     FakeSource.last!.emit("comment", {

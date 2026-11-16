@@ -6,7 +6,8 @@
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
 // Tenants (PL44): an account of the installation switches the tenant in the header and starts
-// at home; an account of one tenant sees no switch.
+// at home; an account of one tenant sees no switch. Since UI35 the tenant is a button with a
+// menu.
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
@@ -49,15 +50,27 @@ describe("Tenant switch", () => {
     state.tenant = "root.nord";
     const user = userEvent.setup();
     const view = renderAt("/types/probe.probe");
-    const select = await screen.findByRole("combobox", { name: "Mandant" });
-    expect(select).toHaveValue("root.nord");
-    expect(screen.getByRole("option", { name: "Polizei Süd" })).toBeInTheDocument();
+    const button = await screen.findByRole("button", { name: "Mandant: Polizei Nord" });
+    await user.click(button);
+    const menu = screen.getByRole("menu", { name: "Mandant wechseln" });
+    expect(screen.getByRole("menuitemradio", { name: "Polizei Nord" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    // The checked one has the focus; the arrow keys move it, Esc closes and gives it back.
+    expect(screen.getByRole("menuitemradio", { name: "Polizei Nord" })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitemradio", { name: "Polizei Süd" })).toHaveFocus();
     await expectAccessible(view.container);
+    await user.keyboard("{Escape}");
+    expect(menu).not.toBeInTheDocument();
+    expect(button).toHaveFocus();
 
-    await user.selectOptions(select, "root.sued");
+    await user.click(button);
+    await user.click(screen.getByRole("menuitemradio", { name: "Polizei Süd" }));
     expect(await screen.findByRole("heading", { name: "Willkommen, Pascal" })).toBeInTheDocument();
     expect(view.router.state.location.pathname).toBe("/");
-    expect(screen.getByRole("combobox", { name: "Mandant" })).toHaveValue("root.sued");
+    expect(screen.getByRole("button", { name: "Mandant: Polizei Süd" })).toBeInTheDocument();
     const post = state.calls.find((c) => c.path === "/api/v1/auth/context");
     expect(post?.body).toBe(JSON.stringify({ tenant: "root.sued" }));
   });
@@ -66,6 +79,6 @@ describe("Tenant switch", () => {
     state.tenants = [{ path: "root.nord", label: { de: "Polizei Nord" } }];
     renderAt("/");
     expect(await screen.findByRole("heading", { name: "Willkommen, Pascal" })).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Mandant" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Mandant/ })).not.toBeInTheDocument();
   });
 });

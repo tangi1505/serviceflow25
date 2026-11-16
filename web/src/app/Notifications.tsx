@@ -8,14 +8,14 @@
 // Notifications in the browser (UI8, Hauptplan E130): after the person allows them, an event
 // of a record where they or their group hold a role, caused by someone else, shows as a
 // notification while the tab is not in view. Only while a tab is open; no push service from
-// outside (VS-NfD). A click opens the record.
+// outside (VS-NfD). A click opens the record. Since UI35 the window of the bell asks for the
+// permission.
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { labelOf, meQuery, qualifiedName, typesQuery } from "@/api/client";
-import { Button } from "@/ui/button";
 
 import { useLive } from "./live";
 
@@ -23,7 +23,9 @@ function supported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
 }
 
-export function Notifications() {
+// useBrowserNotifications shows the notifications while the frame lives; canAsk says that the
+// person has not decided yet, ask asks the browser.
+export function useBrowserNotifications() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const me = useQuery(meQuery);
@@ -54,16 +56,8 @@ export function Notifications() {
     };
   });
 
-  if (permission !== "default") {
-    return null;
-  }
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => void Notification.requestPermission().then(setPermission)}
-    >
-      {t("live.allow")}
-    </Button>
-  );
+  return {
+    canAsk: permission === "default",
+    ask: () => void Notification.requestPermission().then(setPermission),
+  };
 }

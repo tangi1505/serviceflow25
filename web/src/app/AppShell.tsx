@@ -5,7 +5,7 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// The frame after sign-in (UI1): header with the account, navigation with the installed types
+// The frame after sign-in (UI1): header (UI35, Header.tsx), navigation with the installed types
 // (the list of a type comes with UI2), the page in the middle. The frame holds the one
 // connection to the event stream of the tab (UI8).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,10 +15,8 @@ import { useTranslation } from "react-i18next";
 
 import { CommandPalette } from "@/app/CommandPalette";
 import { LiveProvider } from "@/app/live";
-import { Notifications } from "@/app/Notifications";
+import { AppHeader } from "@/app/Header";
 import { forget } from "@/app/recent";
-import { LanguageSwitch, TenantSwitch, ThemeSwitch } from "@/app/Switches";
-import { Button } from "@/ui/button";
 import {
   api,
   labelOf,
@@ -102,38 +100,7 @@ export function AppShell() {
   return (
     <LiveProvider>
       <div className="flex min-h-screen flex-col">
-        <header className="flex flex-wrap items-center gap-4 border-b bg-card px-4 py-2">
-          <Link to="/" className="text-lg font-semibold text-foreground">
-            {t("app.title")}
-          </Link>
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-keyshortcuts="Control+K"
-            onClick={() => setCommand(true)}
-            className="flex h-9 min-w-48 max-w-lg flex-1 items-center justify-between gap-2 rounded-sm border border-input bg-card px-3 text-left text-sm text-foreground-2"
-          >
-            <span>{t("command.open")}</span>
-            <kbd className="rounded border px-1.5 font-mono text-xs">{t("command.shortcut")}</kbd>
-          </button>
-          <div className="ml-auto flex flex-wrap items-center gap-4">
-            <Notifications />
-            <Link to="/portal" className="text-sm underline">
-              {t("portal.toPortal")}
-            </Link>
-            <TenantSwitch />
-            <LanguageSwitch persist />
-            <ThemeSwitch persist />
-            {me.data && (
-              <Link to="/settings" className="text-sm text-muted-foreground underline">
-                {t("nav.user", { name: me.data.display_name })}
-              </Link>
-            )}
-            <Button variant="outline" size="sm" onClick={() => void logout()}>
-              {t("nav.logout")}
-            </Button>
-          </div>
-        </header>
+        <AppHeader onCommand={() => setCommand(true)} onLogout={() => void logout()} />
         {/* Below 768 px the navigation stands above the content (UI30). */}
         <div className="flex flex-1 flex-col md:flex-row">
           <nav

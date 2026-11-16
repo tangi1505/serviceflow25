@@ -63,7 +63,7 @@ describe("Settings", () => {
     initI18n("de");
     renderAt("/");
     expect(await screen.findByRole("navigation", { name: "Types" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Account of Pascal" })).toBeInTheDocument();
   });
 
   it("chooses dark, and the page turns dark at once and on the next start", async () => {

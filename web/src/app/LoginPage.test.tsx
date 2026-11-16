@@ -77,13 +77,14 @@ describe("LoginPage", () => {
       "href",
       "/types/probe.probe",
     );
-    expect(screen.getByText("Angemeldet als Pascal")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Konto von Pascal" })).toBeInTheDocument();
     await expectAccessible(container);
 
     await user.click(screen.getByRole("link", { name: "Probe" }));
     await screen.findByRole("heading", { name: "Probe" });
     await screen.findByText("3 Datensätze");
 
+    await user.click(screen.getByRole("button", { name: "Konto von Pascal" }));
     await user.click(screen.getByRole("button", { name: "Abmelden" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(state.signedIn).toBe(false);
