@@ -54,7 +54,7 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP12** | Die Anforderungen an einen Agenten als Entscheidungen festhalten: Zugang nur zum Lesen, Probelauf, Idempotenz, Protokoll, „Was darf ich“ (§2.6); jede mit deiner Antwort | 🟢 | 0,5 d | die Entscheidungen stehen in §1; AP14 bis AP17 sind danach frei oder entfallen |
+| **AP12** | Die Anforderungen an einen Agenten als Entscheidungen festhalten: Zugang nur zum Lesen, Probelauf, Idempotenz, Protokoll, „Was darf ich“ (§2.6); jede mit deiner Antwort | ✅ | 0,5 d | die Entscheidungen stehen in §1; AP14 bis AP17 sind danach frei oder entfallen |
 | **AP13** | Der Zugang im Protokoll (E10): die Sitzung eines Tokens trägt den Zugang und, nach AP19, den Menschen; Verlauf und Ereignisprotokoll nennen beide beim Schreiben; das Anfrageprotokoll nennt den Aufrufer bei jeder Anfrage, auch beim Lesen; das Leseprotokoll in der Datenbank baut AP26 (§2.6, Punkt 4) | ⬜ | 1 d | eine Änderung per Token → `GET …/{id}/history` nennt den Zugang; die Zeile im Anfrageprotokoll trägt `client` und `account`, auch bei einem GET |
 | **AP14** | `Idempotency-Key` am Anlegen, am Übergang und am Batch, wie heute am Bulk; freiwillig (E11; §2.6, Punkt 3) | ⬜ | 1 d | zweimal POST mit demselben Schlüssel → ein Datensatz, die zweite Antwort gleich der ersten und mit `Idempotent-Replayed: true` |
 | **AP15** | Probelauf beim Anlegen, Ändern und Übergang: prüft Rechte, Eingabe, Regeln und Übergang, schreibt nicht; nicht an Batch und Bulk (E11; §2.6, Punkt 2) | ⬜ | 1 d | POST mit `?dry_run=true` → 200 oder 422 wie beim echten Aufruf; die Zahl der Datensätze, der Verlauf und der Ereignisstrom bleiben gleich |
@@ -382,3 +382,4 @@ beantwortet: E192 und E193 dort.
   (Aufbewahrung), E13 und E15 von dir bestätigt (Vorgabe der Tokens, Listen als ein Eintrag,
   Verlauf bleibt synchron). Der MCP-Server kommt zu Meilenstein 2 (Hauptplan E192); E4 und E12
   sind daran angepasst. Nicht geprüft: ob AD FS und Entra ID mit AP21 ohne Sonderfall gehen.
+- **Abgenommen am 2026-11-16** von Pascal („abgenommen für jetzt“).
