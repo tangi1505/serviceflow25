@@ -211,6 +211,17 @@ export function useAreas(): Area[] {
       ),
     });
   }
+  if (me.data?.appearance === true) {
+    admin.push({
+      key: "appearance",
+      label: t("nav.appearance"),
+      link: (
+        <Link to="/appearance" className={itemClass} activeProps={{ className: activeClass }}>
+          {t("nav.appearance")}
+        </Link>
+      ),
+    });
+  }
   if (admin.length > 0) {
     areas.push({ id: "admin", label: t("nav.admin"), icon: Shield, entries: admin });
   }
@@ -274,7 +285,7 @@ export function useArrangement() {
 }
 
 // Pins are the favourites with the way to change them, for the stars of the entries.
-type Pins = { has: (id: string) => boolean; toggle: (id: string) => void };
+type Pins = { has: (id: string) => boolean; toggle: (id: string) => void; off?: boolean };
 
 export function Nav() {
   const { t } = useTranslation();
@@ -294,7 +305,9 @@ export function Nav() {
       : []),
     ...arrange(all, arrangement.order).filter((a) => !hidden.has(a.id)),
   ];
+  const arrangeable = settings.data?.allowed?.nav !== false;
   const pins: Pins = {
+    off: !arrangeable,
     has: (id) => favorites.includes(id),
     toggle: (id) =>
       save({
@@ -369,16 +382,19 @@ export function Nav() {
         ))}
         {types.isError && <p className="text-sm text-destructive">{t("nav.typesError")}</p>}
       </div>
-      <div className="hidden flex-none border-t px-2.5 py-2 md:block">
-        <button
-          type="button"
-          onClick={() => width("narrow")}
-          className="flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <PanelLeftClose aria-hidden="true" className="size-4" />
-          {t("nav.collapse")}
-        </button>
-      </div>
+      {/* Without arranging, the organisation sets the width (UI39). */}
+      {arrangeable && (
+        <div className="hidden flex-none border-t px-2.5 py-2 md:block">
+          <button
+            type="button"
+            onClick={() => width("narrow")}
+            className="flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <PanelLeftClose aria-hidden="true" className="size-4" />
+            {t("nav.collapse")}
+          </button>
+        </div>
+      )}
     </nav>
   );
   // One navigation at a time: below 768 px always the wide one (UI30, until UI40).
@@ -394,6 +410,9 @@ function EntryRow({ entry, pins }: { entry: Entry; pins: Pins }) {
   const { t } = useTranslation();
   const on = pins.has(entry.id);
   const label = t(on ? "nav.unpin" : "nav.pin", { name: entry.label });
+  if (pins.off) {
+    return <li className="[&>a]:block">{entry.link}</li>;
+  }
   return (
     <li className="group/entry flex items-center gap-0.5 [&>a]:min-w-0 [&>a]:flex-1">
       {entry.link}
@@ -515,17 +534,20 @@ function Rail({
           <RailArea key={area.id} area={area} pins={pins} />
         ))}
       </div>
-      <div className="flex flex-none justify-center border-t px-2.5 py-2">
-        <button
-          type="button"
-          aria-label={t("nav.expand")}
-          title={t("nav.expand")}
-          onClick={onWide}
-          className="inline-grid h-8 w-10 place-items-center rounded-md text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <PanelLeftOpen aria-hidden="true" className="size-4" />
-        </button>
-      </div>
+      {/* Without arranging, the organisation sets the width (UI39). */}
+      {!pins.off && (
+        <div className="flex flex-none justify-center border-t px-2.5 py-2">
+          <button
+            type="button"
+            aria-label={t("nav.expand")}
+            title={t("nav.expand")}
+            onClick={onWide}
+            className="inline-grid h-8 w-10 place-items-center rounded-md text-foreground-2 hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <PanelLeftOpen aria-hidden="true" className="size-4" />
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

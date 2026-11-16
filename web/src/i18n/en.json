@@ -53,7 +53,8 @@
     "dashboards": "Dashboards",
     "favorites": "Favourites",
     "pin": "Pin to favourites: {{name}}",
-    "unpin": "Unpin from favourites: {{name}}"
+    "unpin": "Unpin from favourites: {{name}}",
+    "appearance": "Appearance"
   },
   "header": {
     "tenant": "Tenant: {{name}}",
@@ -492,7 +493,9 @@
     "favoritesHint": "Pin entries under Favourites with the star at the entry in the bar. Hidden areas stay reachable with Ctrl K.",
     "favoriteUp": "Move favourite {{name}} up",
     "favoriteDown": "Move favourite {{name}} down",
-    "unpinFavorite": "Unpin favourite {{name}}"
+    "unpinFavorite": "Unpin favourite {{name}}",
+    "byOrganisation": "Set by your organisation.",
+    "orgAccent": "colour of the organisation {{color}}"
   },
   "versions": {
     "title": "Versions",
@@ -1163,5 +1166,44 @@
     "violet": "Violet",
     "umber": "Umber",
     "graphite": "Graphite"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "intro": "Holds for all persons of the tenant {{tenant}}. Here stands what the organisation sets and what each person may choose. The sign-in page shows the appearance of the root.",
+    "allTenants": "of the whole installation",
+    "forbidden": "You lack the right manage_settings for your tenant.",
+    "brand": "Name and logo",
+    "name": "Name of the application",
+    "nameHint": "Shown top left, in the title of the browser and on the sign-in page.",
+    "nameRequired": "Please give a name.",
+    "logo": {
+      "light": "Logo for light",
+      "dark": "Logo for dark"
+    },
+    "noLogo": "No logo: the mark “it”",
+    "removeLogo": "Remove",
+    "logoHint": "PNG or SVG, at most 256 KB. Without a logo for dark the one for light holds, and the other way round.",
+    "color": "Colour of the organisation",
+    "colorHint": "One colour is enough: the tool derives the shade for dark mode and the light area of a selection. Ground, lines and the colours of deadlines stay.",
+    "colorPicker": "Choose the accent colour",
+    "colorFormat": "Please give a colour like #0B6E80.",
+    "colorWeak": "Contrast as text {{ratio}} : 1 · too weak, at least 4.5 : 1",
+    "colorOk": "Contrast as text {{ratio}} : 1 · meets AA",
+    "primary": "Main action in the accent colour instead of graphite",
+    "preview": "Preview",
+    "previewLink": "Open INC-24817",
+    "previewRow": "Selected row",
+    "previewFocus": "Focus",
+    "own": "What each person may set",
+    "ownIntro": "Unchecked, the default of the organisation holds for everyone, and the setting is gone from “My settings”.",
+    "ownHint": {
+      "color_scheme": "Light, dark or like the system",
+      "accent": "One of the six checked colours",
+      "density": "Compact or normal",
+      "nav": "Width, order, hiding, favourites"
+    },
+    "defaults": "Defaults",
+    "saved": "Saved. Holds for everyone from now on.",
+    "invalid": "Not saved: please check the marked entries."
   }
 }

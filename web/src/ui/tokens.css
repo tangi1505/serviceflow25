@@ -29,9 +29,10 @@
   --border-soft: #efefea;
   --border-strong: #15171a;
   --input: #8a8f98;
-  --primary: #15171a;
+  /* The main action in the accent of the organisation, if it says so (E25, UI39, accent.ts). */
+  --primary: var(--pick-primary-light, #15171a);
   --primary-foreground: #ffffff;
-  --kbd-on-primary: #3a3d44;
+  --kbd-on-primary: var(--pick-primary-kbd-light, #3a3d44);
   --secondary: var(--card);
   --secondary-foreground: var(--foreground);
   --accent: var(--pick-accent-light, #0b6e80);
@@ -77,9 +78,9 @@
   --border-soft: #23262a;
   --border-strong: #6e737a;
   --input: #6e737a;
-  --primary: #a9adb2;
-  --primary-foreground: #111315;
-  --kbd-on-primary: #8c9096;
+  --primary: var(--pick-primary-dark, #a9adb2);
+  --primary-foreground: var(--pick-primary-fg-dark, #111315);
+  --kbd-on-primary: var(--pick-primary-kbd-dark, #8c9096);
   --accent: var(--pick-accent-dark, #71abb5);
   --accent-soft: var(--pick-accent-soft-dark, #2a373b);
   --success: #5bc48a;
@@ -109,14 +110,14 @@
    Dark is the light colour mixed 58 % with 42 % white; the soft accent 10 % on white, dark
    20 % on --card (§2.1). */
 :root[data-theme="probe"] {
-  --primary: #3f4bb8;
+  --primary: var(--pick-primary-light, #3f4bb8);
   --primary-foreground: #ffffff;
   --accent: var(--pick-accent-light, #3f4bb8);
   --accent-soft: var(--pick-accent-soft-light, #ecedf8);
   --radius: 0.25rem;
 }
 :root[data-theme="probe"][data-color-scheme="dark"] {
-  --primary: #9097d6;
+  --primary: var(--pick-primary-dark, #9097d6);
   --primary-foreground: #111315;
   --accent: var(--pick-accent-dark, #9097d6);
   --accent-soft: var(--pick-accent-soft-dark, #303342);

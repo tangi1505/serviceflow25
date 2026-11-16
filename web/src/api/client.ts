@@ -44,6 +44,7 @@ export type SuggestHit = components["schemas"]["SuggestHit"];
 export type Query = components["schemas"]["Query"];
 export type Job = components["schemas"]["Job"];
 export type MySettings = components["schemas"]["MySettings"];
+export type Branding = components["schemas"]["Branding"];
 export type SettingsChange = NonNullable<
   paths["/api/v1/me/settings"]["patch"]["requestBody"]
 >["content"]["application/json"];
@@ -338,6 +339,26 @@ export const api = {
         headers: { "Content-Type": "application/octet-stream" },
       }),
     ),
+  // The appearance (UI39): of the root for the sign-in page, of the tenant for the session;
+  // the logo of a variant at the root or a tenant node.
+  branding: async () => unwrap(await client.GET("/api/v1/branding")),
+  myBranding: async () => unwrap(await client.GET("/api/v1/me/branding")),
+  setOrgLogo: async (path: string, variant: "light" | "dark", file: Blob) =>
+    unwrap(
+      await client.PUT("/api/v1/org/nodes/{path}/logo/{variant}", {
+        params: { path: { path, variant } },
+        body: file as unknown as string,
+        bodySerializer: (b: unknown) => b as BodyInit,
+        headers: { "Content-Type": "application/octet-stream" },
+      }),
+    ),
+  removeOrgLogo: async (path: string, variant: "light" | "dark") => {
+    unwrap(
+      await client.DELETE("/api/v1/org/nodes/{path}/logo/{variant}", {
+        params: { path: { path, variant } },
+      }),
+    );
+  },
   // mySettings are the settings of the session's person (UI9), each with its source.
   mySettings: async () => unwrap(await client.GET("/api/v1/me/settings")),
   setMySettings: async (body: SettingsChange) =>
@@ -748,6 +769,20 @@ export const formsQuery = queryOptions({
 export const typesQuery = queryOptions({
   queryKey: ["types"],
   queryFn: api.types,
+  staleTime: 5 * 60_000,
+});
+
+// brandingQuery is the appearance of the root, readable without a session (UI39).
+export const brandingQuery = queryOptions({
+  queryKey: ["branding"],
+  queryFn: api.branding,
+  staleTime: 5 * 60_000,
+});
+
+// myBrandingQuery is the appearance of the session's tenant (UI39).
+export const myBrandingQuery = queryOptions({
+  queryKey: ["me", "branding"],
+  queryFn: api.myBranding,
   staleTime: 5 * 60_000,
 });
 

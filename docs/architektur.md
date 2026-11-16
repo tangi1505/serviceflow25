@@ -258,7 +258,7 @@ E34 und KF9:
   - **Bedingung** in CEL, etwa „nur nicht geschlossene";
   - **Feldrechte.**
 - **Persönliche Einstellungen** (Sprache an der Person, Zeitzone, Darstellung hell, dunkel oder wie das System, Akzentfarbe aus sechs festen Farben, Zeilenhöhe der Listen, Breite der Navigation, Reihenfolge und Ausblenden ihrer Bereiche und Favoriten (UI37), Vorbelegung je Konto,
-  `internal/prefs`) gehen vor den Vorgaben am Baum (`ui.*`, E131). Das Theme setzt nur die Organisation (`ui.theme`, UI-Plan E49). Nur im Browser liegen je
+  `internal/prefs`) gehen vor den Vorgaben am Baum (`ui.*`, E131). Das Theme setzt nur die Organisation (`ui.theme`, UI-Plan E49). Das Erscheinungsbild (Name, Logo, freie Akzentfarbe mit 4,5 : 1, Hauptaktion in der Farbe, UI39, UI-Plan E51) gilt je Mandant (Einstellungen mit Merkmal `tenant`, Logo in `org_logo`, `internal/branding`); die Anmeldeseite liest das der Wurzel ohne Anmeldung. Die Organisation schaltet ab, was eine Person selbst einstellt (`ui.own_…`); eine abgeschaltete eigene Einstellung gilt nicht. Nur im Browser liegen je
   Konto die zuletzt geöffneten Datensätze der Befehlszeile (Typ, ID, Titel; UI31, UI-Plan E36);
   die Abmeldung löscht sie.
 - **Den Baum selbst** ändern die Sonderrechte `manage_org` (Knoten) und `manage_settings`
@@ -454,6 +454,7 @@ E11:
 | Pfad | Zweck |
 | --- | --- |
 | `GET /api/v1/packages` | installierte Pakete mit Name und Symbol, die Bereiche der Navigation (UI36) |
+| `GET /api/v1/branding`, `GET /api/v1/me/branding`, `PUT`/`DELETE /api/v1/org/nodes/{path}/logo/{variant}` | Erscheinungsbild der Wurzel ohne Anmeldung, des Mandanten mit Anmeldung, Logo hell und dunkel (UI39) |
 | `GET /api/v1/types`, `GET /api/v1/types/{typ}` | wirksame Definitionen |
 | `GET /api/v1/records/{typ}` | Liste mit einfachen Parametern (`?state=open&sort=-created_at&fields=…&limit=50&after=…`) |
 | `POST /api/v1/records/{typ}:query` | JSON-Abfrage (§6.3) |

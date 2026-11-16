@@ -11,18 +11,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { BrandMark, defaultName, useBranding } from "@/app/Brand";
 import { LanguageSwitch } from "@/app/Switches";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/ui/card";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
-import { api, ApiError, meQuery, providersQuery } from "@/api/client";
+import { api, ApiError, brandingQuery, meQuery, providersQuery } from "@/api/client";
+import { applyAccent } from "@/ui/accent";
 
 const schema = z.object({
   username: z.string().trim().min(1, "required"),
@@ -37,6 +39,14 @@ export function LoginPage() {
   const id = useId();
   const [failure, setFailure] = useState<string | null>(null);
   const providers = useQuery(providersQuery);
+  // Before the sign-in no tenant holds: the appearance of the root (UI39, UI plan E51).
+  const branding = useQuery(brandingQuery);
+  useBranding(branding.data);
+  useEffect(() => {
+    if (branding.data) {
+      applyAccent(branding.data.accent);
+    }
+  }, [branding.data]);
   const search = useSearch({ strict: false }) as { error?: string };
   const ssoError = search.error;
   const {
@@ -72,7 +82,10 @@ export function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{t("login.title")}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t("app.title")}</p>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <BrandMark branding={branding.data} />
+            {branding.data?.name ?? defaultName}
+          </p>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit(submit)} noValidate>

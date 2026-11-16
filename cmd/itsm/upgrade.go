@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/branding"
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
@@ -54,6 +55,7 @@ var upgrades = []upgrade{
 	{pkg: "request", below: "0.3.0", name: "Genehmigungsstufen der Erfüllungsvorlagen in Genehmigungsvorlagen", run: moveTemplateStages},
 	{pkg: "incident", below: "0.9.0", name: "Automatisches Schließen aus der Einstellung incident.close_after", run: closeFromSetting},
 	{pkg: "core", below: "0.10.0", name: "Benachrichtigungen als Mail und in den Posteingang", run: notificationWays},
+	{pkg: "core", below: "0.13.0", name: "Akzentfarbe der Organisation als Farbe statt als Name", run: accentAsColor},
 }
 
 // runUpgrades runs the steps of the package for an installed version below theirs.
@@ -129,6 +131,21 @@ func notificationWays(ctx context.Context, u upgradeEnv, scope string) (int, err
 			moved++
 		}
 	}
+}
+
+// accentAsColor turns the names of the six accents in ui.accent into their colour (UI39, UI-Plan
+// E51): the setting is a colour #rrggbb now, so that the organisation may choose a free one.
+func accentAsColor(ctx context.Context, u upgradeEnv, scope string) (int, error) {
+	moved := 0
+	for name, color := range branding.Named() {
+		tag, err := u.rt.For(scope).Exec(ctx, `UPDATE org_setting SET value = to_jsonb($1::text), updated_at = now()
+			WHERE key = 'ui.accent' AND path <@ $2::ltree AND value = to_jsonb($3::text)`, color, scope, name)
+		if err != nil {
+			return moved, err
+		}
+		moved += int(tag.RowsAffected())
+	}
+	return moved, nil
 }
 
 // moveTemplateStages makes a core.approval_template of the stages of every fulfilment template

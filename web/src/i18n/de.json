@@ -53,7 +53,8 @@
     "dashboards": "Dashboards",
     "favorites": "Favoriten",
     "pin": "Unter Favoriten anheften: {{name}}",
-    "unpin": "Von den Favoriten lösen: {{name}}"
+    "unpin": "Von den Favoriten lösen: {{name}}",
+    "appearance": "Erscheinungsbild"
   },
   "header": {
     "tenant": "Mandant: {{name}}",
@@ -492,7 +493,9 @@
     "favoritesHint": "Einträge heftest du mit dem Stern am Eintrag in der Leiste unter „Favoriten“ an. Ausgeblendete Bereiche erreichst du weiter über Strg K.",
     "favoriteUp": "Favorit {{name}} nach oben",
     "favoriteDown": "Favorit {{name}} nach unten",
-    "unpinFavorite": "Favorit {{name}} lösen"
+    "unpinFavorite": "Favorit {{name}} lösen",
+    "byOrganisation": "Stellt deine Organisation ein.",
+    "orgAccent": "Farbe der Organisation {{color}}"
   },
   "versions": {
     "title": "Fassungen",
@@ -1163,5 +1166,44 @@
     "violet": "Violett",
     "umber": "Umbra",
     "graphite": "Graphit"
+  },
+  "appearance": {
+    "title": "Erscheinungsbild",
+    "intro": "Gilt für alle Personen im Mandanten {{tenant}}. Hier steht, was die Organisation vorgibt und was jede Person selbst wählen darf. Die Anmeldeseite zeigt das Erscheinungsbild der Wurzel.",
+    "allTenants": "der ganzen Installation",
+    "forbidden": "Dafür fehlt dir das Recht manage_settings für deinen Mandanten.",
+    "brand": "Name und Logo",
+    "name": "Name der Anwendung",
+    "nameHint": "Steht oben links, im Titel des Browsers und auf der Anmeldeseite.",
+    "nameRequired": "Bitte einen Namen angeben.",
+    "logo": {
+      "light": "Logo für hell",
+      "dark": "Logo für dunkel"
+    },
+    "noLogo": "Kein Logo: die Marke „it“",
+    "removeLogo": "Entfernen",
+    "logoHint": "PNG oder SVG, höchstens 256 KB. Ohne Logo für dunkel gilt das für hell und umgekehrt.",
+    "color": "Farbe der Organisation",
+    "colorHint": "Eine Farbe genügt: Die Fassung für den dunklen Modus und die helle Fläche der Auswahl rechnet das Werkzeug daraus. Grund, Linien und die Farben der Fristen bleiben.",
+    "colorPicker": "Akzentfarbe wählen",
+    "colorFormat": "Bitte eine Farbe wie #0B6E80 angeben.",
+    "colorWeak": "Kontrast als Text {{ratio}} : 1 · zu schwach, mindestens 4,5 : 1",
+    "colorOk": "Kontrast als Text {{ratio}} : 1 · erfüllt AA",
+    "primary": "Hauptaktion in der Akzentfarbe statt in Graphit",
+    "preview": "Vorschau",
+    "previewLink": "INC-24817 öffnen",
+    "previewRow": "Gewählte Zeile",
+    "previewFocus": "Fokus",
+    "own": "Was jede Person selbst einstellen darf",
+    "ownIntro": "Abgewählt gilt für alle die Vorgabe der Organisation, und die Einstellung verschwindet aus „Meine Einstellungen“.",
+    "ownHint": {
+      "color_scheme": "Hell, Dunkel oder wie das System",
+      "accent": "Eine der sechs geprüften Farben",
+      "density": "Kompakt oder Normal",
+      "nav": "Breite, Reihenfolge, Ausblenden, Favoriten"
+    },
+    "defaults": "Vorgaben",
+    "saved": "Gespeichert. Gilt ab jetzt für alle.",
+    "invalid": "Nicht gespeichert: Bitte die markierten Angaben prüfen."
   }
 }

@@ -59,7 +59,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI36** | Navigation nach dem Mockup (E41, §2.3): Bereiche mit Symbol zum Ein- und Ausklappen, eingeklappt mit der Zahl ihrer Einträge; die Leiste scrollt für sich, Kopfzeile und Fuß der Leiste bleiben stehen; schmale Leiste nur mit Symbolen, ein Klick zeigt die Einträge daneben. Name und Symbol eines Bereichs kommen aus dem Paket (`label` und neu `icon` in `package.yaml`), nicht mehr aus den Texten der Oberfläche (E48) | 🟢 | 2 d | Fenster 900 px hoch, „Stammdaten“ aufklappen → nur die Leiste scrollt, die Seite nicht; auf und zu bleibt nach Neuladen; „Leiste einklappen“ → 60 px breit, Klick auf ein Symbol zeigt die Einträge; kein Bereich zeigt einen rohen Paketnamen; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI37** | Favoriten und eigene Anordnung (E41, E50): der Stern an einem Eintrag heftet ihn unter „Favoriten“ an; in Meine Einstellungen › Darstellung Reihenfolge und Sichtbarkeit der Bereiche und die Breite der Leiste. Gespeichert in den Einstellungen der Person (`/api/v1/me/settings`, `internal/prefs`), damit es auf jedem Gerät gilt | 🟢 | 2 d | Stern an „Störung“ → steht unter „Favoriten“, auch nach Anmeldung in einem zweiten Browser; „Probepaket“ ausblenden → fehlt in der Leiste, bleibt über Strg K erreichbar; zwei Bereiche tauschen → die Reihenfolge bleibt nach Neuanmeldung; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI38** | Meine Einstellungen mit Reitern, darin „Darstellung“ (E41): Modus als drei Karten, Akzentfarbe aus sechs festen Farben (§2.3), Zeilenhöhe. Die Akzentfarbe gilt je Person; die dunkle Fassung und die helle Fläche der Auswahl werden wie in §2.1 abgeleitet, Graphit bekommt dunkel einen festen Wert; dazu E49 | 🟢 | 1,5 d | „Indigo“ wählen → Fokusrahmen, Links und gewählte Zeile sind indigo, hell und dunkel, auch nach Neuanmeldung; „Auf Vorgabe zurücksetzen“ stellt die Farbe der Organisation wieder her; Playwright mit `axe` (mit Kontrast) für alle sechs Farben in beiden Modi ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41; ersetzt für Name, Logo und Farbe das Theme-Paket, E45): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | ⬜ | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI39** | Erscheinungsbild der Organisation unter Verwaltung (E41, E51; ersetzt für Name, Logo und Farbe das Theme-Paket, E45): Name der Anwendung, Logo für hell und dunkel, Akzentfarbe frei mit Kontrastprüfung, Hauptaktion in der Akzentfarbe (E25), Auswahl dessen, was jede Person selbst einstellen darf, und die Vorgaben. Gespeichert als Einstellungen am Organisationsbaum (`ui.…` in `packages/core/package.yaml`), das Logo als Datei | 🟢 | 2 d | Name ändern → Kopfzeile und Titel des Browsers zeigen ihn; eine Farbe mit weniger als 4,5 : 1 auf Weiß → Fehler am Feld, nichts wird gespeichert; „Akzentfarbe“ abwählen → bei einer anderen Person fehlt die Wahl in Meine Einstellungen, es gilt die Farbe der Organisation; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI40** | Navigation auf dem Telefon (unter 768 px) als Schublade statt über dem Inhalt (E42); ändert den Prüfweg von UI30 | ⬜ | 1 d | Bei 375 px Breite zeigt die Kopfzeile den Knopf „Navigation öffnen“, die Leiste schiebt sich über den Inhalt und schließt mit Esc, mit dem Knopf und mit Klick daneben; der Fokus bleibt in der offenen Schublade; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | ⬜ | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI42** | Kacheln des Portals mit Symbol (E43): Feld `icon` an `core.portal_tile` als Auswahl aus einer festen Liste, ohne Angabe ein Symbol nach der Art der Kachel; die Zeile mit der Art über dem Namen entfällt | ⬜ | 1 d | Kachel „Störung melden“ mit einem Symbol speichern → das Portal zeigt es im Kasten über dem Namen; eine Kachel ohne Angabe zeigt das Symbol ihrer Art; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -150,6 +150,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 (E5, E41, E42, E57, E
 | **E48** | Namen der Bereiche (UI36, deine Entscheidung 2026-11-16): Die Navigation zeigt den Namen des Pakets; das Kernpaket heißt dafür „Stammdaten“ (englisch „Master data“), alle anderen behalten ihren Namen (Servicekatalog, Störungen, Anfragen, Wissen, Service Desk, Probe). Zum Bau: das Symbol steht als `icon` in `package.yaml`, ein Name aus einer festen Liste von `lucide`-Symbolen, die der Kern prüft; die Oberfläche liest Name und Symbol über `GET /api/v1/packages`; die Breite der Leiste (breit oder schmal) ist eine Einstellung der Person auf dem Server (`nav`), auf und zu der Bereiche bleibt im Browser je Konto (E41). Verworfen: immer der Paketname („Kern“); alle Namen wie im Mockup (Katalog, Probepaket) | 2026-11-16 | Pascal |
 | **E49** | Meine Einstellungen (UI38, deine Entscheidungen 2026-11-16): jede Änderung wirkt sofort und wird sofort gespeichert, ohne Knopf „Speichern“, mit kurzer Bestätigung; „Auf Vorgabe zurücksetzen“ nimmt die eigenen Werte des offenen Reiters weg. Die Auswahl „Theme“ entfällt für Personen, auch auf der Anmeldeseite und im Portal; ein Theme-Paket setzt nur noch die Organisation (E45, UI39). Zum Bau: Reiter „Sprache und Zeit“, „Darstellung“ (Modus als drei Karten, Akzentfarbe aus den sechs Farben aus §2.3, Zeilenhöhe, Startseite), „Vorbelegung“ und, nicht im Mockup, „Vertretung“; die Akzentfarbe ist eine Einstellung der Person (`accent`) mit der Vorgabe der Organisation `ui.accent` (eine der sechs, bis UI39 eine freie Farbe erlaubt). Verworfen: Darstellung sofort, Rest mit Speichern; alles mit Speichern; Theme unter Darstellung | 2026-11-16 | Pascal |
 | **E50** | Favoriten und eigene Anordnung (UI37, deine Entscheidungen 2026-11-16): den Stern bekommt jeder Eintrag der Leiste (Listen der Typen, Dashboards, gespeicherte Suchen, Seiten der Verwaltung); „Favoriten“ steht als eigener Bereich oben, seine Einträge sind in Meine Einstellungen › Darstellung frei verschiebbar. Umstellen und ausblenden lassen sich alle Bereiche (Dashboards, die Bereiche der Pakete, Gespeicherte Suchen, Verwaltung); ein Bereich, der später dazukommt, erscheint an seinem üblichen Platz. Verschoben wird mit den Knöpfen „nach oben“ und „nach unten“. Zum Bau: persönliche Einstellungen `nav_order`, `nav_hidden` und `favorites` (Listen von Schlüsseln, nur der Person, ohne Vorgabe der Organisation); ein Favorit, dessen Ziel fehlt oder nicht mehr lesbar ist, wird nicht gezeigt. Verworfen: Stern nur an Listen und Suchen; Favoriten in der Folge des Anheftens oder der Bereiche; nur die Bereiche der Pakete umstellen; Ziehen mit der Maus | 2026-11-16 | Pascal |
+| **E51** | Erscheinungsbild der Organisation (UI39, deine Entscheidungen 2026-11-16): gilt für den ganzen Mandanten, eingestellt an seinem Knoten (ohne Mandanten an der Wurzel) mit dem Recht `manage_settings` dort, nicht je Einheit; die Werte sind nur dort setzbar. Name, Logo und Farbe stehen auch auf der Anmeldeseite: dort gilt noch kein Mandant (Benutzernamen sind in der Installation eindeutig, Hauptplan E138), also das Erscheinungsbild der Wurzel, ohne Mandanten genau das der Organisation, mit Mandanten das der Installation; ohne Anmeldung lesbar sind nur Name, Logo, Farbe und Hauptaktion. Geändert wird mit Vorschau und Knopf „Speichern“, nicht sofort. Die freie Farbe muss auf Weiß 4,5 : 1 erreichen; die dunkle Fassung rechnet das Werkzeug, bei zu wenig Kontrast auf der dunklen Karte mit mehr Weiß, bis 4,5 : 1 erreicht ist. Zum Bau: `ui.accent` wird eine Farbe `#rrggbb` (die sechs Farben der Personen sind darin enthalten, ein Umzugsschritt setzt bestehende Namen um), dazu `ui.app_name`, `ui.primary_accent` (Hauptaktion in der Akzentfarbe, E25), `ui.nav` (Breite der Leiste als Vorgabe) und je ein Schalter, ob eine Person Modus, Akzentfarbe, Zeilenhöhe und Navigation selbst einstellen darf; ist er aus, gilt ihr eigener Wert nicht mehr und die Wahl fehlt in Meine Einstellungen. Das Logo (PNG oder SVG, je hell und dunkel, höchstens 256 KB) liegt in einer eigenen Kerntabelle am Knoten, nicht im Dateispeicher: Dateien hängen an Datensätzen und deren Rechten, die Anmeldeseite braucht das Logo ohne Anmeldung; ausgeliefert nur als Bild mit `Content-Security-Policy: sandbox`. Verworfen: je Einheit vererbt; Name und Logo erst nach der Anmeldung; sofort speichern; eine zweite Farbe für dunkel | 2026-11-16 | Pascal |
 
 ## 2. Begründung
 
@@ -433,6 +434,64 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI39 — Erscheinungsbild der Organisation, 2026-11-16
+
+- **Grundlage:** E41 (Mockup), E45, E25, E51 (deine Entscheidungen 2026-11-16).
+- **Gebaut:**
+  - `web/src/app/AppearancePage.tsx`, Verwaltung › Erscheinungsbild (nur mit `manage_settings`
+    am Mandantenknoten, ohne Mandanten an der Wurzel): Name der Anwendung, Logo für hell und
+    dunkel mit Vorschau und „Entfernen“, Akzentfarbe als Farbwähler und `#rrggbb` mit Kontrast
+    als Text („erfüllt AA“ oder Fehler am Feld unter 4,5 : 1, dann ist „Speichern“ gesperrt),
+    „Hauptaktion in der Akzentfarbe statt in Graphit“, Vorschau von Hauptaktion, Link, gewählter
+    Zeile und Fokus, die vier Schalter „Was jede Person selbst einstellen darf“ und die Vorgaben
+    Modus, Zeilenhöhe und Breite der Leiste. Gespeichert wird erst mit „Speichern“, alles auf
+    einmal über die Einstellungen des Knotens, das Logo danach.
+  - Marke (`web/src/app/Brand.tsx`): Logo des Modus, sonst „it“, und der Name in der Kopfzeile,
+    im Portal und auf der Anmeldeseite (dort das Erscheinungsbild der Wurzel, ohne Anmeldung);
+    der Name ist der Titel des Browsers; die Hauptaktion nimmt auf Wunsch die Akzentfarbe
+    (`--pick-primary-…`). Die freie Farbe gilt wie die sechs für beide Modi; die dunkle Fassung
+    bekommt mehr Weiß, bis sie 4,5 : 1 auf der dunklen Karte erreicht (`web/src/ui/accent.ts`).
+  - Was die Organisation abschaltet, fehlt: in Meine Einstellungen (mit dem Satz „Stellt deine
+    Organisation ein.“), im Konto-Menü (Modus), in der Befehlszeile (Darstellung, Zeilenhöhe), an
+    der Liste (Zeilenhöhe) und an der Leiste (Sterne, Ein- und Ausklappen).
+  - Kern: Einstellungsart `color` (`#rrggbb`, mindestens 4,5 : 1 auf Weiß, nach WCAG 2.1) und
+    Merkmal `tenant` einer Einstellung (nur an der Wurzel oder einem Mandantenknoten setzbar).
+    Paket core 0.13.0: `ui.app_name`, `ui.accent` als Farbe (Umzugsschritt setzt die Namen der
+    sechs Farben in ihre Farbe um), `ui.primary_accent`, `ui.nav`, `ui.own_color_scheme`,
+    `ui.own_accent`, `ui.own_density`, `ui.own_nav`. `internal/prefs`: eine abgeschaltete eigene
+    Einstellung gilt nicht, `PATCH` mit einem Wert ist 422, `null` geht; `allowed` in
+    `/api/v1/me/settings`. `internal/branding` mit Tabelle `org_logo` (Migration 00050), PNG oder
+    SVG bis 256 KB, der Typ aus dem Inhalt, ausgeliefert mit `nosniff` und
+    `Content-Security-Policy: sandbox`; `GET /api/v1/branding` und `…/logo/{variant}` ohne
+    Anmeldung (Wurzel), `GET /api/v1/me/branding` (Mandant), `PUT` und `DELETE
+    /api/v1/org/nodes/{path}/logo/{variant}`; `appearance` in `/api/v1/auth/me`.
+- **Belegt, 2026-11-16:**
+  - Go `TestBrandingOverHTTP`: Vorgabe ohne Anmeldung; #777777 (4,48 : 1) ist 422, #767676
+    geht; Name an einer Einheit und Logo an einer Einheit sind 422; PNG und SVG gehen, HTML und
+    300 KB nicht; das Logo kommt als Bild mit `sandbox`, mit Hash ein Jahr im Browser, ohne Hash
+    `no-cache`; `GET /api/v1/me/branding` ohne Anmeldung ist 401; `ui.own_accent` aus → eigene
+    Farbe gilt nicht, `steel` ist 422, `null` geht. `TestSettingColor`: Kontrast nach WCAG.
+  - Vitest `AppearancePage.test.tsx`: neuer Name in Kopfzeile und Titel erst nach „Speichern“,
+    schwache Farbe sperrt, Hauptaktion in der Farbe; Akzentfarbe und Navigation abgeschaltet →
+    fehlen in Meine Einstellungen, keine Sterne, kein Einklappen; axe ohne Befund.
+  - Playwright `appearance.spec.ts` mit eigenem Konto `markenpfleger`: Name in Kopfzeile, Titel
+    und auf der Anmeldeseite einer zweiten Person, schwache Farbe gesperrt, bei der zweiten
+    Person fehlt die Akzentfarbe; axe ohne Befund.
+  - Auf 8092 angesehen: Name „Leitstelle Probe“ gespeichert, im Titel des Browsers und in
+    `GET /api/v1/branding` für die Anmeldeseite; danach alles an der Wurzel wieder entfernt.
+  - Ganze CI grün am 2026-11-16 auf `ki-lab` im vierten Lauf: Go, Web (144 Vitest-Fälle,
+    21 Playwright-Fälle mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %),
+    LZ2 2,89 ms (−33 %), LZ3 5,05 ms (−43 %), LZ4 3,87 ms (−43 %), LZ5 9.637 Zeilen/s, LZ13 8.945
+    Ereignisse/s. Gefunden auf dem Weg: zwei Tests teilten dieselben Testdatenbanken und
+    beendeten sich gegenseitig die Verbindungen (jetzt eigene Namen); `TestBackgroundPerDatabase`
+    wartet mit eigenem Verteiler auf Ereignisse und läuft wie die Tests des Ereignisstroms jetzt
+    allein (`scripts/ci.sh`); axe fand den blassen Hinweis „Kein Logo“ in der dunklen Vorschau;
+    dazu mein Lint-Fehler und ein Testfehler. Die SSH-Verbindung der CI hält jetzt
+    Unterbrechungen bis etwa 5 Minuten aus.
+- **Nicht geprüft:** ein echtes Logo im Browser (die Tests laden kleine Platzhalter), mehrere
+  Mandanten mit eigenem Erscheinungsbild im Browser (der Server ist dafür getestet), das Telefon
+  (UI40).
 
 ### UI37 — Favoriten und eigene Anordnung, 2026-11-16
 

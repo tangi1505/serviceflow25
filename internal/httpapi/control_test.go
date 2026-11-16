@@ -63,7 +63,10 @@ func newControlSetup(t *testing.T) controlSetup {
 		t.Cleanup(pool.Close)
 		return pool
 	}
-	s := controlSetup{control: open("itsmtest_ctl"), a: open("itsmtest_ctl_a"), b: open("itsmtest_ctl_b")}
+	// Names of the test's own: the API tests run in parts side by side (PL52), and two tests on
+	// the same databases would end each other's connections when they drop them WITH (FORCE).
+	prefix := "itsmtest_ctl_" + strings.ToLower(strings.TrimPrefix(t.Name(), "Test"))
+	s := controlSetup{control: open(prefix), a: open(prefix + "_a"), b: open(prefix + "_b")}
 	s.rt = db.NewRouter(s.control, map[string]*pgxpool.Pool{"root.ta": s.a, "root.tb": s.b},
 		func(ctx context.Context) string { return authz.From(ctx).CurrentTenant() })
 	var types []meta.Type

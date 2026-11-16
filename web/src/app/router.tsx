@@ -20,6 +20,7 @@ import {
 } from "@tanstack/react-router";
 
 import { ApiError, meQuery } from "@/api/client";
+import { AppearancePage } from "@/app/AppearancePage";
 import { AppShell } from "@/app/AppShell";
 import { HomePage } from "@/app/HomePage";
 import { LoginPage } from "@/app/LoginPage";
@@ -279,6 +280,13 @@ const settingsRoute = createRoute({
   component: MySettingsPage,
 });
 
+// The appearance of the organisation (UI39).
+const appearanceRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/appearance",
+  component: AppearancePage,
+});
+
 const globalSettingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings/global",
@@ -313,6 +321,7 @@ const routeTree = rootRoute.addChildren([
     passwordRoute,
     settingsRoute,
     globalSettingsRoute,
+    appearanceRoute,
     approvalsRoute,
     dashboardRoute,
   ]),

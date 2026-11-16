@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.12.0
+version: 0.13.0
 # The symbol of the area in the navigation (UI36), from the fixed list of the core.
 icon: database
 # The area of the navigation is called so (UI plan E48).
@@ -46,19 +46,65 @@ settings:
       - {value: light, label: {de: Hell, en: Light}}
       - {value: dark, label: {de: Dunkel, en: Dark}}
     default: system
+  # The appearance of the organisation (UI39, UI plan E51): for a whole tenant, set on the page
+  # Erscheinungsbild; the sign-in page shows the one of the root.
+  - key: ui.app_name
+    kind: text
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: Name der Anwendung, en: Name of the application}
+    description: {de: "Steht oben links, im Titel des Browsers und auf der Anmeldeseite.", en: "Shown top left, in the title of the browser and on the sign-in page."}
+    pattern: '[^\n\r\t<>]{1,40}'
+    default: itsm
+    tenant: true
   - key: ui.accent
+    kind: color
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: Akzentfarbe, en: Accent colour}
+    description: {de: "Für Fokus, Auswahl und Links, solange eine Person keine eigene wählt; mindestens 4,5 : 1 auf Weiß.", en: "For focus, selection and links, unless a person chooses her own; at least 4.5 : 1 on white."}
+    default: "#0B6E80"
+    tenant: true
+  - key: ui.primary_accent
+    kind: boolean
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: Hauptaktion in der Akzentfarbe, en: Main action in the accent colour}
+    description: {de: "Sonst in Graphit.", en: "Else in graphite."}
+    default: false
+    tenant: true
+  - key: ui.nav
     kind: choice
     group: {de: Oberfläche, en: Interface}
-    label: {de: Akzentfarbe, en: Accent colour}
-    description: {de: "Für Fokus, Auswahl und Links, solange eine Person keine eigene wählt.", en: "For focus, selection and links, unless a person chooses her own."}
+    label: {de: Breite der Navigation, en: Width of the navigation}
     options:
-      - {value: petrol, label: {de: Petrol, en: Petrol}}
-      - {value: steel, label: {de: Stahlblau, en: Steel blue}}
-      - {value: indigo, label: {de: Indigo, en: Indigo}}
-      - {value: violet, label: {de: Violett, en: Violet}}
-      - {value: umber, label: {de: Umbra, en: Umber}}
-      - {value: graphite, label: {de: Graphit, en: Graphite}}
-    default: petrol
+      - {value: wide, label: {de: Breit, en: Wide}}
+      - {value: narrow, label: {de: Schmal, en: Narrow}}
+    default: wide
+  # What a person may set herself (UI39): off, her own value no longer holds and the choice is
+  # gone from Meine Einstellungen.
+  - key: ui.own_color_scheme
+    kind: boolean
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: "Personen wählen den Modus selbst", en: "Persons choose the mode themselves"}
+    default: true
+    tenant: true
+  - key: ui.own_accent
+    kind: boolean
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: "Personen wählen die Akzentfarbe selbst", en: "Persons choose the accent colour themselves"}
+    default: true
+    tenant: true
+  - key: ui.own_density
+    kind: boolean
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: "Personen wählen die Zeilenhöhe selbst", en: "Persons choose the row height themselves"}
+    default: true
+    tenant: true
+  - key: ui.own_nav
+    kind: boolean
+    group: {de: Erscheinungsbild, en: Appearance}
+    label: {de: "Personen ordnen die Navigation selbst", en: "Persons arrange the navigation themselves"}
+    description: {de: "Breite, Reihenfolge, Ausblenden und Favoriten.", en: "Width, order, hiding and favourites."}
+    default: true
+    tenant: true
   - key: ui.density
     kind: choice
     group: {de: Oberfläche, en: Interface}

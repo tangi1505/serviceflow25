@@ -29,6 +29,7 @@ import (
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authn"
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/branding"
 	"group24.de/itsm/internal/bulk"
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
@@ -358,6 +359,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		Calendars:      calendars,
 		SLA:            slaSvc,
 		Notify:         notifySvc,
+		Branding:       branding.New(rt, orgSvc.Setting),
 		WebDir:         cfg.WebDir,
 	})
 

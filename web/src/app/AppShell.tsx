@@ -21,7 +21,7 @@ import { forget } from "@/app/recent";
 import { api, meQuery, mySettingsQuery } from "@/api/client";
 import { useContentLanguage } from "@/app/contentLanguage";
 import { setDisplayTimeZone } from "@/render/fields";
-import { applyAccent, isAccent } from "@/ui/accent";
+import { applyAccent, isAccentValue } from "@/ui/accent";
 import { applyColorScheme, isColorScheme } from "@/ui/colorScheme";
 import { applyTheme, isTheme } from "@/ui/theme";
 
@@ -49,8 +49,8 @@ export function AppShell() {
     if (isColorScheme(s.color_scheme?.value)) {
       applyColorScheme(s.color_scheme.value);
     }
-    // The accent of the person or the organisation (UI38).
-    applyAccent(isAccent(s.accent?.value) ? s.accent.value : null);
+    // The accent of the person or the organisation (UI38, UI39: also a free colour).
+    applyAccent(isAccentValue(s.accent?.value) ? s.accent.value : null);
     setDisplayTimeZone(s.time_zone.value);
   }, [settings.data, i18n]);
 

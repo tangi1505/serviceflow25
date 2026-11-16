@@ -406,6 +406,9 @@ export type FakeState = {
   customer?: Record<string, CustomerLayer>;
   // manageRights offers the role editor (UI27); roles and assignments are what it edits.
   manageRights?: boolean;
+  // appearance offers the page Erscheinungsbild (UI39); logos are the uploaded logos by variant.
+  appearance?: boolean;
+  logos?: Record<string, string>;
   roles?: Role[];
   assignments?: Assignment[];
   // suggest are the groups of suggestions (SD18), answered for any type when the request has
@@ -490,6 +493,22 @@ export function fakeApi(state: FakeState) {
     if (url.pathname === "/api/v1/version") {
       return json(200, { version: "test" });
     }
+    // The appearance (UI39): of the root before the sign-in, of the tenant after; it is made
+    // of the settings of the node and the logos.
+    if (url.pathname === "/api/v1/branding" || url.pathname === "/api/v1/me/branding") {
+      if (url.pathname === "/api/v1/me/branding" && !state.signedIn) {
+        return problem(401, "unauthorized");
+      }
+      const at = { ...(state.orgSettings?.["root"] ?? {}) };
+      const base = url.pathname + "/logo/";
+      return json(200, {
+        name: (at["ui.app_name"] as string | undefined) ?? "itsm",
+        accent: (at["ui.accent"] as string | undefined) ?? "#0B6E80",
+        primary_accent: (at["ui.primary_accent"] as boolean | undefined) ?? false,
+        logo_light: state.logos?.["light"] ? base + "light?v=1" : null,
+        logo_dark: state.logos?.["dark"] ? base + "dark?v=1" : null,
+      });
+    }
     // Widgets in the sidebar of a record and the numbers of tiles (UI13b).
     const sidebar = url.pathname.match(
       /^\/api\/v1\/records\/([^/]+)\/([^/]+)\/widgets(?:\/([^/]+)\/data)?$/,
@@ -519,6 +538,7 @@ export function fakeApi(state: FakeState) {
       workplace: state.workplace ?? true,
       customize: state.customize ?? false,
       manage_rights: state.manageRights ?? false,
+      appearance: state.appearance ?? false,
       person_id: state.personId,
       tenant: state.tenant ?? "root",
       tenants: state.tenants,
@@ -820,6 +840,12 @@ export function fakeApi(state: FakeState) {
         start_dashboard: val("start_dashboard", ""),
         nav: val("nav", "wide"),
         accent: val("accent", "petrol"),
+        allowed: {
+          color_scheme: state.orgSettings?.["root"]?.["ui.own_color_scheme"] !== false,
+          accent: state.orgSettings?.["root"]?.["ui.own_accent"] !== false,
+          density: state.orgSettings?.["root"]?.["ui.own_density"] !== false,
+          nav: state.orgSettings?.["root"]?.["ui.own_nav"] !== false,
+        },
         nav_order: state.settings["nav_order"] ?? [],
         nav_hidden: state.settings["nav_hidden"] ?? [],
         favorites: state.settings["favorites"] ?? [],
@@ -926,6 +952,30 @@ export function fakeApi(state: FakeState) {
     if (url.pathname === "/api/v1/settings/definitions") {
       // The settings the packages declare (SD20), a few of each kind.
       return json(200, settingDefinitions);
+    }
+    const logo = url.pathname.match(/^\/api\/v1\/org\/nodes\/([^/]+)\/logo\/(light|dark)$/);
+    if (logo) {
+      state.logos ??= {};
+      if (method === "DELETE") {
+        delete state.logos[logo[2]!];
+        return new Response(null, { status: 204 });
+      }
+      if (bodyText.length > 256 * 1024) {
+        return json(422, {
+          type: "/problems/validation",
+          title: "Eingabe ungültig",
+          status: 422,
+          errors: [{ field: `logo_${logo[2]}`, code: "invalid", message: "at most 256 KB" }],
+        });
+      }
+      state.logos[logo[2]!] = bodyText;
+      return json(200, {
+        name: "itsm",
+        accent: "#0B6E80",
+        primary_accent: false,
+        logo_light: null,
+        logo_dark: null,
+      });
     }
     const orgSetting = url.pathname.match(
       /^\/api\/v1\/org\/nodes\/([^/]+)\/settings(?:\/([^/]+))?$/,

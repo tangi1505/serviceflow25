@@ -26,6 +26,7 @@ import (
 	"group24.de/itsm/internal/authn"
 	"group24.de/itsm/internal/authn/authntest"
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/branding"
 	"group24.de/itsm/internal/bulk"
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
@@ -336,7 +337,8 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	hooks := webhooks.New(rt, recs, js, orgSvc.Setting, az.Load, quiet)
 	rels := relations.New(rt, recs)
 	h := NewRouter(Options{Logger: quiet, Version: "test", API: true, Records: recs, Auth: a, Org: orgSvc, Settings: settingsSvc, Dashboards: dashboards, Groups: query.NewGroups(rt), Authz: az, Jobs: js, Events: ev, Authn: an, Relations: rels, Files: fileSvc, Export: exp, Presence: presence.New(kv), Prefs: prefs.New(rt, recs, orgSvc.Setting), Forms: forms.New(recs).WithRelations(rels), Portal: portal.New(recs), Snippets: snippetSvc, Customer: customer.New(rt, recs, quiet), Webhooks: hooks, Search: search.NewPostgres(recs), SecLog: seclog.New(rt, orgSvc.Setting, quiet), KV: kv, Bulk: stream, Rules: ruleEngine,
-		Calendars: calendars, SLA: slaSvc, Notify: notifySvc})
+		Calendars: calendars, SLA: slaSvc, Notify: notifySvc,
+		Branding: branding.New(rt, orgSvc.Setting)})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	an.SetPublicURL(srv.URL)

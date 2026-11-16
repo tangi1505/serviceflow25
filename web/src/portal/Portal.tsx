@@ -23,6 +23,7 @@ import {
   formsQuery,
   labelOf,
   meQuery,
+  myBrandingQuery,
   mySettingsQuery,
   qualifiedName,
   readQuery,
@@ -31,6 +32,7 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
+import { BrandMark, useBranding } from "@/app/Brand";
 import { useContentLanguage } from "@/app/contentLanguage";
 import { forget } from "@/app/recent";
 import { LanguageSwitch } from "@/app/Switches";
@@ -46,7 +48,7 @@ import { Timeline } from "@/render/Timeline";
 import { Transitions } from "@/render/Transitions";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
-import { applyAccent, isAccent } from "@/ui/accent";
+import { applyAccent, isAccentValue } from "@/ui/accent";
 import { applyColorScheme, isColorScheme } from "@/ui/colorScheme";
 import { applyTheme, isTheme } from "@/ui/theme";
 
@@ -56,6 +58,9 @@ export function PortalShell() {
   const queryClient = useQueryClient();
   const me = useQuery(meQuery);
   const settings = useQuery(mySettingsQuery);
+  // The name, logo and main action of the organisation (UI39).
+  const branding = useQuery({ ...myBrandingQuery, enabled: me.data !== undefined });
+  useBranding(branding.data);
   useContentLanguage();
   useEffect(() => {
     const s = settings.data;
@@ -73,8 +78,8 @@ export function PortalShell() {
     if (isColorScheme(s.color_scheme?.value)) {
       applyColorScheme(s.color_scheme.value);
     }
-    // The accent of the person or the organisation (UI38).
-    applyAccent(isAccent(s.accent?.value) ? s.accent.value : null);
+    // The accent of the person or the organisation (UI38, UI39: also a free colour).
+    applyAccent(isAccentValue(s.accent?.value) ? s.accent.value : null);
     setDisplayTimeZone(s.time_zone.value);
   }, [settings.data, i18n]);
   const logout = async () => {
@@ -92,7 +97,8 @@ export function PortalShell() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center gap-4 border-b bg-card px-4 py-2">
-        <Link to="/portal" className="text-lg font-semibold text-primary">
+        <Link to="/portal" className="flex items-center gap-2.5 text-lg font-semibold text-primary">
+          <BrandMark branding={branding.data} />
           {t("portal.title")}
         </Link>
         <AreaNav />

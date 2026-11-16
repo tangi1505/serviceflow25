@@ -55,6 +55,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The appearance of the installation for the sign-in page: name, accent colour, main action and logos of the root (UI39, UI plan E51); needs no session */
+        get: operations["getBranding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/branding/logo/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The logo of the root for the sign-in page (UI39); needs no session */
+        get: operations["getBrandingLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/openapi.json": {
         parameters: {
             query?: never;
@@ -1965,6 +1999,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The appearance of the session's tenant: its own values, else those of the root (UI39) */
+        get: operations["getMyBranding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/branding/logo/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The logo of the session's tenant, else of the root (UI39) */
+        get: operations["getMyBrandingLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/org/nodes/{path}/logo/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Keep the logo of a variant at the root or a tenant node (UI39): PNG or SVG as the raw body, at most 256 KB; needs manage_settings on core.org for the node */
+        put: operations["setOrgLogo"];
+        post?: never;
+        /** Take the node's own logo of a variant away; the root's applies again (UI39) */
+        delete: operations["removeOrgLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/settings": {
         parameters: {
             query?: never;
@@ -2591,6 +2677,18 @@ export interface components {
             /** Format: password */
             password: string;
         };
+        Branding: {
+            /** @description the name of the application (ui.app_name) */
+            name: string;
+            /** @description the accent colour #rrggbb (ui.accent) */
+            accent: string;
+            /** @description the main action in the accent colour instead of graphite (ui.primary_accent) */
+            primary_accent: boolean;
+            /** @description the address of the logo for the light mode, null without one */
+            logo_light: string | null;
+            /** @description the address of the logo for the dark mode, null without one */
+            logo_dark: string | null;
+        };
         Me: {
             /** Format: uuid */
             id: string;
@@ -2612,6 +2710,8 @@ export interface components {
             customize?: boolean;
             /** @description the session may manage roles, their permissions and assignments (right manage_rights on core.role, PL8); the interface offers the role editor (UI27) */
             manage_rights?: boolean;
+            /** @description the session may change the appearance of its tenant (right manage_settings on core.org at the tenant node, UI39); the interface offers the page Erscheinungsbild */
+            appearance?: boolean;
             /**
              * Format: uuid
              * @description the person of the account
@@ -3512,10 +3612,10 @@ export interface components {
             package: string;
             key: string;
             /**
-             * @description duration is whole minutes, size whole bytes, matrix an object of rows of objects of columns
+             * @description duration is whole minutes, size whole bytes, matrix an object of rows of objects of columns, color #rrggbb with at least 4.5 : 1 on white
              * @enum {string}
              */
-            kind: "choice" | "text" | "time_zone" | "number" | "boolean" | "duration" | "size" | "list" | "matrix" | "reference";
+            kind: "choice" | "text" | "time_zone" | "number" | "boolean" | "duration" | "size" | "list" | "matrix" | "reference" | "color";
             label: {
                 [key: string]: string;
             };
@@ -3543,6 +3643,8 @@ export interface components {
             to?: string;
             /** @description only at the root node */
             root?: boolean;
+            /** @description only at the root or a tenant node: it holds for the whole tenant (UI39) */
+            tenant?: boolean;
         };
         RelationKind: {
             package: string;
@@ -3670,6 +3772,14 @@ export interface components {
             density: components["schemas"]["SettingValue"];
             start_dashboard: components["schemas"]["SettingValue"];
             accent: components["schemas"]["SettingValue"];
+            /** @description what the organisation lets the person set herself (UI39); off, the own value does not hold and setting it is 422 */
+            allowed: {
+                color_scheme: boolean;
+                accent: boolean;
+                density: boolean;
+                /** @description width, order, hiding and favourites of the navigation */
+                nav: boolean;
+            };
             nav: components["schemas"]["SettingValue"];
             /** @description the own order of the areas of the navigation, by key such as package.incident (UI37); empty: the usual order */
             nav_order: string[];
@@ -4098,6 +4208,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description the logo for the light or the dark mode */
+        logoVariant: "light" | "dark";
         formId: string;
         calendarId: string;
         ruleName: string;
@@ -4201,6 +4313,54 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    getBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the appearance of the root */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Branding"];
+                };
+            };
+        };
+    };
+    getBrandingLogo: {
+        parameters: {
+            query?: {
+                /** @description the hash of the logo; with it the browser keeps the image a year */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                /** @description the logo for the light or the dark mode */
+                variant: components["parameters"]["logoVariant"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the image, served with Content-Security-Policy: sandbox */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/svg+xml": string;
+                };
+            };
+            404: components["responses"]["Problem"];
         };
     };
     getOpenAPI: {
@@ -7777,6 +7937,112 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    getMyBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the appearance of the tenant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Branding"];
+                };
+            };
+            401: components["responses"]["Problem"];
+        };
+    };
+    getMyBrandingLogo: {
+        parameters: {
+            query?: {
+                /** @description the hash of the logo; with it the browser keeps the image a year */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                /** @description the logo for the light or the dark mode */
+                variant: components["parameters"]["logoVariant"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the image, served with Content-Security-Policy: sandbox */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/svg+xml": string;
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
+    };
+    setOrgLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description path in the organisation tree, like root.it.support */
+                path: components["parameters"]["orgPath"];
+                /** @description the logo for the light or the dark mode */
+                variant: components["parameters"]["logoVariant"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description the appearance of the node now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Branding"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    removeOrgLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description path in the organisation tree, like root.it.support */
+                path: components["parameters"]["orgPath"];
+                /** @description the logo for the light or the dark mode */
+                variant: components["parameters"]["logoVariant"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
         };
     };

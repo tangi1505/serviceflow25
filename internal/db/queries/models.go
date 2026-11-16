@@ -360,6 +360,16 @@ type LoginRule struct {
 	UpdatedBy uuid.NullUUID
 }
 
+type OrgLogo struct {
+	Path        string
+	Variant     string
+	ContentType string
+	Data        []byte
+	Sha         string
+	UpdatedAt   pgtype.Timestamptz
+	UpdatedBy   uuid.NullUUID
+}
+
 type OrgNode struct {
 	Path      string
 	Name      string

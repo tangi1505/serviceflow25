@@ -19,6 +19,7 @@ import (
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/httpapi/gen"
+	"group24.de/itsm/internal/org"
 	"group24.de/itsm/internal/records"
 	"group24.de/itsm/internal/seclog"
 )
@@ -41,6 +42,10 @@ var public = map[string]bool{
 	"/api/v1/auth/providers":     true,
 	"/api/v1/auth/oidc/start":    true,
 	"/api/v1/auth/oidc/callback": true,
+	// The appearance of the root for the sign-in page (UI39, UI-Plan E51): name, colour, logo.
+	"/api/v1/branding":            true,
+	"/api/v1/branding/logo/light": true,
+	"/api/v1/branding/logo/dark":  true,
 }
 
 // whileExpired lists the paths that stay allowed while the password is expired (E77).
@@ -227,6 +232,14 @@ func me(s auth.Session, a *authz.Access) gen.Me {
 	// editor (UI27).
 	manageRights := a != nil && !a.IsSystem() && a.Allowed(rightsType, "manage_rights")
 	m.ManageRights = &manageRights
+	// Changing the appearance of the tenant (UI39): the interface offers the page Erscheinungsbild.
+	appearance := false
+	if a != nil && !a.IsSystem() {
+		t := a.CurrentTenant()
+		appearance = a.Permits(orgType, "manage_settings", map[string]any{"org_path": t}) ||
+			(t == org.Root && a.Installation(orgType, "manage_settings"))
+	}
+	m.Appearance = &appearance
 	if a != nil && a.PersonID != nil {
 		m.PersonId = a.PersonID
 	}

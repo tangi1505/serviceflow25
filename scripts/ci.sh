@@ -193,7 +193,9 @@ go_test() {
 httpapi_test() {
   go test -race -c -o /tmp/httpapi.test ./internal/httpapi || return 1
   (cd internal/httpapi && /tmp/httpapi.test -test.list '.*') | grep '^Test' > /tmp/httpapi-tests
-  grep -l '/api/v1/events' internal/httpapi/*_test.go | xargs sed -n 's/^func \(Test[A-Za-z0-9_]*\)(.*/\1/p' |
+  # Tests that wait for events, through the stream of the API or with a dispatcher of their own
+  # (PL47c), follow the horizon of the whole server (E87): they run alone.
+  grep -l -e '/api/v1/events' -e 'RunDispatcher(' internal/httpapi/*_test.go | xargs sed -n 's/^func \(Test[A-Za-z0-9_]*\)(.*/\1/p' |
     sort -u > /tmp/httpapi-quiet
   for k in $(seq 1 "$httpapi_parts"); do : > "/tmp/httpapi-part-$k"; done
   i=0
@@ -277,6 +279,11 @@ prepare_instance() {
   printf 'Eigene-Ordnung37!' | /tmp/itsm user create anordner --display-name "Anordner" >/dev/null 2>&1 ||
     printf 'Eigene-Ordnung37!' | /tmp/itsm user passwd anordner >/dev/null 2>&1 || true
   /tmp/itsm user grant anordner admin >/dev/null 2>&1 || true
+  # The browser test of UI39 changes the appearance of the organisation and gives it back at the
+  # end; an account of its own keeps the others unaware of it.
+  printf 'Eigene-Marke39!' | /tmp/itsm user create markenpfleger --display-name "Markenpfleger" >/dev/null 2>&1 ||
+    printf 'Eigene-Marke39!' | /tmp/itsm user passwd markenpfleger >/dev/null 2>&1 || true
+  /tmp/itsm user grant markenpfleger admin >/dev/null 2>&1 || true
 }
 
 load_quick() {

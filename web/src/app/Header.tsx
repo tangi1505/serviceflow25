@@ -33,11 +33,13 @@ import {
   inboxQuery,
   labelOf,
   meQuery,
+  myBrandingQuery,
   mySettingsQuery,
   qualifiedName,
   typesQuery,
   type InboxEntry,
 } from "@/api/client";
+import { BrandMark, defaultName, useBranding } from "@/app/Brand";
 import { useBrowserNotifications } from "@/app/Notifications";
 import { usePersist } from "@/app/Switches";
 import { languages, type Language } from "@/i18n";
@@ -76,17 +78,17 @@ export function AppHeader({
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
+  const branding = useQuery(myBrandingQuery);
+  useBranding(branding.data);
   return (
     <header className="relative flex h-14 flex-none items-center gap-3 border-b bg-card pr-3 pl-4">
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <Link to="/" className="flex flex-none items-center gap-2.5 py-1 pr-1.5 text-foreground">
-          <span
-            aria-hidden="true"
-            className="inline-grid size-[26px] place-items-center rounded-md bg-primary font-mono text-xs font-medium text-primary-foreground"
-          >
-            it
+          {/* Logo and name of the organisation (UI39). */}
+          <BrandMark branding={branding.data} />
+          <span className="text-[15px] font-semibold tracking-tight">
+            {branding.data?.name ?? defaultName}
           </span>
-          <span className="text-[15px] font-semibold tracking-tight">{t("app.title")}</span>
         </Link>
         <TenantMenu />
       </div>
@@ -400,33 +402,36 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
             </div>
           </div>
           <div className="flex flex-col gap-2.5 border-t px-3.5 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <span id={`${id}-mode`} className="text-sm text-foreground-2">
-                {t("header.mode")}
-              </span>
-              <div
-                role="group"
-                aria-labelledby={`${id}-mode`}
-                className="inline-flex gap-0.5 rounded-md bg-muted p-0.5"
-              >
-                {colorSchemes.map((value) => {
-                  const Icon = schemeIcons[value];
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={scheme === value}
-                      aria-label={t(`colorScheme.${value}`)}
-                      title={t(`colorScheme.${value}`)}
-                      onClick={() => pickScheme(value)}
-                      className={`${segment(scheme === value)} w-10`}
-                    >
-                      <Icon aria-hidden="true" className="size-4" />
-                    </button>
-                  );
-                })}
+            {/* Only where the organisation lets the person choose the mode (UI39). */}
+            {settings.data?.allowed?.color_scheme !== false && (
+              <div className="flex items-center justify-between gap-3">
+                <span id={`${id}-mode`} className="text-sm text-foreground-2">
+                  {t("header.mode")}
+                </span>
+                <div
+                  role="group"
+                  aria-labelledby={`${id}-mode`}
+                  className="inline-flex gap-0.5 rounded-md bg-muted p-0.5"
+                >
+                  {colorSchemes.map((value) => {
+                    const Icon = schemeIcons[value];
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={scheme === value}
+                        aria-label={t(`colorScheme.${value}`)}
+                        title={t(`colorScheme.${value}`)}
+                        onClick={() => pickScheme(value)}
+                        className={`${segment(scheme === value)} w-10`}
+                      >
+                        <Icon aria-hidden="true" className="size-4" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex items-center justify-between gap-3">
               <span id={`${id}-lang`} className="text-sm text-foreground-2">
                 {t("nav.language")}

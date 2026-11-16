@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/branding"
 	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/db/queries"
 	"group24.de/itsm/internal/meta"
@@ -43,9 +44,29 @@ const (
 	GlobalDensity = "ui.density"
 	// GlobalStartDashboard is the dashboard on the start page of the workplace (UI13).
 	GlobalStartDashboard = "ui.start_dashboard"
-	// GlobalAccent is the accent colour of the organisation (UI38, UI-Plan E49): one of Accents.
+	// GlobalAccent is the accent colour of the organisation (UI38, UI-Plan E49): since UI39 a
+	// colour #rrggbb (E51), the six of the persons among them.
 	GlobalAccent = "ui.accent"
+	// GlobalNav is the width of the navigation for who sets none (UI39).
+	GlobalNav = "ui.nav"
 )
+
+// What a person may set herself (UI39, UI-Plan E51): off, her own value no longer holds.
+const (
+	OwnColorScheme = "ui.own_color_scheme"
+	OwnAccent      = "ui.own_accent"
+	OwnDensity     = "ui.own_density"
+	OwnNav         = "ui.own_nav"
+)
+
+// Allowed says what the organisation lets a person set herself (UI39).
+type Allowed struct {
+	ColorScheme bool `json:"color_scheme"`
+	Accent      bool `json:"accent"`
+	Density     bool `json:"density"`
+	// Nav is the width, the order, hiding and the favourites of the navigation.
+	Nav bool `json:"nav"`
+}
 
 // Accents are the six accent colours a person chooses from (UI38, UI-Plan §2.3): without red,
 // yellow and green, which mean deadline and state everywhere.
@@ -122,8 +143,11 @@ type Prefs struct {
 	// StartDashboard is the id of the dashboard on the start page, or "none" for the greeting
 	// only; empty without one (UI13).
 	StartDashboard Value `json:"start_dashboard"`
-	// Accent is the accent colour, one of Accents (UI38).
+	// Accent is the accent colour, one of Accents (UI38), or the free colour #rrggbb of the
+	// organisation (UI39).
 	Accent Value `json:"accent"`
+	// Allowed says what the person may set herself (UI39).
+	Allowed Allowed `json:"allowed"`
 	// Nav is the width of the navigation, wide or narrow (UI36); only the person sets it.
 	Nav Value `json:"nav"`
 	// NavOrder is the own order of the areas of the navigation, NavHidden the areas left out,
@@ -237,29 +261,52 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	out.TimeZone = pick(str("time_zone"), GlobalTimeZone, DefaultTimeZone)
 	// The theme is the organisation's only (UI38, UI-Plan E49): an own value of before is passed by.
 	out.Theme = pick("", GlobalTheme, DefaultTheme)
-	scheme := pick(str("color_scheme"), GlobalColorScheme, DefaultColorScheme)
+	out.Allowed = Allowed{
+		ColorScheme: s.allowed(ctx, node, OwnColorScheme),
+		Accent:      s.allowed(ctx, node, OwnAccent),
+		Density:     s.allowed(ctx, node, OwnDensity),
+		Nav:         s.allowed(ctx, node, OwnNav),
+	}
+	// What the organisation does not let a person set counts as not set (UI39).
+	ownIf := func(allowed bool, key string) string {
+		if !allowed {
+			return ""
+		}
+		return str(key)
+	}
+	scheme := pick(ownIf(out.Allowed.ColorScheme, "color_scheme"), GlobalColorScheme, DefaultColorScheme)
 	if !isColorScheme(scheme.Value) {
 		// A wrong value at the tree falls back, the interface stays usable.
 		scheme = Value{DefaultColorScheme, SourceDefault}
 	}
 	out.ColorScheme = scheme
-	density := pick(str("density"), GlobalDensity, DefaultDensity)
+	density := pick(ownIf(out.Allowed.Density, "density"), GlobalDensity, DefaultDensity)
 	if !isDensity(density.Value) {
 		density = Value{DefaultDensity, SourceDefault}
 	}
 	out.Density = density
 	out.StartDashboard = pick(str("start_dashboard"), GlobalStartDashboard, "")
-	accent := pick(str("accent"), GlobalAccent, DefaultAccent)
-	if !isAccent(accent.Value) {
+	accent := pick(ownIf(out.Allowed.Accent, "accent"), GlobalAccent, DefaultAccent)
+	for name, color := range branding.Named() {
+		// A colour of the organisation that is one of the six is named so.
+		if strings.EqualFold(accent.Value, color) {
+			accent.Value = name
+		}
+	}
+	if !isAccent(accent.Value) && !colorRe.MatchString(accent.Value) {
 		accent = Value{DefaultAccent, SourceDefault}
 	}
 	out.Accent = accent
-	out.Nav = Value{DefaultNav, SourceDefault}
-	if v := str("nav"); isNav(v) {
-		out.Nav = Value{v, SourceOwn}
+	nav := pick(ownIf(out.Allowed.Nav, "nav"), GlobalNav, DefaultNav)
+	if !isNav(nav.Value) {
+		nav = Value{DefaultNav, SourceDefault}
 	}
+	out.Nav = nav
 	list := func(key string) []string {
 		v := []string{}
+		if !out.Allowed.Nav {
+			return v
+		}
 		_ = json.Unmarshal(own[key], &v)
 		if v == nil {
 			v = []string{}
@@ -272,12 +319,46 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	return out, nil
 }
 
+var colorRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// allowed reads a switch of the organisation at the node; without one a person may.
+func (s *Service) allowed(ctx context.Context, node, key string) bool {
+	if s.settings == nil {
+		return true
+	}
+	raw, _, err := s.settings(ctx, node, key)
+	if err != nil || raw == nil {
+		return true
+	}
+	var v bool
+	if json.Unmarshal(raw, &v) != nil {
+		return true
+	}
+	return v
+}
+
 // Set changes the settings given; null takes the own value away, so the global one applies.
-// defaults takes per type an object of field values, or null.
+// defaults takes per type an object of field values, or null. A value the organisation does not
+// let the person set is refused; null still takes an own value of before away (UI39).
 func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUID, input map[string]any) error {
 	var ps []records.Problem
 	bad := func(field, code, msg string) {
 		ps = append(ps, records.Problem{Field: field, Code: code, Message: msg})
+	}
+	node := "root"
+	if p, err := s.person(ctx, personID); err != nil {
+		return err
+	} else if path, _ := p["org_path"].(string); path != "" {
+		node = path
+	}
+	for key, switchKey := range map[string]string{
+		"color_scheme": OwnColorScheme, "accent": OwnAccent, "density": OwnDensity,
+		"nav": OwnNav, "nav_order": OwnNav, "nav_hidden": OwnNav, "favorites": OwnNav,
+	} {
+		if v, given := input[key]; given && v != nil && !s.allowed(ctx, node, switchKey) {
+			bad(key, "not_allowed", "is set by the organisation ("+switchKey+" is off)")
+			delete(input, key)
+		}
 	}
 	type write struct {
 		key   string

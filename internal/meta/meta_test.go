@@ -287,3 +287,28 @@ func TestPackageIcon(t *testing.T) {
 		t.Fatalf("a picture from elsewhere: %v", err)
 	}
 }
+
+// A colour of the organisation (UI39, UI-Plan E51) reaches 4.5 : 1 on white as text; the
+// contrast follows WCAG 2.1.
+func TestSettingColor(t *testing.T) {
+	if c := Contrast("#000000", "#ffffff"); c < 20.99 || c > 21.01 {
+		t.Fatalf("black on white: %v", c)
+	}
+	if c := Contrast("#0B6E80", "#FFFFFF"); c < 5.8 || c > 6.0 {
+		t.Fatalf("petrol on white: %v", c)
+	}
+	st := Setting{Key: "ui.accent", Kind: SettingColor}
+	for value, want := range map[string]string{
+		`"#767676"`: "",
+		`"#777777"`: "4.4 : 1",
+		`"#0b6e80"`: "",
+		`"teal"`:    "like #0B6E80",
+		`"#12345"`:  "like #0B6E80",
+		`12`:        "like #0B6E80",
+	} {
+		err := st.Check([]byte(value))
+		if want == "" && err != nil || want != "" && (err == nil || !strings.Contains(err.Error(), want)) {
+			t.Fatalf("%s: %v", value, err)
+		}
+	}
+}

@@ -382,85 +382,101 @@ function Appearance({
     `flex flex-1 flex-col gap-2 rounded-md p-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
       on ? "border-2 border-accent" : "border-2 border-border hover:border-input"
     }`;
+  const allowed = settings.allowed;
   const scheme = settings.color_scheme.value;
   const accent = settings.accent?.value ?? "petrol";
   const density = settings.density.value;
   return (
     <>
-      <Section title={t("settings.mode")}>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          {(["light", "dark", "system"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={scheme === m}
-              onClick={() => keep({ color_scheme: m })}
-              className={card(scheme === m)}
-            >
-              <span
-                aria-hidden="true"
-                className="block h-14 rounded-sm border"
-                style={{ background: modePreview[m] }}
-              />
-              <span className={`text-sm ${scheme === m ? "font-semibold" : ""}`}>
-                {t(`colorScheme.${m}`)}
-              </span>
-            </button>
-          ))}
-        </div>
-        <InForce settings={settings} name="color_scheme" show={(v) => t(`colorScheme.${v}`)} />
-      </Section>
-      <Section title={t("settings.accent")} hint={t("settings.accentHint")}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {accents.map((a) => (
-            <button
-              key={a}
-              type="button"
-              aria-pressed={accent === a}
-              onClick={() => keep({ accent: a })}
-              className={`flex h-11 items-center gap-2.5 rounded-md border px-2.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                accent === a
-                  ? "border-accent bg-accent-soft font-medium"
-                  : "hover:bg-surface-active"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className="inline-grid size-6 flex-none place-items-center rounded-full text-white ring-1 ring-border-strong/40"
-                style={{ background: accentColors[a] }}
+      {allowed.color_scheme && (
+        <Section title={t("settings.mode")}>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {(["light", "dark", "system"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={scheme === m}
+                onClick={() => keep({ color_scheme: m })}
+                className={card(scheme === m)}
               >
-                {accent === a && <Check className="size-3.5" />}
-              </span>
-              {t(`accent.${a}`)}
-            </button>
-          ))}
-        </div>
-        <InForce settings={settings} name="accent" show={(v) => t(`accent.${v}`)} />
-      </Section>
-      <Section title={t("settings.density")} hint={t("settings.densityHint")}>
-        <div
-          role="group"
-          aria-label={t("settings.density")}
-          className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
-        >
-          {(["compact", "normal"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={density === d}
-              onClick={() => keep({ density: d })}
-              className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                density === d
-                  ? "bg-segment-active font-medium text-foreground shadow-sm"
-                  : "text-foreground-2"
-              }`}
-            >
-              {t(`list.densities.${d}`)}
-            </button>
-          ))}
-        </div>
-      </Section>
-      {workplace && <Navigation settings={settings} keep={keep} />}
+                <span
+                  aria-hidden="true"
+                  className="block h-14 rounded-sm border"
+                  style={{ background: modePreview[m] }}
+                />
+                <span className={`text-sm ${scheme === m ? "font-semibold" : ""}`}>
+                  {t(`colorScheme.${m}`)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <InForce settings={settings} name="color_scheme" show={(v) => t(`colorScheme.${v}`)} />
+        </Section>
+      )}
+      {allowed.accent && (
+        <Section title={t("settings.accent")} hint={t("settings.accentHint")}>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {accents.map((a) => (
+              <button
+                key={a}
+                type="button"
+                aria-pressed={accent === a}
+                onClick={() => keep({ accent: a })}
+                className={`flex h-11 items-center gap-2.5 rounded-md border px-2.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  accent === a
+                    ? "border-accent bg-accent-soft font-medium"
+                    : "hover:bg-surface-active"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="inline-grid size-6 flex-none place-items-center rounded-full text-white ring-1 ring-border-strong/40"
+                  style={{ background: accentColors[a] }}
+                >
+                  {accent === a && <Check className="size-3.5" />}
+                </span>
+                {t(`accent.${a}`)}
+              </button>
+            ))}
+          </div>
+          <InForce
+            settings={settings}
+            name="accent"
+            show={(v) =>
+              v.startsWith("#") ? t("settings.orgAccent", { color: v }) : t(`accent.${v}`)
+            }
+          />
+        </Section>
+      )}
+      {allowed.density && (
+        <Section title={t("settings.density")} hint={t("settings.densityHint")}>
+          <div
+            role="group"
+            aria-label={t("settings.density")}
+            className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
+          >
+            {(["compact", "normal"] as const).map((d) => (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={density === d}
+                onClick={() => keep({ density: d })}
+                className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  density === d
+                    ? "bg-segment-active font-medium text-foreground shadow-sm"
+                    : "text-foreground-2"
+                }`}
+              >
+                {t(`list.densities.${d}`)}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+      {workplace && allowed.nav && <Navigation settings={settings} keep={keep} />}
+      {!(allowed.color_scheme && allowed.accent && allowed.density && allowed.nav) && (
+        <p className="text-sm text-muted-foreground">{t("settings.byOrganisation")}</p>
+      )}
       {workplace && (
         <div className="rounded-md border bg-card p-4">
           <Choice
@@ -653,16 +669,16 @@ export function MySettingsPage() {
     language: () => keep({ language: null, time_zone: null }),
     appearance: () =>
       keep({
-        color_scheme: null,
-        accent: null,
-        density: null,
+        // Only what the person may set; the rest is the organisation's (UI39).
+        ...(s.allowed.color_scheme ? { color_scheme: null } : {}),
+        ...(s.allowed.accent ? { accent: null } : {}),
+        ...(s.allowed.density ? { density: null } : {}),
         ...(workplace
           ? {
               start_dashboard: null,
-              nav: null,
-              nav_order: null,
-              nav_hidden: null,
-              favorites: null,
+              ...(s.allowed.nav
+                ? { nav: null, nav_order: null, nav_hidden: null, favorites: null }
+                : {}),
             }
           : {}),
       }),

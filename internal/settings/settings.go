@@ -15,6 +15,7 @@ package settings
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -227,6 +228,17 @@ func (s *Service) Check(ctx context.Context, path, key string, value json.RawMes
 		return &records.Problem{Field: key, Code: "unknown", Message: "no package declares this setting"}, nil
 	case st.Root && path != org.Root:
 		return &records.Problem{Field: key, Code: "root", Message: "can only be set at the root node"}, nil
+	case st.Tenant && path != org.Root:
+		n, err := s.org.Node(ctx, path)
+		switch {
+		case errors.Is(err, org.ErrNotFound):
+			n = org.Node{}
+		case err != nil:
+			return nil, err
+		}
+		if !n.Tenant {
+			return &records.Problem{Field: key, Code: "tenant", Message: "can only be set at the root or a tenant node: it holds for the whole tenant"}, nil
+		}
 	}
 	// A value that does not pass is a problem of the input, not an error of the service.
 	if bad := st.Check(value); bad != nil {

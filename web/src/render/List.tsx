@@ -481,27 +481,32 @@ export function List({
               ))}
           </fieldset>
         </details>
-        <div
-          role="group"
-          aria-label={t("list.density")}
-          className="inline-flex rounded-md bg-muted p-0.5"
-        >
-          {(["compact", "normal"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={density === d}
-              disabled={setDensity.isPending}
-              onClick={() => setDensity.mutate(d)}
-              className={cn(
-                "h-8 rounded-[6px] px-3 text-[13px] font-medium",
-                density === d ? "bg-segment-active text-foreground shadow-sm" : "text-foreground-2",
-              )}
-            >
-              {t(`list.densities.${d}`)}
-            </button>
-          ))}
-        </div>
+        {/* The row height, where the organisation lets the person choose it (UI39). */}
+        {settings.data?.allowed?.density !== false && (
+          <div
+            role="group"
+            aria-label={t("list.density")}
+            className="inline-flex rounded-md bg-muted p-0.5"
+          >
+            {(["compact", "normal"] as const).map((d) => (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={density === d}
+                disabled={setDensity.isPending}
+                onClick={() => setDensity.mutate(d)}
+                className={cn(
+                  "h-8 rounded-[6px] px-3 text-[13px] font-medium",
+                  density === d
+                    ? "bg-segment-active text-foreground shadow-sm"
+                    : "text-foreground-2",
+                )}
+              >
+                {t(`list.densities.${d}`)}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="text-sm text-foreground-2" aria-live="polite">
           {query.isPending
             ? t("list.loading")

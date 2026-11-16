@@ -27,6 +27,7 @@ import (
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authn"
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/branding"
 	"group24.de/itsm/internal/bulk"
 	"group24.de/itsm/internal/cache"
 	"group24.de/itsm/internal/calendar"
@@ -129,6 +130,8 @@ type Options struct {
 	// Notify keeps the inbox of a person (WF19); nil answers 503 on /api/v1/me/inbox, and the
 	// event stream tells of no new entry.
 	Notify *notify.Service
+	// Branding is the appearance of the organisation (UI39); nil answers 503 on /api/v1/branding.
+	Branding *branding.Service
 	// WebDir is the directory of the built web interface; empty disables it.
 	WebDir string
 	// RequestTimeout ends an API request after this long (PL56); 0 sets no limit.

@@ -71,6 +71,40 @@ paths:
                 required: [version]
                 properties:
                   version: { type: string }
+  /api/v1/branding:
+    get:
+      operationId: getBranding
+      summary: "The appearance of the installation for the sign-in page: name, accent colour, main action and logos of the root (UI39, UI plan E51); needs no session"
+      tags: [system]
+      security: []
+      responses:
+        "200":
+          description: the appearance of the root
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Branding" }
+  /api/v1/branding/logo/{variant}:
+    get:
+      operationId: getBrandingLogo
+      summary: The logo of the root for the sign-in page (UI39); needs no session
+      tags: [system]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/logoVariant"
+        - name: v
+          in: query
+          required: false
+          schema: { type: string }
+          description: the hash of the logo; with it the browser keeps the image a year
+      responses:
+        "200":
+          description: "the image, served with Content-Security-Policy: sandbox"
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/svg+xml:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/v1/openapi.json:
     get:
       operationId: getOpenAPI
@@ -2651,6 +2685,72 @@ paths:
         "204": { description: removed }
         "401": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/me/branding:
+    get:
+      operationId: getMyBranding
+      summary: "The appearance of the session's tenant: its own values, else those of the root (UI39)"
+      tags: [auth]
+      responses:
+        "200":
+          description: the appearance of the tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Branding" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /api/v1/me/branding/logo/{variant}:
+    get:
+      operationId: getMyBrandingLogo
+      summary: The logo of the session's tenant, else of the root (UI39)
+      tags: [auth]
+      parameters:
+        - $ref: "#/components/parameters/logoVariant"
+        - name: v
+          in: query
+          required: false
+          schema: { type: string }
+          description: the hash of the logo; with it the browser keeps the image a year
+      responses:
+        "200":
+          description: "the image, served with Content-Security-Policy: sandbox"
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/svg+xml:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/org/nodes/{path}/logo/{variant}:
+    put:
+      operationId: setOrgLogo
+      summary: "Keep the logo of a variant at the root or a tenant node (UI39): PNG or SVG as the raw body, at most 256 KB; needs manage_settings on core.org for the node"
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+        - $ref: "#/components/parameters/logoVariant"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: the appearance of the node now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Branding" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/ValidationProblem" }
+    delete:
+      operationId: removeOrgLogo
+      summary: Take the node's own logo of a variant away; the root's applies again (UI39)
+      tags: [org]
+      parameters:
+        - $ref: "#/components/parameters/orgPath"
+        - $ref: "#/components/parameters/logoVariant"
+      responses:
+        "204": { description: removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/v1/me/settings:
     get:
       operationId: mySettings
@@ -3073,6 +3173,12 @@ components:
       in: cookie
       name: itsm_session
   parameters:
+    logoVariant:
+      name: variant
+      in: path
+      required: true
+      schema: { type: string, enum: [light, dark] }
+      description: the logo for the light or the dark mode
     formId:
       name: formId
       in: path
@@ -3511,6 +3617,15 @@ components:
       properties:
         username: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
         password: { type: string, format: password }
+    Branding:
+      type: object
+      required: [name, accent, primary_accent, logo_light, logo_dark]
+      properties:
+        name: { type: string, description: the name of the application (ui.app_name) }
+        accent: { type: string, description: "the accent colour #rrggbb (ui.accent)" }
+        primary_accent: { type: boolean, description: the main action in the accent colour instead of graphite (ui.primary_accent) }
+        logo_light: { type: string, nullable: true, description: "the address of the logo for the light mode, null without one" }
+        logo_dark: { type: string, nullable: true, description: "the address of the logo for the dark mode, null without one" }
     Me:
       type: object
       required: [id, username, display_name, password_expired, session_expires_at]
@@ -3537,6 +3652,9 @@ components:
         manage_rights:
           type: boolean
           description: "the session may manage roles, their permissions and assignments (right manage_rights on core.role, PL8); the interface offers the role editor (UI27)"
+        appearance:
+          type: boolean
+          description: "the session may change the appearance of its tenant (right manage_settings on core.org at the tenant node, UI39); the interface offers the page Erscheinungsbild"
         person_id: { type: string, format: uuid, description: the person of the account }
         nodes:
           type: array
@@ -4371,8 +4489,8 @@ components:
         key: { type: string }
         kind:
           type: string
-          enum: [choice, text, time_zone, number, boolean, duration, size, list, matrix, reference]
-          description: duration is whole minutes, size whole bytes, matrix an object of rows of objects of columns
+          enum: [choice, text, time_zone, number, boolean, duration, size, list, matrix, reference, color]
+          description: "duration is whole minutes, size whole bytes, matrix an object of rows of objects of columns, color #rrggbb with at least 4.5 : 1 on white"
         label: { type: object, additionalProperties: { type: string } }
         description: { type: object, additionalProperties: { type: string } }
         group: { type: object, additionalProperties: { type: string }, description: "the section of the page; missing: the package's" }
@@ -4389,6 +4507,7 @@ components:
         columns: { $ref: "#/components/schemas/SettingAxis" }
         to: { type: string, description: the type a reference names }
         root: { type: boolean, description: only at the root node }
+        tenant: { type: boolean, description: "only at the root or a tenant node: it holds for the whole tenant (UI39)" }
     RelationKind:
       type: object
       required: [package, name, label, inverse, from, to]
@@ -4515,7 +4634,7 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites, defaults]
+      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, allowed, nav, nav_order, nav_hidden, favorites, defaults]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
@@ -4524,6 +4643,15 @@ components:
         density: { $ref: "#/components/schemas/SettingValue" }
         start_dashboard: { $ref: "#/components/schemas/SettingValue" }
         accent: { $ref: "#/components/schemas/SettingValue" }
+        allowed:
+          type: object
+          required: [color_scheme, accent, density, nav]
+          description: what the organisation lets the person set herself (UI39); off, the own value does not hold and setting it is 422
+          properties:
+            color_scheme: { type: boolean }
+            accent: { type: boolean }
+            density: { type: boolean }
+            nav: { type: boolean, description: "width, order, hiding and favourites of the navigation" }
         nav: { $ref: "#/components/schemas/SettingValue" }
         nav_order:
           type: array

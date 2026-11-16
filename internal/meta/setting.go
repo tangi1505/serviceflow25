@@ -43,11 +43,13 @@ const (
 	SettingList      SettingKind = "list"
 	SettingMatrix    SettingKind = "matrix"
 	SettingReference SettingKind = "reference"
+	// SettingColor is a colour #rrggbb that reaches 4.5 : 1 on white as text (UI39, UI-Plan E51).
+	SettingColor SettingKind = "color"
 )
 
 // SettingKinds are all kinds, in the order the documentation names them.
 var SettingKinds = []SettingKind{SettingChoice, SettingText, SettingTimeZone, SettingNumber, SettingBoolean,
-	SettingDuration, SettingSize, SettingList, SettingMatrix, SettingReference}
+	SettingDuration, SettingSize, SettingList, SettingMatrix, SettingReference, SettingColor}
 
 // SettingOption is one allowed value of a choice or of the cells of a matrix.
 type SettingOption struct {
@@ -91,7 +93,41 @@ type Setting struct {
 	To string `json:"to,omitempty" yaml:"to"`
 	// Root says the setting is read at the root node only and cannot be set below it.
 	Root bool `json:"root,omitempty" yaml:"root"`
+	// Tenant says the setting holds for a whole tenant: it is set at the root or at a tenant
+	// node only, not at a unit (UI39, UI-Plan E51).
+	Tenant bool `json:"tenant,omitempty" yaml:"tenant"`
 }
+
+var colorRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// luminance is the relative luminance of #rrggbb after WCAG 2.1.
+func luminance(hex string) float64 {
+	var sum float64
+	for i, w := range []float64{0.2126, 0.7152, 0.0722} {
+		var v int
+		_, _ = fmt.Sscanf(hex[1+2*i:3+2*i], "%02x", &v)
+		c := float64(v) / 255
+		if c <= 0.03928 {
+			c /= 12.92
+		} else {
+			c = math.Pow((c+0.055)/1.055, 2.4)
+		}
+		sum += w * c
+	}
+	return sum
+}
+
+// Contrast is the contrast ratio of two colours #rrggbb after WCAG 2.1, from 1 to 21.
+func Contrast(a, b string) float64 {
+	x, y := luminance(a), luminance(b)
+	if x < y {
+		x, y = y, x
+	}
+	return (x + 0.05) / (y + 0.05)
+}
+
+// MinContrast is what text and focus need on white (WCAG AA).
+const MinContrast = 4.5
 
 var settingKeyRe = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
 
@@ -115,7 +151,7 @@ func checkSettings(add func(string, string, ...any), p Package) {
 		}
 		seen[st.Key] = true
 		if !slices.Contains(SettingKinds, st.Kind) {
-			add(where, "kind %q is unknown; kinds are choice, text, time_zone, number, boolean, duration, size, list, matrix and reference", st.Kind)
+			add(where, "kind %q is unknown; kinds are choice, text, time_zone, number, boolean, duration, size, list, matrix, reference and color", st.Kind)
 			continue
 		}
 		checkLabel(add, where, "label", st.Label)
@@ -264,6 +300,14 @@ func (st Setting) Check(raw json.RawMessage) error {
 		}
 	case SettingMatrix:
 		return st.checkMatrix(v)
+	case SettingColor:
+		s, ok := v.(string)
+		if !ok || !colorRe.MatchString(s) {
+			return fmt.Errorf("must be a colour like #0B6E80")
+		}
+		if c := Contrast(s, "#ffffff"); c < MinContrast {
+			return fmt.Errorf("reaches %.1f : 1 on white; text and focus need at least 4.5 : 1", math.Floor(c*10)/10)
+		}
 	case SettingReference:
 		s, ok := v.(string)
 		if !ok {

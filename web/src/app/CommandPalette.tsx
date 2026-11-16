@@ -67,6 +67,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   });
   // Light, dark and the row height are kept with the person, as in the settings (UI9); the
   // frame and the lists follow the settings.
+  const allowed = useQuery(mySettingsQuery).data?.allowed;
   const settings = useMutation({
     mutationFn: (change: SettingsChange) => api.setMySettings(change),
     onSuccess: (s) => queryClient.setQueryData(mySettingsQuery.queryKey, s),
@@ -122,13 +123,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => void navigate({ to: "/types/$typeName/new", params: { typeName: name } }),
       };
     }),
-    ...colorSchemes.map((c) => ({
+    // What the organisation lets the person set herself (UI39).
+    ...(allowed?.color_scheme === false ? [] : colorSchemes).map((c) => ({
       key: `scheme:${c}`,
       group: "commands" as const,
       label: t("command.colorScheme", { value: t(`colorScheme.${c}`) }),
       run: () => settings.mutate({ color_scheme: c }),
     })),
-    ...(["compact", "normal"] as const).map((d) => ({
+    ...(allowed?.density === false ? [] : (["compact", "normal"] as const)).map((d) => ({
       key: `density:${d}`,
       group: "commands" as const,
       label: t("command.density", { value: t(`list.densities.${d}`) }),
