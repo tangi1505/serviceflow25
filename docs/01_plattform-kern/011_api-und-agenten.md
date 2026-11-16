@@ -55,31 +55,34 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
 | **AP12** | Die Anforderungen an einen Agenten als Entscheidungen festhalten: Zugang nur zum Lesen, Probelauf, Idempotenz, Protokoll, „Was darf ich“ (§2.6); jede mit deiner Antwort | 🟢 | 0,5 d | die Entscheidungen stehen in §1; AP14 bis AP17 sind danach frei oder entfallen |
-| **AP13** | Der Zugang im Protokoll (E10): die Sitzung eines Tokens trägt den Zugang und, nach AP19, den Menschen; Verlauf und Ereignisprotokoll nennen beide beim Schreiben; das Anfrageprotokoll nennt den Aufrufer bei jeder Anfrage, auch beim Lesen; kein Eintrag je Lesezugriff in der Datenbank (§2.6, Punkt 4) | ⬜ | 1 d | eine Änderung per Token → `GET …/{id}/history` nennt den Zugang; die Zeile im Anfrageprotokoll trägt `client` und `account`, auch bei einem GET |
+| **AP13** | Der Zugang im Protokoll (E10): die Sitzung eines Tokens trägt den Zugang und, nach AP19, den Menschen; Verlauf und Ereignisprotokoll nennen beide beim Schreiben; das Anfrageprotokoll nennt den Aufrufer bei jeder Anfrage, auch beim Lesen; das Leseprotokoll in der Datenbank baut AP26 (§2.6, Punkt 4) | ⬜ | 1 d | eine Änderung per Token → `GET …/{id}/history` nennt den Zugang; die Zeile im Anfrageprotokoll trägt `client` und `account`, auch bei einem GET |
 | **AP14** | `Idempotency-Key` am Anlegen, am Übergang und am Batch, wie heute am Bulk; freiwillig (E11; §2.6, Punkt 3) | ⬜ | 1 d | zweimal POST mit demselben Schlüssel → ein Datensatz, die zweite Antwort gleich der ersten und mit `Idempotent-Replayed: true` |
 | **AP15** | Probelauf beim Anlegen, Ändern und Übergang: prüft Rechte, Eingabe, Regeln und Übergang, schreibt nicht; nicht an Batch und Bulk (E11; §2.6, Punkt 2) | ⬜ | 1 d | POST mit `?dry_run=true` → 200 oder 422 wie beim echten Aufruf; die Zahl der Datensätze, der Verlauf und der Ereignisstrom bleiben gleich |
 | **AP16** | Zugang nur zum Lesen: ein Merkmal am Zugang, das für jedes seiner Tokens gilt, unabhängig von den Rollen; kein Scope am Token (E6; §2.6, Punkt 1) | ⬜ | 1 d | ein Zugang mit dem Merkmal: GET 200, POST, PATCH und DELETE 403, auch mit einer Rolle, die schreiben darf |
 | **AP17** | „Was darf ich“ je Typ und Aktion; `If-Match` an Papierkorb, Wiederherstellen und endgültigem Löschen; die fehlenden Titel der Problemtypen (§2.6, Punkte 5 und 6) | ⬜ | 1 d | `curl -s localhost:8092/api/v1/auth/permissions` nennt je Typ die erlaubten Aktionen; DELETE ohne `If-Match` → 428; ein 429 trägt einen deutschen Titel |
 | **AP18** | Agenten-Probe: ein Programm arbeitet nur mit der OpenAPI der Laufzeit und einem Dienstkonto: Typ finden, Störung anlegen, einen Fehler anhand der Meldung beheben, Übergang auslösen; ohne fremden Dienst und ohne Sprachmodell (§2.6) | 🔒 AP10 | 1 d | `docker compose run --rm tools go test ./test/agent -v` grün; der Test kennt keinen Pfad und kein Feld außer aus `/api/v1/openapi.json` und `/api/v1/types` |
+| **AP25** | Messung zum Leseprotokoll, bevor es gebaut wird: Speicher je Eintrag mit und ohne Indizes, hochgerechnet auf das Mengengerüst (Hauptplan §2.2) für die Umfänge aus V5; LZ1 und LZ2 ohne Protokoll und mit den drei Wegen aus §2.7 (synchron, gesammelt, über Valkey); gemessen auf `ki-lab` in einem Probe-Zweig, der nicht nach `main` geht (E10; §2.7) | ⬜ | 1 d | der Bericht steht im Umsetzungsstand: Byte je Eintrag, GB je Jahr je Umfang, p95 und Durchsatz von LZ1 und LZ2 je Weg; das Ergebnis geht an dich, bevor AP26 beginnt |
+| **AP26** | Leseprotokoll revisionssicher: je Lesezugriff ein Eintrag mit Zeit, Konto, Zugang, Typ, Datensatz und Anfrage; Tabelle nach Monat geteilt, für die Anwendung nur zum Anfügen; Aufbewahrung als Einstellung; Abfrage „wer hat diesen Datensatz gelesen“ mit eigenem Recht; Umfang nach V5, Weg nach AP25 (E10) | 🔒 AP25, V5 | 1,5 d | ein GET per Token → ein Eintrag mit Konto und Zugang; `UPDATE` und `DELETE` auf der Tabelle mit der Rolle der Anwendung → abgelehnt; ohne das Recht → 403 an der Abfrage; LZ1 hält den Wert, den du nach AP25 festlegst |
 
 ### E — OAuth und Benutzerbezug
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP19** | itsm als Autorisierungsserver: OAuth 2 Authorization Code mit PKCE; der Mensch meldet sich wie heute an (lokal, LDAP, OIDC) und stimmt zu; das Token gehört dem Menschen und dem Client und hat höchstens die Rechte des Menschen; Clients legt ein Admin an; Metadaten des Servers abrufbar (E7, E8; §2.6, Punkt 7) | ⬜ | 2 d | ein Test mit einem Probe-Client: Code holen, gegen ein Token tauschen, `GET /api/v1/auth/me` nennt den Menschen; ohne `code_verifier` → 400 `invalid_grant`; ein Aufruf über die Rechte des Menschen hinaus → 403 |
-| **AP20** | Erneuern und Widerrufen: Refresh-Token, das bei jeder Nutzung wechselt; Widerruf durch den Menschen und den Admin; Liste „verbundene Agenten“ je Konto (E7) | 🔒 AP19 | 1 d | nach dem Widerruf → 401 beim nächsten Aufruf; ein schon benutztes Refresh-Token ein zweites Mal → alle Tokens dieser Kette ungültig |
+| **AP19** | itsm als Autorisierungsserver: OAuth 2 Authorization Code mit PKCE; der Mensch meldet sich wie heute an (lokal, LDAP, OIDC) und stimmt zu; das Token gehört dem Menschen und dem Client und hat höchstens die Rechte des Menschen; Clients legt ein Admin an, auf Wunsch mit dem Merkmal „nur lesen“ (E6); Metadaten des Servers abrufbar (E7, E8; §2.6, Punkt 7) | ⬜ | 2 d | ein Test mit einem Probe-Client: Code holen, gegen ein Token tauschen, `GET /api/v1/auth/me` nennt den Menschen; ohne `code_verifier` → 400 `invalid_grant`; ein Aufruf über die Rechte des Menschen hinaus → 403 |
+| **AP20** | Erneuern und Widerrufen: Refresh-Token, das bei jeder Nutzung wechselt; Dauer von Zugriffs- und Refresh-Token einstellbar in den Grenzen aus E13; Widerruf durch den Menschen und den Admin; Liste „verbundene Agenten“ je Konto (E7) | 🔒 AP19 | 1 d | nach dem Widerruf → 401 beim nächsten Aufruf; ein schon benutztes Refresh-Token ein zweites Mal → alle Tokens dieser Kette ungültig |
 | **AP21** | Tokens des Identitätsanbieters annehmen: Signatur gegen die Schlüssel des eingestellten OIDC-Anbieters (Hauptplan E88), Aussteller, Empfänger und Ablauf geprüft, Zuordnung zum Konto wie bei der Anmeldung (E8) | 🔒 Hauptplan V41 | 1,5 d | mit dem Probe-Anbieter der Tests aus PL11: gültiges Token → 200 als das Konto; falscher Empfänger, abgelaufen oder fremder Aussteller → 401 |
-| **AP22** | Verantwortliche Person am Dienstkonto: Pflicht beim Anlegen eines Zugangs, sichtbar an der Liste der Zugänge und im Protokoll; Zugänge ohne sie meldet der Start (E7) | ⬜ | 0,5 d | Zugang ohne verantwortliche Person anlegen → 422; die Liste der Zugänge nennt sie |
+| **AP22** | Verantwortliche Person am Dienstkonto: Pflicht beim Anlegen eines Zugangs, sichtbar an der Liste der Zugänge und im Protokoll; Zugänge ohne sie meldet der Start; wird das Konto der Person gesperrt oder gelöscht, bekommen die Admins sofort eine Benachrichtigung, und nach 30 Tagen ohne neue Person sperrt ein Job den Zugang (E7, E14) | ⬜ | 1 d | Zugang ohne verantwortliche Person anlegen → 422; die Liste der Zugänge nennt sie; Person sperren → Benachrichtigung an die Admins; mit auf eine Minute gestellter Frist ist der Zugang danach gesperrt und sein Token gibt 401 |
 | **AP23** | Wächter „kein Aufruf ohne Konto“: ein Test ruft jede Operation der OpenAPI ohne Anmeldung; erlaubt ist nur die Liste aus E9; baut auf dem einen Fall in `internal/httpapi/router_test.go:78` auf (E9) | ⬜ | 0,5 d | `docker compose run --rm tools go test ./internal/httpapi -run TestNoAnonymous -v` → jede andere Operation 401; ein neuer Pfad ohne Anmeldung in einem Probe-Zweig macht ihn rot |
 
-**Summe:** 25 d (Block A 5 d, B 5 d, C 3 d, D 6,5 d, E 5,5 d), geschätzt vor dem Entwurf.
+**Summe:** 28 d (Block A 5 d, B 5 d, C 3 d, D 9 d, E 6 d), geschätzt vor dem Entwurf.
 
 **Reihenfolge:** AP1 zuerst, damit die Flut gemessen ist, bevor Limits gebaut werden (auf
 `ki-lab`, E3). Danach AP6, weil Login und Token der schwerste Fall sind (§2.3) und vor
 Meilenstein 1 geschützt sein sollen, dann AP2 und AP3. Block B vor C und D; AP10 vor AP18. Aus
 Block E kommen AP22 und AP23 früh, weil sie klein sind und die Regel aus E9 absichern; AP19 vor
 AP13, damit das Protokoll Mensch und Zugang zugleich kennt, und vor dem MCP-Server (Nebenplan 09).
-Block D und E liegen vor Meilenstein 3 (E4). Aufgaben, die Code ändern, baut der eine Agent, der
+Block D und E liegen vor Meilenstein 3 (E4), AP22 und AP23 schon vor Meilenstein 1 (E12). AP25
+vor AP26: erst messen, dann entscheidest du Umfang und Weg (V5). Aufgaben, die Code ändern, baut der eine Agent, der
 am Code arbeitet (Hauptplan E149), nie zwei zugleich.
 
 ---
@@ -95,15 +98,18 @@ E7 bis E10 dieses Plans für alle Pläne zusammen).
 | --- | --- | --- | --- |
 | **E1** | Die Prüfung von API-first und Agentic-first ist ein Unterplan des Plattform-Kerns mit dem Kurzzeichen `AP`, nicht eine Reihe von PL-Aufgaben und kein zehnter Nebenplan (Standard §2.2: 01 bis 09 sind vergeben) | 2026-11-16 | Pascal |
 | **E2** | Limits in den vier Schichten aus §2.3 werden gebaut (AP6 bis AP9), der Schutz vor der Anmeldung (AP6) vor Meilenstein 1 (V1). Verworfen: vor Meilenstein 1 nur AP6; erst nach der Flut-Messung entscheiden. Reihenfolge über die Pläne (Hauptplan E189): erst UI35 und UI36, dann AP1 | 2026-11-16 | Pascal |
-| **E3** | Die Flut-Messung aus AP1 läuft auf `ki-lab` (Hauptplan E184), nicht auf dem Laptop: dort liegt der Bestand in Prod-Größe (V2). Verworfen: Laptop; beide | 2026-11-16 | Pascal |
+| **E3** | Die Flut-Messung aus AP1 läuft auf `ki-lab` (Hauptplan E184), nicht auf dem Laptop: dort liegt der Bestand in Prod-Größe (V2), und er bleibt bis AP1 stehen (deine Auskunft vom 2026-11-16). Verworfen: Laptop; beide | 2026-11-16 | Pascal |
 | **E4** | Block D wird vor Meilenstein 3 gebaut, obwohl der MCP-Server erst dann kommt (Hauptplan V18); Block E ebenso, weil der MCP-Server auf AP19 aufbaut (V3). Verworfen: erst mit dem MCP-Server; nur AP12 und AP13 vorziehen | 2026-11-16 | Pascal |
 | **E5** | Gleichstand (AP11): Lokale Konten kommen in die API (AP24). Mandant anlegen, Paket installieren und die Migration der Datenbank bleiben bewusst bei der Kommandozeile und damit beim Betrieb | 2026-11-16 | Vorschlag der Umsetzung; Pascal ohne Vorgabe |
-| **E6** | Der Zugang nur zum Lesen ist ein Merkmal am Zugang, gesetzt vom Admin, wirksam für jedes Token des Zugangs und unabhängig von den Rollen (AP16). Verworfen: Scope am Token; beides | 2026-11-16 | Pascal |
-| **E7** | **OAuth ist der Standard der API, und jeder Aufruf läuft unter einem Konto.** Ein Agent oder MCP-Client handelt im Namen eines angemeldeten Menschen: OAuth 2 Authorization Code mit PKCE, höchstens dessen Rechte (AP19, AP20). Dienstkonten mit Client Credentials (Hauptplan E90) bleiben für Systeme ohne Menschen, etwa Import und Monitoring, jedes mit einer verantwortlichen Person (AP22). Clients legt ein Admin an; eine Registrierung ohne Anmeldung gibt es nicht (folgt aus E9). Die Sitzung der Oberfläche mit Cookie bleibt (Annahme der Umsetzung, nicht gefragt). Verworfen: nur noch Menschen; bleibt wie heute | 2026-11-16 | Pascal |
+| **E6** | Der Zugang nur zum Lesen ist ein Merkmal am Zugang, gesetzt vom Admin, wirksam für jedes Token des Zugangs und unabhängig von den Rollen (AP16). Es gilt auch für den Client eines Agenten, der im Namen eines Menschen handelt: er liest dann mit den Rechten des Menschen und schreibt nie (AP19). Verworfen: Scope am Token; beides; der Mensch wählt bei der Zustimmung; nur für Dienstkonten | 2026-11-16 | Pascal |
+| **E7** | **OAuth ist der Standard der API, und jeder Aufruf läuft unter einem Konto.** Ein Agent oder MCP-Client handelt im Namen eines angemeldeten Menschen: OAuth 2 Authorization Code mit PKCE, höchstens dessen Rechte (AP19, AP20). Dienstkonten mit Client Credentials (Hauptplan E90) bleiben für Systeme ohne Menschen, etwa Import und Monitoring, jedes mit einer verantwortlichen Person (AP22). Clients legt ein Admin an; eine Registrierung ohne Anmeldung gibt es nicht (folgt aus E9). Die Sitzung der Oberfläche mit Cookie bleibt; OAuth gilt für Agenten und Maschinen. Verworfen: nur noch Menschen; bleibt wie heute; auch die Oberfläche als OAuth-Client | 2026-11-16 | Pascal |
 | **E8** | Tokens kommen aus zwei Quellen: itsm stellt selbst aus (AP19, Zufallswert in Valkey, sofort widerrufbar, für alle Kontoarten), und itsm nimmt Tokens des Identitätsanbieters an (AP21). Verworfen: nur itsm (Empfehlung der Umsetzung); nur der Anbieter | 2026-11-16 | Pascal |
 | **E9** | **Kein Aufruf der API ohne Konto.** Ohne Anmeldung erreichbar bleiben nur Zustand (`/healthz`, `/readyz`), Version, die Anmeldung (Login, Liste der Anbieter, Hin- und Rückweg von OIDC) und der Token-Endpunkt (`internal/httpapi/auth.go:37-44`, `router.go:144-147`). Die Regel meint Agenten und die Datensatz-API; freigegebene Formulare mit Captcha (SD15, Hauptplan E26, V34) zählen nicht dazu. AP23 hält die Liste fest. Verworfen: SD15 entfällt; SD15 als einzige Ausnahme | 2026-11-16 | Pascal |
-| **E10** | Protokoll: Schreiben steht im Verlauf mit Mensch und Zugang, Lesen im Anfrageprotokoll mit dem Aufrufer; kein Eintrag je Lesezugriff in der Datenbank (AP13). Verworfen: auch Lesen revisionssicher; nur Schreiben | 2026-11-16 | Pascal |
-| **E11** | Probelauf an Anlegen, Ändern und Übergang, nicht an Batch und Bulk (AP15). `Idempotency-Key` ist freiwillig und gilt am Anlegen, am Übergang und am Batch (AP14). „Was darf ich“ wird gebaut wie in AP17 beschrieben | 2026-11-16 | Vorschlag der Umsetzung, nicht gefragt |
+| **E10** | Protokoll: Schreiben steht im Verlauf mit Mensch und Zugang (AP13). Lesen wird revisionssicher in der Datenbank festgehalten (AP26), nach einer Messung von Speicher und Leistung (AP25); das Anfrageprotokoll nennt daneben den Aufrufer. Wessen Lesezugriffe und was als ein Eintrag zählt, ist offen (V5). Verworfen: Frage an die Fachseite und bis dahin nur das Anfrageprotokoll; nur Schreiben. **Geändert am 2026-11-16;** vorher: Lesen nur im Anfrageprotokoll, kein Eintrag je Lesezugriff in der Datenbank | 2026-11-16 | Pascal |
+| **E11** | Probelauf an Anlegen, Ändern und Übergang, nicht an Batch und Bulk (AP15). `Idempotency-Key` ist freiwillig und gilt am Anlegen, am Übergang und am Batch (AP14). „Was darf ich“ wird gebaut wie in AP17 beschrieben. Verworfen: Schlüssel als Pflicht für Agenten; Probelauf auch an Batch und Bulk | 2026-11-16 | Vorschlag der Umsetzung, von Pascal bestätigt |
+| **E12** | Zeitpunkt von Block E: AP22 und AP23 vor Meilenstein 1, AP19 bis AP21 vor Meilenstein 3, zusammen mit dem MCP-Server. Verworfen: alles vor Meilenstein 1; alles vor Meilenstein 3 | 2026-11-16 | Pascal |
+| **E13** | Dauer der Tokens eines Agenten im Namen eines Menschen: beide Werte sind einstellbar. Das Zugriffstoken gilt zwischen 1 h und 6 h; das Refresh-Token reicht von „keins“ (nach Ablauf meldet der Mensch neu an) bis unbegrenzt. Widerruf geht immer (AP20). Vorgabe: Zugriffstoken 1 h, Refresh-Token 12 h; die Vorgabe ist ein Vorschlag der Umsetzung, du hast die Grenzen genannt. Einstellung je Installation, je Client überschreibbar wie heute `api.token_ttl` (`internal/authn/client.go:40, 447-450`) | 2026-11-16 | Pascal; Vorgabe: Umsetzung |
+| **E14** | Fällt die verantwortliche Person eines Dienstkontos weg (Konto gesperrt oder gelöscht), werden die Admins sofort benachrichtigt; nach 30 Tagen ohne neue Person wird der Zugang gesperrt. Die Frist ist eine Einstellung (AP22). Verworfen: nur melden; sofort sperren | 2026-11-16 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -292,15 +298,46 @@ Valkey, in der CI mit Race-Detector.
      Die Autorisierung von MCP baut nach der Erinnerung der Umsetzung auf OAuth 2.1 mit PKCE auf;
      am Original ist das nicht nachgesehen, das klärt AP19 → AP19 bis AP22.
 
+### 2.7 Leseprotokoll: was es an Speicher und Leistung kostet
+
+**Gerechnet und angenommen, nicht gemessen.** Die Messung ist AP25.
+
+- **Ein Eintrag:** Zeit, Konto, Zugang, Typ, Datensatz, Anfrage und Adresse. Angenommen sind
+  rund 150 Byte in der Tabelle und rund 250 Byte mit zwei Indizes (nach Datensatz und nach
+  Konto); das folgt aus üblichen Zeilengrößen in PostgreSQL (Zeilenkopf, drei UUID, Zeitstempel,
+  kurzer Text). Je 1 Mio. Einträge sind das 0,15 bis 0,25 GB.
+- **Speicher je Umfang:**
+
+| Umfang | Angenommene Lesezugriffe je Tag | Speicher je Tag | Speicher je Jahr |
+| --- | --- | --- | --- |
+| Nur Agenten und Dienstkonten | 0,86 Mio.: zehn Zugänge mit im Mittel einer Anfrage je Sekunde | 0,13 bis 0,22 GB | 50 bis 80 GB |
+| Auch Menschen, ein Eintrag je Anfrage | 2 Mio.: grob gegriffen aus 5.000 Tickets je Tag (Hauptplan §2.2), jedes rund 20-mal geöffnet, dazu Listen und Portal | 0,3 bis 0,5 GB | 110 bis 180 GB |
+| Auch Menschen, ein Eintrag je gezeigter Zeile einer Liste | das 10- bis 50-Fache | 3 bis 25 GB | 1 bis 9 TB |
+
+- **Leistung, drei Wege:**
+
+| Weg | Kosten je Lesezugriff | Sicherheit des Eintrags |
+| --- | --- | --- |
+| Synchron in PostgreSQL | jedes Lesen wird ein Schreiben mit Commit, angenommen 0,5 bis 2 ms dazu. LZ1 liegt auf `ki-lab` bei p95 1,68 ms und 31.852/s (Hauptplan §7 H14): das Ziel von 50 ms hielte, die 10-%-Regel aus Hauptplan E32 nicht, und der Durchsatz fiele in die Größenordnung des Schreibens (Anlegen: 2.199/s) | voll: kein Lesen ohne Eintrag |
+| Gesammelt im Speicher, jede Sekunde ein Stapel | fast nichts | bei einem Absturz fehlt bis zu eine Sekunde; das ist nicht revisionssicher |
+| Synchron in einen Strom in Valkey, ein Job schreibt Stapel nach PostgreSQL | angenommen 0,1 bis 0,3 ms dazu, ein Aufruf im selben Netz | so sicher, wie Valkey dauerhaft schreibt; das ist einzustellen und zu prüfen |
+
+- **Vorschlag:** der dritte Weg, wenn AP25 ihn bestätigt. Mit jedem Weg wird LZ1 messbar
+  langsamer als heute. Das Gate lässt 10 % plus 0,1 ms zu (Hauptplan E32, E76); welche Grenze
+  für das Lesen mit Protokoll gilt, entscheidest du nach AP25.
+- **Aufbewahrung:** offen, Hauptplan V42. Sie bestimmt, wie viele Jahrgänge liegen.
+
 ## 3. Offene Fragen
 
-Keine offene Frage, die die Umsetzung selbst klärt.
+| # | Frage | Vorschlag | Hängt daran |
+| --- | --- | --- | --- |
+| **V5** 🟠 | Leseprotokoll: Wessen Lesezugriffe werden festgehalten, nur die von Agenten und Dienstkonten oder auch die von Menschen an der Oberfläche? Und zählt eine Liste als ein Eintrag oder jede gezeigte Zeile? | zuerst nur Agenten und Dienstkonten; eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer. AP25 misst beide Umfänge, danach entscheidest du (§2.7) | AP26 |
 
 **Beantwortet am 2026-11-16:** V1 (E2), V2 (E3), V3 (E4).
 
 Die Fragen an die Fachseite stehen im Hauptplan: V41 (Identitätsanbieter des Kunden, daran hängt
-AP21; hier zuerst als V4 geführt), V18 (MCP-Server), V22 (Pooler) und V34 (Melder ohne Konto,
-SD15) berühren diesen Plan.
+AP21; hier zuerst als V4 geführt), V42 (Pflicht und Aufbewahrung des Leseprotokolls), V18
+(MCP-Server), V22 (Pooler) und V34 (Melder ohne Konto, SD15) berühren diesen Plan.
 
 ## 4. Umsetzungsstand
 
@@ -324,3 +361,8 @@ SD15) berühren diesen Plan.
   - Ob die Autorisierung von MCP genau OAuth 2.1 mit PKCE und abrufbaren Metadaten verlangt; aus
     der Erinnerung, nicht am Original nachgesehen.
   - Ob der Anbieter des Kunden Tokens liefert, die AP21 annehmen kann (Hauptplan V41).
+- **Nachtrag 2026-11-16, zweite Fragerunde:** E10 ist geändert (Lesen revisionssicher, AP25 und
+  AP26, Frage V5); E7 (Cookie der Oberfläche bleibt) und E11 sind von dir bestätigt; neu sind E12
+  (Zeitpunkt von Block E), E13 (Dauer der Tokens) und E14 (verantwortliche Person fällt weg). Die
+  Zahlen in §2.7 sind gerechnet und angenommen, nichts davon gemessen; die Pflicht nach § 76 BDSG
+  ist aus der Erinnerung genannt und nicht nachgeschlagen (Hauptplan V42).

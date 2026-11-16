@@ -22,7 +22,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 
 | Nr | Kürzel | Unterplan | Ergebnis | Etappe | Aufwand | Stand |
 | --- | --- | --- | --- | --- | --- | --- |
-| 011 | **AP** | [API und Agenten](01_plattform-kern/011_api-und-agenten.md) | die API vollständig beschrieben und getestet, gegen eine Flut geschützt (Limits in vier Schichten) und von einem Agenten ohne Wissen aus dem Code bedienbar; der MCP-Server selbst bleibt im Nebenplan 09 | 2 bis 4 | 25 d | 🔨 angelegt am 2026-11-16 auf deine Entscheidung, 24 Aufgaben; AP12 (Anforderungen an Agenten) ist 🟢, die Limits (AP6 bis AP9) sind freigegeben, neu ist Block E (OAuth im Namen eines Menschen, kein Aufruf ohne Konto) |
+| 011 | **AP** | [API und Agenten](01_plattform-kern/011_api-und-agenten.md) | die API vollständig beschrieben und getestet, gegen eine Flut geschützt (Limits in vier Schichten) und von einem Agenten ohne Wissen aus dem Code bedienbar; der MCP-Server selbst bleibt im Nebenplan 09 | 2 bis 4 | 28 d | 🔨 angelegt am 2026-11-16 auf deine Entscheidung, 26 Aufgaben; AP12 (Anforderungen an Agenten) ist 🟢, die Limits (AP6 bis AP9) sind freigegeben, neu sind Block E (OAuth im Namen eines Menschen, kein Aufruf ohne Konto) und das Leseprotokoll (AP25 misst, AP26 baut; offen ist V5 dort) |
 
 ---
 
