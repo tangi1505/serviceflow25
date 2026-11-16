@@ -8,8 +8,8 @@ Befunde stehen in §2 dieses Plans; eine eigene Bewertung gibt es nicht. Nichts 
 
 > **Worum es geht:** prüfen und sichern, dass die API das erste Produkt ist: vollständig
 > beschrieben, vollständig getestet, gegen eine Flut geschützt und von einem Agenten ohne Wissen
-> aus dem Code bedienbar. Der MCP-Server selbst bleibt im Nebenplan 09 Integration (Hauptplan
-> V18); AP18 ist seine Abnahmeliste.
+> aus dem Code bedienbar. Der MCP-Server selbst bleibt im Nebenplan 09 Integration und kommt zu
+> Meilenstein 2 (Hauptplan E192); AP18 ist seine Abnahmeliste.
 
 **Status:** ✅ abgenommen · 🟢 fertig, wartet auf die Abnahme · 🔨 in Arbeit · ⬜ offen ·
 🔒 blockiert
@@ -62,7 +62,7 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 | **AP17** | „Was darf ich“ je Typ und Aktion; `If-Match` an Papierkorb, Wiederherstellen und endgültigem Löschen; die fehlenden Titel der Problemtypen (§2.6, Punkte 5 und 6) | ⬜ | 1 d | `curl -s localhost:8092/api/v1/auth/permissions` nennt je Typ die erlaubten Aktionen; DELETE ohne `If-Match` → 428; ein 429 trägt einen deutschen Titel |
 | **AP18** | Agenten-Probe: ein Programm arbeitet nur mit der OpenAPI der Laufzeit und einem Dienstkonto: Typ finden, Störung anlegen, einen Fehler anhand der Meldung beheben, Übergang auslösen; ohne fremden Dienst und ohne Sprachmodell (§2.6) | 🔒 AP10 | 1 d | `docker compose run --rm tools go test ./test/agent -v` grün; der Test kennt keinen Pfad und kein Feld außer aus `/api/v1/openapi.json` und `/api/v1/types` |
 | ~~**AP25**~~ | ~~Messung zum Leseprotokoll, bevor es gebaut wird: Speicher je Eintrag und LZ1 und LZ2 mit den drei Wegen aus §2.7~~ — **entfällt am 2026-11-16:** mit E15 stehen Umfang und Weg fest; die Messung von Speicher und Leistung ist jetzt Teil des Prüfwegs von AP26 | | | |
-| **AP26** | Leseprotokoll für Agenten und Dienstkonten, nicht für Menschen an der Oberfläche: je Lesezugriff per Token ein Eintrag mit Zeit, Konto, Zugang, Typ, Datensatz und Anfrage; eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer. Geschrieben wird asynchron: die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie, ein Hintergrundlauf schreibt Stapel; beim geordneten Stopp wird der Puffer geleert; was bei vollem Puffer oder einem Absturz verloren geht, zählt eine Metrik. Tabelle nach Monat geteilt, für die Anwendung nur zum Anfügen; Aufbewahrung als Einstellung; Abfrage „wer hat diesen Datensatz gelesen“ mit eigenem Recht (E10, E15; §2.7) | ⬜ | 2 d | ein GET per Token → nach höchstens zwei Sekunden ein Eintrag mit Konto und Zugang; ein GET mit Sitzung im Browser → kein Eintrag; `UPDATE` und `DELETE` auf der Tabelle mit der Rolle der Anwendung → abgelehnt; ohne das Recht → 403 an der Abfrage; die Leistungsmessung bleibt grün (E32: LZ1 und LZ2 nicht mehr als 10 % langsamer, gemessen mit einem Dienstkonto); im Umsetzungsstand stehen Byte je Eintrag, GB je Jahr und p95 und Durchsatz von LZ1 mit und ohne Protokoll auf `ki-lab` |
+| **AP26** | Leseprotokoll für Agenten und Dienstkonten, nicht für Menschen an der Oberfläche: je Lesezugriff per Token ein Eintrag mit Zeit, Konto, Zugang, Typ, Datensatz und Anfrage; eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer. Geschrieben wird asynchron: die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie, ein Hintergrundlauf schreibt Stapel; beim geordneten Stopp wird der Puffer geleert; was bei vollem Puffer oder einem Absturz verloren geht, zählt eine Metrik. Tabelle nach Monat geteilt, für die Anwendung nur zum Anfügen; Aufbewahrung als Einstellung, Vorgabe bis zum Ende des folgenden Jahres (E17); Abfrage „wer hat diesen Datensatz gelesen“ mit eigenem Recht, sie zeigt einzelne Lesezugriffe, nicht die Treffer von Listen (E10, E15; §2.7) | ⬜ | 2 d | ein GET per Token → nach höchstens zwei Sekunden ein Eintrag mit Konto und Zugang; ein GET mit Sitzung im Browser → kein Eintrag; `UPDATE` und `DELETE` auf der Tabelle mit der Rolle der Anwendung → abgelehnt; ohne das Recht → 403 an der Abfrage; die Leistungsmessung bleibt grün (E32: LZ1 und LZ2 nicht mehr als 10 % langsamer, gemessen mit einem Dienstkonto); im Umsetzungsstand stehen Byte je Eintrag, GB je Jahr und p95 und Durchsatz von LZ1 mit und ohne Protokoll auf `ki-lab` |
 
 ### E — OAuth und Benutzerbezug
 
@@ -70,18 +70,19 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 | --- | --- | --- | --- | --- |
 | **AP19** | itsm als Autorisierungsserver: OAuth 2 Authorization Code mit PKCE; der Mensch meldet sich wie heute an (lokal, LDAP, OIDC) und stimmt zu; das Token gehört dem Menschen und dem Client und hat höchstens die Rechte des Menschen; Clients legt ein Admin an, auf Wunsch mit dem Merkmal „nur lesen“ (E6); Metadaten des Servers abrufbar (E7, E8; §2.6, Punkt 7) | ⬜ | 2 d | ein Test mit einem Probe-Client: Code holen, gegen ein Token tauschen, `GET /api/v1/auth/me` nennt den Menschen; ohne `code_verifier` → 400 `invalid_grant`; ein Aufruf über die Rechte des Menschen hinaus → 403 |
 | **AP20** | Erneuern und Widerrufen: Refresh-Token, das bei jeder Nutzung wechselt; Dauer von Zugriffs- und Refresh-Token einstellbar in den Grenzen aus E13; Widerruf durch den Menschen und den Admin; Liste „verbundene Agenten“ je Konto (E7) | 🔒 AP19 | 1 d | nach dem Widerruf → 401 beim nächsten Aufruf; ein schon benutztes Refresh-Token ein zweites Mal → alle Tokens dieser Kette ungültig |
-| **AP21** | Tokens des Identitätsanbieters annehmen: Signatur gegen die Schlüssel des eingestellten OIDC-Anbieters (Hauptplan E88), Aussteller, Empfänger und Ablauf geprüft, Zuordnung zum Konto wie bei der Anmeldung (E8) | 🔒 Hauptplan V41 | 1,5 d | mit dem Probe-Anbieter der Tests aus PL11: gültiges Token → 200 als das Konto; falscher Empfänger, abgelaufen oder fremder Aussteller → 401 |
+| **AP21** | Tokens des Identitätsanbieters annehmen, anbieterneutral nach OIDC: Signatur gegen die veröffentlichten Schlüssel des eingestellten Anbieters (Hauptplan E88), Aussteller, Empfänger und Ablauf geprüft; der erwartete Empfänger und das Feld für die Zuordnung zum Konto sind einstellbar; kein Code für einen bestimmten Anbieter (E8, E16) | ⬜ | 2 d | mit dem Probe-Anbieter der Tests aus PL11: gültiges Token → 200 als das Konto; falscher Empfänger, abgelaufen oder fremder Aussteller → 401; einmal von Hand mit Keycloak im Container, der Ablauf steht im Umsetzungsstand; AD FS und Entra ID stehen dort als nicht geprüft |
 | **AP22** | Verantwortliche Person am Dienstkonto: Pflicht beim Anlegen eines Zugangs, sichtbar an der Liste der Zugänge und im Protokoll; Zugänge ohne sie meldet der Start; wird das Konto der Person gesperrt oder gelöscht, bekommen die Admins sofort eine Benachrichtigung, und nach 30 Tagen ohne neue Person sperrt ein Job den Zugang (E7, E14) | ⬜ | 1 d | Zugang ohne verantwortliche Person anlegen → 422; die Liste der Zugänge nennt sie; Person sperren → Benachrichtigung an die Admins; mit auf eine Minute gestellter Frist ist der Zugang danach gesperrt und sein Token gibt 401 |
 | **AP23** | Wächter „kein Aufruf ohne Konto“: ein Test ruft jede Operation der OpenAPI ohne Anmeldung; erlaubt ist nur die Liste aus E9; baut auf dem einen Fall in `internal/httpapi/router_test.go:78` auf (E9) | ⬜ | 0,5 d | `docker compose run --rm tools go test ./internal/httpapi -run TestNoAnonymous -v` → jede andere Operation 401; ein neuer Pfad ohne Anmeldung in einem Probe-Zweig macht ihn rot |
 
-**Summe:** 27,5 d (Block A 5 d, B 5 d, C 3 d, D 8,5 d, E 6 d), geschätzt vor dem Entwurf.
+**Summe:** 28 d (Block A 5 d, B 5 d, C 3 d, D 8,5 d, E 6,5 d), geschätzt vor dem Entwurf.
 
 **Reihenfolge:** AP1 zuerst, damit die Flut gemessen ist, bevor Limits gebaut werden (auf
 `ki-lab`, E3). Danach AP6, weil Login und Token der schwerste Fall sind (§2.3) und vor
 Meilenstein 1 geschützt sein sollen, dann AP2 und AP3. Block B vor C und D; AP10 vor AP18. Aus
 Block E kommen AP22 und AP23 früh, weil sie klein sind und die Regel aus E9 absichern; AP19 vor
 AP13, damit das Protokoll Mensch und Zugang zugleich kennt, und vor dem MCP-Server (Nebenplan 09).
-Block D und E liegen vor Meilenstein 3 (E4), AP22 und AP23 schon vor Meilenstein 1 (E12). AP13
+Block D sowie AP19 und AP20 liegen vor Meilenstein 2, weil der MCP-Server dann kommt (E4, E12,
+Hauptplan E192); AP22 und AP23 schon vor Meilenstein 1, AP21 vor Meilenstein 3. AP13
 vor AP26, weil das Leseprotokoll den Zugang aus der Sitzung des Tokens nimmt. Aufgaben, die Code ändern, baut der eine Agent, der
 am Code arbeitet (Hauptplan E149), nie zwei zugleich.
 
@@ -99,7 +100,7 @@ E7 bis E10 dieses Plans für alle Pläne zusammen).
 | **E1** | Die Prüfung von API-first und Agentic-first ist ein Unterplan des Plattform-Kerns mit dem Kurzzeichen `AP`, nicht eine Reihe von PL-Aufgaben und kein zehnter Nebenplan (Standard §2.2: 01 bis 09 sind vergeben) | 2026-11-16 | Pascal |
 | **E2** | Limits in den vier Schichten aus §2.3 werden gebaut (AP6 bis AP9), der Schutz vor der Anmeldung (AP6) vor Meilenstein 1 (V1). Verworfen: vor Meilenstein 1 nur AP6; erst nach der Flut-Messung entscheiden. Reihenfolge über die Pläne (Hauptplan E189): erst UI35 und UI36, dann AP1 | 2026-11-16 | Pascal |
 | **E3** | Die Flut-Messung aus AP1 läuft auf `ki-lab` (Hauptplan E184), nicht auf dem Laptop: dort liegt der Bestand in Prod-Größe (V2), und er bleibt bis AP1 stehen (deine Auskunft vom 2026-11-16). Verworfen: Laptop; beide | 2026-11-16 | Pascal |
-| **E4** | Block D wird vor Meilenstein 3 gebaut, obwohl der MCP-Server erst dann kommt (Hauptplan V18); Block E ebenso, weil der MCP-Server auf AP19 aufbaut (V3). Verworfen: erst mit dem MCP-Server; nur AP12 und AP13 vorziehen | 2026-11-16 | Pascal |
+| **E4** | Block D wird vor dem MCP-Server gebaut, also vor Meilenstein 2 (Hauptplan E192), ebenso AP19 und AP20, auf denen der MCP-Server aufbaut (V3). Verworfen: erst mit dem MCP-Server; nur AP12 und AP13 vorziehen. **Geändert am 2026-11-16;** vorher: vor Meilenstein 3, weil der MCP-Server nach Hauptplan V18 erst dann kommen sollte | 2026-11-16 | Pascal |
 | **E5** | Gleichstand (AP11): Lokale Konten kommen in die API (AP24). Mandant anlegen, Paket installieren und die Migration der Datenbank bleiben bewusst bei der Kommandozeile und damit beim Betrieb | 2026-11-16 | Vorschlag der Umsetzung; Pascal ohne Vorgabe |
 | **E6** | Der Zugang nur zum Lesen ist ein Merkmal am Zugang, gesetzt vom Admin, wirksam für jedes Token des Zugangs und unabhängig von den Rollen (AP16). Es gilt auch für den Client eines Agenten, der im Namen eines Menschen handelt: er liest dann mit den Rechten des Menschen und schreibt nie (AP19). Verworfen: Scope am Token; beides; der Mensch wählt bei der Zustimmung; nur für Dienstkonten | 2026-11-16 | Pascal |
 | **E7** | **OAuth ist der Standard der API, und jeder Aufruf läuft unter einem Konto.** Ein Agent oder MCP-Client handelt im Namen eines angemeldeten Menschen: OAuth 2 Authorization Code mit PKCE, höchstens dessen Rechte (AP19, AP20). Dienstkonten mit Client Credentials (Hauptplan E90) bleiben für Systeme ohne Menschen, etwa Import und Monitoring, jedes mit einer verantwortlichen Person (AP22). Clients legt ein Admin an; eine Registrierung ohne Anmeldung gibt es nicht (folgt aus E9). Die Sitzung der Oberfläche mit Cookie bleibt; OAuth gilt für Agenten und Maschinen. Verworfen: nur noch Menschen; bleibt wie heute; auch die Oberfläche als OAuth-Client | 2026-11-16 | Pascal |
@@ -107,10 +108,12 @@ E7 bis E10 dieses Plans für alle Pläne zusammen).
 | **E9** | **Kein Aufruf der API ohne Konto.** Ohne Anmeldung erreichbar bleiben nur Zustand (`/healthz`, `/readyz`), Version, die Anmeldung (Login, Liste der Anbieter, Hin- und Rückweg von OIDC) und der Token-Endpunkt (`internal/httpapi/auth.go:37-44`, `router.go:144-147`). Die Regel meint Agenten und die Datensatz-API; freigegebene Formulare mit Captcha (SD15, Hauptplan E26, V34) zählen nicht dazu. AP23 hält die Liste fest. Verworfen: SD15 entfällt; SD15 als einzige Ausnahme | 2026-11-16 | Pascal |
 | **E10** | Protokoll: Schreiben steht im Verlauf mit Mensch und Zugang (AP13). Lesen wird in der Datenbank festgehalten, in einer Tabelle nur zum Anfügen (AP26); das Anfrageprotokoll nennt daneben den Aufrufer. Umfang und Weg stehen in E15. Verworfen: Frage an die Fachseite und bis dahin nur das Anfrageprotokoll; nur Schreiben. **Geändert am 2026-11-16;** vorher: Lesen nur im Anfrageprotokoll, kein Eintrag je Lesezugriff in der Datenbank | 2026-11-16 | Pascal |
 | **E11** | Probelauf an Anlegen, Ändern und Übergang, nicht an Batch und Bulk (AP15). `Idempotency-Key` ist freiwillig und gilt am Anlegen, am Übergang und am Batch (AP14). „Was darf ich“ wird gebaut wie in AP17 beschrieben. Verworfen: Schlüssel als Pflicht für Agenten; Probelauf auch an Batch und Bulk | 2026-11-16 | Vorschlag der Umsetzung, von Pascal bestätigt |
-| **E12** | Zeitpunkt von Block E: AP22 und AP23 vor Meilenstein 1, AP19 bis AP21 vor Meilenstein 3, zusammen mit dem MCP-Server. Verworfen: alles vor Meilenstein 1; alles vor Meilenstein 3 | 2026-11-16 | Pascal |
-| **E13** | Dauer der Tokens eines Agenten im Namen eines Menschen: beide Werte sind einstellbar. Das Zugriffstoken gilt zwischen 1 h und 6 h; das Refresh-Token reicht von „keins“ (nach Ablauf meldet der Mensch neu an) bis unbegrenzt. Widerruf geht immer (AP20). Vorgabe: Zugriffstoken 1 h, Refresh-Token 12 h; die Vorgabe ist ein Vorschlag der Umsetzung, du hast die Grenzen genannt. Einstellung je Installation, je Client überschreibbar wie heute `api.token_ttl` (`internal/authn/client.go:40, 447-450`) | 2026-11-16 | Pascal; Vorgabe: Umsetzung |
+| **E12** | Zeitpunkt von Block E: AP22 und AP23 vor Meilenstein 1; AP19 und AP20 vor Meilenstein 2, zusammen mit dem MCP-Server (Hauptplan E192); AP21 vor Meilenstein 3. Verworfen: alles vor Meilenstein 1; alles vor Meilenstein 3. **Geändert am 2026-11-16;** vorher: AP19 bis AP21 vor Meilenstein 3 | 2026-11-16 | Pascal |
+| **E13** | Dauer der Tokens eines Agenten im Namen eines Menschen: beide Werte sind einstellbar. Das Zugriffstoken gilt zwischen 1 h und 6 h; das Refresh-Token reicht von „keins“ (nach Ablauf meldet der Mensch neu an) bis unbegrenzt. Widerruf geht immer (AP20). Vorgabe: Zugriffstoken 1 h, Refresh-Token 12 h. Einstellung je Installation, je Client überschreibbar wie heute `api.token_ttl` (`internal/authn/client.go:40, 447-450`). Verworfen als Vorgabe: 6 h und unbegrenzt; 1 h ohne Erneuern | 2026-11-16 | Pascal |
 | **E14** | Fällt die verantwortliche Person eines Dienstkontos weg (Konto gesperrt oder gelöscht), werden die Admins sofort benachrichtigt; nach 30 Tagen ohne neue Person wird der Zugang gesperrt. Die Frist ist eine Einstellung (AP22). Verworfen: nur melden; sofort sperren | 2026-11-16 | Pascal |
-| **E15** | **Leseprotokoll nur für Agenten und Dienstkonten, und Protokolle immer asynchron (V5, Hauptplan E191).** Lesezugriffe von Menschen an der Oberfläche werden nicht festgehalten. Logs und Protokolle dürfen das Lesen und die Anwendung nicht langsamer machen: Die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie; ein Hintergrundlauf schreibt in Stapeln. Die Folge, bewusst in Kauf genommen: Bei einem Absturz fehlen die Einträge der letzten Sekunde, bei vollem Puffer werden Einträge verworfen und gezählt; das Protokoll ist unveränderbar, aber nicht lückenlos garantiert. Eine Liste ist ein Eintrag mit Abfrage und Zahl der Treffer (Vorschlag der Umsetzung aus V5, von dir nicht eigens beantwortet). Der Verlauf der Änderungen bleibt in der Transaktion des Schreibens; er ist Teil der Daten, kein Protokoll (Lesart der Umsetzung). Verworfen: auch Menschen; synchron in PostgreSQL; synchron in einen Strom in Valkey (Vorschlag der Umsetzung, kostet 0,1 bis 0,3 ms je Lesen) | 2026-11-16 | Pascal |
+| **E15** | **Leseprotokoll nur für Agenten und Dienstkonten, und Protokolle immer asynchron (V5, Hauptplan E191).** Lesezugriffe von Menschen an der Oberfläche werden nicht festgehalten. Logs und Protokolle dürfen das Lesen und die Anwendung nicht langsamer machen: Die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie; ein Hintergrundlauf schreibt in Stapeln. Die Folge, bewusst in Kauf genommen: Bei einem Absturz fehlen die Einträge der letzten Sekunde, bei vollem Puffer werden Einträge verworfen und gezählt; das Protokoll ist unveränderbar, aber nicht lückenlos garantiert. Eine Liste oder Suche ist ein Eintrag mit Abfrage und Zahl der Treffer; welche Datensätze sie zeigte, steht nicht im Protokoll. Der Verlauf der Änderungen bleibt in der Transaktion des Schreibens; er ist Teil der Daten, kein Protokoll. Verworfen: auch Menschen; synchron in PostgreSQL; synchron in einen Strom in Valkey (Vorschlag der Umsetzung, kostet 0,1 bis 0,3 ms je Lesen); ein Eintrag mit den IDs der Treffer (Empfehlung der Umsetzung); je gezeigtem Datensatz ein Eintrag; auch der Verlauf asynchron | 2026-11-16 | Pascal |
+| **E16** | Tokens des Identitätsanbieters nimmt itsm anbieterneutral nach OIDC an (AP21): Prüfung gegen die veröffentlichten Schlüssel, Empfänger und Feld der Zuordnung einstellbar, kein Code je Anbieter. Keycloak, AD FS und Entra ID sollen damit gehen (aus der Erinnerung der Umsetzung, nicht an den Unterlagen der Hersteller geprüft); geprüft wird mit dem Probe-Anbieter und von Hand mit Keycloak. Es bleibt bei einem Anbieter je Installation (Hauptplan E88). AP21 wartet damit nicht mehr auf Hauptplan V41. Verworfen: mehrere Anbieter zugleich; erst den Kunden fragen | 2026-11-16 | Pascal |
+| **E17** | Aufbewahrung des Leseprotokolls: Vorgabe bis zum Ende des folgenden Jahres, einstellbar je Installation (AP26). Was der Kunde verlangt, fragt Hauptplan V42. Verworfen als Vorgabe: 12 Monate; 90 Tage | 2026-11-16 | Pascal |
 
 ## 2. Begründung und Befunde
 
@@ -132,7 +135,7 @@ E7 bis E10 dieses Plans für alle Pläne zusammen).
     der Umsetzungsstand von PL58 dazu sagt.
   - Ereignisstrom, Export und Hochladen über ihre Ausnahme von der Zeitgrenze hinaus.
   - Die Aufwände sind Schätzungen ohne Entwurf.
-- **Nicht in AP:** der MCP-Server (Nebenplan 09, Hauptplan V18); Limits im Proxy oder Ingress,
+- **Nicht in AP:** der MCP-Server (Nebenplan 09, Hauptplan E192); Limits im Proxy oder Ingress,
   Dashboards, Alarme und Härtung des Betriebs (Nebenplan 08); ein Pooler vor PostgreSQL
   (Hauptplan V22); das Captcha und die Rate der anonymen Formulare (SD15).
 
@@ -272,8 +275,8 @@ Valkey, in der CI mit Race-Detector.
 
 **Noch nicht erfüllt. Die Grundlage trägt, sechs Dinge fehlen.**
 
-- **MCP:** kein Code. Geplant im Nebenplan 09 als „MCP-Server (nur lokal)“, Hauptplan V18 schlägt
-  Meilenstein 3 vor; dazu die Regel „KI nur mit lokalem Modell“ (Hauptplan §1, übernommen aus dem
+- **MCP:** kein Code. Geplant im Nebenplan 09 als „MCP-Server (nur lokal)“, nach Hauptplan E192
+  zu Meilenstein 2; dazu die Regel „KI nur mit lokalem Modell“ (Hauptplan §1, übernommen aus dem
   GLPI-Vorhaben). `docs/legacy/` gibt es nicht.
 - **Brauchbar für einen Agenten:** Fehler je Feld mit Code (`internal/records/errors.go:26-30`),
   Übergänge mit `allowed` (`api/openapi.yaml:3259-3262`), Seiten per Schlüssel, `ETag` und
@@ -329,7 +332,9 @@ gesammelt aus dem Speicher (die zweite Zeile der zweiten Tabelle).
   Anfrage sind das Ablegen eines Eintrags im Speicher. Das Gate bleibt bei 10 % plus 0,1 ms
   (Hauptplan E32, E76), eine eigene Grenze braucht es nicht. Der Preis ist die Lücke bei einem
   Absturz und bei vollem Puffer (E15).
-- **Aufbewahrung:** offen, Hauptplan V42. Sie bestimmt, wie viele Jahrgänge liegen.
+- **Aufbewahrung:** Vorgabe bis zum Ende des folgenden Jahres, einstellbar (E17); es liegen
+  also höchstens zwei Jahrgänge, angenommen 100 bis 160 GB. Was der Kunde verlangt, fragt
+  Hauptplan V42.
 
 ## 3. Offene Fragen
 
@@ -337,9 +342,10 @@ Keine offene Frage, die die Umsetzung selbst klärt.
 
 **Beantwortet am 2026-11-16:** V1 (E2), V2 (E3), V3 (E4), V5 (E15).
 
-Die Fragen an die Fachseite stehen im Hauptplan: V41 (Identitätsanbieter des Kunden, daran hängt
-AP21; hier zuerst als V4 geführt), V42 (Pflicht und Aufbewahrung des Leseprotokolls), V18
-(MCP-Server), V22 (Pooler) und V34 (Melder ohne Konto, SD15) berühren diesen Plan.
+Die Fragen an die Fachseite stehen im Hauptplan: V41 (Identitätsanbieter des Kunden; hier zuerst
+als V4 geführt), V42 (Pflicht und Aufbewahrung des Leseprotokolls) und V34 (Melder ohne Konto,
+SD15) berühren diesen Plan. Hauptplan V18 (MCP-Server) und V22 (Pooler) sind am 2026-11-16
+beantwortet: E192 und E193 dort.
 
 ## 4. Umsetzungsstand
 
@@ -372,3 +378,7 @@ AP21; hier zuerst als V4 geführt), V42 (Pflicht und Aufbewahrung des Leseprotok
   Dienstkonten, geschrieben asynchron ohne Kosten für das Lesen. AP25 entfällt, die Messung
   steht im Prüfweg von AP26. Nicht geprüft: wie groß die Lücke bei einem Absturz wirklich ist
   und ob sie der Fachseite genügt (Hauptplan V42).
+- **Nachtrag 2026-11-16, dritte Fragerunde:** E16 (Anbieter nach Standard, AP21 frei), E17
+  (Aufbewahrung), E13 und E15 von dir bestätigt (Vorgabe der Tokens, Listen als ein Eintrag,
+  Verlauf bleibt synchron). Der MCP-Server kommt zu Meilenstein 2 (Hauptplan E192); E4 und E12
+  sind daran angepasst. Nicht geprüft: ob AD FS und Entra ID mit AP21 ohne Sonderfall gehen.
