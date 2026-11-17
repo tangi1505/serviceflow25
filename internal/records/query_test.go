@@ -157,6 +157,25 @@ func TestQuery(t *testing.T) {
 	if _, rows, err := s.Query(ctx, testType, q2); err != nil || len(rows.Rows) != 1 || rows.Rows[0]["n"] != 2.0 {
 		t.Fatalf("count with path: %v %v", rows, err)
 	}
+	// In one pass (PL67): the total, per kind and per priority, each row marked with its set.
+	_, rows, err = s.Query(ctx, testType, Query{Group: []string{"kind", "priority"}, Sets: true,
+		Aggregate: map[string]Aggregate{"n": {Count: "*"}, "p": {Sum: "priority"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := map[any]float64{}
+	for _, r := range rows.Rows {
+		sum[r[SetKey]] += r["n"].(float64)
+		switch {
+		case r[SetKey] == -1 && (r["n"] != 5.0 || r["p"] != 15.0):
+			t.Fatalf("total: %v", r)
+		case r[SetKey] == 0 && r["kind"] == "a" && (r["n"] != 3.0 || r["p"] != 9.0 || r["priority"] != nil):
+			t.Fatalf("kind a: %v", r)
+		}
+	}
+	if sum[-1] != 5 || sum[0] != 5 || sum[1] != 5 || len(sum) != 3 {
+		t.Fatalf("sets: %v", rows.Rows)
+	}
 
 	// Refused: an unknown operator, a relation (PL15), a path over a text field, a bad value.
 	for _, bad := range []string{

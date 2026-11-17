@@ -64,6 +64,9 @@ type Scenario struct {
 	// Workers, when set, is how many call at the same time instead of the stage's number: one
 	// person opens one dashboard (LZ18).
 	Workers int
+	// Beside starts load beside the measurement on the new build (LZ21: 20 dashboards over
+	// everything); its stop ends it and says what it did.
+	Beside func(ctx context.Context, client *http.Client, base string) (stop func() string, err error)
 	// Cleanup removes what the measurement created, so that the next run starts on the same
 	// data (H14: LZ4 in Prod size creates some 350,000 incidents a run); it returns how many.
 	Cleanup func(ctx context.Context, client *http.Client, base string) (int, error)
@@ -309,5 +312,10 @@ func All() []Scenario {
 		// LZ18 (PL66, Hauptplan E195): the targets hold for the data in Prod size only.
 		{ID: "LZ18", Title: "Dashboard im Standard-Zeitraum öffnen, alle Widgets zugleich (PL66)", Kind: P95, Target: 1000, Workers: 1, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
 		{ID: "LZ18w", Title: "Ein Widget von „Statistik“ und „Helpdesk“, 16 zugleich (PL66)", Kind: P95, Target: 300, Workers: 16, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
+		// LZ21 (PL67): LZ1, LZ2 and LZ4 with their targets while 20 dashboards count over
+		// everything; --only=LZ21 takes all three.
+		{ID: "LZ21a", Title: "LZ1 neben 20 Dashboards über alles (PL67)", Kind: P95, Target: 50, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
+		{ID: "LZ21b", Title: "LZ2 neben 20 Dashboards über alles (PL67)", Kind: P95, Target: 150, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
+		{ID: "LZ21c", Title: "LZ4 neben 20 Dashboards über alles (PL67)", Kind: P95, Target: 100, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
 	})
 }

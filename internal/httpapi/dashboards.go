@@ -8,7 +8,11 @@
 package httpapi
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
+	"net/http/httptest"
 
 	"group24.de/itsm/internal/dashboard"
 	"group24.de/itsm/internal/httpapi/gen"
@@ -89,6 +93,65 @@ func (s *server) WidgetData(w http.ResponseWriter, r *http.Request, id gen.Id, w
 		return
 	}
 	writeJSON(w, http.StatusOK, d)
+}
+
+// DashboardData streams all widgets of a dashboard (PL67, your decision 2026-11-17: piece by
+// piece): one JSON line per widget as soon as it is computed, so that the quick numbers show
+// while a long group still counts.
+func (s *server) DashboardData(w http.ResponseWriter, r *http.Request, id gen.Id) {
+	if !s.dashboardsReady(w, r) {
+		return
+	}
+	var f dashboard.Filters
+	if !decode(w, r, &f) {
+		return
+	}
+	type line struct {
+		Widget  string          `json:"widget"`
+		Data    *dashboard.Data `json:"data,omitempty"`
+		Problem json.RawMessage `json:"problem,omitempty"`
+	}
+	started := false
+	start := func() {
+		if !started {
+			w.Header().Set("Content-Type", "application/x-ndjson")
+			w.Header().Set("X-Accel-Buffering", "no")
+			w.WriteHeader(http.StatusOK)
+			started = true
+		}
+	}
+	rc := http.NewResponseController(w)
+	enc := json.NewEncoder(w)
+	err := s.o.Dashboards.Bundle(r.Context(), id, f, func(widgetID string, d dashboard.Data, err error) {
+		if errors.Is(r.Context().Err(), context.Canceled) {
+			// Nobody reads any more (PL65): the period changed or the page closed. Out of
+			// time (PL56) the widgets still left get their problem.
+			return
+		}
+		start()
+		l := line{Widget: widgetID}
+		if err != nil {
+			// The problem of the widget as the endpoint of the widget would answer it.
+			p := httptest.NewRecorder()
+			writeError(p, r, s.o.Logger, err)
+			l.Problem = p.Body.Bytes()
+		} else {
+			l.Data = &d
+		}
+		_ = enc.Encode(l)
+		_ = rc.Flush()
+	})
+	switch {
+	case err != nil && !started:
+		writeError(w, r, s.o.Logger, err)
+	case r.Context().Err() != nil && !started:
+		// Cancelled (499) or out of time (503) before the first widget.
+		writeError(w, r, s.o.Logger, r.Context().Err())
+	case r.Context().Err() != nil:
+		s.o.Logger.Info("request ended while streaming", "method", r.Method, "path", r.URL.Path, "reason", r.Context().Err().Error())
+	default:
+		start()
+	}
 }
 
 func (s *server) SidebarWidgets(w http.ResponseWriter, r *http.Request, typeName gen.TypeName, id gen.Id) {

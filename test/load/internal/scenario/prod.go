@@ -57,6 +57,13 @@ func prodScenarios(all []Scenario) []Scenario {
 			all[i].Call, all[i].WaitsFor = prepareDashboard, ""
 		case "LZ18w":
 			all[i].Prepare, all[i].WaitsFor = prepareWidget, ""
+		case "LZ21a":
+			all[i].Prepare, all[i].Beside, all[i].WaitsFor = prepareReadProd, besideDashboards, ""
+		case "LZ21b":
+			all[i].Prepare, all[i].Beside, all[i].WaitsFor = prepareListProd, besideDashboards, ""
+		case "LZ21c":
+			all[i].Prepare, all[i].Beside, all[i].WaitsFor = prepareCreateProd, besideDashboards, ""
+			all[i].Cleanup = cleanupCreatedProd
 		}
 	}
 	return all

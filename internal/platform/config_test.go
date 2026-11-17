@@ -162,6 +162,7 @@ func TestLoadConfigReadsEverything(t *testing.T) {
 	m["ITSM_LOG_LEVEL"] = "debug"
 	m["ITSM_SHUTDOWN_TIMEOUT"] = "3s"
 	m["ITSM_REQUEST_TIMEOUT"] = "0"
+	m["ITSM_EVALUATIONS"] = "8"
 	m["ITSM_FILES_DIR"] = "/data/files"
 	m["ITSM_WEB_DIR"] = "/web"
 	cfg, err := LoadConfig(env(m))
@@ -169,17 +170,17 @@ func TestLoadConfigReadsEverything(t *testing.T) {
 		t.Fatal(err)
 	}
 	if cfg.Role != RoleWorker || cfg.HTTPAddr != ":9000" || cfg.LogLevel != slog.LevelDebug ||
-		cfg.ShutdownTimeout != 3*time.Second || cfg.RequestTimeout != 0 || cfg.FilesDir != "/data/files" || cfg.WebDir != "/web" {
+		cfg.ShutdownTimeout != 3*time.Second || cfg.RequestTimeout != 0 || cfg.Evaluations != 8 || cfg.FilesDir != "/data/files" || cfg.WebDir != "/web" {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
 
 func TestLoadConfigReportsAllErrors(t *testing.T) {
-	_, err := LoadConfig(env(map[string]string{"ITSM_ROLE": "boss", "ITSM_LOG_LEVEL": "loud", "ITSM_REQUEST_TIMEOUT": "soon"}))
+	_, err := LoadConfig(env(map[string]string{"ITSM_ROLE": "boss", "ITSM_LOG_LEVEL": "loud", "ITSM_REQUEST_TIMEOUT": "soon", "ITSM_EVALUATIONS": "-1"}))
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	for _, want := range []string{"ITSM_ROLE", "ITSM_LOG_LEVEL", "ITSM_DATABASE_URL", "ITSM_VALKEY_ADDR", "ITSM_REQUEST_TIMEOUT"} {
+	for _, want := range []string{"ITSM_ROLE", "ITSM_LOG_LEVEL", "ITSM_DATABASE_URL", "ITSM_VALKEY_ADDR", "ITSM_REQUEST_TIMEOUT", "ITSM_EVALUATIONS"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not mention %s", err, want)
 		}

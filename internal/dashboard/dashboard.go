@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,6 +67,40 @@ const maxWidgets = 40
 // Service reads and saves dashboards and computes their widgets.
 type Service struct {
 	rec *records.Service
+	// budget bounds the evaluations running at once on this instance (PL67, your decision
+	// 2026-11-17: 4, the others wait); nil is no bound.
+	budget chan struct{}
+	// timeout bounds one evaluation from the moment it has its place (PL67): the stream of a
+	// dashboard has no time limit as a whole, each widget has the one of a request.
+	timeout time.Duration
+}
+
+// Limit lets at most n evaluations of widgets run at once (ITSM_EVALUATIONS, PL67), each for
+// at most timeout once it runs (ITSM_REQUEST_TIMEOUT); the others wait for a free place. 0 is
+// no bound.
+func (s *Service) Limit(n int, timeout time.Duration) {
+	if n > 0 {
+		s.budget = make(chan struct{}, n)
+	}
+	s.timeout = timeout
+}
+
+// query runs a query of a widget within the budget.
+func (s *Service) query(ctx context.Context, typeName string, q records.Query) (records.Page, *records.Rows, error) {
+	if s.budget != nil {
+		select {
+		case s.budget <- struct{}{}:
+			defer func() { <-s.budget }()
+		case <-ctx.Done():
+			return records.Page{}, nil, ctx.Err()
+		}
+	}
+	if s.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.timeout)
+		defer cancel()
+	}
+	return s.rec.Query(ctx, typeName, q)
 }
 
 // New returns the service.
@@ -483,6 +518,133 @@ func (s *Service) Data(ctx context.Context, dashboardID, widgetID uuid.UUID, f F
 	return s.compute(ctx, w, f, nil)
 }
 
+// Bundle computes all widgets of a dashboard the session may read at once (PL67, Hauptplan
+// E195): numbers and groups by a field of the same type and condition count in one pass over
+// the table, the rest alone, all side by side within the budget. emit gets each widget when it
+// is ready, one at a time; a widget that fails gets its error, the others go on.
+//
+// Without a period only the numbers count together: PostgreSQL counts several groups in one
+// pass with one process and sorts, which over all 18 million incidents took 13 s on ki-lab,
+// while the groups one by one share the work with parallel workers (PL67, 2026-11-17).
+func (s *Service) Bundle(ctx context.Context, dashboardID uuid.UUID, f Filters, emit func(widgetID string, d Data, err error)) error {
+	if _, err := s.rec.Get(ctx, TypeDashboard, dashboardID); err != nil {
+		return err
+	}
+	ws, err := s.widgets(ctx, dashboardID)
+	if err != nil {
+		return err
+	}
+	var mu sync.Mutex
+	send := func(id string, d Data, err error) {
+		mu.Lock()
+		defer mu.Unlock()
+		emit(id, d, err)
+	}
+	type member struct {
+		id  string
+		out Data
+		j   *job
+	}
+	sets := map[string][]member{}
+	var order []string
+	var alone []member
+	for _, w := range ws {
+		id := fmt.Sprint(w["id"])
+		out, j, err := s.prepare(ctx, w, f, nil)
+		switch {
+		case err != nil || j == nil:
+			send(id, out, err)
+		case j.bundles(out.Kind) && (f.From != nil || j.group == ""):
+			k := j.src.typeName + "\x00" + string(j.where)
+			if _, ok := sets[k]; !ok {
+				order = append(order, k)
+			}
+			sets[k] = append(sets[k], member{id, out, j})
+		default:
+			alone = append(alone, member{id, out, j})
+		}
+	}
+	var wg sync.WaitGroup
+	for _, k := range order {
+		if ms := sets[k]; len(ms) == 1 {
+			alone = append(alone, ms[0])
+			continue
+		}
+		wg.Go(func() {
+			ms := sets[k]
+			outs := make([]Data, len(ms))
+			jobs := make([]*job, len(ms))
+			for i, m := range ms {
+				outs[i], jobs[i] = m.out, m.j
+			}
+			res, err := s.runSet(ctx, outs, jobs)
+			for i, m := range ms {
+				send(m.id, res[i], err)
+			}
+		})
+	}
+	for _, m := range alone {
+		wg.Go(func() {
+			d, err := s.run(ctx, m.out, m.j)
+			send(m.id, d, err)
+		})
+	}
+	wg.Wait()
+	return nil
+}
+
+// runSet counts widgets of the same type and condition in one pass (GROUPING SETS, PL67):
+// the numbers from the total, each group by a field from its own set.
+func (s *Service) runSet(ctx context.Context, outs []Data, jobs []*job) ([]Data, error) {
+	var groups []string
+	aggs := map[string]records.Aggregate{}
+	names := make([]string, len(jobs))
+	for i, j := range jobs {
+		if j.group != "" && !slices.Contains(groups, j.group) {
+			groups = append(groups, j.group)
+		}
+		names[i] = fmt.Sprintf("v%d", i)
+		for n, a := range aggs {
+			if a == j.agg {
+				names[i] = n
+			}
+		}
+		aggs[names[i]] = j.agg
+	}
+	src := jobs[0].src
+	// Numbers only need no sets: one plain aggregate, which PostgreSQL runs in parallel.
+	sets := len(groups) > 0
+	_, rows, err := s.query(ctx, src.typeName, records.Query{Where: jobs[0].where, Group: groups, Aggregate: aggs, Sets: sets})
+	if err != nil {
+		return outs, err
+	}
+	for i, j := range jobs {
+		out := outs[i]
+		if j.group == "" {
+			for _, row := range rows.Rows {
+				if !sets || row[records.SetKey] == -1 {
+					out.Value = row[names[i]]
+				}
+			}
+			if out.Value == nil {
+				out.Value = 0.0
+			}
+			outs[i] = out
+			continue
+		}
+		set := slices.Index(groups, j.group)
+		mine := &records.Rows{}
+		for _, row := range rows.Rows {
+			if row[records.SetKey] == set {
+				mine.Rows = append(mine.Rows, map[string]any{j.group: row[j.group], "value": row[names[i]]})
+			}
+		}
+		out.Points = s.points(ctx, src.t, j.group, mine)
+		outs[i] = out
+	}
+	return outs, nil
+}
+
 // Sidebar lists the widgets that stand in the sidebar of a record the session reads, of the
 // dashboards the session reads (your decision 2026-11-13), by title.
 func (s *Service) Sidebar(ctx context.Context, typeName string, id uuid.UUID) ([]records.Record, error) {
@@ -647,25 +809,54 @@ func substitute(raw json.RawMessage, shown records.Record) (json.RawMessage, err
 // compute runs the query of a widget with the rights of ctx; shown is the record of the
 // sidebar, nil elsewhere.
 func (s *Service) compute(ctx context.Context, w records.Record, f Filters, shown records.Record) (Data, error) {
+	out, j, err := s.prepare(ctx, w, f, shown)
+	if err != nil || j == nil {
+		return out, err
+	}
+	return s.run(ctx, out, j)
+}
+
+// job is the query a widget needs: its type, its whole condition with the filters, and what
+// it counts.
+type job struct {
+	src     source
+	where   json.RawMessage
+	agg     records.Aggregate
+	group   string
+	columns []string
+	sort    string
+	size    int
+}
+
+// bundles says whether the widget counts in one pass with others of the same type and
+// condition (PL67): a number, or groups by a field; a role joins the holders and lists read
+// records, both run alone.
+func (j *job) bundles(kind string) bool {
+	return kind == KindNumber || (slices.Contains(grouped, kind) && !strings.HasPrefix(j.group, actorsPrefix))
+}
+
+// prepare reads the definition of a widget and builds its query; a widget that needs none
+// (text, @record outside the sidebar) has no job.
+func (s *Service) prepare(ctx context.Context, w records.Record, f Filters, shown records.Record) (Data, *job, error) {
 	kind, _ := w["kind"].(string)
 	out := Data{Kind: kind}
 	if kind == KindText {
-		return out, nil
+		return out, nil, nil
 	}
 	src, err := s.source(system(ctx), w)
 	if err != nil {
-		return out, err
+		return out, nil, err
 	}
 	out.Type = src.typeName
 	if strings.Contains(string(src.where), recordRef) {
 		if shown == nil {
 			// On its dashboard a widget of the sidebar has no record to count for.
 			out.SidebarOnly = true
-			return out, nil
+			return out, nil, nil
 		}
 		where, err := substitute(src.where, shown)
 		if err != nil {
-			return out, &records.ValidationError{Problems: []records.Problem{{Field: "query", Code: "invalid", Message: err.Error()}}}
+			return out, nil, &records.ValidationError{Problems: []records.Problem{{Field: "query", Code: "invalid", Message: err.Error()}}}
 		}
 		src.where = where
 	}
@@ -715,26 +906,11 @@ func (s *Service) compute(ctx context.Context, w records.Record, f Filters, show
 			agg = records.Aggregate{Max: mf}
 		}
 	}
+	j := &job{src: src, where: where, agg: agg}
 	switch kind {
-	case KindNumber:
-		_, rows, err := s.rec.Query(ctx, src.typeName, records.Query{Where: where, Aggregate: map[string]records.Aggregate{"value": agg}})
-		if err != nil {
-			return out, err
-		}
-		if rows != nil && len(rows.Rows) > 0 {
-			out.Value = rows.Rows[0]["value"]
-		}
-		if out.Value == nil {
-			out.Value = 0.0
-		}
 	case KindPie, KindBar, KindLine:
-		group, _ := w["group_by"].(string)
-		out.Group = group
-		_, rows, err := s.rec.Query(ctx, src.typeName, records.Query{Where: where, Group: []string{group}, Aggregate: map[string]records.Aggregate{"value": agg}})
-		if err != nil {
-			return out, err
-		}
-		out.Points = s.points(ctx, src.t, group, rows)
+		j.group, _ = w["group_by"].(string)
+		out.Group = j.group
 	case KindList:
 		cols := src.columns
 		if c, _ := w["columns"].(string); c != "" {
@@ -748,19 +924,46 @@ func (s *Service) compute(ctx context.Context, w records.Record, f Filters, show
 		if len(out.Columns) == 0 {
 			out.Columns = []string{src.t.TitleField}
 		}
-		so := src.sort
+		j.columns = out.Columns
+		j.sort = src.sort
 		if c, _ := w["sort"].(string); c != "" {
-			so = c
+			j.sort = c
 		}
-		size := 10
+		j.size = 10
 		if n, ok := w["size"].(float64); ok && n >= 1 {
-			size = int(n)
+			j.size = int(n)
 		}
-		q := records.Query{Where: where, Fields: out.Columns, Limit: size}
-		if so != "" {
-			q.Sort = []string{so}
+	}
+	return out, j, nil
+}
+
+// run runs the query of one widget.
+func (s *Service) run(ctx context.Context, out Data, j *job) (Data, error) {
+	src, where, agg := j.src, j.where, j.agg
+	switch out.Kind {
+	case KindNumber:
+		_, rows, err := s.query(ctx, src.typeName, records.Query{Where: where, Aggregate: map[string]records.Aggregate{"value": agg}})
+		if err != nil {
+			return out, err
 		}
-		page, _, err := s.rec.Query(ctx, src.typeName, q)
+		if rows != nil && len(rows.Rows) > 0 {
+			out.Value = rows.Rows[0]["value"]
+		}
+		if out.Value == nil {
+			out.Value = 0.0
+		}
+	case KindPie, KindBar, KindLine:
+		_, rows, err := s.query(ctx, src.typeName, records.Query{Where: where, Group: []string{j.group}, Aggregate: map[string]records.Aggregate{"value": agg}})
+		if err != nil {
+			return out, err
+		}
+		out.Points = s.points(ctx, src.t, j.group, rows)
+	case KindList:
+		q := records.Query{Where: where, Fields: j.columns, Limit: j.size}
+		if j.sort != "" {
+			q.Sort = []string{j.sort}
+		}
+		page, _, err := s.query(ctx, src.typeName, q)
 		if err != nil {
 			return out, err
 		}

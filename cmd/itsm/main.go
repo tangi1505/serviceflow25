@@ -279,6 +279,8 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	}
 	// Dashboards (UI13): their widgets are checked like the saved searches.
 	dashboards := dashboard.New(rec)
+	// At most so many evaluations of widgets at once (PL67); the others wait.
+	dashboards.Limit(cfg.Evaluations, cfg.RequestTimeout)
 	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec), dashboards.Check)
 	// The text modules (SD8) fill in their placeholders like the notifications.
 	snippetSvc := snippets.New(rec)

@@ -468,6 +468,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboards/{id}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** All widgets of a dashboard at once, each as soon as it is computed, with the rights of the session and the filters (PL67): widgets of the same type and condition count in one pass */
+        post: operations["dashboardData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboards/{id}/widgets/{widgetId}/data": {
         parameters: {
             query?: never;
@@ -3567,6 +3584,13 @@ export interface components {
             /** @description a node of the organisation tree; the records there and below */
             unit?: string;
         };
+        /** @description One widget of a dashboard in the stream of its data (PL67). */
+        DashboardDataLine: {
+            /** Format: uuid */
+            widget: string;
+            data?: components["schemas"]["WidgetData"];
+            problem?: components["schemas"]["Problem"];
+        };
         WidgetData: {
             /** @enum {string} */
             kind: "number" | "pie" | "bar" | "line" | "list" | "text";
@@ -5160,6 +5184,34 @@ export interface operations {
                 };
             };
             403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["ValidationProblem"];
+        };
+    };
+    dashboardData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardFilters"];
+            };
+        };
+        responses: {
+            /** @description one JSON object per line and widget (DashboardDataLine) in the order they are ready, text widgets too; a widget that fails carries its problem, the others go on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": components["schemas"]["DashboardDataLine"];
+                };
+            };
             404: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
         };

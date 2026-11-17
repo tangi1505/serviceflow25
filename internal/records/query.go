@@ -42,7 +42,15 @@ type Query struct {
 	Count     bool                 `json:"count,omitempty"`
 	Group     []string             `json:"group,omitempty"`
 	Aggregate map[string]Aggregate `json:"aggregate,omitempty"`
+	// Sets counts each group of Group on its own and all together in one pass over the
+	// table (GROUPING SETS, PL67): the widgets of a dashboard with the same condition. Each
+	// row carries SetKey: the index of its group in Group, or -1 for the total. Roles
+	// (actors.<role>) do not take part; only for the code, not in the API.
+	Sets bool `json:"-"`
 }
+
+// SetKey is the key of a row of a query with Sets: which group it belongs to.
+const SetKey = "_set"
 
 // Aggregate is one function over a field: {"count": "*"}, {"sum": "priority"}.
 type Aggregate struct {
@@ -685,6 +693,10 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 	// record with two groups counts for both and one without any for none (null).
 	var joins []string
 	for _, g := range q.Group {
+		if isActorFilter(g) && q.Sets {
+			b.problem("group", "invalid", fmt.Sprintf("%q: a role does not count in one pass with other groups", g))
+			continue
+		}
 		if isActorFilter(g) {
 			role, p := filterRole(t, g)
 			switch {
@@ -793,10 +805,28 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 		sql = fmt.Sprintf("SELECT %s FROM (SELECT * FROM %s WHERE %s) base %s", strings.Join(selects, ", "), table(t),
 			strings.Join(where, " AND "), strings.Join(joins, " "))
 	}
-	if len(groups) > 0 {
+	limit := 1000
+	switch {
+	case q.Sets:
+		// One pass for the total and each group (PL67); GROUPING says which one a row is.
+		sets := []string{"()"}
+		for _, g := range groups {
+			sets = append(sets, "("+g+")")
+		}
+		if len(groups) > 0 {
+			sql = strings.Replace(sql, "SELECT ", fmt.Sprintf("SELECT GROUPING(%s), ", strings.Join(groups, ", ")), 1)
+		} else {
+			sql = strings.Replace(sql, "SELECT ", "SELECT 0, ", 1)
+		}
+		sql += " GROUP BY GROUPING SETS (" + strings.Join(sets, ", ") + ")"
+		if len(groups) > 0 {
+			sql += " ORDER BY 1 DESC, " + strings.Join(groups, ", ") + " NULLS LAST"
+		}
+		limit *= len(sets)
+	case len(groups) > 0:
 		sql += " GROUP BY " + strings.Join(groups, ", ") + " ORDER BY " + strings.Join(groups, ", ") + " NULLS LAST"
 	}
-	sql += " LIMIT 1000"
+	sql += fmt.Sprintf(" LIMIT %d", limit)
 	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, planned(b.args)...)
 	if err != nil {
 		return nil, fmt.Errorf("records: aggregate %s: %w", t.QualifiedName(), err)
@@ -809,6 +839,18 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 			return nil, err
 		}
 		row := map[string]any{}
+		if q.Sets {
+			// GROUPING has a bit for each group, set when the row is not grouped by it: all
+			// set is the total, all but one the group of that one.
+			mask, _ := vals[0].(int32)
+			vals = vals[1:]
+			row[SetKey] = -1
+			for i := range names {
+				if mask&(1<<(len(names)-1-i)) == 0 {
+					row[SetKey] = i
+				}
+			}
+		}
 		for i, g := range names {
 			gc := groupCols[i]
 			switch {

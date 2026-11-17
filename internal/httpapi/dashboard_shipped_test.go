@@ -8,9 +8,13 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	"group24.de/itsm/internal/db/dbtest"
@@ -21,7 +25,7 @@ import (
 // The Prüfweg of UI14b (UI-Plan E40; Inventar G76, G77): after installing the service desk and
 // the incidents, "Helpdesk" and "Statistik" are there, shared with the group Service Desk,
 // with the widgets of the incidents; Helpdesk shows the open incidents by state. Installing
-// the requests adds theirs. Every widget computes.
+// the requests adds theirs. Every widget computes, alone and all in one request (PL67).
 func TestDashboardsShippedOverHTTP(t *testing.T) {
 	base := os.Getenv("ITSM_TEST_DATABASE_URL")
 	if base == "" {
@@ -135,5 +139,50 @@ func TestDashboardsShippedOverHTTP(t *testing.T) {
 	}
 	if r := data(st, widgets(sv)["Neue Störungen"]); r.body["value"] != 4.0 {
 		t.Fatalf("new incidents: %s", r.raw)
+	}
+
+	// All widgets in one request (PL67): one line per widget, each the same as the widget
+	// alone, also where several count in one pass; the same with a period.
+	for _, filters := range []string{`{}`, `{"from": "2020-01-01T00:00:00Z"}`} {
+		for dash, view := range map[string]map[string]any{hd: v, st: sv} {
+			// call reads the first JSON value only; the stream is read to its end here.
+			req, _ := http.NewRequestWithContext(ctx, http.MethodPost, api.URL+"/api/v1/dashboards/"+dash+"/data", strings.NewReader(filters))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set(csrfHeader, csrfValue)
+			req.Header.Set("Cookie", sessionCookie+"="+api.cookie)
+			res, err := api.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, _ := io.ReadAll(res.Body)
+			_ = res.Body.Close()
+			if res.StatusCode != 200 || res.Header.Get("Content-Type") != "application/x-ndjson" {
+				t.Fatalf("dashboard data: %d %s %s", res.StatusCode, res.Header.Get("Content-Type"), raw)
+			}
+			lines := map[string]string{}
+			for _, l := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+				var line struct {
+					Widget  string          `json:"widget"`
+					Data    json.RawMessage `json:"data"`
+					Problem json.RawMessage `json:"problem"`
+				}
+				if err := json.Unmarshal([]byte(l), &line); err != nil || len(line.Problem) > 0 {
+					t.Fatalf("line %s: %v", l, err)
+				}
+				lines[line.Widget] = string(line.Data)
+			}
+			if len(lines) != len(widgets(view)) {
+				t.Fatalf("%d lines for %d widgets: %s", len(lines), len(widgets(view)), raw)
+			}
+			for title, id := range widgets(view) {
+				alone := call(t, api, http.MethodPost, "/api/v1/dashboards/"+dash+"/widgets/"+id+"/data", filters, nil)
+				var a, b any
+				_ = json.Unmarshal([]byte(alone.raw), &a)
+				_ = json.Unmarshal([]byte(lines[id]), &b)
+				if !reflect.DeepEqual(a, b) {
+					t.Fatalf("%s %s: alone %s, in one request %s", title, filters, alone.raw, lines[id])
+				}
+			}
+		}
 	}
 }

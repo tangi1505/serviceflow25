@@ -20,7 +20,7 @@ import (
 )
 
 // The time limit of a request (PL56): an API request gets a deadline, the export, the bulk
-// stream, the event stream and the upload of files do not; a statement cut off by it answers
+// stream, the event stream, the upload of files and the stream of a dashboard (PL67) do not; a statement cut off by it answers
 // 503 with the problem "timeout".
 func TestRequestTimeLimit(t *testing.T) {
 	var got []string
@@ -35,6 +35,8 @@ func TestRequestTimeLimit(t *testing.T) {
 		{http.MethodPost, "/api/v1/records/core.person:bulk"},
 		{http.MethodGet, "/api/v1/events/stream"},
 		{http.MethodPost, "/api/v1/files"},
+		{http.MethodPost, "/api/v1/dashboards/0190a8d0-0000-7000-8000-000000000001/data"},
+		{http.MethodPost, "/api/v1/dashboards/0190a8d0-0000-7000-8000-000000000001/widgets/0190a8d0-0000-7000-8000-000000000001/data"},
 		{http.MethodGet, "/api/v1/files/0190a8d0-0000-7000-8000-000000000000"},
 		{http.MethodGet, "/assets/index.js"},
 	} {
@@ -47,6 +49,8 @@ func TestRequestTimeLimit(t *testing.T) {
 		"POST /api/v1/records/core.person:bulk false",
 		"GET /api/v1/events/stream false",
 		"POST /api/v1/files false",
+		"POST /api/v1/dashboards/0190a8d0-0000-7000-8000-000000000001/data false",
+		"POST /api/v1/dashboards/0190a8d0-0000-7000-8000-000000000001/widgets/0190a8d0-0000-7000-8000-000000000001/data true",
 		"GET /api/v1/files/0190a8d0-0000-7000-8000-000000000000 true",
 		"GET /assets/index.js false",
 	}

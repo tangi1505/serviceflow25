@@ -97,8 +97,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL64** | Suche nach früher häufigen Wörtern (Befund aus H14, Rest aus PL55): Ein Wort mit wenigen Treffern in den letzten sieben Tagen, aber sehr vielen davor, durchsucht alles und endet an der Zeitgrenze von 10 s. Vorschlag: weitere Fenster (30 Tage, 1 Jahr) vor dem ganzen Bestand | ⬜ deine Entscheidung offen | 0,5 d | Lastwerkzeug: Suche nach einem solchen Wort p95 ≤ 300 ms auf `ki-lab` |
 | **PL65** | Dashboards, Stufe 1: Standard-Zeitraum. Ein Feld am Kerntyp Dashboard nennt den Zeitraum beim Öffnen; „Statistik“ bekommt 7 Tage, bestehende Dashboards per Umzug; die Oberfläche startet damit und merkt sich die letzte Wahl je Person. Ereignisse laden die Zahlen nur bei Zeiträumen bis 7 Tage von selbst neu; beim Wechsel des Zeitraums werden laufende Abfragen abgebrochen (Hauptplan E195; §2.1) | 🟢 | 1 d | „Statistik“ öffnen → Zeitraum „7 Tage“; auf „Jahr“ wechseln und eine Störung ändern → die Zahlen laden nicht von selbst neu; beim schnellen Wechsel des Zeitraums zeigt das Anfrageprotokoll abgebrochene Abfragen |
 | **PL66** | Dashboards, Stufe 1: Index und Messung. Ein Index auf „gelöst am“ für jeden Typ mit dem Merkmal Lösung, nur über gesetzte Werte; die Lastprobe für LZ18 im Lastwerkzeug; gemessen auf `ki-lab`. Der Index entsteht dort ohne Schreibsperre, sobald PL63 steht, sonst in einem Fenster ohne Last (Hauptplan E195; §2.1) | 🟢 | 1 d | `EXPLAIN` der Kennzahl „Gelöste Störungen“ mit 7 Tagen nutzt den Index; Lastwerkzeug auf `ki-lab` mit `--only=LZ18` → p95 ≤ 1 s für das Dashboard und ≤ 300 ms je Widget |
-| **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | ⬜ | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
-| **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | 🔒 PL67 | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
+| **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | 🟢 | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
+| **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | ⬜ | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
 | **PL69** | Dashboards, Stufe 3: Tageswerte. Je Typ eine Tabelle mit Zahl und Summen je Tag, Einheit und den Feldern, nach denen die mitgelieferten Widgets gruppieren; ein Hintergrundlauf führt sie nach (asynchron, Hauptplan E191), ein Abgleich je Nacht zählt nach. Lange Zeiträume lesen daraus, wenn sich die Rechte der Person auf Einheiten zurückführen lassen; sonst gilt der Weg aus PL68 (Hauptplan E195; §2.1) | 🔒 PL68, V2 | 2 d | eine Störung anlegen → der Tageswert steigt innerhalb einer Minute; die Summe der Tageswerte eines Monats gleicht der gezählten Zahl; eine Person nur mit „beteiligt“ bekommt dieselben Zahlen wie vor PL69 |
 | **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | 🔒 PL69 | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
 
@@ -174,6 +174,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E72** | **Dashboards bündeln (PL67, deine Entscheidungen 2026-11-17):** ein Aufruf liefert alle Widgets eines Dashboards stückweise, jedes sobald es fertig ist (NDJSON); höchstens 4 Auswertungen zugleich je Instanz (`ITSM_EVALUATIONS`), weitere warten. Von mir ergänzt nach der Messung auf `ki-lab`: Gruppen zählen nur mit Zeitraum in einem Durchlauf, weil PostgreSQL Gruppierungssätze ohne parallele Arbeiter rechnet (über „Gesamt“ 13 s); die Zeitgrenze gilt je Widget ab seinem Platz, nicht für den ganzen Strom. Befund LZ21b (Liste neben 20 Dashboards über alles 165 ms statt ≤ 150 ms) bleibt offen bis Stufe 3 und wird nach PL69 neu gemessen (deine Entscheidung 2026-11-17). Verworfen: alles auf einmal; sofort ablehnen; 8 zugleich; 2 zugleich; Auswertungen ohne parallele Arbeiter | 2026-11-17 | Pascal |
 | **E71** | **Standard-Zeitraum der Dashboards (PL65, deine Entscheidungen 2026-11-16):** die letzte Wahl merkt sich der Server in den Einstellungen der Person, je Dashboard (folgt an andere Rechner); bestehende Dashboards zeigen wie bisher „Gesamt“, nur „Statistik“ bekommt per Umzug 7 Tage, ein neu angelegtes Dashboard startet mit 7 Tagen; die Organisation stellt es je Dashboard im Editor ein („Zeitraum beim Öffnen“). Von mir ergänzt: „Eigener Zeitraum“ wird nicht gemerkt; ein vom Browser abgebrochener Aufruf antwortet 499 und steht als Info im Protokoll, nicht mehr als interner Fehler. Verworfen: nur im Browser merken; alle Dashboards mit 7 Tagen | 2026-11-16 | Pascal |
 | **E70** | **Dashboards in Prod-Größe (PL65 bis PL70, deine Entscheidungen 2026-11-16, Hauptplan E195):** drei Stufen nacheinander: Standard-Zeitraum und Index, dann bündeln und gespeicherter Stand, dann Tageswerte. Die Aufgaben stehen im Kern-Plan und nicht im Oberflächen-Plan, weil fast alles am Kern liegt (Abfragen, Index, Zwischenspeicher, Tageswerte); die Teile der Oberfläche (Standard-Zeitraum, „Stand hh:mm“, Knopf) gehören zu PL65 und PL68. Der gespeicherte Stand ist höchstens 5 min alt; sein Schlüssel enthält die Bedingung der Rechte | 2026-11-16 | Pascal; Zuordnung zum Kern-Plan: Umsetzung |
 | **E68** | **Suche neueste zuerst (PL55, deine Entscheidung 2026-11-14 nach H14):** Die Volltextsuche bewertete jeden Treffer; „Drucker defekt“ traf auf 18,25 Mio. Störungen rund eine Million und brauchte mehr als 10 s. Ein Zeitfenster mit den Indizes allein half wenig (2,6 s), weil schon die Trefferlisten der Indizes groß sind (Titel-Ähnlichkeit 3,9 Mio.). Jetzt geht die Suche je Typ rückwärts am Index auf `created_at` durch die letzten sieben Tage, nimmt die neuesten bis zu 1.000 Treffer und bewertet nur diese (auf `ki-lab` 3 ms); bringt das weniger Treffer als verlangt, sucht sie über alle Datensätze über den Suchindex, wo seltene Wörter und alte Nummern billig sind (6 ms). Ein Wort, das nur vor langer Zeit häufig war, bleibt teuer; dagegen steht die Zeitgrenze (E69) | über die Indizes in Zeitfenstern; alle Wörter müssen vorkommen; eigene Suchmaschine; erst als Befund | 2026-11-14 | Pascal |
@@ -1681,6 +1682,50 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL67 — Dashboards: bündeln und eigenes Budget, 2026-11-17
+
+- **Grundlage:** Hauptplan E195, LZ18, LZ21; E72; §2.1.
+- **Gebaut:**
+  - `POST /api/v1/dashboards/{id}/data` liefert alle Widgets als Strom, eine JSON-Zeile je
+    Widget (`DashboardDataLine`), sobald es fertig ist; ein Widget mit Fehler trägt sein
+    Problem, die anderen kommen weiter (`internal/httpapi/dashboards.go`). Der Aufruf je Widget
+    bleibt für Seitenleiste, Kacheln und Editor.
+  - `dashboard.Service.Bundle`: Kennzahlen und Gruppen nach einem Feld mit demselben Typ und
+    derselben Bedingung zählen in einer Abfrage (`records.Query.Sets`, `GROUPING SETS`);
+    Gruppen nur mit Zeitraum, ohne Zeitraum nur die Kennzahlen zusammen; Gruppen nach einer
+    Rolle und Listen einzeln; alles nebeneinander.
+  - Budget: höchstens `ITSM_EVALUATIONS` (4) Auswertungen zugleich je Instanz, weitere
+    warten; jede hat ab ihrem Platz die Zeitgrenze einer Anfrage (`ITSM_REQUEST_TIMEOUT`), der
+    Strom als Ganzes keine (`internal/httpapi/timelimit.go`).
+  - Oberfläche (`web/src/app/Dashboard.tsx`): ein Aufruf je Dashboard und Zeitraum; jede
+    Zeile landet im Widget, das sie betrifft; ein alter Zeitraum bricht ab.
+  - Lastwerkzeug: LZ18 öffnet über den einen Aufruf; neu LZ21a, LZ21b, LZ21c (LZ1, LZ2, LZ4
+    neben 20 Öffnungen von „Statistik“ über alles, `--only=LZ21`), nur mit `--data=prod`.
+- **Belegt, 2026-11-17:**
+  - Go `TestDashboardsShippedOverHTTP`: „Helpdesk“ und „Statistik“ in einem Aufruf, ohne und
+    mit Zeitraum, jede Zeile gleich dem Widget allein; `TestQuery`: Gruppierungssätze mit
+    Gesamtzeile und Satzkennung; `TestBudgetWaitsForAPlace`; `TestRequestTimeLimit`: der Strom
+    ohne, das Widget mit Zeitgrenze; `TestLoadConfig…`: `ITSM_EVALUATIONS`.
+  - Vitest `Dashboard.test.tsx`: ein Aufruf für alle Widgets, ein Widget mit Fehler zeigt ihn,
+    die anderen ihre Werte.
+  - Ganze CI grün am 2026-11-17 auf `ki-lab`: Go, Web (154 Vitest-Fälle, 22 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %), LZ2 2,96 ms (−33 %), LZ3 5,00 ms (−42 %), LZ4 3,85 ms (−48 %),
+    LZ5 9.016 Zeilen/s, LZ13 8.737 Zeilen/s.
+  - Auf `ki-lab` (H14), „Statistik“ mit 16 Widgets: mit 7 Tagen ganz in 0,06 s und 7 Lesungen
+    der Störungstabelle (einzeln 0,23 s, 18); über „Gesamt“ alle Widgets ohne Fehler, das erste
+    nach 2,6 s, das letzte nach 12,9 s, 25 Lesungen (einzeln nacheinander 23 s, 32). Vorher lief
+    der erste Versuch mit Gruppierungssätzen über „Gesamt“ in die Zeitgrenze: 13 s in einem
+    Prozess mit Sortierung auf der Platte (`EXPLAIN ANALYZE`).
+  - Lastwerkzeug auf `ki-lab`, volle Stufe: LZ18 p95 159 ms (≤ 1 s), LZ18w 139 ms (≤ 300 ms);
+    LZ2 allein 115 ms; daneben 20 Dashboards über alles: LZ21a 4,2 ms (≤ 50), LZ21b 165 ms
+    (≤ 150, **verfehlt**), LZ21c 59 ms (≤ 100). Die 4 Plätze waren dabei ständig belegt; kein
+    Dashboard über alles wurde in 5 min ganz fertig (20 × 16 Widgets auf 4 Plätzen).
+  - Auf 8092: „Statistik“ lädt mit einem Aufruf alle 16 Widgets; der Wechsel auf „Gesamt“ und
+    „Aktualisieren“ je einen neuen.
+- **Offen:** LZ21b bis Stufe 3 (E72); dann rechnet „Gesamt“ aus den Tageswerten.
+- **Nicht geprüft:** die Zahl der Abfragen mit `pg_stat_statements` (auf `ki-lab` nicht
+  geladen); gezählt sind stattdessen die Lesungen der Tabelle (`pg_stat_user_tables`).
 
 ### PL66 — Dashboards: Index und Messung, 2026-11-17
 

@@ -158,8 +158,7 @@ describe("Dashboards", () => {
     board(state);
     state.dashboards![0]!.dashboard["period"] = "days_7";
     const user = userEvent.setup();
-    const widgetCalls = () =>
-      state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/widgets/${W(1)}/data`);
+    const widgetCalls = () => state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`);
     const first = renderAt(`/dashboards/${D}`);
     const seven = await screen.findByRole("radio", { name: "7 Tage" });
     expect(seven).toHaveAttribute("aria-checked", "true");
@@ -191,6 +190,22 @@ describe("Dashboards", () => {
     await waitFor(() => expect(state.dashboards![0]!.dashboard["period"]).toBe("days_30"));
   });
 
+  it("loads all widgets in one request, and one that fails shows its error (PL67)", async () => {
+    board(state);
+    state.widgetFails = [W(2)];
+    renderAt(`/dashboards/${D}`);
+    expect(
+      await screen.findByRole("button", { name: "Offene: 42, Liste öffnen" }),
+    ).toBeInTheDocument();
+    const pie = screen.getByRole("region", { name: "Nach Art" });
+    expect(
+      await within(pie).findByText("Dieses Widget konnte nicht berechnet werden."),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Drucker" })).toBeInTheDocument();
+    expect(state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`)).toHaveLength(1);
+    expect(state.calls.some((c) => c.path.includes("/widgets/"))).toBe(false);
+  });
+
   it("shows the widgets with the filters, and a point opens the list behind it", async () => {
     board(state);
     const user = userEvent.setup();
@@ -209,16 +224,12 @@ describe("Dashboards", () => {
     // The filters go to every widget.
     await user.click(screen.getByRole("radio", { name: "7 Tage" }));
     await waitFor(() => {
-      const last = state.calls
-        .filter((c) => c.path === `/api/v1/dashboards/${D}/widgets/${W(1)}/data`)
-        .at(-1);
+      const last = state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`).at(-1);
       expect(JSON.parse(String(last!.body)) as Record<string, unknown>).toHaveProperty("from");
     });
     await user.selectOptions(screen.getByLabelText("Einheit"), "root.it");
     await waitFor(() => {
-      const last = state.calls
-        .filter((c) => c.path === `/api/v1/dashboards/${D}/widgets/${W(2)}/data`)
-        .at(-1);
+      const last = state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`).at(-1);
       expect((JSON.parse(String(last!.body)) as Record<string, unknown>)["unit"]).toBe("root.it");
     });
 

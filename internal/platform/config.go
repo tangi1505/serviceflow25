@@ -65,6 +65,10 @@ type Config struct {
 	// (PL56), ITSM_REQUEST_TIMEOUT, 10 s unless set, 0 for none; export, bulk stream, event
 	// stream and file upload are left out.
 	RequestTimeout time.Duration
+	// Evaluations is how many evaluations of dashboard widgets run at once on this instance
+	// (PL67, ITSM_EVALUATIONS, 4 unless set, 0 for no bound); the others wait for a place, so
+	// that lists, searches and writing do not wait behind long counts.
+	Evaluations int
 	// Workers per queue for the worker role (Hauptplan E85): ITSM_WORKERS_INTERACTIVE,
 	// ITSM_WORKERS_DEFAULT, ITSM_WORKERS_BULK; 0 leaves a queue unworked on this instance.
 	Workers map[string]int
@@ -148,6 +152,7 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		LogLevel:        slog.LevelInfo,
 		ShutdownTimeout: 15 * time.Second,
 		RequestTimeout:  10 * time.Second,
+		Evaluations:     4,
 		Workers:         map[string]int{},
 		EventRetention:  7 * 24 * time.Hour,
 	}
@@ -162,6 +167,14 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 				continue
 			}
 			cfg.Workers[queue] = n
+		}
+	}
+	if v := getenv("ITSM_EVALUATIONS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			errs = append(errs, fmt.Errorf("ITSM_EVALUATIONS: %q is not a number of evaluations", v))
+		} else {
+			cfg.Evaluations = n
 		}
 	}
 	cfg.BulkQueue = "bulk"

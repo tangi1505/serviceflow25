@@ -724,6 +724,12 @@ Meilenstein. Werkzeug: `test/load` (E51).
 - **Dashboards in Prod-Größe** (PL65, PL66, 2026-11-17): Standard-Zeitraum je Dashboard und der
   Index auf „gelöst am“; LZ18 erfüllt (p95 113 ms für ein ganzes Dashboard, 132 ms je Widget).
   Über „Gesamt“ braucht ein Widget weiter 1 bis 6 s; das gehen PL67 bis PL70 an.
+- **Dashboards gebündelt** (PL67, Kern-Plan E72): `POST /api/v1/dashboards/{id}/data` liefert
+  alle Widgets als Strom von JSON-Zeilen, jedes sobald es fertig ist. Mit Zeitraum zählen
+  Widgets desselben Typs und derselben Bedingung in einer Abfrage (`GROUPING SETS`); ohne nur
+  die Kennzahlen, weil PostgreSQL Gruppierungssätze ohne parallele Arbeiter rechnet. Höchstens
+  `ITSM_EVALUATIONS` Auswertungen zugleich je Instanz (4), jede mit der Zeitgrenze einer
+  Anfrage ab ihrem Platz. Offen: die Liste (LZ2) neben 20 Dashboards über alles, bis Stufe 3.
 
 ---
 

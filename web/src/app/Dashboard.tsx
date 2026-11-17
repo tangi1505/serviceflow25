@@ -196,6 +196,33 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   });
   useEffect(() => () => clearTimeout(pending.current), []);
 
+  // All widgets come in one request (PL67); each line lands in the query of its widget, so
+  // that a widget shows as soon as it is ready. The old period's stream stops with its key.
+  const counted = (view.data?.widgets ?? []).some((w) => w["kind"] !== "text");
+  const stream = useQuery({
+    queryKey: ["dashboard", id, "data", "all", filters],
+    queryFn: async ({ signal }) => {
+      await api.dashboardData(
+        id,
+        filters,
+        (line) =>
+          queryClient.setQueryData<Shown>(
+            ["dashboard", id, "data", line.widget, filters],
+            // A line with a problem marks the widget as failed; its kind stays the widget's.
+            line.data ?? {
+              kind: String(
+                view.data?.widgets.find((w) => w["id"] === line.widget)?.["kind"] ?? "number",
+              ) as WidgetData["kind"],
+              failed: true,
+            },
+          ),
+        signal,
+      );
+      return true;
+    },
+    enabled: counted && !settings.isPending,
+  });
+
   // The settings say the period to open with; without them the widgets would count twice.
   if (view.isPending || settings.isPending) return <p>{t("list.loading")}</p>;
   if (view.isError) {
@@ -348,6 +375,7 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
                 queryKey={["dashboard", id, "data", String(w["id"]), filters]}
                 load={(signal) => api.widgetData(id, String(w["id"]), filters, signal)}
                 onType={(type) => typesSeen.current.add(type)}
+                fed={stream.isError ? "failed" : stream.isFetching ? "loading" : "done"}
               />
             </div>
           ))}
@@ -357,14 +385,20 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   );
 }
 
+// Shown is what a widget shows; failed marks one whose line in the stream of its dashboard
+// carried a problem (PL67).
+type Shown = WidgetData & { failed?: boolean };
+
 // WidgetCard computes and shows one widget: on its dashboard, or in the sidebar of a record
-// (UI13b); load says how.
+// (UI13b); load says how. On its dashboard the stream of all widgets feeds it (fed, PL67) and
+// load is not called.
 export function WidgetCard({
   widget,
   queryKey,
   load,
   onType,
   compact = false,
+  fed,
 }: {
   widget: RecordData;
   queryKey: unknown[];
@@ -372,6 +406,8 @@ export function WidgetCard({
   load: (signal?: AbortSignal) => Promise<WidgetData>;
   onType?: (type: string) => void;
   compact?: boolean;
+  // fed is the state of the stream that feeds the widget; without it the widget loads itself.
+  fed?: "loading" | "done" | "failed";
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -379,11 +415,16 @@ export function WidgetCard({
   const kind = String(widget["kind"]);
   const title = String(widget["title"]);
   // A query of an old period is stopped when its key is no longer shown (PL65).
-  const data = useQuery({
+  const data = useQuery<Shown>({
     queryKey,
     queryFn: ({ signal }) => load(signal),
-    enabled: kind !== "text",
+    enabled: kind !== "text" && fed === undefined,
   });
+  // Fed: no answer yet while the stream runs; none after it ended is an error.
+  const failed =
+    data.isError ||
+    data.data?.failed === true ||
+    (fed !== undefined && fed !== "loading" && !data.data);
   const types = useQuery(typesQuery);
   useEffect(() => {
     if (data.data?.type) onType?.(data.data.type);
@@ -420,10 +461,10 @@ export function WidgetCard({
       </h2>
       {kind === "text" ? (
         <RichText html={String(widget["body"] ?? "")} />
-      ) : data.isPending ? (
-        <p className="text-sm text-muted-foreground">{t("list.loading")}</p>
-      ) : data.isError ? (
+      ) : failed ? (
         <p className="text-sm text-destructive">{t("dashboard.widgetError")}</p>
+      ) : !data.data ? (
+        <p className="text-sm text-muted-foreground">{t("list.loading")}</p>
       ) : data.data.sidebar_only ? (
         <p className="text-sm text-muted-foreground">
           {t("dashboard.sidebarOnly", { type: String(widget["sidebar_type"] ?? "") })}

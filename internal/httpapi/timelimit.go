@@ -21,12 +21,14 @@ import (
 // Found with H14: searches of ten seconds and more held every connection of the pool, and the
 // writes and the jobs of the server waited behind them. The paths that may run longer stream
 // or take large bodies: the export, the bulk stream, the event stream and the upload of files.
+// The stream of a dashboard (PL67) is left out as a whole; each of its widgets has the limit.
 
 // longRunning reports whether a path is left without the time limit.
 func longRunning(r *http.Request) bool {
 	p := r.URL.Path
 	return strings.HasSuffix(p, ":export") || strings.HasSuffix(p, ":bulk") ||
-		p == "/api/v1/events/stream" || (p == "/api/v1/files" && r.Method == http.MethodPost)
+		p == "/api/v1/events/stream" || (p == "/api/v1/files" && r.Method == http.MethodPost) ||
+		(strings.HasPrefix(p, "/api/v1/dashboards/") && strings.HasSuffix(p, "/data") && !strings.Contains(p, "/widgets/"))
 }
 
 // withDeadline gives every API request but the long-running ones a deadline; d <= 0 sets none.

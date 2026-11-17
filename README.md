@@ -207,6 +207,7 @@ Nur über Umgebungsvariablen / environment variables only:
 | `ITSM_LOG_LEVEL` | nein | `info` | `debug`, `info`, `warn`, `error` |
 | `ITSM_SHUTDOWN_TIMEOUT` | nein | `15s` | Zeit zum geordneten Beenden |
 | `ITSM_REQUEST_TIMEOUT` | nein | `10s` | Zeitgrenze einer API-Anfrage samt ihrer Abfragen in PostgreSQL (PL56); `0` für keine; Export, Bulk-Strom, Ereignisstrom und Hochladen ausgenommen |
+| `ITSM_EVALUATIONS` | nein | `4` | so viele Auswertungen von Dashboard-Widgets rechnen zugleich je Instanz (PL67); weitere warten auf einen Platz, längstens bis zur Zeitgrenze; `0` für keine Grenze |
 | `ITSM_WORKERS_INTERACTIVE` | nein | `8` | Worker je Instanz für die Warteschlange `interactive` (Rolle `worker`) |
 | `ITSM_WORKERS_DEFAULT` | nein | `8` | Worker je Instanz für `default` |
 | `ITSM_WORKERS_BULK` | nein | `2` | Worker je Instanz für `bulk`; `0` lässt eine Warteschlange auf dieser Instanz liegen |

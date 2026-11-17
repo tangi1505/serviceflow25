@@ -383,6 +383,8 @@ export type FakeState = {
   // copyForbidden refuses copying a dashboard (UI14a).
   copyForbidden?: boolean;
   widgetData?: Record<string, Record<string, unknown>>;
+  // widgetFails lists widgets whose line in the stream of the dashboard carries a problem (PL67).
+  widgetFails?: string[];
   dashboardInvalid?: { field: string; code: string; message: string }[];
   // sidebarWidgets stand in the sidebar of every record; tileData is the number of a tile by id
   // (UI13b).
@@ -1347,6 +1349,29 @@ export function fakeApi(state: FakeState) {
       };
       state.dashboards!.push(made);
       return json(201, made);
+    }
+    // All widgets of a dashboard as a stream of lines (PL67).
+    const all = url.pathname.match(/^\/api\/v1\/dashboards\/([^/]+)\/data$/);
+    if (all) {
+      const d = (state.dashboards ?? []).find((x) => x.dashboard["id"] === all[1]);
+      if (!d) {
+        return problem(404, "not_found");
+      }
+      const lines = d.widgets.map((w) => {
+        const id = String(w["id"]);
+        return JSON.stringify(
+          state.widgetFails?.includes(id)
+            ? {
+                widget: id,
+                problem: { type: "/problems/internal", title: "internal", status: 500 },
+              }
+            : { widget: id, data: state.widgetData?.[id] ?? { kind: String(w["kind"] ?? "text") } },
+        );
+      });
+      return new Response(lines.map((l) => l + "\n").join(""), {
+        status: 200,
+        headers: { "Content-Type": "application/x-ndjson" },
+      });
     }
     const board = url.pathname.match(
       /^\/api\/v1\/dashboards\/([^/]+)(?:\/widgets\/([^/]+)\/data)?$/,

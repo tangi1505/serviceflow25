@@ -41,6 +41,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"group24.de/itsm/test/load/internal/gate"
 	"group24.de/itsm/test/load/internal/gen"
@@ -279,7 +280,8 @@ func cmdRun(args []string, out io.Writer) error {
 		}
 	}
 	for _, s := range scenario.All() {
-		if len(chosen) > 0 && !chosen[s.ID] {
+		// LZ21 takes LZ21a, LZ21b and LZ21c (PL67); an exact id takes just that one.
+		if len(chosen) > 0 && !chosen[s.ID] && !chosen[strings.TrimRightFunc(s.ID, unicode.IsLower)] {
 			continue
 		}
 		if !s.Ready() {
@@ -350,6 +352,14 @@ func cmdRun(args []string, out io.Writer) error {
 			}
 		}
 		var newRuns, oldRuns []measure.Result
+		// Load beside the measurement (LZ21), on the new build only: the baseline has none.
+		var beside func() string
+		if s.Beside != nil {
+			if beside, err = s.Beside(ctx, client, newBase); err != nil {
+				return fmt.Errorf("%s: last daneben: %w", s.ID, err)
+			}
+			oldReq = nil
+		}
 		for i := range st.repeat {
 			// Alternate, and swap the order every repetition (A B, B A, A B …), so that drift of
 			// the machine and warm caches hit both builds alike.
@@ -362,6 +372,9 @@ func cmdRun(args []string, out io.Writer) error {
 				oldRuns = append(oldRuns, measure.RunCalls(ctx, client, oldReq, run))
 				newRuns = append(newRuns, measure.RunCalls(ctx, client, newReq, run))
 			}
+		}
+		if beside != nil {
+			fmt.Fprintf(out, "%-5s %s\n", s.ID, beside())
 		}
 		m := measure.Best(newRuns)
 		rep.Results[s.ID] = m

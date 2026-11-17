@@ -217,6 +217,8 @@ export type TypeDefinition = {
 export type TransitionInfo = components["schemas"]["TransitionInfo"];
 // FieldStates is what the field states of the type (WF2) say for a record or a new one.
 export type FieldStates = components["schemas"]["FieldStates"];
+// DashboardDataLine is one widget in the stream of a dashboard (PL67).
+export type DashboardDataLine = components["schemas"]["DashboardDataLine"];
 
 const csrf: Middleware = {
   onRequest({ request }) {
@@ -407,6 +409,41 @@ export const api = {
         body: body as never,
       }),
     ),
+  // dashboardData computes all widgets of a dashboard in one request (PL67); each line reaches
+  // onLine as soon as the server sends it, so that quick numbers show before long groups.
+  dashboardData: async (
+    id: string,
+    filters: DashboardFilters,
+    onLine: (line: DashboardDataLine) => void,
+    signal?: AbortSignal,
+  ) => {
+    const { data, error, response } = await client.POST("/api/v1/dashboards/{id}/data", {
+      params: { path: { id } },
+      body: filters,
+      signal,
+      parseAs: "stream",
+    });
+    if (!response.ok || !data) {
+      throw new ApiError(response.status, error as Problem | undefined);
+    }
+    const reader = (data as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let rest = "";
+    const lines = (text: string) => {
+      rest += text;
+      for (let i = rest.indexOf("\n"); i >= 0; i = rest.indexOf("\n")) {
+        const line = rest.slice(0, i).trim();
+        rest = rest.slice(i + 1);
+        if (line) onLine(JSON.parse(line) as DashboardDataLine);
+      }
+    };
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      lines(decoder.decode(value, { stream: true }));
+    }
+    lines(decoder.decode() + "\n");
+  },
   // signal stops the computation when the period changes meanwhile (PL65): the server ends
   // the query of the database with the request.
   widgetData: async (
