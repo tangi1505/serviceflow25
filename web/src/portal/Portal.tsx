@@ -12,7 +12,8 @@
 // less. Agents reach it too, to see what users see. The forms (UI11) are offered to whoever may
 // create their target type; filling one in creates its record. Under the head a band shows
 // what is going on, such as an open major incident, on every page of the portal (SD5). One's
-// own records are one list over the types (UI43, MyRecords.tsx).
+// own records are one list over the types (UI43, MyRecords.tsx); above them the open questions
+// of approval with their decision (UI44, OpenApprovals.tsx).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -40,6 +41,7 @@ import { Form } from "@/render/Form";
 
 import { FormFill, inLanguage } from "./FormFill";
 import { MyRecords } from "./MyRecords";
+import { OpenApprovals } from "./OpenApprovals";
 import { AreaNav, creates, FieldValue } from "./Read";
 import { PortalSuggestions } from "./Suggest";
 import { TileGrid, useTiles } from "./Tiles";
@@ -243,6 +245,8 @@ export function PortalHome() {
   return (
     <div className="flex flex-col gap-6">
       {withTiles && <TileGrid tiles={tiles.tiles} />}
+      {/* The open questions of the person, only when there are some (UI44, UI plan E43). */}
+      <OpenApprovals />
       {types.isSuccess && <MyRecords types={offered} heading={withTiles ? "h2" : "h1"} />}
       {!tiles.pending && !withTiles && <Forms />}
     </div>

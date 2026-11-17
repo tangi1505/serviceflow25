@@ -1525,6 +1525,10 @@ export function fakeApi(state: FakeState) {
           }
         }
       }
+      // The decided question leaves the open ones of the person, as on the server (UI44).
+      if (state.myApprovals?.open) {
+        state.myApprovals.open = state.myApprovals.open.filter((m) => m.step !== body.step);
+      }
       return json(200, found);
     }
     if (url.pathname === "/api/v1/me/inbox") {

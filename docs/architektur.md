@@ -656,7 +656,8 @@ web/src/
   views/        Kalender, Gantt, Kanban, Graph, Matrix, Karte (KF10)
   editors/      Typ-, Formular-, Workflow- (React Flow 12 + dagre), Rollen- und Dashboard-Editor
   portal/       Oberfläche für Nutzer (eigene Vorgänge seit UI10, seit UI43 eine Liste über
-                alle Typen in MyRecords.tsx; Band „Aktuell“ aus
+                alle Typen in MyRecords.tsx, darüber die offenen Genehmigungen mit Zustimmen und
+                Ablehnen seit UI44 in OpenApprovals.tsx; Band „Aktuell“ aus
                 core.portal_notice seit SD5; Lesebereiche wie „Wissen“ im Kopf aus der
                 Portal-Option read eines Typs seit SD16a; Startseite mit Kacheln aus
                 core.portal_tile und Hinweisen von Hand aus core.announcement seit SD14, die

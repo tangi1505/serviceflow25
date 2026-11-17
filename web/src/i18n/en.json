@@ -1039,7 +1039,11 @@
     "standIn": "standing in for",
     "openCount_one": "{{count}} open",
     "openCount_other": "{{count}} open",
-    "notReadable": "You cannot read this record; perhaps you are no longer asked."
+    "notReadable": "You cannot read this record; perhaps you are no longer asked.",
+    "waitingForYou": "Waiting for your approval",
+    "approveOf": "Approve: {{title}}",
+    "rejectOf": "Reject: {{title}}",
+    "reason": "Reason for the rejection"
   },
   "substitutes": {
     "title": "Substitutes at approvals",

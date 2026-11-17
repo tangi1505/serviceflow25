@@ -64,7 +64,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI41** | Kopfzeile des Portals nach dem Mockup (E43, §2.4): über die volle Breite, Marke, Bereiche mit Symbol (neu `icon` an `portal.read` des Typs), Konto-Kreis mit demselben Konto-Menü wie im Arbeitsplatz (UI35), darin „Zum Arbeitsplatz“ nur mit dem Recht `workplace`. Unter 768 px stehen die Bereiche als Zeile zum Wischen unter der Marke | 🟢 | 1 d | Im Browser http://localhost:8092/portal bei 1440 px → die Kopfzeile reicht von Rand zu Rand und hat kein beschriftetes Auswahlfeld; eine Person ohne das Recht `workplace` hat im Konto-Menü kein „Zum Arbeitsplatz“; bei 375 px lassen sich die Bereiche wischen, die Kopfzeile bricht nicht um; alles nur mit Tastatur; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI42** | Kacheln des Portals mit Symbol (E43): Feld `icon` an `core.portal_tile` als Auswahl aus einer festen Liste, ohne Angabe ein Symbol nach der Art der Kachel; die Zeile mit der Art über dem Namen entfällt | 🟢 | 1,5 d (vorher 1 d) | Kachel „Störung melden“ mit einem Symbol aus dem Raster speichern → das Portal zeigt es im Kasten über dem Namen; eine Kachel ohne Angabe zeigt das Symbol ihres Ziels; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI43** | „Meine Vorgänge“ als eine Liste über alle Typen (E43): an der Überschrift die Zahl der offenen, je Zeile Titel, Nummer, Typ, Zeit, Status und ein Hinweis, wenn die Person am Zug ist; Umschalter „Offen, Alle“. Ersetzt die Karte je Typ samt ihrem „Neu“. Der Hinweis „Lösung bestätigen“ kommt aus den Übergängen, die der Anforderer auslöst; für „Rückfrage beantworten“ bekommt der Wartegrund die Angabe, dass er den Anforderer meint (§2.4) | 🟢 | 2 d | Eine Person mit einer Störung und zwei Anfragen sieht eine Liste mit drei Zeilen, die neueste oben, und „3 offen“ an der Überschrift; eine gelöste Anfrage, die auf ihre Bestätigung wartet, zeigt „Lösung bestätigen“; eine Störung mit einem Wartegrund, der den Anforderer meint, zeigt „Rückfrage beantworten“; „Alle“ zeigt auch die geschlossenen; es gibt keine Karte je Typ mehr; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Genehmigen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | ⬜ | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Genehmigen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Zustimmen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | 🟢 | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Zustimmen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -436,6 +436,32 @@ im Code auf `main` (156cfd6). Der Entwurf dazu sind die Ansichten 8 bis 11 des M
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI44 — Genehmigungen auf der Startseite des Portals, 2026-11-16
+
+- **Grundlage:** E43 (Mockup, Ansichten 8 bis 11), §2.4.
+- **Gebaut:**
+  - `web/src/portal/OpenApprovals.tsx`: „Wartet auf Ihre Genehmigung“ zwischen den Kacheln und
+    „Meine Vorgänge“, nur mit offenen Fragen; je Zeile Titel (zur Seite der Genehmigung), Typ,
+    Stufe (bei mehreren) und seit wann, dazu „Zustimmen“ und „Ablehnen“. Die Knöpfe heißen wie
+    auf der Seite der Genehmigung („Zustimmen“, nicht „Genehmigen“ wie in der Zeile oben).
+    „Ablehnen“ öffnet in der Zeile das Feld „Grund der Ablehnung“ mit dem Fokus darin; ohne Grund
+    lehnt es nicht ab, wie auf der Seite. Die Zeile liest dieselbe Abfrage wie die Zahl am
+    Bereich „Genehmigungen“, eine Entscheidung senkt beide.
+  - Kein Server-Code: `/api/v1/me/approvals` liefert Frage, Stufe und Kennung schon.
+- **Belegt, 2026-11-16:**
+  - Vitest `OpenApprovals.test.tsx`: zwei offene Fragen geben zwei Zeilen und die Zahl 2 am
+    Bereich; „Zustimmen“ entscheidet, die Zeile verschwindet, die Zahl sinkt auf 1; „Ablehnen“
+    ohne Grund meldet den fehlenden Grund und entscheidet nicht, mit Grund lehnt es ab; ohne
+    offene Frage kein Abschnitt; axe ohne Befund.
+  - Ganze CI grün am 2026-11-17 auf `ki-lab`: Go, Web (152 Vitest-Fälle, 22 Playwright-Fälle
+    mit axe); ohne Lastmessung, weil kein Server-Code geändert war.
+  - Auf 8092 im Browser am 2026-11-16: zwei Genehmigungen beim eigenen Konto angefragt
+    („UI44 Neuer Laptop“, „UI43 Zugang Laufwerk“), der Abschnitt zeigt zwei Zeilen und
+    „Genehmigungen“ die 2; „Zustimmen“ an „UI44 Neuer Laptop“: die Zeile ist weg, die Anfrage
+    steht „In Erfüllung“, die Zahl ist 1. Die zweite Frage ist für deinen Test offen.
+- **Nicht geprüft:** im echten Browser der CI (kein Konto mit offener Frage in den Testdaten der
+  CI); „Ablehnen“ auf 8092.
 
 ### UI42 — Kacheln des Portals mit Symbol, 2026-11-16
 

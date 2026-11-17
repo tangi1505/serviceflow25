@@ -1039,7 +1039,11 @@
     "standIn": "in Vertretung für",
     "openCount_one": "{{count}} offen",
     "openCount_other": "{{count}} offen",
-    "notReadable": "Diesen Vorgang können Sie nicht lesen; vielleicht sind Sie nicht mehr gefragt."
+    "notReadable": "Diesen Vorgang können Sie nicht lesen; vielleicht sind Sie nicht mehr gefragt.",
+    "waitingForYou": "Wartet auf Ihre Genehmigung",
+    "approveOf": "Zustimmen: {{title}}",
+    "rejectOf": "Ablehnen: {{title}}",
+    "reason": "Grund der Ablehnung"
   },
   "substitutes": {
     "title": "Vertretung bei Genehmigungen",
