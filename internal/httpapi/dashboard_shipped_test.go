@@ -176,9 +176,12 @@ func TestDashboardsShippedOverHTTP(t *testing.T) {
 			}
 			for title, id := range widgets(view) {
 				alone := call(t, api, http.MethodPost, "/api/v1/dashboards/"+dash+"/widgets/"+id+"/data", filters, nil)
-				var a, b any
+				// The moment of the computation differs (PL68), the numbers do not.
+				var a, b map[string]any
 				_ = json.Unmarshal([]byte(alone.raw), &a)
 				_ = json.Unmarshal([]byte(lines[id]), &b)
+				delete(a, "computed_at")
+				delete(b, "computed_at")
 				if !reflect.DeepEqual(a, b) {
 					t.Fatalf("%s %s: alone %s, in one request %s", title, filters, alone.raw, lines[id])
 				}

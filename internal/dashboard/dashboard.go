@@ -14,6 +14,8 @@ package dashboard
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,6 +75,84 @@ type Service struct {
 	// timeout bounds one evaluation from the moment it has its place (PL67): the stream of a
 	// dashboard has no time limit as a whole, each widget has the one of a request.
 	timeout time.Duration
+	// store keeps widgets of long periods for StoreFor (PL68); nil keeps none.
+	store Store
+}
+
+// Store keeps computed widgets for a while (PL68): Valkey in the server.
+type Store interface {
+	Get(ctx context.Context, key string) ([]byte, error)
+	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
+}
+
+// StoreFor is how long a widget of a long period shows its stored state (PL68, Hauptplan E195:
+// the numbers may be up to 5 min old).
+const StoreFor = 5 * time.Minute
+
+// Keep stores the widgets of long periods in st (PL68).
+func (s *Service) Keep(st Store) { s.store = st }
+
+// lasting says whether a period is long enough for the stored state (PL68): today and the
+// last 7 days, or an own period up to them, always count fresh.
+func lasting(f Filters, now time.Time) bool {
+	if f.From == nil {
+		return true
+	}
+	end := now
+	if f.To != nil {
+		end = *f.To
+	}
+	return end.Sub(*f.From) > 8*24*time.Hour
+}
+
+// settle rounds the start of a long period that moves with the clock ("30 days") down to
+// 5 minutes, so that openings within them find the same stored state (PL68).
+func settle(f Filters, now time.Time) Filters {
+	if f.From != nil && f.To == nil && lasting(f, now) {
+		from := f.From.Truncate(StoreFor)
+		f.From = &from
+	}
+	return f
+}
+
+// key names the stored state of a widget: the tenant, the condition of the rights of the
+// session and the whole query, so that nobody sees the numbers of another (PL68).
+func (s *Service) key(ctx context.Context, out Data, j *job) string {
+	a := authz.From(ctx)
+	cond, args := a.Filter(j.src.typeName, authz.ActionRead, nil)
+	h := sha256.New()
+	fmt.Fprintf(h, "%q|%q|%q|%q|%v|%s|%+v|%q|%q|%q|%d", a.CurrentTenant(), out.Kind, j.src.typeName, cond, args,
+		j.where, j.agg, j.group, j.columns, j.sort, j.size)
+	return "dashboard:v1:" + hex.EncodeToString(h.Sum(nil))
+}
+
+// stored reads the stored state of a widget; anything wrong with it counts as none.
+func (s *Service) stored(ctx context.Context, key string) (Data, bool) {
+	raw, err := s.store.Get(ctx, key)
+	if err != nil {
+		return Data{}, false
+	}
+	var d Data
+	if json.Unmarshal(raw, &d) != nil || d.ComputedAt == nil {
+		return Data{}, false
+	}
+	return d, true
+}
+
+// done marks a computed widget with its moment and stores it under key, if any; a store that
+// fails leaves the widget computed but not stored.
+func (s *Service) done(ctx context.Context, key string, d Data, err error) (Data, error) {
+	if err != nil {
+		return d, err
+	}
+	now := time.Now().UTC()
+	d.ComputedAt = &now
+	if key != "" {
+		if raw, err := json.Marshal(d); err == nil {
+			_ = s.store.Set(ctx, key, raw, StoreFor)
+		}
+	}
+	return d, nil
 }
 
 // Limit lets at most n evaluations of widgets run at once (ITSM_EVALUATIONS, PL67), each for
@@ -479,6 +559,8 @@ type Filters struct {
 	From *time.Time `json:"from,omitempty"`
 	To   *time.Time `json:"to,omitempty"`
 	Unit string     `json:"unit,omitempty"`
+	// Fresh computes again instead of showing the stored state ("Jetzt aktualisieren", PL68).
+	Fresh bool `json:"fresh,omitempty"`
 }
 
 // Point is one group of a pie, bar or line: its key, its label and its value.
@@ -501,6 +583,8 @@ type Data struct {
 	Columns []string         `json:"columns,omitempty"`
 	// SidebarOnly says the widget names @record and counts only in the sidebar of a record.
 	SidebarOnly bool `json:"sidebar_only,omitempty"`
+	// ComputedAt is when the numbers were computed: now, or earlier for a stored state (PL68).
+	ComputedAt *time.Time `json:"computed_at,omitempty"`
 }
 
 // Data computes a widget of a dashboard the session may read, with the session's rights.
@@ -515,7 +599,26 @@ func (s *Service) Data(ctx context.Context, dashboardID, widgetID uuid.UUID, f F
 	if fmt.Sprint(w["dashboard"]) != dashboardID.String() {
 		return Data{}, fmt.Errorf("widget %s of dashboard %s: %w", widgetID, dashboardID, records.ErrNotFound)
 	}
-	return s.compute(ctx, w, f, nil)
+	return s.keep(ctx, w, f)
+}
+
+// keep computes one widget, or shows its stored state for a long period (PL68).
+func (s *Service) keep(ctx context.Context, w records.Record, f Filters) (Data, error) {
+	now := time.Now()
+	f = settle(f, now)
+	out, j, err := s.prepare(ctx, w, f, nil)
+	if err != nil || j == nil {
+		return out, err
+	}
+	key := ""
+	if s.store != nil && lasting(f, now) {
+		key = s.key(ctx, out, j)
+		if d, ok := s.stored(ctx, key); ok && !f.Fresh {
+			return d, nil
+		}
+	}
+	d, err := s.run(ctx, out, j)
+	return s.done(ctx, key, d, err)
 }
 
 // Bundle computes all widgets of a dashboard the session may read at once (PL67, Hauptplan
@@ -544,13 +647,26 @@ func (s *Service) Bundle(ctx context.Context, dashboardID uuid.UUID, f Filters, 
 		id  string
 		out Data
 		j   *job
+		key string
 	}
+	// A long period shows the stored state of each widget (PL68); only the others count.
+	now := time.Now()
+	f = settle(f, now)
+	keep := s.store != nil && lasting(f, now)
 	sets := map[string][]member{}
 	var order []string
 	var alone []member
 	for _, w := range ws {
 		id := fmt.Sprint(w["id"])
 		out, j, err := s.prepare(ctx, w, f, nil)
+		key := ""
+		if err == nil && j != nil && keep {
+			key = s.key(ctx, out, j)
+			if d, ok := s.stored(ctx, key); ok && !f.Fresh {
+				send(id, d, nil)
+				continue
+			}
+		}
 		switch {
 		case err != nil || j == nil:
 			send(id, out, err)
@@ -559,9 +675,9 @@ func (s *Service) Bundle(ctx context.Context, dashboardID uuid.UUID, f Filters, 
 			if _, ok := sets[k]; !ok {
 				order = append(order, k)
 			}
-			sets[k] = append(sets[k], member{id, out, j})
+			sets[k] = append(sets[k], member{id, out, j, key})
 		default:
-			alone = append(alone, member{id, out, j})
+			alone = append(alone, member{id, out, j, key})
 		}
 	}
 	var wg sync.WaitGroup
@@ -579,13 +695,15 @@ func (s *Service) Bundle(ctx context.Context, dashboardID uuid.UUID, f Filters, 
 			}
 			res, err := s.runSet(ctx, outs, jobs)
 			for i, m := range ms {
-				send(m.id, res[i], err)
+				d, err := s.done(ctx, m.key, res[i], err)
+				send(m.id, d, err)
 			}
 		})
 	}
 	for _, m := range alone {
 		wg.Go(func() {
 			d, err := s.run(ctx, m.out, m.j)
+			d, err = s.done(ctx, m.key, d, err)
 			send(m.id, d, err)
 		})
 	}
@@ -726,7 +844,8 @@ func (s *Service) TileData(ctx context.Context, tileID uuid.UUID) (Data, error) 
 	if err != nil {
 		return Data{}, err
 	}
-	return s.compute(ctx, w, Filters{}, nil)
+	// The tiles of the portal count over everything: their stored state counts (PL68).
+	return s.keep(ctx, w, Filters{})
 }
 
 // sampleRecord is a record of the type with empty values of the right kind, to check a

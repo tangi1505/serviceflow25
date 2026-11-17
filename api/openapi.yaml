@@ -4466,6 +4466,7 @@ components:
         from: { type: string, format: date-time, description: "start of the period, inclusive" }
         to: { type: string, format: date-time, description: "end of the period, exclusive" }
         unit: { type: string, description: "a node of the organisation tree; the records there and below" }
+        fresh: { type: boolean, description: "compute again instead of showing the stored state of a long period (PL68, \"Jetzt aktualisieren\")" }
     DashboardDataLine:
       type: object
       description: One widget of a dashboard in the stream of its data (PL67).
@@ -4499,6 +4500,7 @@ components:
           type: array
           items: { type: string }
         sidebar_only: { type: boolean, description: "the widget names @record and counts only in the sidebar of a record" }
+        computed_at: { type: string, format: date-time, description: "when the numbers were computed: periods longer than 8 days and the tiles show a stored state up to 5 min old (PL68)" }
     SettingOption:
       type: object
       required: [value, label]

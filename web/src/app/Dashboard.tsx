@@ -181,8 +181,11 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   liveNow.current = live(period, own);
   const last = useRef(0);
   const pending = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const reload = () => {
+  // fresh asks the next load to compute again instead of showing the stored state (PL68).
+  const fresh = useRef(false);
+  const reload = (again = false) => {
     last.current = Date.now();
+    fresh.current = again;
     setLoadedAt(new Date());
     void queryClient.invalidateQueries({ queryKey: ["dashboard", id, "data"] });
   };
@@ -198,14 +201,22 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
 
   // All widgets come in one request (PL67); each line lands in the query of its widget, so
   // that a widget shows as soon as it is ready. The old period's stream stops with its key.
+  // Its result is the oldest moment of the numbers: a long period shows a stored state (PL68),
+  // and "Stand" tells how old it is; while the widgets compute again, the old one stays.
   const counted = (view.data?.widgets ?? []).some((w) => w["kind"] !== "text");
   const stream = useQuery({
     queryKey: ["dashboard", id, "data", "all", filters],
     queryFn: async ({ signal }) => {
+      const again = fresh.current;
+      fresh.current = false;
+      // Set in the callback: TypeScript would narrow a plain null to never.
+      let oldest = null as string | null;
       await api.dashboardData(
         id,
-        filters,
-        (line) =>
+        again ? { ...filters, fresh: true } : filters,
+        (line) => {
+          const at = line.data?.computed_at;
+          if (at && (oldest === null || at < oldest)) oldest = at;
           queryClient.setQueryData<Shown>(
             ["dashboard", id, "data", line.widget, filters],
             // A line with a problem marks the widget as failed; its kind stays the widget's.
@@ -215,10 +226,11 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
               ) as WidgetData["kind"],
               failed: true,
             },
-          ),
+          );
+        },
         signal,
       );
-      return true;
+      return oldest;
     },
     enabled: counted && !settings.isPending,
   });
@@ -344,13 +356,13 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
             {t("dashboard.loadedAt", {
-              time: loadedAt.toLocaleTimeString(i18n.language, {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
+              time: (stream.data ? new Date(stream.data) : loadedAt).toLocaleTimeString(
+                i18n.language,
+                { hour: "2-digit", minute: "2-digit" },
+              ),
             })}
           </span>
-          <Button size="sm" variant="outline" onClick={reload}>
+          <Button size="sm" variant="outline" onClick={() => reload(true)}>
             {t("dashboard.refresh")}
           </Button>
         </div>

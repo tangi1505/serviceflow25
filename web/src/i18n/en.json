@@ -1084,7 +1084,7 @@
     "allUnits": "All I may see",
     "unitBelow": "{{name}} and below",
     "loadedAt": "As of {{time}}",
-    "refresh": "Refresh",
+    "refresh": "Refresh now",
     "empty": "This dashboard has no widgets yet.",
     "widgetError": "This widget could not be computed.",
     "openNumber": "{{title}}: {{value}}, open the list",

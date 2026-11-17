@@ -190,6 +190,27 @@ describe("Dashboards", () => {
     await waitFor(() => expect(state.dashboards![0]!.dashboard["period"]).toBe("days_30"));
   });
 
+  it("shows how old the stored state is, and computes again on request (PL68)", async () => {
+    board(state);
+    state.widgetData![W(1)] = { ...state.widgetData![W(1)], computed_at: "2026-11-17T08:05:00Z" };
+    state.widgetData![W(2)] = { ...state.widgetData![W(2)], computed_at: "2026-11-17T08:07:00Z" };
+    const user = userEvent.setup();
+    renderAt(`/dashboards/${D}`);
+    await screen.findByRole("button", { name: "Offene: 42, Liste öffnen" });
+    // The oldest of the widgets.
+    const time = new Date("2026-11-17T08:05:00Z").toLocaleTimeString("de", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    expect(await screen.findByText(`Stand ${time}`)).toBeInTheDocument();
+    const streams = () => state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`);
+    expect(JSON.parse(String(streams()[0]!.body)) as object).not.toHaveProperty("fresh");
+    await user.click(screen.getByRole("button", { name: "Jetzt aktualisieren" }));
+    await waitFor(() =>
+      expect(JSON.parse(String(streams().at(-1)!.body)) as object).toHaveProperty("fresh", true),
+    );
+  });
+
   it("loads all widgets in one request, and one that fails shows its error (PL67)", async () => {
     board(state);
     state.widgetFails = [W(2)];

@@ -312,6 +312,9 @@ func All() []Scenario {
 		// LZ18 (PL66, Hauptplan E195): the targets hold for the data in Prod size only.
 		{ID: "LZ18", Title: "Dashboard im Standard-Zeitraum öffnen, alle Widgets zugleich (PL66)", Kind: P95, Target: 1000, Workers: 1, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
 		{ID: "LZ18w", Title: "Ein Widget von „Statistik“ und „Helpdesk“, 16 zugleich (PL66)", Kind: P95, Target: 300, Workers: 16, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
+		// LZ19, LZ20 (PL68): the long periods of "Statistik", stored and computed again.
+		{ID: "LZ19", Title: "„Statistik“ mit Jahr und Gesamt aus dem gespeicherten Stand (PL68)", Kind: P95, Target: 1000, Workers: 1, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
+		{ID: "LZ20", Title: "„Jetzt aktualisieren“ an „Statistik“ mit Jahr und Gesamt (PL68)", Kind: P95, Target: 10000, Workers: 1, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
 		// LZ21 (PL67): LZ1, LZ2 and LZ4 with their targets while 20 dashboards count over
 		// everything; --only=LZ21 takes all three.
 		{ID: "LZ21a", Title: "LZ1 neben 20 Dashboards über alles (PL67)", Kind: P95, Target: 50, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},

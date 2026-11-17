@@ -1084,7 +1084,7 @@
     "allUnits": "Alle, die ich sehen darf",
     "unitBelow": "{{name}} und darunter",
     "loadedAt": "Stand {{time}}",
-    "refresh": "Aktualisieren",
+    "refresh": "Jetzt aktualisieren",
     "empty": "Dieses Dashboard hat noch keine Widgets.",
     "widgetError": "Dieses Widget konnte nicht berechnet werden.",
     "openNumber": "{{title}}: {{value}}, Liste öffnen",

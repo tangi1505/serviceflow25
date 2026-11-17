@@ -730,6 +730,10 @@ Meilenstein. Werkzeug: `test/load` (E51).
   die Kennzahlen, weil PostgreSQL Gruppierungssätze ohne parallele Arbeiter rechnet. Höchstens
   `ITSM_EVALUATIONS` Auswertungen zugleich je Instanz (4), jede mit der Zeitgrenze einer
   Anfrage ab ihrem Platz. Offen: die Liste (LZ2) neben 20 Dashboards über alles, bis Stufe 3.
+- **Gespeicherter Stand** (PL68, Kern-Plan E73): Widgets mit Zeiträumen über 8 Tage und die
+  Zahlen-Kacheln des Portals liegen bis 5 min in Valkey (`dashboard:v1:<SHA-256>` über Mandant,
+  Bedingung der Rechte und Abfrage); `computed_at` sagt, wann gerechnet wurde, `fresh` rechnet
+  neu. Heute, 7 Tage und die Seitenleiste rechnen immer frisch.
 
 ---
 

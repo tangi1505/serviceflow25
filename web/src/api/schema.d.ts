@@ -3583,6 +3583,8 @@ export interface components {
             to?: string;
             /** @description a node of the organisation tree; the records there and below */
             unit?: string;
+            /** @description compute again instead of showing the stored state of a long period (PL68, "Jetzt aktualisieren") */
+            fresh?: boolean;
         };
         /** @description One widget of a dashboard in the stream of its data (PL67). */
         DashboardDataLine: {
@@ -3617,6 +3619,11 @@ export interface components {
             columns?: string[];
             /** @description the widget names @record and counts only in the sidebar of a record */
             sidebar_only?: boolean;
+            /**
+             * Format: date-time
+             * @description when the numbers were computed: periods longer than 8 days and the tiles show a stored state up to 5 min old (PL68)
+             */
+            computed_at?: string;
         };
         SettingOption: {
             /** @description the value: a text for a choice, a number or text for the cells of a matrix */

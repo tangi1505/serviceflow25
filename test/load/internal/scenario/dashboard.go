@@ -222,3 +222,75 @@ func besideDashboards(ctx context.Context, _ *http.Client, base string) (func() 
 		return fmt.Sprintf("daneben %d Widgets über alles gerechnet, %d Dashboards ganz geöffnet, %d mit Fehler", widgets.Load(), done.Load(), failed.Load())
 	}, nil
 }
+
+// longFilters are the long periods of LZ19 and LZ20 (PL68): this year and everything.
+func longFilters(now time.Time) []map[string]any {
+	return []map[string]any{
+		{"from": time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location()).UTC().Format(time.RFC3339)},
+		{},
+	}
+}
+
+// statistik finds the data request of "Statistik".
+func statistik(ctx context.Context, client *http.Client, s session, base string) (string, error) {
+	boards, err := s.boards(ctx, client, base, time.Now())
+	if err != nil {
+		return "", err
+	}
+	for _, b := range boards {
+		if b.name == "Statistik" {
+			return b.data, nil
+		}
+	}
+	return "", errors.New("no dashboard Statistik")
+}
+
+// prepareStored is LZ19 (PL68): "Statistik" with the year and with everything, from the stored
+// state. Preparing computes both once with a client that waits as long as it takes; the
+// measured calls then find them stored, until they are 5 min old.
+func prepareStored(ctx context.Context, client *http.Client, base string) (CallFunc, error) {
+	s, err := login(ctx, client, base)
+	if err != nil {
+		return nil, err
+	}
+	url, err := statistik(ctx, client, s, base)
+	if err != nil {
+		return nil, err
+	}
+	periods := longFilters(time.Now())
+	patient := &http.Client{Timeout: 5 * time.Minute}
+	for _, f := range periods {
+		if err := s.open(ctx, patient, url, f, nil); err != nil {
+			return nil, err
+		}
+	}
+	var turn atomic.Uint64
+	return func(ctx context.Context, client *http.Client) bool {
+		return s.open(ctx, client, url, periods[(turn.Add(1)-1)%uint64(len(periods))], nil) == nil
+	}, nil
+}
+
+// prepareRefresh is LZ20 (PL68): "Jetzt aktualisieren" on "Statistik" with the year and with
+// everything, computed fresh each time.
+func prepareRefresh(ctx context.Context, client *http.Client, base string) (CallFunc, error) {
+	s, err := login(ctx, client, base)
+	if err != nil {
+		return nil, err
+	}
+	url, err := statistik(ctx, client, s, base)
+	if err != nil {
+		return nil, err
+	}
+	var periods []map[string]any
+	for _, f := range longFilters(time.Now()) {
+		f["fresh"] = true
+		periods = append(periods, f)
+	}
+	// Its own client: the one of the measurement gives up after 10 s, the target itself; a
+	// longer one is measured, not cut off.
+	patient := &http.Client{Timeout: 5 * time.Minute}
+	var turn atomic.Uint64
+	return func(ctx context.Context, _ *http.Client) bool {
+		return s.open(ctx, patient, url, periods[(turn.Add(1)-1)%uint64(len(periods))], nil) == nil
+	}, nil
+}
