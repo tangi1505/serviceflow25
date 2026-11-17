@@ -164,7 +164,8 @@ docker compose run --rm tools go run ./test/load generate --size=prod --out=/tmp
 
 Die Messung in Prod-Größe (H14) lädt 70.000 Personen und 18,25 Mio. Störungen über die Bulk-API
 einer laufenden Instanz und setzt die Geschichte direkt in deren Datenbank; danach misst die
-volle Stufe auf diesem Bestand (`--only=LZ2,LZ4` für einzelne Ziele) und räumt die angelegten
+volle Stufe auf diesem Bestand (`--only=LZ2,LZ4` für einzelne Ziele; die Dashboards LZ18 und
+LZ18w nur mit `--data=prod`) und räumt die angelegten
 Störungen wieder ab. Die Instanz braucht so viele Bulk-Worker (`ITSM_WORKERS_BULK`) wie
 `--parallel`:
 

@@ -262,6 +262,17 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 		fmt.Sprintf("CREATE INDEX %s ON %s (created_at)", pgx.Identifier{table + "_created_at_idx"}.Sanitize(), pgx.Identifier{table}.Sanitize()), run); err != nil {
 		return nil, err
 	}
+	// The moment of the resolution of a type with the trait resolution (PL66, Hauptplan E195):
+	// the numbers of "Statistik" count what was resolved in a period. Only resolved records
+	// are in it, the open ones of a queue are not.
+	if f, ok := t.Field(meta.FieldResolvedAt); ok && f.Type == meta.FieldDateTime {
+		idx := table + "_resolved_at_idx"
+		if err := ensureIndex(ctx, tx, table, idx,
+			fmt.Sprintf("CREATE INDEX %s ON %s (%s) WHERE %s IS NOT NULL", pgx.Identifier{idx}.Sanitize(), pgx.Identifier{table}.Sanitize(),
+				pgx.Identifier{meta.FieldResolvedAt}.Sanitize(), pgx.Identifier{meta.FieldResolvedAt}.Sanitize()), run); err != nil {
+			return nil, err
+		}
+	}
 	if err := ensureDeclared(ctx, tx, t, table, run); err != nil {
 		return nil, err
 	}

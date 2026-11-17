@@ -96,8 +96,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL63** | Index ohne Schreibsperre (Befund aus H14, Rest aus PL54): Ein neuer Index auf einer großen Tabelle hält das Schreiben für die Dauer des Baus an (`CREATE INDEX` statt `CONCURRENTLY`); Kundenschicht und Typ-Editor kennen `indexes` noch nicht | ⬜ deine Entscheidung offen | 1 d | Paket mit neuem Index auf 18,25 Mio. Störungen installieren, währenddessen LZ4 ohne Fehler |
 | **PL64** | Suche nach früher häufigen Wörtern (Befund aus H14, Rest aus PL55): Ein Wort mit wenigen Treffern in den letzten sieben Tagen, aber sehr vielen davor, durchsucht alles und endet an der Zeitgrenze von 10 s. Vorschlag: weitere Fenster (30 Tage, 1 Jahr) vor dem ganzen Bestand | ⬜ deine Entscheidung offen | 0,5 d | Lastwerkzeug: Suche nach einem solchen Wort p95 ≤ 300 ms auf `ki-lab` |
 | **PL65** | Dashboards, Stufe 1: Standard-Zeitraum. Ein Feld am Kerntyp Dashboard nennt den Zeitraum beim Öffnen; „Statistik“ bekommt 7 Tage, bestehende Dashboards per Umzug; die Oberfläche startet damit und merkt sich die letzte Wahl je Person. Ereignisse laden die Zahlen nur bei Zeiträumen bis 7 Tage von selbst neu; beim Wechsel des Zeitraums werden laufende Abfragen abgebrochen (Hauptplan E195; §2.1) | 🟢 | 1 d | „Statistik“ öffnen → Zeitraum „7 Tage“; auf „Jahr“ wechseln und eine Störung ändern → die Zahlen laden nicht von selbst neu; beim schnellen Wechsel des Zeitraums zeigt das Anfrageprotokoll abgebrochene Abfragen |
-| **PL66** | Dashboards, Stufe 1: Index und Messung. Ein Index auf „gelöst am“ für jeden Typ mit dem Merkmal Lösung, nur über gesetzte Werte; die Lastprobe für LZ18 im Lastwerkzeug; gemessen auf `ki-lab`. Der Index entsteht dort ohne Schreibsperre, sobald PL63 steht, sonst in einem Fenster ohne Last (Hauptplan E195; §2.1) | ⬜ | 1 d | `EXPLAIN` der Kennzahl „Gelöste Störungen“ mit 7 Tagen nutzt den Index; Lastwerkzeug auf `ki-lab` mit `--only=LZ18` → p95 ≤ 1 s für das Dashboard und ≤ 300 ms je Widget |
-| **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | 🔒 PL66 | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
+| **PL66** | Dashboards, Stufe 1: Index und Messung. Ein Index auf „gelöst am“ für jeden Typ mit dem Merkmal Lösung, nur über gesetzte Werte; die Lastprobe für LZ18 im Lastwerkzeug; gemessen auf `ki-lab`. Der Index entsteht dort ohne Schreibsperre, sobald PL63 steht, sonst in einem Fenster ohne Last (Hauptplan E195; §2.1) | 🟢 | 1 d | `EXPLAIN` der Kennzahl „Gelöste Störungen“ mit 7 Tagen nutzt den Index; Lastwerkzeug auf `ki-lab` mit `--only=LZ18` → p95 ≤ 1 s für das Dashboard und ≤ 300 ms je Widget |
+| **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | ⬜ | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
 | **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | 🔒 PL67 | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
 | **PL69** | Dashboards, Stufe 3: Tageswerte. Je Typ eine Tabelle mit Zahl und Summen je Tag, Einheit und den Feldern, nach denen die mitgelieferten Widgets gruppieren; ein Hintergrundlauf führt sie nach (asynchron, Hauptplan E191), ein Abgleich je Nacht zählt nach. Lange Zeiträume lesen daraus, wenn sich die Rechte der Person auf Einheiten zurückführen lassen; sonst gilt der Weg aus PL68 (Hauptplan E195; §2.1) | 🔒 PL68, V2 | 2 d | eine Störung anlegen → der Tageswert steigt innerhalb einer Minute; die Summe der Tageswerte eines Monats gleicht der gezählten Zahl; eine Person nur mit „beteiligt“ bekommt dieselben Zahlen wie vor PL69 |
 | **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | 🔒 PL69 | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
@@ -246,7 +246,7 @@ im Code auf `main` bei `4090604`, nichts gemessen.**
   ein Jahr 1,8 Mio.
 - **Nicht geprüft:** die Pläne der zehn Abfragen auf `ki-lab` (`EXPLAIN ANALYZE`), die Größe
   des Pools dort, was die Bedingung der Rechte je Rolle kostet (PL62), und ob Stufe 1 die
-  Grenze von 1 s wirklich hält; das misst PL66.
+  Grenze von 1 s wirklich hält; das misst PL66 (2026-11-17: sie hält, p95 113 ms, Umsetzungsstand PL66).
 
 ## 3. Offene Fragen
 
@@ -1682,6 +1682,42 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
 
+### PL66 — Dashboards: Index und Messung, 2026-11-17
+
+- **Grundlage:** Hauptplan E195, LZ18; §2.1.
+- **Gebaut:**
+  - Index `<tabelle>_resolved_at_idx` auf „gelöst am“ nur über gelöste Datensätze
+    (`WHERE resolved_at IS NOT NULL`) für jeden Typ mit dem Feld `resolved_at` als Zeitpunkt
+    (`internal/schema/schema.go`); bei den Paketen sind das Störung und Anfrage.
+  - Lastwerkzeug: ein gemessener Aufruf darf aus mehreren Anfragen bestehen
+    (`measure.CallFunc`, `RunCalls`), ein Szenario kann seine Zahl gleichzeitiger Aufrufe
+    nennen (`Workers`). Neu sind LZ18 (ein Aufruf öffnet „Statistik“ oder „Helpdesk“ im
+    Wechsel, alle Widgets zugleich, mit dem Zeitraum des Dashboards, eine Person) und LZ18w
+    (ein Widget nach dem anderen aus beiden Dashboards, 16 zugleich), beide nur mit
+    `--data=prod` (`test/load/internal/scenario/dashboard.go`).
+- **Belegt, 2026-11-17:**
+  - Go `TestResolvedAtIndex`: der Index entsteht mit der Bedingung und beim zweiten Einspielen
+    keine Änderung; `TestDeclaredIndexesFollowTheDefinition` zeigt, dass ein Typ ohne das Feld
+    keinen bekommt.
+  - Ganze CI grün am 2026-11-17 auf `ki-lab`: Go, Web (153 Vitest-Fälle, 22 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−84 %), LZ2 3,09 ms (−32 %), LZ3 5,07 ms (−46 %), LZ4 3,82 ms (−51 %),
+    LZ5 10.981 Zeilen/s, LZ13 8.943 Zeilen/s.
+  - Auf `ki-lab` (H14, 18,25 Mio. Störungen, davon 18,16 Mio. gelöst): der Index entstand beim
+    Einspielen ohne Last daneben in 4,1 s, 389 MB. `EXPLAIN ANALYZE` der Zählung „Gelöste
+    Störungen“ der letzten 7 Tage (10.550 Zeilen): Index Only Scan auf dem neuen Index,
+    4,3 ms.
+  - Lastwerkzeug auf `ki-lab`, volle Stufe (3 Läufe je 60 s): LZ18 p95 113 ms (Ziel ≤ 1 s),
+    LZ18w p95 132 ms (Ziel ≤ 300 ms), beide ohne Fehler.
+  - Abbruch (offen aus PL65): „Störungen nach Gruppe“ über „Gesamt“, nach 300 ms vom Aufrufer
+    abgebrochen: Antwort 499 nach 301 ms, im Protokoll als Info „request cancelled by the
+    client“; 1 s danach läuft keine Abfrage mehr auf der Tabelle.
+- **Befund für PL67 bis PL70:** über „Gesamt“ braucht jedes Widget von „Statistik“ allein
+  1,0 bis 6,1 s (Kennzahlen 1,0 bis 1,4 s, je Woche 4,0 und 4,1 s, nach Gruppe 6,1 s, einzeln
+  nacheinander gemessen). Alle zehn zugleich kommen der Zeitgrenze von 10 s (PL56) nahe.
+- **Nicht geprüft:** die Widgets mit der Bedingung der Rechte einer Rolle statt des Kontos
+  `load` (PL62); der Abbruch aus dem Browser beim Wechsel des Zeitraums (belegt ist er mit
+  `curl`; die Oberfläche reicht das Abbruchsignal der Abfrage weiter, PL65).
+
 ### PL65 — Dashboards: Standard-Zeitraum, 2026-11-17
 
 - **Grundlage:** Hauptplan E195, E197; E70, E71; §2.1.
@@ -1717,8 +1753,8 @@ Die Fragen an die Fachseite stehen im Hauptplan.
     leer; „Statistik“ öffnet mit „7 Tage“; nach der Wahl „30 Tage“ öffnet sie mit „30 Tage“
     und die Einstellungen der Person haben den Wert (danach wieder entfernt).
 - **Nicht geprüft:** der Abbruch beim schnellen Wechsel auf 8092: die Abfragen sind dort in
-  wenigen Millisekunden fertig, nichts läuft noch, wenn der Zeitraum wechselt. Das folgt mit
-  PL66 auf der Instanz in Prod-Größe auf `ki-lab`. Das Neuladen durch Ereignisse nur bis
+  wenigen Millisekunden fertig, nichts läuft noch, wenn der Zeitraum wechselt. Mit PL66 auf
+  `ki-lab` belegt (499, die Abfrage endet). Das Neuladen durch Ereignisse nur bis
   7 Tage ist nur im Vitest der Regel belegt, nicht im Browser.
 
 ### PL56 — Zeitgrenze je API-Anfrage, 2026-11-15

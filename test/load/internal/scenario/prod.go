@@ -53,6 +53,10 @@ func prodScenarios(all []Scenario) []Scenario {
 		case "LZ4":
 			all[i].Title, all[i].Prepare = "Eine Störung anlegen, mit den Regeln und Fristen der Pakete (Prod-Größe)", prepareCreateProd
 			all[i].Cleanup = cleanupCreatedProd
+		case "LZ18":
+			all[i].Call, all[i].WaitsFor = prepareDashboard, ""
+		case "LZ18w":
+			all[i].Prepare, all[i].WaitsFor = prepareWidget, ""
 		}
 	}
 	return all

@@ -40,6 +40,9 @@ const (
 // RequestFunc builds one request against a base URL.
 type RequestFunc func(ctx context.Context, base string) (*http.Request, error)
 
+// CallFunc is one measured call of several requests (LZ18): true when all succeeded.
+type CallFunc func(ctx context.Context, client *http.Client) bool
+
 // Scenario is one measurable thing.
 type Scenario struct {
 	ID     string
@@ -56,13 +59,20 @@ type Scenario struct {
 	// Throughput is a run measured as a whole instead of single requests (LZ5, PL32): it sends
 	// rows rows and returns how many were written; the measurement is rows per second.
 	Throughput func(ctx context.Context, client *http.Client, base string, rows int) (int, error)
+	// Call prepares a measured call of several requests instead of one (LZ18, PL66).
+	Call func(ctx context.Context, client *http.Client, base string) (CallFunc, error)
+	// Workers, when set, is how many call at the same time instead of the stage's number: one
+	// person opens one dashboard (LZ18).
+	Workers int
 	// Cleanup removes what the measurement created, so that the next run starts on the same
 	// data (H14: LZ4 in Prod size creates some 350,000 incidents a run); it returns how many.
 	Cleanup func(ctx context.Context, client *http.Client, base string) (int, error)
 }
 
 // Ready reports whether the scenario can run.
-func (s Scenario) Ready() bool { return s.Request != nil || s.Prepare != nil || s.Throughput != nil }
+func (s Scenario) Ready() bool {
+	return s.Request != nil || s.Prepare != nil || s.Throughput != nil || s.Call != nil
+}
 
 func get(path string) RequestFunc {
 	return func(ctx context.Context, base string) (*http.Request, error) {
@@ -296,5 +306,8 @@ func All() []Scenario {
 		{ID: "LZ15", Title: "Massenaktion über 1.000 gewählte Zeilen (UI6, :batch)", Kind: Duration, Target: 10, Throughput: batchRun},
 		{ID: "LZ16", Title: "Liste einer gespeicherten Suche mit Rollenfilter „meine Gruppen“ (UI4)", Kind: P95, Target: 150, Prepare: prepareMyGroups},
 		{ID: "LZ17", Title: "Zeitleiste eines Datensatzes mit 1.000 Einträgen (PL42)", Kind: P95, Target: 150, Prepare: prepareTimeline},
+		// LZ18 (PL66, Hauptplan E195): the targets hold for the data in Prod size only.
+		{ID: "LZ18", Title: "Dashboard im Standard-Zeitraum öffnen, alle Widgets zugleich (PL66)", Kind: P95, Target: 1000, Workers: 1, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
+		{ID: "LZ18w", Title: "Ein Widget von „Statistik“ und „Helpdesk“, 16 zugleich (PL66)", Kind: P95, Target: 300, Workers: 16, WaitsFor: "die Daten in Prod-Größe (--data=prod)"},
 	})
 }

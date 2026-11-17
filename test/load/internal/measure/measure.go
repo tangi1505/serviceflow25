@@ -43,9 +43,23 @@ type Result struct {
 	Rows int `json:"rows,omitempty"`
 }
 
+// CallFunc is one measured call: one request, or several that belong together, such as all
+// widgets of a dashboard at once (LZ18, PL66); it says whether all of it succeeded.
+type CallFunc func(ctx context.Context, client *http.Client) bool
+
+// Requests makes a call of one request.
+func Requests(build RequestFunc) CallFunc {
+	return func(ctx context.Context, client *http.Client) bool { return call(ctx, client, build) }
+}
+
 // Run measures until o.Duration has passed after the warmup. Calls during the warmup are not
 // counted. A call counts as an error when it fails or answers outside 2xx.
 func Run(ctx context.Context, client *http.Client, req RequestFunc, o Options) Result {
+	return RunCalls(ctx, client, Requests(req), o)
+}
+
+// RunCalls measures calls as Run measures requests.
+func RunCalls(ctx context.Context, client *http.Client, do CallFunc, o Options) Result {
 	if o.Workers < 1 {
 		o.Workers = 1
 	}
@@ -67,7 +81,7 @@ func Run(ctx context.Context, client *http.Client, req RequestFunc, o Options) R
 				if !t0.Before(end) {
 					break
 				}
-				ok := call(ctx, client, req)
+				ok := do(ctx, client)
 				d := time.Since(t0)
 				if t0.Before(measureFrom) {
 					continue

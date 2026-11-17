@@ -301,7 +301,9 @@ E34 und KF9:
 - **Indizes je Typ** (PL54, Kern-Plan E65): jede Tabelle eines Typs hat einen Index auf
   `created_at`; ein Paket erklärt weitere in der Typdatei (`indexes: - fields: [state,
   created_at]`), `internal/schema` legt sie beim Installieren an, markiert sie mit einem
-  Kommentar und entfernt erklärte, die das Paket nicht mehr nennt.
+  Kommentar und entfernt erklärte, die das Paket nicht mehr nennt. Hat ein Typ das Feld
+  `resolved_at`, bekommt er dazu einen Index darauf nur über die gelösten Datensätze, für die
+  Zahlen der Dashboards im Zeitraum (PL66).
 - **Typen im Speicher** (PL53, Kern-Plan E64): `records.Service.Type` hält die wirksamen
   Typen im Speicher und lädt sie neu, wenn sich `definition` ändert: im eigenen Prozess sofort
   (`meta.DefinitionsChanged`), für andere Instanzen und die Kommandozeile über einen Trigger mit
@@ -719,6 +721,9 @@ Meilenstein. Werkzeug: `test/load` (E51).
   zuerst (PL55), eine Zeitgrenze von 10 s je API-Anfrage (PL56), zusammengefasste Rechtefilter
   und Listen, die jedes Mal mit ihren Werten geplant werden (PL57), und Zwischenspeicher, die
   im Hintergrund nachladen (PL58). Offene Schwachstellen: Kern-Plan PL59 bis PL64.
+- **Dashboards in Prod-Größe** (PL65, PL66, 2026-11-17): Standard-Zeitraum je Dashboard und der
+  Index auf „gelöst am“; LZ18 erfüllt (p95 113 ms für ein ganzes Dashboard, 132 ms je Widget).
+  Über „Gesamt“ braucht ein Widget weiter 1 bis 6 s; das gehen PL67 bis PL70 an.
 
 ---
 

@@ -333,7 +333,12 @@ func cmdRun(args []string, out io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("%s: vorbereiten am neuen Stand: %w", s.ID, err)
 		}
-		var oldReq measure.RequestFunc
+		// A scenario may name how many call at once (LZ18: one person, one dashboard).
+		run := opts
+		if s.Workers > 0 {
+			run.Workers = s.Workers
+		}
+		var oldReq measure.CallFunc
 		var unavailable string
 		if oldBase != "" {
 			// A baseline build that cannot serve a new scenario (it lacks the endpoint) is not
@@ -349,13 +354,13 @@ func cmdRun(args []string, out io.Writer) error {
 			// Alternate, and swap the order every repetition (A B, B A, A B …), so that drift of
 			// the machine and warm caches hit both builds alike.
 			if oldReq == nil || i%2 == 0 {
-				newRuns = append(newRuns, measure.Run(ctx, client, newReq, opts))
+				newRuns = append(newRuns, measure.RunCalls(ctx, client, newReq, run))
 				if oldReq != nil {
-					oldRuns = append(oldRuns, measure.Run(ctx, client, oldReq, opts))
+					oldRuns = append(oldRuns, measure.RunCalls(ctx, client, oldReq, run))
 				}
 			} else {
-				oldRuns = append(oldRuns, measure.Run(ctx, client, oldReq, opts))
-				newRuns = append(newRuns, measure.Run(ctx, client, newReq, opts))
+				oldRuns = append(oldRuns, measure.RunCalls(ctx, client, oldReq, run))
+				newRuns = append(newRuns, measure.RunCalls(ctx, client, newReq, run))
 			}
 		}
 		m := measure.Best(newRuns)
@@ -428,9 +433,16 @@ func throughput(ctx context.Context, client *http.Client, s scenario.Scenario, b
 	return measure.Result{Requests: 1, Rows: n, RPS: float64(n) / took.Seconds()}, nil
 }
 
-// prepare binds a scenario to a target: runs its Prepare step, if any, and returns the
-// request builder for the measurement.
-func prepare(ctx context.Context, client *http.Client, s scenario.Scenario, base string) (measure.RequestFunc, error) {
+// prepare binds a scenario to a target: runs its Prepare or Call step, if any, and returns the
+// measured call.
+func prepare(ctx context.Context, client *http.Client, s scenario.Scenario, base string) (measure.CallFunc, error) {
+	if s.Call != nil {
+		do, err := s.Call(ctx, client, base)
+		if err != nil {
+			return nil, err
+		}
+		return measure.CallFunc(do), nil
+	}
 	rf := s.Request
 	if s.Prepare != nil {
 		var err error
@@ -438,7 +450,7 @@ func prepare(ctx context.Context, client *http.Client, s scenario.Scenario, base
 			return nil, err
 		}
 	}
-	return func(ctx context.Context) (*http.Request, error) { return rf(ctx, base) }, nil
+	return measure.Requests(func(ctx context.Context) (*http.Request, error) { return rf(ctx, base) }), nil
 }
 
 func cmdGate(args []string, out io.Writer) error {

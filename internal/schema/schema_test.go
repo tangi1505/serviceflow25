@@ -203,6 +203,27 @@ func TestParallelApplyEndsWithOneTable(t *testing.T) {
 	}
 }
 
+// A type with the moment of the resolution gets an index on it over the resolved records only
+// (PL66); a type without gets none (TestDeclaredIndexes lists all indexes of one).
+func TestResolvedAtIndex(t *testing.T) {
+	pool, ctx := testPool(t)
+	drop(t, pool, ctx, "rec_schematest_delta")
+	ty := typ("delta", meta.Field{Name: meta.FieldResolvedAt, Type: meta.FieldDateTime, Label: lbl("r")})
+	if _, err := Apply(ctx, pool, []meta.Type{ty}, quiet); err != nil {
+		t.Fatal(err)
+	}
+	var def string
+	if err := pool.QueryRow(ctx, "SELECT indexdef FROM pg_indexes WHERE indexname = 'rec_schematest_delta_resolved_at_idx'").Scan(&def); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(def, "(resolved_at) WHERE (resolved_at IS NOT NULL)") {
+		t.Fatalf("index %s", def)
+	}
+	if changes, err := Apply(ctx, pool, []meta.Type{ty}, quiet); err != nil || len(changes) != 0 {
+		t.Fatalf("second apply: %v, %+v", err, changes)
+	}
+}
+
 // The indexes a type declares follow its definition (PL54): created with the table or later,
 // dropped when the definition no longer names them; indexes the core keeps stay. Every type
 // has one on created_at.
