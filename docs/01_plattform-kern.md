@@ -95,7 +95,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL62** | Rechte verschiedener Art zugleich (Befund aus H14, Rest aus PL57): „beteiligt“ ODER „eigene Einheit“ bleibt eine ODER-Bedingung und kostet bei Teams mit Hunderttausenden Vorgängen rund 0,5 s | ⬜ deine Entscheidung offen | 1 d | Lastwerkzeug: LZ2 mit einer Rolle aus beiden Arten p95 ≤ 150 ms auf `ki-lab` |
 | **PL63** | Index ohne Schreibsperre (Befund aus H14, Rest aus PL54): Ein neuer Index auf einer großen Tabelle hält das Schreiben für die Dauer des Baus an (`CREATE INDEX` statt `CONCURRENTLY`); Kundenschicht und Typ-Editor kennen `indexes` noch nicht | ⬜ deine Entscheidung offen | 1 d | Paket mit neuem Index auf 18,25 Mio. Störungen installieren, währenddessen LZ4 ohne Fehler |
 | **PL64** | Suche nach früher häufigen Wörtern (Befund aus H14, Rest aus PL55): Ein Wort mit wenigen Treffern in den letzten sieben Tagen, aber sehr vielen davor, durchsucht alles und endet an der Zeitgrenze von 10 s. Vorschlag: weitere Fenster (30 Tage, 1 Jahr) vor dem ganzen Bestand | ⬜ deine Entscheidung offen | 0,5 d | Lastwerkzeug: Suche nach einem solchen Wort p95 ≤ 300 ms auf `ki-lab` |
-| **PL65** | Dashboards, Stufe 1: Standard-Zeitraum. Ein Feld am Kerntyp Dashboard nennt den Zeitraum beim Öffnen; „Statistik“ bekommt 7 Tage, bestehende Dashboards per Umzug; die Oberfläche startet damit und merkt sich die letzte Wahl je Person. Ereignisse laden die Zahlen nur bei Zeiträumen bis 7 Tage von selbst neu; beim Wechsel des Zeitraums werden laufende Abfragen abgebrochen (Hauptplan E195; §2.1) | ⬜ | 1 d | „Statistik“ öffnen → Zeitraum „7 Tage“; auf „Jahr“ wechseln und eine Störung ändern → die Zahlen laden nicht von selbst neu; beim schnellen Wechsel des Zeitraums zeigt das Anfrageprotokoll abgebrochene Abfragen |
+| **PL65** | Dashboards, Stufe 1: Standard-Zeitraum. Ein Feld am Kerntyp Dashboard nennt den Zeitraum beim Öffnen; „Statistik“ bekommt 7 Tage, bestehende Dashboards per Umzug; die Oberfläche startet damit und merkt sich die letzte Wahl je Person. Ereignisse laden die Zahlen nur bei Zeiträumen bis 7 Tage von selbst neu; beim Wechsel des Zeitraums werden laufende Abfragen abgebrochen (Hauptplan E195; §2.1) | 🟢 | 1 d | „Statistik“ öffnen → Zeitraum „7 Tage“; auf „Jahr“ wechseln und eine Störung ändern → die Zahlen laden nicht von selbst neu; beim schnellen Wechsel des Zeitraums zeigt das Anfrageprotokoll abgebrochene Abfragen |
 | **PL66** | Dashboards, Stufe 1: Index und Messung. Ein Index auf „gelöst am“ für jeden Typ mit dem Merkmal Lösung, nur über gesetzte Werte; die Lastprobe für LZ18 im Lastwerkzeug; gemessen auf `ki-lab`. Der Index entsteht dort ohne Schreibsperre, sobald PL63 steht, sonst in einem Fenster ohne Last (Hauptplan E195; §2.1) | ⬜ | 1 d | `EXPLAIN` der Kennzahl „Gelöste Störungen“ mit 7 Tagen nutzt den Index; Lastwerkzeug auf `ki-lab` mit `--only=LZ18` → p95 ≤ 1 s für das Dashboard und ≤ 300 ms je Widget |
 | **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | 🔒 PL66 | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
 | **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | 🔒 PL67 | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
@@ -174,6 +174,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E71** | **Standard-Zeitraum der Dashboards (PL65, deine Entscheidungen 2026-11-16):** die letzte Wahl merkt sich der Server in den Einstellungen der Person, je Dashboard (folgt an andere Rechner); bestehende Dashboards zeigen wie bisher „Gesamt“, nur „Statistik“ bekommt per Umzug 7 Tage, ein neu angelegtes Dashboard startet mit 7 Tagen; die Organisation stellt es je Dashboard im Editor ein („Zeitraum beim Öffnen“). Von mir ergänzt: „Eigener Zeitraum“ wird nicht gemerkt; ein vom Browser abgebrochener Aufruf antwortet 499 und steht als Info im Protokoll, nicht mehr als interner Fehler. Verworfen: nur im Browser merken; alle Dashboards mit 7 Tagen | 2026-11-16 | Pascal |
 | **E70** | **Dashboards in Prod-Größe (PL65 bis PL70, deine Entscheidungen 2026-11-16, Hauptplan E195):** drei Stufen nacheinander: Standard-Zeitraum und Index, dann bündeln und gespeicherter Stand, dann Tageswerte. Die Aufgaben stehen im Kern-Plan und nicht im Oberflächen-Plan, weil fast alles am Kern liegt (Abfragen, Index, Zwischenspeicher, Tageswerte); die Teile der Oberfläche (Standard-Zeitraum, „Stand hh:mm“, Knopf) gehören zu PL65 und PL68. Der gespeicherte Stand ist höchstens 5 min alt; sein Schlüssel enthält die Bedingung der Rechte | 2026-11-16 | Pascal; Zuordnung zum Kern-Plan: Umsetzung |
 | **E68** | **Suche neueste zuerst (PL55, deine Entscheidung 2026-11-14 nach H14):** Die Volltextsuche bewertete jeden Treffer; „Drucker defekt“ traf auf 18,25 Mio. Störungen rund eine Million und brauchte mehr als 10 s. Ein Zeitfenster mit den Indizes allein half wenig (2,6 s), weil schon die Trefferlisten der Indizes groß sind (Titel-Ähnlichkeit 3,9 Mio.). Jetzt geht die Suche je Typ rückwärts am Index auf `created_at` durch die letzten sieben Tage, nimmt die neuesten bis zu 1.000 Treffer und bewertet nur diese (auf `ki-lab` 3 ms); bringt das weniger Treffer als verlangt, sucht sie über alle Datensätze über den Suchindex, wo seltene Wörter und alte Nummern billig sind (6 ms). Ein Wort, das nur vor langer Zeit häufig war, bleibt teuer; dagegen steht die Zeitgrenze (E69) | über die Indizes in Zeitfenstern; alle Wörter müssen vorkommen; eigene Suchmaschine; erst als Befund | 2026-11-14 | Pascal |
 | **E69** | **Zeitgrenze je API-Anfrage (PL56, deine Entscheidung 2026-11-14 nach H14):** Suchen von zehn Sekunden hielten alle Verbindungen des Pools, und Schreiben und Jobs warteten dahinter. Jetzt endet jede API-Anfrage nach `ITSM_REQUEST_TIMEOUT` (10 s, `0` für keine): ihr Kontext läuft ab, pgx bricht die laufende Abfrage in PostgreSQL ab, und die Anfrage antwortet 503 mit dem Problem `timeout`. Ausgenommen sind Export, Bulk-Strom, Ereignisstrom und Hochladen; Hintergrund-Jobs laufen ohnehin außerhalb von Anfragen | nur für Suche und Listen; keine Grenze | 2026-11-14 | Pascal |
@@ -1680,6 +1681,45 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL65 — Dashboards: Standard-Zeitraum, 2026-11-17
+
+- **Grundlage:** Hauptplan E195, E197; E70, E71; §2.1.
+- **Gebaut:**
+  - Kern 0.16.0: Feld „Zeitraum beim Öffnen“ (`period`) am Typ Dashboard mit Gesamt, Heute,
+    7 Tage, 30 Tage, Dieses Jahr (`all`, `today`, `days_7`, `days_30`, `year`); ein neues
+    Dashboard bekommt 7 Tage, ein bestehendes ohne Wert zeigt „Gesamt“.
+  - sd 0.5.3: „Statistik“ bringt 7 Tage mit, „Helpdesk“ Gesamt; der Umzug „Statistik öffnet
+    mit 7 Tagen“ (`cmd/itsm/upgrade.go`) setzt es an der „Statistik“ der Startdaten, wenn der
+    Mandant keinen Wert gesetzt hat.
+  - Einstellungen der Person: `dashboard_periods` je Dashboard-Kennung
+    (`internal/prefs`, Schlüssel `dashboard_period.<id ohne Bindestriche>`, weil die Tabelle
+    keine Bindestriche im Schlüssel nimmt); höchstens 200.
+  - Oberfläche (`web/src/app/Dashboard.tsx`): öffnet mit der letzten Wahl der Person, sonst
+    mit dem Wert des Dashboards, sonst „Gesamt“; eine Wahl wird gespeichert („Eigener
+    Zeitraum“ nicht). Ereignisse laden die Zahlen nur bei Heute, 7 Tagen oder einem eigenen
+    Zeitraum bis 7 Tage neu. Jede Abfrage eines Widgets trägt das Abbruchsignal; wechselt der
+    Zeitraum, bricht der Browser die alten ab, der Server beendet die Abfrage der Datenbank
+    mit der Anfrage. Der Editor hat „Zeitraum beim Öffnen“.
+  - Ein vom Browser abgebrochener Aufruf antwortet 499 („Abgebrochen“) und steht als Info
+    im Protokoll (`internal/httpapi/problem.go`), bisher als interner Fehler 500.
+- **Belegt, 2026-11-17:**
+  - Go `TestSettingsOverHTTP`: ohne Wahl leer, „days_30“ gemerkt, „week“, eine Kennung ohne
+    UUID und ein Wert statt Objekt abgelehnt, null nimmt sie weg. `TestRequestTimeLimit`:
+    ein abgebrochener Aufruf gibt 499 und `/problems/cancelled`.
+  - Vitest `Dashboard.test.tsx`: das Dashboard mit 7 Tagen öffnet mit „7 Tage“ und schickt
+    `from`; „Gesamt“ landet in den Einstellungen und gilt beim nächsten Öffnen ohne `from`;
+    der Editor speichert „30 Tage“; `live()` nur für Heute, 7 Tage und eigene bis 7 Tage.
+  - Ganze CI grün am 2026-11-17 auf `ki-lab`: Go, Web (153 Vitest-Fälle, 22 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %), LZ2 2,95 ms (−32 %), LZ3 4,87 ms (−44 %), LZ4 3,58 ms (−46 %),
+    LZ5 9.649 Zeilen/s, LZ13 8.917 Zeilen/s.
+  - Auf 8092 am 2026-11-17: der Umzug setzte „Statistik“ auf 7 Tage, „Helpdesk“ blieb
+    leer; „Statistik“ öffnet mit „7 Tage“; nach der Wahl „30 Tage“ öffnet sie mit „30 Tage“
+    und die Einstellungen der Person haben den Wert (danach wieder entfernt).
+- **Nicht geprüft:** der Abbruch beim schnellen Wechsel auf 8092: die Abfragen sind dort in
+  wenigen Millisekunden fertig, nichts läuft noch, wenn der Zeitraum wechselt. Das folgt mit
+  PL66 auf der Instanz in Prod-Größe auf `ki-lab`. Das Neuladen durch Ereignisse nur bis
+  7 Tage ist nur im Vitest der Regel belegt, nicht im Browser.
 
 ### PL56 — Zeitgrenze je API-Anfrage, 2026-11-15
 

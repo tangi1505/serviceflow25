@@ -60,4 +60,14 @@ func TestRequestTimeLimit(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"/problems/timeout"`) {
 		t.Fatalf("a cut-off statement: %d %s", rec.Code, rec.Body.String())
 	}
+	// A request the client cancelled, such as a dashboard whose period changed (PL65): 499 and
+	// no internal error.
+	gone, cancel := context.WithCancel(t.Context())
+	cancel()
+	rec = httptest.NewRecorder()
+	stopped := fmt.Errorf("records: query incident.incident: %w", context.Canceled)
+	writeError(rec, httptest.NewRequestWithContext(gone, http.MethodPost, "/api/v1/dashboards/x/widgets/y/data", nil), slog.New(slog.NewTextHandler(io.Discard, nil)), stopped)
+	if rec.Code != 499 || !strings.Contains(rec.Body.String(), `"/problems/cancelled"`) {
+		t.Fatalf("a cancelled request: %d %s", rec.Code, rec.Body.String())
+	}
 }

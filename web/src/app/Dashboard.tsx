@@ -28,7 +28,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import {
@@ -46,6 +46,7 @@ import {
   api,
   ApiError,
   labelOf,
+  mySettingsQuery,
   qualifiedName,
   typesQuery,
   type DashboardFilters,
@@ -67,8 +68,19 @@ const selectClass = "h-10 rounded-md border border-input bg-background px-3 text
 const inputClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
 const kinds = ["number", "pie", "bar", "line", "list", "text"] as const;
 const measures = ["count", "sum", "avg", "min", "max"] as const;
-const periods = ["all", "today", "7", "30", "year", "own"] as const;
+const periods = ["all", "today", "days_7", "days_30", "year", "own"] as const;
 type Period = (typeof periods)[number];
+// isPeriod tells a period a dashboard may open with (PL65): every one but "own".
+const isPeriod = (v: unknown): v is Exclude<Period, "own"> =>
+  typeof v === "string" && v !== "own" && (periods as readonly string[]).includes(v);
+// live says whether changes load the numbers again by themselves (PL65, Hauptplan E195): only
+// for periods up to 7 days, so that a year is not counted again for each change.
+export function live(p: Period, own: { from: string; to: string }): boolean {
+  if (p === "today" || p === "days_7") return true;
+  if (p !== "own" || !own.from || !own.to) return false;
+  const days = (Date.parse(own.to) - Date.parse(own.from)) / 86_400_000 + 1;
+  return days > 0 && days <= 7;
+}
 // refreshEvery is the least time between two reloads by changes (your decision 2026-11-13).
 const refreshEvery = 30_000;
 
@@ -82,9 +94,9 @@ export function range(
   switch (p) {
     case "today":
       return { from: day(now).toISOString() };
-    case "7":
+    case "days_7":
       return { from: new Date(now.getTime() - 7 * 86_400_000).toISOString() };
-    case "30":
+    case "days_30":
       return { from: new Date(now.getTime() - 30 * 86_400_000).toISOString() };
     case "year":
       return { from: new Date(now.getFullYear(), 0, 1).toISOString() };
@@ -137,7 +149,23 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   const queryClient = useQueryClient();
   const view = useQuery({ queryKey: ["dashboard", id], queryFn: () => api.dashboard(id) });
   const nodes = useQuery({ queryKey: ["org", "nodes"], queryFn: api.orgNodes });
-  const [period, setPeriod] = useState<Period>("all");
+  const settings = useQuery(mySettingsQuery);
+  // The period opens as the person chose it last, else as the dashboard says, else "Gesamt"
+  // (PL65); a choice here wins and is kept in the person's settings, "own" only here.
+  const [chosen, setChosen] = useState<Period | null>(null);
+  const remembered = settings.data?.dashboard_periods?.[id];
+  const start = view.data?.dashboard["period"];
+  const period: Period =
+    chosen ?? (isPeriod(remembered) ? remembered : isPeriod(start) ? start : "all");
+  const keep = useMutation({
+    mutationFn: (p: Exclude<Period, "own">) =>
+      api.setMySettings({ dashboard_periods: { [id]: p } }),
+    onSuccess: (saved) => queryClient.setQueryData(mySettingsQuery.queryKey, saved),
+  });
+  const setPeriod = (p: Period) => {
+    setChosen(p);
+    if (p !== "own" && p !== period) keep.mutate(p);
+  };
   const [own, setOwn] = useState({ from: "", to: "" });
   const [unit, setUnit] = useState("");
   const [editing, setEditing] = useState(false);
@@ -147,8 +175,10 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
     [period, own, unit],
   );
   // The types the widgets count: a change of one of their records loads the numbers again,
-  // at most every 30 seconds.
+  // at most every 30 seconds, and only for periods up to 7 days (PL65).
   const typesSeen = useRef(new Set<string>());
+  const liveNow = useRef(false);
+  liveNow.current = live(period, own);
   const last = useRef(0);
   const pending = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reload = () => {
@@ -157,7 +187,7 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
     void queryClient.invalidateQueries({ queryKey: ["dashboard", id, "data"] });
   };
   useLive((e) => {
-    if (!typesSeen.current.has(e.type_name) || pending.current) return;
+    if (!liveNow.current || !typesSeen.current.has(e.type_name) || pending.current) return;
     const wait = Math.max(0, last.current + refreshEvery - Date.now());
     pending.current = setTimeout(() => {
       pending.current = undefined;
@@ -166,7 +196,8 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   });
   useEffect(() => () => clearTimeout(pending.current), []);
 
-  if (view.isPending) return <p>{t("list.loading")}</p>;
+  // The settings say the period to open with; without them the widgets would count twice.
+  if (view.isPending || settings.isPending) return <p>{t("list.loading")}</p>;
   if (view.isError) {
     return (
       <Alert variant="destructive">
@@ -315,7 +346,7 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
               <WidgetCard
                 widget={w}
                 queryKey={["dashboard", id, "data", String(w["id"]), filters]}
-                load={() => api.widgetData(id, String(w["id"]), filters)}
+                load={(signal) => api.widgetData(id, String(w["id"]), filters, signal)}
                 onType={(type) => typesSeen.current.add(type)}
               />
             </div>
@@ -337,7 +368,8 @@ export function WidgetCard({
 }: {
   widget: RecordData;
   queryKey: unknown[];
-  load: () => Promise<WidgetData>;
+  // load computes the widget; signal ends it when the widget is no longer wanted (PL65).
+  load: (signal?: AbortSignal) => Promise<WidgetData>;
   onType?: (type: string) => void;
   compact?: boolean;
 }) {
@@ -346,7 +378,12 @@ export function WidgetCard({
   const wid = String(widget["id"]);
   const kind = String(widget["kind"]);
   const title = String(widget["title"]);
-  const data = useQuery({ queryKey, queryFn: load, enabled: kind !== "text" });
+  // A query of an old period is stopped when its key is no longer shown (PL65).
+  const data = useQuery({
+    queryKey,
+    queryFn: ({ signal }) => load(signal),
+    enabled: kind !== "text",
+  });
   const types = useQuery(typesQuery);
   useEffect(() => {
     if (data.data?.type) onType?.(data.data.type);
@@ -528,12 +565,15 @@ function DashboardEditor({
   const [widgets, setWidgets] = useState<Draft[]>(start);
   const [name, setName] = useState(String(d["name"] ?? ""));
   const [description, setDescription] = useState(String(d["description"] ?? ""));
+  // The period the dashboard opens with (PL65); empty is "Gesamt" as before.
+  const [openWith, setOpenWith] = useState(isPeriod(d["period"]) ? String(d["period"]) : "all");
   const [selected, setSelected] = useState<string | undefined>(start[0]?.key);
   const [errors, setErrors] = useState<Record<string, Record<string, string>>>({});
   const [message, setMessage] = useState<string | null>(null);
   const dirty =
     name !== String(d["name"] ?? "") ||
     description !== String(d["description"] ?? "") ||
+    openWith !== (isPeriod(d["period"]) ? String(d["period"]) : "all") ||
     JSON.stringify(widgets) !== JSON.stringify(start);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -581,7 +621,7 @@ function DashboardEditor({
     void api
       .saveDashboard(id, {
         version: Number(d["version"]),
-        fields: { name, description },
+        fields: { name, description, period: openWith },
         widgets: body,
       })
       .then(
@@ -713,6 +753,23 @@ function DashboardEditor({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${formId}-open`}>{t("dashboard.openWith")}</Label>
+          <select
+            id={`${formId}-open`}
+            className={selectClass}
+            value={openWith}
+            onChange={(e) => setOpenWith(e.target.value)}
+          >
+            {periods
+              .filter((p) => p !== "own")
+              .map((p) => (
+                <option key={p} value={p}>
+                  {t(`dashboard.periods.${p}`)}
+                </option>
+              ))}
+          </select>
         </div>
         <p className="text-sm text-muted-foreground">{t("dashboard.shareHint")}</p>
       </section>

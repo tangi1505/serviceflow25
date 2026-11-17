@@ -56,6 +56,7 @@ var upgrades = []upgrade{
 	{pkg: "incident", below: "0.9.0", name: "Automatisches Schließen aus der Einstellung incident.close_after", run: closeFromSetting},
 	{pkg: "core", below: "0.10.0", name: "Benachrichtigungen als Mail und in den Posteingang", run: notificationWays},
 	{pkg: "core", below: "0.13.0", name: "Akzentfarbe der Organisation als Farbe statt als Name", run: accentAsColor},
+	{pkg: "sd", below: "0.5.3", name: "Statistik öffnet mit 7 Tagen", run: statistikPeriod},
 }
 
 // runUpgrades runs the steps of the package for an installed version below theirs.
@@ -264,6 +265,35 @@ func freeTemplateName(ctx context.Context, recs *records.Service, name string) (
 // target from the setting incident.close_after (SD20), as incident 0.9 defines it, unless the
 // tenant gave it a setting of its own already. The target in minutes stays as it is: it holds
 // where no unit sets the time, and the default of the setting is the same 3300 minutes.
+// statistikPeriod gives the dashboard Statistik of the start data the period of 7 days it opens
+// with (PL65, Hauptplan E195), unless the tenant set one; other dashboards keep "Gesamt".
+func statistikPeriod(ctx context.Context, u upgradeEnv, scope string) (int, error) {
+	ref, err := u.seeds.Ref(ctx, scope, "sd", "statistik")
+	if err != nil || ref == "" {
+		return 0, err
+	}
+	id, err := uuid.Parse(ref)
+	if err != nil {
+		return 0, fmt.Errorf("sd.statistik at %s is no record: %w", scope, err)
+	}
+	ctx = u.rt.BindFor(authz.WithAccess(ctx, authz.SystemIn(scope)), scope)
+	rec, err := u.recs.Get(ctx, "core.dashboard", id)
+	if errors.Is(err, records.ErrNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	if v, _ := rec["period"].(string); v != "" {
+		return 0, nil
+	}
+	version, _ := rec["version"].(int64)
+	if _, err := u.recs.Update(ctx, "core.dashboard", id, version, map[string]any{"period": "days_7"}, nil); err != nil {
+		return 0, err
+	}
+	return 1, nil
+}
+
 func closeFromSetting(ctx context.Context, u upgradeEnv, scope string) (int, error) {
 	ref, err := u.seeds.Ref(ctx, scope, "incident", "sla_close")
 	if err != nil || ref == "" {

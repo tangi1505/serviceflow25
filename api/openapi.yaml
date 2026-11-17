@@ -2789,6 +2789,10 @@ paths:
                 nav_hidden: { type: array, nullable: true, maxItems: 200, items: { type: string, pattern: '^[A-Za-z0-9_.:/-]{1,200}$' }, description: "the areas of the navigation to leave out (UI37)" }
                 favorites: { type: array, nullable: true, maxItems: 200, items: { type: string, pattern: '^[A-Za-z0-9_.:/-]{1,200}$' }, description: "the entries pinned under Favoriten, in their order (UI37)" }
                 start_dashboard: { type: string, nullable: true, description: "the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13)" }
+                dashboard_periods:
+                  type: object
+                  description: "the last period per dashboard id (PL65): all, today, days_7, days_30 or year; null removes one"
+                  additionalProperties: { type: string, nullable: true, enum: [all, today, days_7, days_30, year, null] }
                 defaults:
                   type: object
                   description: 'per type an object of field values, or null to remove'
@@ -4634,7 +4638,7 @@ components:
         source: { type: string, description: 'own, the path of a node, or default' }
     MySettings:
       type: object
-      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, allowed, nav, nav_order, nav_hidden, favorites, defaults]
+      required: [language, time_zone, theme, color_scheme, density, start_dashboard, accent, allowed, nav, nav_order, nav_hidden, favorites, defaults, dashboard_periods]
       properties:
         language: { $ref: "#/components/schemas/SettingValue" }
         time_zone: { $ref: "#/components/schemas/SettingValue" }
@@ -4668,6 +4672,10 @@ components:
         defaults:
           type: object
           additionalProperties: { type: object, additionalProperties: true }
+        dashboard_periods:
+          type: object
+          additionalProperties: { type: string, enum: [all, today, days_7, days_30, year] }
+          description: "the person's last period per dashboard id (PL65); a dashboard without one opens with its own"
     Presence:
       type: object
       required: [others]

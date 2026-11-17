@@ -125,6 +125,20 @@ const MaxNavKeys = 200
 // navLists are the settings that are lists of keys.
 var navLists = []string{"nav_order", "nav_hidden", "favorites"}
 
+// Periods are the periods a dashboard opens with (PL65, Hauptplan E195): all, today, the last
+// 7 or 30 days (days_7, days_30), the year. Each is the default of a dashboard and the person's last choice.
+var Periods = []string{"all", "today", "days_7", "days_30", "year"}
+
+// IsPeriod says whether v is one of Periods.
+func IsPeriod(v string) bool { return slices.Contains(Periods, v) }
+
+// periodKey is the prefix of the person's last period of a dashboard: dashboard_period.<id>,
+// the id without its hyphens, which a key of account_setting does not take.
+const periodKey = "dashboard_period."
+
+// MaxPeriods bounds how many dashboards a person keeps a period for.
+const MaxPeriods = 200
+
 // Value is one setting with where it comes from: own, a node path, or default.
 type Value struct {
 	Value  string `json:"value"`
@@ -157,6 +171,9 @@ type Prefs struct {
 	NavHidden []string                  `json:"nav_hidden"`
 	Favorites []string                  `json:"favorites"`
 	Defaults  map[string]map[string]any `json:"defaults"`
+	// DashboardPeriods is the person's last period per dashboard id (PL65); a dashboard
+	// without one opens with its own default.
+	DashboardPeriods map[string]string `json:"dashboard_periods"`
 }
 
 // Settings reads a setting of the tree with the node it comes from.
@@ -220,8 +237,16 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 		return Prefs{}, fmt.Errorf("prefs: read: %w", err)
 	}
 	own := map[string]json.RawMessage{}
-	out := Prefs{Defaults: map[string]map[string]any{}}
+	out := Prefs{Defaults: map[string]map[string]any{}, DashboardPeriods: map[string]string{}}
 	for _, r := range rows {
+		if hex, ok := strings.CutPrefix(r.Key, periodKey); ok {
+			var v string
+			id, err := uuid.Parse(hex)
+			if err == nil && json.Unmarshal(r.Value, &v) == nil && IsPeriod(v) {
+				out.DashboardPeriods[id.String()] = v
+			}
+			continue
+		}
 		if typeName, ok := strings.CutPrefix(r.Key, "defaults."); ok {
 			var m map[string]any
 			if json.Unmarshal(r.Value, &m) == nil {
@@ -383,9 +408,9 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "nav_order", "nav_hidden", "favorites", "defaults":
+		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "nav_order", "nav_hidden", "favorites", "defaults", "dashboard_periods":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites and defaults")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites, defaults and dashboard_periods")
 		}
 	}
 	// The lists of the navigation (UI37): keys without repeats; null or an empty list takes
@@ -447,6 +472,35 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 		_, err = s.rec.Get(ctx, "core.dashboard", id)
 		return err == nil
 	}, "must be the id of a dashboard you may read, or none")
+	// The last period per dashboard (PL65): {"<id>": "days_7"}, null takes one away. The id is not
+	// looked up: a period of a dashboard one cannot read does nothing.
+	if raw, given := input["dashboard_periods"]; given {
+		m, ok := raw.(map[string]any)
+		switch {
+		case !ok:
+			bad("dashboard_periods", "type", `must be an object of dashboard ids, like {"<id>": "days_7"}`)
+		case len(m) > MaxPeriods:
+			bad("dashboard_periods", "invalid", fmt.Sprintf("holds at most %d dashboards", MaxPeriods))
+		}
+		for id, v := range m {
+			parsed, err := uuid.Parse(id)
+			if err != nil {
+				bad("dashboard_periods", "invalid", fmt.Sprintf("%q is no id of a dashboard", id))
+				continue
+			}
+			key := periodKey + strings.ReplaceAll(parsed.String(), "-", "")
+			if v == nil {
+				writes = append(writes, write{key, nil})
+				continue
+			}
+			p, ok := v.(string)
+			if !ok || !IsPeriod(p) {
+				bad("dashboard_periods", "invalid", "a period is all, today, days_7, days_30 or year")
+				continue
+			}
+			writes = append(writes, write{key, p})
+		}
+	}
 	if raw, given := input["defaults"]; given {
 		m, ok := raw.(map[string]any)
 		if !ok {

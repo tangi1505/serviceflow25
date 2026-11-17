@@ -47,6 +47,7 @@ var titles = map[string]map[string]string{
 	"invalid_credentials":   {"de": "Anmeldung fehlgeschlagen", "en": "Sign-in failed"},
 	"password_expired":      {"de": "Kennwort abgelaufen", "en": "Password expired"},
 	"internal":              {"de": "Interner Fehler", "en": "Internal error"},
+	"cancelled":             {"de": "Abgebrochen", "en": "Cancelled"},
 	"too_large":             {"de": "Anfrage zu groß", "en": "Request too large"},
 	"unavailable":           {"de": "Nicht verfügbar", "en": "Unavailable"},
 }
@@ -70,12 +71,20 @@ func writeProblem(w http.ResponseWriter, r *http.Request, status int, code, deta
 }
 
 // writeError maps the errors of the records package to problems; anything else is 500 and logged.
+// statusClientClosed is the status of a request the client cancelled (nginx: 499).
+const statusClientClosed = 499
+
 func writeError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		// The time limit of the request (PL56): the statement was cancelled in PostgreSQL.
 		logger.Warn("request took too long", "method", r.Method, "path", r.URL.Path)
 		writeProblem(w, r, http.StatusServiceUnavailable, "timeout", "the request took longer than the server allows; narrow it down", nil)
+	case errors.Is(err, context.Canceled) && r.Context().Err() != nil:
+		// The client went away, such as a dashboard whose period changed (PL65): no error of the
+		// server; the request log shows it with 499 as nginx does, and nobody reads the answer.
+		logger.Info("request cancelled by the client", "method", r.Method, "path", r.URL.Path)
+		writeProblem(w, r, statusClientClosed, "cancelled", "the client cancelled the request", nil)
 	case errors.Is(err, records.ErrNotFound):
 		writeProblem(w, r, http.StatusNotFound, "not_found", err.Error(), nil)
 	case errors.Is(err, records.ErrConflict), errors.Is(err, records.ErrNotAllowed),

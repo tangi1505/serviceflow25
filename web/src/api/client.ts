@@ -407,11 +407,19 @@ export const api = {
         body: body as never,
       }),
     ),
-  widgetData: async (id: string, widgetId: string, filters: DashboardFilters) =>
+  // signal stops the computation when the period changes meanwhile (PL65): the server ends
+  // the query of the database with the request.
+  widgetData: async (
+    id: string,
+    widgetId: string,
+    filters: DashboardFilters,
+    signal?: AbortSignal,
+  ) =>
     unwrap(
       await client.POST("/api/v1/dashboards/{id}/widgets/{widgetId}/data", {
         params: { path: { id, widgetId } },
         body: filters,
+        signal,
       }),
     ),
   // The widgets in the sidebar of a record and what they show for it; the number of a tile

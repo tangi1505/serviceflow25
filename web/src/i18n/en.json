@@ -1073,8 +1073,8 @@
     "periods": {
       "all": "All",
       "today": "Today",
-      "7": "7 days",
-      "30": "30 days",
+      "days_7": "7 days",
+      "days_30": "30 days",
       "year": "This year",
       "own": "Own period"
     },
@@ -1165,7 +1165,8 @@
     "sidebarType": "Also in the sidebar of",
     "noSidebar": "– on the dashboard only –",
     "queryJson": "Condition (JSON)",
-    "queryHint": "Like the where of the JSON query, e.g. {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In a sidebar @record stands for the record shown, @record.field for one of its fields."
+    "queryHint": "Like the where of the JSON query, e.g. {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In a sidebar @record stands for the record shown, @record.field for one of its fields.",
+    "openWith": "Period when opened"
   },
   "accent": {
     "petrol": "Petrol",

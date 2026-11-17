@@ -3792,6 +3792,10 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+            /** @description the person's last period per dashboard id (PL65); a dashboard without one opens with its own */
+            dashboard_periods: {
+                [key: string]: "all" | "today" | "days_7" | "days_30" | "year";
+            };
         };
         Presence: {
             others: {
@@ -8110,6 +8114,10 @@ export interface operations {
                     favorites?: string[] | null;
                     /** @description the id of a dashboard the person may read for the start page of the workplace, or none for the greeting only (UI13) */
                     start_dashboard?: string | null;
+                    /** @description the last period per dashboard id (PL65): all, today, days_7, days_30 or year; null removes one */
+                    dashboard_periods?: {
+                        [key: string]: "all" | "today" | "days_7" | "days_30" | "year" | null;
+                    };
                     /** @description per type an object of field values, or null to remove */
                     defaults?: {
                         [key: string]: {

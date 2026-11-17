@@ -22,6 +22,18 @@ fields:
     label: {de: Beschreibung, en: Description}
     translatable: true
     max_length: 500
+  # The period the dashboard opens with (PL65, Hauptplan E195). A new one starts with 7 days;
+  # one from before without a value shows "Gesamt" as before. The person's last choice wins.
+  - name: period
+    type: choice
+    label: {de: Zeitraum beim Öffnen, en: Period when opened}
+    default: days_7
+    options:
+      - {value: all, label: {de: Gesamt, en: All}}
+      - {value: today, label: {de: Heute, en: Today}}
+      - {value: days_7, label: {de: 7 Tage, en: 7 days}}
+      - {value: days_30, label: {de: 30 Tage, en: 30 days}}
+      - {value: year, label: {de: Dieses Jahr, en: This year}}
 actors:
   - name: shared
     label: {de: Geteilt mit, en: Shared with}

@@ -10,10 +10,14 @@
   values:
     name: Helpdesk
     description: Der Stand jetzt, offene Vorgänge, Fristen und die eigenen Listen.
+    # The state now, over all records (PL65).
+    period: all
     actors: {shared: [{type: core.group, id: "@service_desk"}]}
 - key: statistik
   type: core.dashboard
   values:
     name: Statistik
     description: Was im Zeitraum angelegt und gelöst wurde, und wie lange es gedauert hat.
+    # Opens with the last 7 days, not over all records (PL65, Hauptplan E195).
+    period: days_7
     actors: {shared: [{type: core.group, id: "@service_desk"}]}

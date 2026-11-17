@@ -1073,8 +1073,8 @@
     "periods": {
       "all": "Gesamt",
       "today": "Heute",
-      "7": "7 Tage",
-      "30": "30 Tage",
+      "days_7": "7 Tage",
+      "days_30": "30 Tage",
       "year": "Dieses Jahr",
       "own": "Eigener Zeitraum"
     },
@@ -1165,7 +1165,8 @@
     "sidebarType": "Auch in der Seitenleiste von",
     "noSidebar": "– nur im Dashboard –",
     "queryJson": "Bedingung (JSON)",
-    "queryHint": "Wie die where der JSON-Abfrage, etwa {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In der Seitenleiste steht @record für den gezeigten Datensatz, @record.feld für ein Feld von ihm."
+    "queryHint": "Wie die where der JSON-Abfrage, etwa {\"field\": \"actors.requester\", \"eq\": \"@record\"}. In der Seitenleiste steht @record für den gezeigten Datensatz, @record.feld für ein Feld von ihm.",
+    "openWith": "Zeitraum beim Öffnen"
   },
   "accent": {
     "petrol": "Petrol",

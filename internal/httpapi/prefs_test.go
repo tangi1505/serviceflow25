@@ -169,6 +169,29 @@ func TestSettingsOverHTTP(t *testing.T) {
 	if r.code != 200 || fmt.Sprint(r.body["nav_order"], r.body["nav_hidden"], r.body["favorites"]) != "[] [] []" {
 		t.Fatalf("arrangement removed: %d %s", r.code, r.raw)
 	}
+	// The last period per dashboard (PL65): none by default; kept per id; only the periods of
+	// the list; null takes one away.
+	const board = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+	if m, ok := r.body["dashboard_periods"].(map[string]any); !ok || len(m) != 0 {
+		t.Fatalf("no periods by default: %s", r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"dashboard_periods": {"`+board+`": "days_30"}}`, nil)
+	if m, _ := r.body["dashboard_periods"].(map[string]any); r.code != 200 || m[board] != "days_30" {
+		t.Fatalf("period kept: %d %s", r.code, r.raw)
+	}
+	for body, want := range map[string]string{
+		`{"dashboard_periods": {"` + board + `": "week"}}`: "a period is all",
+		`{"dashboard_periods": {"statistik": "days_7"}}`:   "no id of a dashboard",
+		`{"dashboard_periods": "days_7"}`:                  "object of dashboard ids",
+	} {
+		if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", body, nil); r.code != 422 || !strings.Contains(r.raw, want) {
+			t.Fatalf("%s: %d %s", body, r.code, r.raw)
+		}
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"dashboard_periods": {"`+board+`": null}}`, nil)
+	if m, _ := r.body["dashboard_periods"].(map[string]any); r.code != 200 || len(m) != 0 {
+		t.Fatalf("period removed: %d %s", r.code, r.raw)
+	}
 	// The packages with label and symbol (UI36): every session reads them; the core is
 	// „Stammdaten“ with the symbol database.
 	pk := call(t, u.api, http.MethodGet, "/api/v1/packages", "", nil)

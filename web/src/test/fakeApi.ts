@@ -828,8 +828,9 @@ export function fakeApi(state: FakeState) {
       if (method === "PATCH") {
         const body = JSON.parse(bodyText) as Record<string, unknown>;
         for (const [k, v] of Object.entries(body)) {
-          if (k === "defaults") {
-            const d = { ...((state.settings["defaults"] as Record<string, unknown>) ?? {}) };
+          if (k === "defaults" || k === "dashboard_periods") {
+            // Merged per key, null takes one away (defaults UI9, periods PL65).
+            const d = { ...((state.settings[k] as Record<string, unknown>) ?? {}) };
             for (const [t, vals] of Object.entries(v as Record<string, unknown>)) {
               if (vals === null) {
                 delete d[t];
@@ -837,7 +838,7 @@ export function fakeApi(state: FakeState) {
                 d[t] = vals;
               }
             }
-            state.settings["defaults"] = d;
+            state.settings[k] = d;
           } else if (v === null) {
             delete state.settings[k];
           } else {
@@ -868,6 +869,7 @@ export function fakeApi(state: FakeState) {
         nav_hidden: state.settings["nav_hidden"] ?? [],
         favorites: state.settings["favorites"] ?? [],
         defaults: state.settings["defaults"] ?? {},
+        dashboard_periods: state.settings["dashboard_periods"] ?? {},
       });
     }
     // Roles and assignments (PL8) as the role editor uses them (UI27).

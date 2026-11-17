@@ -13,7 +13,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { pack, range } from "@/app/Dashboard";
+import { live, pack, range } from "@/app/Dashboard";
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
@@ -142,6 +142,53 @@ describe("Dashboards", () => {
       from: new Date(2026, 10, 1).toISOString(),
       to: new Date(2026, 10, 3).toISOString(),
     });
+    // Changes load the numbers again only for periods up to 7 days (PL65).
+    const none = { from: "", to: "" };
+    expect([live("today", none), live("days_7", none), live("days_30", none)]).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect([live("year", none), live("all", none)]).toEqual([false, false]);
+    expect(live("own", { from: "2026-11-01", to: "2026-11-07" })).toBe(true);
+    expect(live("own", { from: "2026-11-01", to: "2026-11-10" })).toBe(false);
+  });
+
+  it("opens with the period of the dashboard, then with the person's last choice (PL65)", async () => {
+    board(state);
+    state.dashboards![0]!.dashboard["period"] = "days_7";
+    const user = userEvent.setup();
+    const widgetCalls = () =>
+      state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/widgets/${W(1)}/data`);
+    const first = renderAt(`/dashboards/${D}`);
+    const seven = await screen.findByRole("radio", { name: "7 Tage" });
+    expect(seven).toHaveAttribute("aria-checked", "true");
+    await waitFor(() => expect(widgetCalls().length).toBeGreaterThan(0));
+    expect(JSON.parse(String(widgetCalls()[0]!.body)) as Record<string, unknown>).toHaveProperty(
+      "from",
+    );
+    // The choice of the person is kept in her settings.
+    await user.click(screen.getByRole("radio", { name: "Gesamt" }));
+    await waitFor(() => expect(state.settings?.["dashboard_periods"]).toEqual({ [D]: "all" }));
+    first.unmount();
+
+    const before = widgetCalls().length;
+    renderAt(`/dashboards/${D}`);
+    expect(await screen.findByRole("radio", { name: "Gesamt" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await waitFor(() => expect(widgetCalls().length).toBeGreaterThan(before));
+    expect(
+      JSON.parse(String(widgetCalls().at(-1)!.body)) as Record<string, unknown>,
+    ).not.toHaveProperty("from");
+
+    // The editor sets the period the dashboard opens with.
+    await user.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    await user.selectOptions(screen.getByLabelText("Zeitraum beim Öffnen"), "days_30");
+    const bar = screen.getByRole("region", { name: "Speichern" });
+    await user.click(within(bar).getByRole("button", { name: "Speichern" }));
+    await waitFor(() => expect(state.dashboards![0]!.dashboard["period"]).toBe("days_30"));
   });
 
   it("shows the widgets with the filters, and a point opens the list behind it", async () => {
