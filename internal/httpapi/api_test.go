@@ -312,6 +312,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 		}
 	}
 	dashboards := dashboard.New(recs)
+	dashboards.Days(rt)
 	// The service time of a resolution (UI14a), as cmd/itsm wires it.
 	recs.WorkingTime = func(ctx context.Context, path string, from, to time.Time) (time.Duration, error) {
 		c, _, err := calendars.ForNode(authz.WithAccess(ctx, authz.System()), path)

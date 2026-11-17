@@ -734,6 +734,11 @@ Meilenstein. Werkzeug: `test/load` (E51).
   Zahlen-Kacheln des Portals liegen bis 5 min in Valkey (`dashboard:v1:<SHA-256>` über Mandant,
   Bedingung der Rechte und Abfrage); `computed_at` sagt, wann gerechnet wurde, `fresh` rechnet
   neu. Heute, 7 Tage und die Seitenleiste rechnen immer frisch.
+- **Tageswerte** (PL69, Kern-Plan E74): `day_value` hält je Typ, Datumsfeld, Tag (Berlin),
+  Knoten und Gruppe Anzahl und Summen; was gehalten wird, folgt den Widgets. Ein Verbraucher der
+  Ereignisse markiert Tage (`day_value_dirty`), ein Job jede Minute zählt sie neu, einer jede
+  Nacht alle. Lange Zeiträume lesen daraus, wenn das Leserecht der Person nur aus Einheiten
+  besteht (`authz.UnitsOnly`); die Bedingung der Rechte gilt dann auf `day_value.org_path`.
 
 ---
 

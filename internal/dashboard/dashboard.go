@@ -27,6 +27,7 @@ import (
 	"github.com/google/uuid"
 
 	"group24.de/itsm/internal/authz"
+	"group24.de/itsm/internal/db"
 	"group24.de/itsm/internal/meta"
 	"group24.de/itsm/internal/records"
 )
@@ -77,6 +78,8 @@ type Service struct {
 	timeout time.Duration
 	// store keeps widgets of long periods for StoreFor (PL68); nil keeps none.
 	store Store
+	// days keeps and reads the day values (PL69); nil reads none.
+	days *db.Router
 }
 
 // Store keeps computed widgets for a while (PL68): Valkey in the server.
@@ -610,6 +613,11 @@ func (s *Service) keep(ctx context.Context, w records.Record, f Filters) (Data, 
 	if err != nil || j == nil {
 		return out, err
 	}
+	if lasting(f, now) {
+		if d, ok := s.fromDays(ctx, w, out, j, f); ok {
+			return d, nil
+		}
+	}
 	key := ""
 	if s.store != nil && lasting(f, now) {
 		key = s.key(ctx, out, j)
@@ -659,6 +667,13 @@ func (s *Service) Bundle(ctx context.Context, dashboardID uuid.UUID, f Filters, 
 	for _, w := range ws {
 		id := fmt.Sprint(w["id"])
 		out, j, err := s.prepare(ctx, w, f, nil)
+		// The day values first (PL69): fresh within a minute and quick for any period.
+		if err == nil && j != nil && lasting(f, now) {
+			if d, ok := s.fromDays(ctx, w, out, j, f); ok {
+				send(id, d, nil)
+				continue
+			}
+		}
 		key := ""
 		if err == nil && j != nil && keep {
 			key = s.key(ctx, out, j)

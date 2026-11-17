@@ -182,6 +182,31 @@ type Cost struct {
 	UpdatedBy   uuid.NullUUID
 }
 
+type DayValue struct {
+	TypeName  string
+	DateField string
+	Day       pgtype.Date
+	OrgPath   string
+	Dim       string
+	Key       string
+	N         int64
+	Sums      []byte
+}
+
+type DayValueDirty struct {
+	TypeName  string
+	DateField string
+	Day       pgtype.Date
+}
+
+type DayValueState struct {
+	TypeName  string
+	DateField string
+	Dims      []string
+	Measures  []string
+	FilledAt  pgtype.Timestamptz
+}
+
 type Definition struct {
 	ID        uuid.UUID
 	Package   string

@@ -492,6 +492,37 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 	return "(" + f + " OR " + vis + ")", args
 }
 
+// UnitsOnly says whether the read condition of the access on a type names org_path only (PL69,
+// Kern-Plan E73): grants of all records, of a node or of a node with all below, none with a
+// condition, every field readable, no readers and nobody asked to approve. Then Filter holds
+// for rows that carry only org_path, such as the day values of the dashboards; anything else
+// (own, group, involved) reaches single records and must count them.
+func (a *Access) UnitsOnly(typeName string) bool {
+	if a.IsSystem() {
+		return true
+	}
+	if len(a.readers(typeName, ActionRead)) > 0 {
+		return false
+	}
+	if a.Approvable[typeName] && len(a.Asked(time.Now())) > 0 {
+		return false
+	}
+	if all, _ := a.ReadableFields(typeName); !all {
+		return false
+	}
+	for _, g := range a.grantsFor(typeName, ActionRead) {
+		if g.Condition != "" {
+			return false
+		}
+		switch g.Scope {
+		case ScopeAll, ScopeSubtree, ScopeUnit:
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 func (a *Access) filter(typeName, action string, args []any) (string, []any) {
 	b := a.boundary()
 	listVis := ""

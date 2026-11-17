@@ -283,6 +283,13 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	dashboards.Limit(cfg.Evaluations, cfg.RequestTimeout)
 	// Widgets of long periods show their stored state for 5 min (PL68).
 	dashboards.Keep(kv)
+	// Long periods read day values (PL69): the events mark the days, a run every minute counts
+	// them, the night counts all.
+	dashboards.Days(rt)
+	ev.Consume(dashboard.ConsumerDays, dashboards.MarkDays)
+	if err := dashboards.RegisterDayValues(js); err != nil {
+		return err
+	}
 	rec.Clocks, rec.CheckRecord = slaSvc, records.Checks(slaSvc.Check, recurSvc.Check, records.CheckApprovalTemplate, notifySvc.Check, savedsearch.Check(rec), forms.Check(rec), portal.Check(rec), snippets.Check(rec), dashboards.Check)
 	// The text modules (SD8) fill in their placeholders like the notifications.
 	snippetSvc := snippets.New(rec)

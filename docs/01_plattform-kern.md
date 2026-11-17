@@ -99,8 +99,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL66** | Dashboards, Stufe 1: Index und Messung. Ein Index auf „gelöst am“ für jeden Typ mit dem Merkmal Lösung, nur über gesetzte Werte; die Lastprobe für LZ18 im Lastwerkzeug; gemessen auf `ki-lab`. Der Index entsteht dort ohne Schreibsperre, sobald PL63 steht, sonst in einem Fenster ohne Last (Hauptplan E195; §2.1) | 🟢 | 1 d | `EXPLAIN` der Kennzahl „Gelöste Störungen“ mit 7 Tagen nutzt den Index; Lastwerkzeug auf `ki-lab` mit `--only=LZ18` → p95 ≤ 1 s für das Dashboard und ≤ 300 ms je Widget |
 | **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | 🟢 | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
 | **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | 🟢 | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
-| **PL69** | Dashboards, Stufe 3: Tageswerte. Je Typ eine Tabelle mit Zahl und Summen je Tag, Einheit und den Feldern, nach denen die mitgelieferten Widgets gruppieren; ein Hintergrundlauf führt sie nach (asynchron, Hauptplan E191), ein Abgleich je Nacht zählt nach. Lange Zeiträume lesen daraus, wenn sich die Rechte der Person auf Einheiten zurückführen lassen; sonst gilt der Weg aus PL68 (Hauptplan E195; §2.1) | ⬜ | 2 d | eine Störung anlegen → der Tageswert steigt innerhalb einer Minute; die Summe der Tageswerte eines Monats gleicht der gezählten Zahl; eine Person nur mit „beteiligt“ bekommt dieselben Zahlen wie vor PL69 |
-| **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | 🔒 PL69 | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
+| **PL69** | Dashboards, Stufe 3: Tageswerte. Je Typ eine Tabelle mit Zahl und Summen je Tag, Einheit und den Feldern, nach denen die mitgelieferten Widgets gruppieren; ein Hintergrundlauf führt sie nach (asynchron, Hauptplan E191), ein Abgleich je Nacht zählt nach. Lange Zeiträume lesen daraus, wenn sich die Rechte der Person auf Einheiten zurückführen lassen; sonst gilt der Weg aus PL68 (Hauptplan E195; §2.1) | 🟢 | 2 d | eine Störung anlegen → der Tageswert steigt innerhalb einer Minute; die Summe der Tageswerte eines Monats gleicht der gezählten Zahl; eine Person nur mit „beteiligt“ bekommt dieselben Zahlen wie vor PL69 |
+| **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | ⬜ | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
 
 ### C — Meilenstein 2
 
@@ -174,6 +174,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E74** | **Tageswerte (PL69, deine Entscheidungen 2026-11-17):** alle passenden Widgets lesen lange Zeiträume aus den Tageswerten (mit Zeitraum, ohne Bedingung außer „Datum gesetzt“, zählen, summieren oder mitteln, gruppiert nach einem Feld, einer Rolle oder ihrem Datum); jede Nacht werden alle Tage neu gezählt. Von mir ergänzt: was die Tageswerte halten, folgt den Widgets und wird mit dem Lauf der Nacht neu bestimmt; ein Widget, das etwas Neues verlangt, rechnet bis dahin wie bisher; ein Zeitraum, der nicht um Mitternacht beginnt, beginnt aus den Tageswerten um die Mitternacht davor; die Tageswerte gehen nur an Personen, deren Leserecht nur aus Einheiten besteht und die jedes Feld lesen dürfen. Verworfen: nur die mitgelieferten Widgets; jede Nacht nur 90 Tage | 2026-11-17 | Pascal |
 | **E73** | **Gespeicherter Stand und Tageswerte (PL68, PL69, deine Entscheidungen 2026-11-17):** Zeiträume über 8 Tage (30 Tage, Jahr, Gesamt) und die Zahlen-Kacheln des Portals zeigen den gespeicherten Stand eines Widgets bis 5 min aus Valkey; Heute und 7 Tage rechnen immer frisch; der Schlüssel enthält Mandant, die Bedingung der Rechte der Person und die ganze Abfrage; ein Zeitraum, der mit der Uhr wandert, beginnt auf 5 min abgerundet. „Jetzt aktualisieren“ rechnet frisch (`fresh`). Die Seitenleiste eines Datensatzes rechnet immer frisch. LZ20 (frisch über Gesamt 12,7 bis 14,6 s, dabei einzelne Widgets in der Zeitgrenze) bleibt offen bis zu den Tageswerten. V2: Wer Rechte über Einheiten hat, liest lange Zeiträume aus den Tageswerten; wer nur einzelne Vorgänge sieht, bekommt den gespeicherten Stand. Verworfen: Zeitgrenze je Widget erhöhen; Tageswerte nur für wer alles sieht | 2026-11-17 | Pascal |
 | **E72** | **Dashboards bündeln (PL67, deine Entscheidungen 2026-11-17):** ein Aufruf liefert alle Widgets eines Dashboards stückweise, jedes sobald es fertig ist (NDJSON); höchstens 4 Auswertungen zugleich je Instanz (`ITSM_EVALUATIONS`), weitere warten. Von mir ergänzt nach der Messung auf `ki-lab`: Gruppen zählen nur mit Zeitraum in einem Durchlauf, weil PostgreSQL Gruppierungssätze ohne parallele Arbeiter rechnet (über „Gesamt“ 13 s); die Zeitgrenze gilt je Widget ab seinem Platz, nicht für den ganzen Strom. Befund LZ21b (Liste neben 20 Dashboards über alles 165 ms statt ≤ 150 ms) bleibt offen bis Stufe 3 und wird nach PL69 neu gemessen (deine Entscheidung 2026-11-17). Verworfen: alles auf einmal; sofort ablehnen; 8 zugleich; 2 zugleich; Auswertungen ohne parallele Arbeiter | 2026-11-17 | Pascal |
 | **E71** | **Standard-Zeitraum der Dashboards (PL65, deine Entscheidungen 2026-11-16):** die letzte Wahl merkt sich der Server in den Einstellungen der Person, je Dashboard (folgt an andere Rechner); bestehende Dashboards zeigen wie bisher „Gesamt“, nur „Statistik“ bekommt per Umzug 7 Tage, ein neu angelegtes Dashboard startet mit 7 Tagen; die Organisation stellt es je Dashboard im Editor ein („Zeitraum beim Öffnen“). Von mir ergänzt: „Eigener Zeitraum“ wird nicht gemerkt; ein vom Browser abgebrochener Aufruf antwortet 499 und steht als Info im Protokoll, nicht mehr als interner Fehler. Verworfen: nur im Browser merken; alle Dashboards mit 7 Tagen | 2026-11-16 | Pascal |
@@ -1682,6 +1683,42 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL69 — Dashboards: Tageswerte, 2026-11-17
+
+- **Grundlage:** Hauptplan E195; E73, E74; §2.1.
+- **Gebaut:**
+  - Migration 51: `day_value` (Typ, Datumsfeld, Tag in Berlin, Knoten, Gruppe, Wert als JSON,
+    Anzahl, Summen je Zahlenfeld mit Anzahl der Werte), `day_value_dirty` (markierte Tage),
+    `day_value_state` (was die Tageswerte je Typ und Datumsfeld halten, seit wann).
+  - `internal/dashboard/dayvalues.go`: `fitDays` sagt, ob ein Widget passt (Zeitraum, keine
+    Bedingung außer „Datum gesetzt“, Anzahl, Summe oder Mittel, Gruppe nach Feld, Status, Rolle
+    oder dem eigenen Datum); `FillDays` zählt alle Tage Monat für Monat über `records.Query`
+    (neu `RowLimit`, nur im Code) und notiert den Stand; `MarkDays` (Verbraucher der Ereignisse
+    `day_values`) markiert den Tag des Schreibens und, wenn sich Knoten, Gruppe, Zahl oder
+    Datum ändern, die Tage der Daten des Datensatzes; `CountDirtyDays` zählt die markierten
+    Tage. Jobs `dashboard.day_values` (jede Minute) und `dashboard.day_values_fill` (03:15,
+    Warteschlange bulk), beide je Datenbank.
+  - Lesen: lange Zeiträume (über 8 Tage, PL68) lesen zuerst aus den Tageswerten, wenn
+    `authz.UnitsOnly` gilt (Leserecht nur alle, eine Einheit, eine Einheit mit allem darunter,
+    ohne Bedingung, alle Felder lesbar, keine Leser, keine offene Genehmigung) und die
+    Tageswerte die Gruppe und das Zahlenfeld halten; die Bedingung der Rechte gilt dann
+    unverändert auf `day_value.org_path`. Sonst der gespeicherte Stand aus PL68.
+- **Belegt, 2026-11-17:**
+  - Go `TestDashboardDayValuesOverHTTP`: nach dem Abgleich halten die Tageswerte `kind` und
+    `priority`, nicht das Widget mit eigener Bedingung; Anzahl, Summe, Mittel, Torte nach Art und
+    Linie je Woche über alles und ab 1. Januar zeigen genau, was das Zählen zeigt; eine neue
+    Probe erscheint erst nach dem Lauf der Minute (vorher 5, danach 6, die Summe passt); die
+    Person, die nur ihre eigenen liest, zählt wie vor PL69 (1, nach Art nur „wish“).
+  - Ganze CI grün am 2026-11-17 auf `ki-lab`: Go, Web (155 Vitest-Fälle, 22 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,43 ms (−83 %), LZ2 2,96 ms (−31 %), LZ3 4,83 ms (−44 %), LZ4 3,80 ms (−42 %),
+    LZ5 9.706 Zeilen/s, LZ13 8.927 Zeilen/s.
+  - Auf 8092: Abgleich über `POST /api/v1/jobs/schedules/dashboard.day_values_fill:run`,
+    3 Tageswert-Sätze in unter 1 s; eine Störung angelegt, der Lauf der Minute zählte 2 Tage,
+    „Neue Störungen“ über „Gesamt“ zeigte danach 4, gleich der gezählten Zahl. Die Störung
+    „PL69 Probe Tageswert“ bleibt auf 8092.
+- **Nicht geprüft:** die Erstbefüllung und die Messung in Prod-Größe (PL70); eine Person mit
+  „beteiligt“ im Browser (im Test eine mit „eigene“, beides geht den Weg aus PL68).
 
 ### PL68 — Dashboards: gespeicherter Stand, 2026-11-17
 

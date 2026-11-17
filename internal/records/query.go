@@ -47,6 +47,9 @@ type Query struct {
 	// row carries SetKey: the index of its group in Group, or -1 for the total. Roles
 	// (actors.<role>) do not take part; only for the code, not in the API.
 	Sets bool `json:"-"`
+	// RowLimit replaces the 1,000 rows of an aggregate (PL69: a month of day values per node
+	// and group); only for the code, not in the API.
+	RowLimit int `json:"-"`
 }
 
 // SetKey is the key of a row of a query with Sets: which group it belongs to.
@@ -806,6 +809,9 @@ func (s *Service) aggregate(b *builder, q Query, where []string) (*Rows, error) 
 			strings.Join(where, " AND "), strings.Join(joins, " "))
 	}
 	limit := 1000
+	if q.RowLimit > 0 {
+		limit = q.RowLimit
+	}
 	switch {
 	case q.Sets:
 		// One pass for the total and each group (PL67); GROUPING says which one a row is.
