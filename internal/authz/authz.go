@@ -297,6 +297,56 @@ func SystemIn(tenant string) *Access {
 // IsSystem reports whether the access is the unrestricted one.
 func (a *Access) IsSystem() bool { return a == nil || a.system }
 
+// rowGrants are the grants that decide which rows of a type the access reaches (PL70): those
+// of grantsFor without the ones a grant without condition over all records, or over a node
+// with all below, already covers. The rows stay the same; the condition gets shorter, and a
+// person with all records and "involved" beside reads the day values (Kern-Plan E74).
+func (a *Access) rowGrants(typeName, action string) []Grant {
+	gs := a.grantsFor(typeName, action)
+	covers := func(c, g Grant) bool {
+		if c.Condition != "" {
+			return false
+		}
+		switch c.Scope {
+		case ScopeAll:
+			return true
+		case ScopeSubtree:
+			return g.Scope != ScopeAll && (g.OrgPath == c.OrgPath || strings.HasPrefix(g.OrgPath, c.OrgPath+"."))
+		}
+		return false
+	}
+	var out []Grant
+	for i, g := range gs {
+		covered := false
+		for j, c := range gs {
+			// Of two that cover each other the first stays.
+			if i != j && covers(c, g) && (!covers(g, c) || j < i) {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// allRows says whether the access reads every record of a type in its tenant: a grant over all
+// records without condition and no active node. Readers and approvers reach nothing more then,
+// both stay within the tenant.
+func (a *Access) allRows(typeName, action string) bool {
+	if a.ActiveOrg != "" {
+		return false
+	}
+	for _, g := range a.grantsFor(typeName, action) {
+		if g.Scope == ScopeAll && g.Condition == "" {
+			return true
+		}
+	}
+	return false
+}
+
 // grantsFor lists the grants that cover a type and action, within the active role and the
 // tenant.
 func (a *Access) grantsFor(typeName, action string) []Grant {
@@ -472,7 +522,7 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 		return "TRUE", args
 	}
 	f, args := a.filter(typeName, action, args)
-	if action != ActionRead || !a.Approvable[typeName] {
+	if action != ActionRead || !a.Approvable[typeName] || a.allRows(typeName, action) {
 		return f, args
 	}
 	asked := a.Asked(time.Now())
@@ -496,21 +546,23 @@ func (a *Access) Filter(typeName, action string, args []any) (string, []any) {
 // Kern-Plan E73): grants of all records, of a node or of a node with all below, none with a
 // condition, every field readable, no readers and nobody asked to approve. Then Filter holds
 // for rows that carry only org_path, such as the day values of the dashboards; anything else
-// (own, group, involved) reaches single records and must count them.
+// (own, group, involved) reaches single records and must count them. What such a grant
+// covers, and readers and approvals beside all records, do not count (PL70, rowGrants).
 func (a *Access) UnitsOnly(typeName string) bool {
 	if a.IsSystem() {
 		return true
 	}
-	if len(a.readers(typeName, ActionRead)) > 0 {
+	all := a.allRows(typeName, ActionRead)
+	if !all && len(a.readers(typeName, ActionRead)) > 0 {
 		return false
 	}
-	if a.Approvable[typeName] && len(a.Asked(time.Now())) > 0 {
+	if !all && a.Approvable[typeName] && len(a.Asked(time.Now())) > 0 {
 		return false
 	}
-	if all, _ := a.ReadableFields(typeName); !all {
+	if every, _ := a.ReadableFields(typeName); !every {
 		return false
 	}
-	for _, g := range a.grantsFor(typeName, ActionRead) {
+	for _, g := range a.rowGrants(typeName, ActionRead) {
 		if g.Condition != "" {
 			return false
 		}
@@ -526,7 +578,7 @@ func (a *Access) UnitsOnly(typeName string) bool {
 func (a *Access) filter(typeName, action string, args []any) (string, []any) {
 	b := a.boundary()
 	listVis := ""
-	if rs := a.readers(typeName, action); len(rs) > 0 {
+	if rs := a.readers(typeName, action); len(rs) > 0 && !a.allRows(typeName, action) {
 		listVis, args = a.readerFilter(typeName, rs, args)
 		if len(a.grantsFor(typeName, action)) == 0 {
 			if listVis == "" {
@@ -540,7 +592,7 @@ func (a *Access) filter(typeName, action string, args []any) (string, []any) {
 	// (PL57): each of them as an OR of its own made PostgreSQL hash every actor row of the
 	// person's groups for every query (found with H14: the queue of a team, 3 s).
 	var involvedAt []string
-	for _, g := range a.grantsFor(typeName, action) {
+	for _, g := range a.rowGrants(typeName, action) {
 		if g.Scope == ScopeInvolved && g.Condition == "" {
 			if !slices.Contains(involvedAt, g.OrgPath) {
 				involvedAt = append(involvedAt, g.OrgPath)

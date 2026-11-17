@@ -158,6 +158,12 @@ func (s *Service) done(ctx context.Context, key string, d Data, err error) (Data
 	return d, nil
 }
 
+// must keeps an answer that cannot fail, such as one of the day values.
+func (s *Service) must(ctx context.Context, key string, d Data) Data {
+	d, _ = s.done(ctx, key, d, nil)
+	return d
+}
+
 // Limit lets at most n evaluations of widgets run at once (ITSM_EVALUATIONS, PL67), each for
 // at most timeout once it runs (ITSM_REQUEST_TIMEOUT); the others wait for a free place. 0 is
 // no bound.
@@ -613,16 +619,18 @@ func (s *Service) keep(ctx context.Context, w records.Record, f Filters) (Data, 
 	if err != nil || j == nil {
 		return out, err
 	}
-	if lasting(f, now) {
-		if d, ok := s.fromDays(ctx, w, out, j, f); ok {
-			return d, nil
-		}
-	}
 	key := ""
 	if s.store != nil && lasting(f, now) {
 		key = s.key(ctx, out, j)
 		if d, ok := s.stored(ctx, key); ok && !f.Fresh {
 			return d, nil
+		}
+	}
+	// Then the day values (PL69), kept like a count: Valkey answers the next opening without
+	// the database (PL70, LZ21b).
+	if lasting(f, now) {
+		if d, ok := s.fromDays(ctx, w, out, j, f); ok {
+			return s.done(ctx, key, d, nil)
 		}
 	}
 	d, err := s.run(ctx, out, j)
@@ -667,18 +675,19 @@ func (s *Service) Bundle(ctx context.Context, dashboardID uuid.UUID, f Filters, 
 	for _, w := range ws {
 		id := fmt.Sprint(w["id"])
 		out, j, err := s.prepare(ctx, w, f, nil)
-		// The day values first (PL69): fresh within a minute and quick for any period.
-		if err == nil && j != nil && lasting(f, now) {
-			if d, ok := s.fromDays(ctx, w, out, j, f); ok {
-				send(id, d, nil)
-				continue
-			}
-		}
 		key := ""
 		if err == nil && j != nil && keep {
 			key = s.key(ctx, out, j)
 			if d, ok := s.stored(ctx, key); ok && !f.Fresh {
 				send(id, d, nil)
+				continue
+			}
+		}
+		// Then the day values (PL69), kept like a count (PL70): with 20 dashboards open beside,
+		// reading them each time instead of Valkey made a list slower (LZ21b 204 ms).
+		if err == nil && j != nil && lasting(f, now) {
+			if d, ok := s.fromDays(ctx, w, out, j, f); ok {
+				send(id, s.must(ctx, key, d), nil)
 				continue
 			}
 		}

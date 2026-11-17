@@ -70,7 +70,8 @@ type Config struct {
 	// that lists, searches and writing do not wait behind long counts.
 	Evaluations int
 	// Workers per queue for the worker role (Hauptplan E85): ITSM_WORKERS_INTERACTIVE,
-	// ITSM_WORKERS_DEFAULT, ITSM_WORKERS_BULK; 0 leaves a queue unworked on this instance.
+	// ITSM_WORKERS_DEFAULT, ITSM_WORKERS_BULK, ITSM_WORKERS_DAYS (the day values of the
+	// dashboards, PL70); 0 leaves a queue unworked on this instance.
 	Workers map[string]int
 	// BulkQueue is the River queue of the asynchronous bulk (PL32), ITSM_BULK_QUEUE, "bulk"
 	// unless set; ITSM_WORKERS_BULK counts for it. The load stage of the CI uses its own, so
@@ -138,7 +139,7 @@ type OIDC struct {
 var queueRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
 // DefaultWorkers is the number of workers per queue of one instance.
-var DefaultWorkers = map[string]int{"interactive": 8, "default": 8, "bulk": 2}
+var DefaultWorkers = map[string]int{"interactive": 8, "default": 8, "bulk": 2, "days": 1}
 
 // LoadConfig reads the configuration through getenv (os.Getenv in production).
 func LoadConfig(getenv func(string) string) (Config, error) {

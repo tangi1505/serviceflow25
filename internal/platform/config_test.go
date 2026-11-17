@@ -41,7 +41,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.RequestTimeout != 10*time.Second {
 		t.Fatalf("request timeout = %s (PL56)", cfg.RequestTimeout)
 	}
-	if cfg.Workers["interactive"] != 8 || cfg.Workers["default"] != 8 || cfg.Workers["bulk"] != 2 || cfg.EventRetention != 7*24*time.Hour {
+	if cfg.Workers["interactive"] != 8 || cfg.Workers["default"] != 8 || cfg.Workers["bulk"] != 2 || cfg.Workers["days"] != 1 || cfg.EventRetention != 7*24*time.Hour {
 		t.Fatalf("unexpected job defaults: %+v", cfg)
 	}
 }

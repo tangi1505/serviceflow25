@@ -1074,7 +1074,7 @@ paths:
       parameters:
         - name: queue
           in: query
-          description: a queue name; the standard queues are interactive, default and bulk
+          description: a queue name; the standard queues are interactive, default, bulk and days
           schema: { type: string }
         - name: kind
           in: query

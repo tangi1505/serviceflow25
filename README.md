@@ -166,7 +166,8 @@ Die Messung in Prod-Größe (H14) lädt 70.000 Personen und 18,25 Mio. Störunge
 einer laufenden Instanz und setzt die Geschichte direkt in deren Datenbank; danach misst die
 volle Stufe auf diesem Bestand (`--only=LZ2,LZ4` für einzelne Ziele; die Dashboards LZ18 und
 LZ18w nur mit `--data=prod`) und räumt die angelegten
-Störungen wieder ab. Die Instanz braucht so viele Bulk-Worker (`ITSM_WORKERS_BULK`) wie
+Störungen wieder ab, mit `--database=postgres://…` der Messinstanz per SQL in einer Transaktion
+samt ihren Jobs (PL70: 265.000 Störungen in gut 1 min statt 26 min über die API). Die Instanz braucht so viele Bulk-Worker (`ITSM_WORKERS_BULK`) wie
 `--parallel`:
 
 ```bash
@@ -211,6 +212,7 @@ Nur über Umgebungsvariablen / environment variables only:
 | `ITSM_WORKERS_INTERACTIVE` | nein | `8` | Worker je Instanz für die Warteschlange `interactive` (Rolle `worker`) |
 | `ITSM_WORKERS_DEFAULT` | nein | `8` | Worker je Instanz für `default` |
 | `ITSM_WORKERS_BULK` | nein | `2` | Worker je Instanz für `bulk`; `0` lässt eine Warteschlange auf dieser Instanz liegen |
+| `ITSM_WORKERS_DAYS` | nein | `1` | Worker je Instanz für `days`: die Tageswerte der Dashboards jede Minute (PL70), damit sie nicht hinter einer Flut in `default` warten |
 | `ITSM_BULK_QUEUE` | nein | `bulk` | Warteschlange des asynchronen Bulk (PL32); die Laststufe der CI nimmt `bulkload`, damit eine andere Instanz auf derselben Datenbank ihre Jobs nicht nimmt |
 | `ITSM_EVENT_RETENTION` | nein | `168h` | Aufbewahrung der Ereignisse (Hauptplan E46), nächtlicher Job `event.retention` |
 | `ITSM_PUBLIC_URL` | nein | `http://localhost:8080` | Adresse des Servers aus Sicht des Browsers (Rückweg vom Identitätsanbieter) |

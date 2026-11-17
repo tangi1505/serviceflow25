@@ -729,7 +729,8 @@ Meilenstein. Werkzeug: `test/load` (E51).
   Widgets desselben Typs und derselben Bedingung in einer Abfrage (`GROUPING SETS`); ohne nur
   die Kennzahlen, weil PostgreSQL Gruppierungssätze ohne parallele Arbeiter rechnet. Höchstens
   `ITSM_EVALUATIONS` Auswertungen zugleich je Instanz (4), jede mit der Zeitgrenze einer
-  Anfrage ab ihrem Platz. Offen: die Liste (LZ2) neben 20 Dashboards über alles, bis Stufe 3.
+  Anfrage ab ihrem Platz. Offen: die Liste (LZ2) neben 20 Dashboards über alles, bis zur Messung
+  mit festen Kernen (PL71).
 - **Gespeicherter Stand** (PL68, Kern-Plan E73): Widgets mit Zeiträumen über 8 Tage und die
   Zahlen-Kacheln des Portals liegen bis 5 min in Valkey (`dashboard:v1:<SHA-256>` über Mandant,
   Bedingung der Rechte und Abfrage); `computed_at` sagt, wann gerechnet wurde, `fresh` rechnet
@@ -739,6 +740,10 @@ Meilenstein. Werkzeug: `test/load` (E51).
   Ereignisse markiert Tage (`day_value_dirty`), ein Job jede Minute zählt sie neu, einer jede
   Nacht alle. Lange Zeiträume lesen daraus, wenn das Leserecht der Person nur aus Einheiten
   besteht (`authz.UnitsOnly`); die Bedingung der Rechte gilt dann auf `day_value.org_path`.
+  Ein Recht ohne Bedingung über alle oder einen Knoten mit allem darunter deckt die Rechte darin
+  ab (`rowGrants`, PL70). Reihenfolge: gespeicherter Stand, dann Tageswerte (deren Ergebnis
+  gespeichert wird), dann zählen; `fresh` überspringt nur den gespeicherten Stand. Der Job jede
+  Minute läuft in der eigenen Warteschlange `days` (PL70, Kern-Plan E75).
 
 ---
 

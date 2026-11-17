@@ -100,7 +100,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL67** | Dashboards, Stufe 2: bündeln und eigenes Budget. Ein Aufruf liefert alle Widgets eines Dashboards; Widgets mit demselben Typ und derselben Bedingung rechnet ein Durchlauf; Auswertungen haben eine Obergrenze gleichzeitiger Läufe je Instanz, abgestimmt mit AP7, damit Lesen und Schreiben nicht dahinter warten (Hauptplan E195; §2.1) | 🟢 | 1,5 d | „Statistik“ öffnen → ein Aufruf statt einem je Widget; `pg_stat_statements` zeigt für die zehn Widgets der Störungen höchstens vier Abfragen; Lastwerkzeug mit `--only=LZ21` → LZ1, LZ2 und LZ4 halten neben 20 Dashboards |
 | **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | 🟢 | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
 | **PL69** | Dashboards, Stufe 3: Tageswerte. Je Typ eine Tabelle mit Zahl und Summen je Tag, Einheit und den Feldern, nach denen die mitgelieferten Widgets gruppieren; ein Hintergrundlauf führt sie nach (asynchron, Hauptplan E191), ein Abgleich je Nacht zählt nach. Lange Zeiträume lesen daraus, wenn sich die Rechte der Person auf Einheiten zurückführen lassen; sonst gilt der Weg aus PL68 (Hauptplan E195; §2.1) | 🟢 | 2 d | eine Störung anlegen → der Tageswert steigt innerhalb einer Minute; die Summe der Tageswerte eines Monats gleicht der gezählten Zahl; eine Person nur mit „beteiligt“ bekommt dieselben Zahlen wie vor PL69 |
-| **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | ⬜ | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
+| **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | 🟢 | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
+| **PL71** | Feste Kerne und Speichergrenze auf `ki-lab` (Hauptplan E198): H14 und die CI laufen auf eigenen Kernen (`cpuset`) mit einer Speichergrenze nach der Zielgröße Prod (8 Kerne, 32 GB), die Einstellungen von PostgreSQL passend dazu; danach H14 und die Basislinie neu gemessen | ⬜ | 1 d | `docker inspect` auf `ki-lab` zeigt Kerne und Grenze je Container; die volle Stufe von H14 und die ganze CI laufen mit den Grenzen, die Werte stehen im Umsetzungsstand |
 
 ### C — Meilenstein 2
 
@@ -122,7 +123,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL38** | CalDAV-Server für Planung und Notizen (E26) (Inventar G227) | ⬜ | 2 d | Thunderbird abonniert den Kalender einer Person und zeigt ihre Aufgaben mit Termin; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL39** | Aufbewahrung je Typ: Partitionen im Voraus anlegen, abgelaufene löschen oder auslagern (E47); Verlauf und Vorgänge nach Frist (Inventar G175, G244) | ⬜ | 2 d | Ein Typ mit Monatspartitionen hat nach dem Wartungsjob die nächsten drei Monate angelegt; eine abgelaufene Partition ist gelöscht; `docker compose run --rm tools scripts/ci.sh` grün |
 
-**Summe:** 89 d, seit dem 2026-11-16 mit PL65 bis PL70 für die Dashboards in Prod-Größe (8,5 d, Hauptplan E195); vorher 80,5 d; 64 d geschätzt vor dem Bau (Block A: 10 d), PL40 am 2026-10-27 aus PL22 abgetrennt, PL41 am 2026-10-28 aus dem Befund von WF4 dazu, PL42 am 2026-10-29 vor UI3 eingeschoben (Hauptplan E121), PL43 am 2026-10-29 vor UI25 eingeschoben (Hauptplan E135), PL44 bis PL48 am 2026-10-29 für die Mandanten (Hauptplan E136, E137), PL47 am 2026-10-30 in PL47a bis PL47e geteilt und von 2,5 d auf 6,5 d geschätzt (Hauptplan E141). Mit PL49 am 2026-10-31 aus dem SD-Plan (§2.3, N1) 81,5 d. PL51 am 2026-11-02 für die CI (Hauptplan E150): 82 d. PL52 am 2026-11-03 für eine schnellere CI (Hauptplan E162): 83 d.
+**Summe:** 90 d, seit dem 2026-11-17 mit PL71 für feste Kerne auf `ki-lab` (1 d, Hauptplan E198); seit dem 2026-11-16 mit PL65 bis PL70 für die Dashboards in Prod-Größe (8,5 d, Hauptplan E195); vorher 80,5 d; 64 d geschätzt vor dem Bau (Block A: 10 d), PL40 am 2026-10-27 aus PL22 abgetrennt, PL41 am 2026-10-28 aus dem Befund von WF4 dazu, PL42 am 2026-10-29 vor UI3 eingeschoben (Hauptplan E121), PL43 am 2026-10-29 vor UI25 eingeschoben (Hauptplan E135), PL44 bis PL48 am 2026-10-29 für die Mandanten (Hauptplan E136, E137), PL47 am 2026-10-30 in PL47a bis PL47e geteilt und von 2,5 d auf 6,5 d geschätzt (Hauptplan E141). Mit PL49 am 2026-10-31 aus dem SD-Plan (§2.3, N1) 81,5 d. PL51 am 2026-11-02 für die CI (Hauptplan E150): 82 d. PL52 am 2026-11-03 für eine schnellere CI (Hauptplan E162): 83 d.
 
 **Stand der Reihenfolge (2026-10-28, Hauptplan E108):** Block B ist fertig; PL31 und PL32 aus Block C sind vorgezogen gebaut. PL41 (Verteiler in Stapeln, Hauptplan E112) ist auf deine Entscheidung nach dem Befund von WF4 in Block B dazugekommen und vor WF8 gebaut. PL42 (Zeitleiste, Hauptplan E121) ist am 2026-10-29 auf deine Entscheidung vor UI3 eingeschoben, weil die Detailseite Folgemeldungen braucht, die es noch nicht gab. Der Rest von Block C und Block D wartet bis nach Meilenstein 1; vorher kommen WF und UI. PL49 (laufende Nummer) ist am 2026-10-31 aus dem SD-Plan dazugekommen und steht vor SD2. PL50 (zwei CIs gleichzeitig) ist am 2026-10-31 dazugekommen und am selben Tag wieder entfallen, weil nur noch ein Agent arbeitet (Hauptplan E149). PL52 (schnellere CI) ist am 2026-11-03 auf deine Entscheidung dazugekommen und kommt direkt nach SD4 (Hauptplan E162).
 
@@ -174,6 +175,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
+| **E75** | **Tageswerte in Prod-Größe (PL70, deine Entscheidungen 2026-11-17):** der Job jede Minute der Tageswerte läuft in einer eigenen Warteschlange `days` mit eigenem Worker (`ITSM_WORKERS_DAYS`, 1), weil er auf `ki-lab` hinter 3,9 Mio. Jobs einer Flut über eine Stunde nicht drankam; der Rückstau aus den Messungen auf H14 wurde abgeräumt; die Messung räumt ihre Störungen auf der Messinstanz per SQL in einer Transaktion ab (`--database`), die Instanz ist nur für die Messung da; LZ21b (LZ2 neben 20 Dashboards, 171 ms statt ≤ 150 ms) bleibt offen bis zur Messung mit festen Kernen (PL71, Hauptplan E198). Von mir ergänzt: ein Recht ohne Bedingung über alle oder über einen Knoten mit allem darunter deckt die Rechte darin ab (gleiche Datensätze, kürzere Bedingung), damit eine Person mit „alle“ und „beteiligt“ daneben die Tageswerte liest; der gespeicherte Stand kommt vor den Tageswerten, und was die Tageswerte zeigen, wird gespeichert. Verworfen: die schnelle Warteschlange `interactive`; den Rückstau abarbeiten lassen; ein Sammel-Aufruf zum Löschen in der API; die Datenbank vor jeder Messung neu einspielen (125 GB, 5 h 30 min); die Grenze von LZ21b auf 200 ms; das ganze Dashboard am Stück speichern | 2026-11-17 | Pascal |
 | **E74** | **Tageswerte (PL69, deine Entscheidungen 2026-11-17):** alle passenden Widgets lesen lange Zeiträume aus den Tageswerten (mit Zeitraum, ohne Bedingung außer „Datum gesetzt“, zählen, summieren oder mitteln, gruppiert nach einem Feld, einer Rolle oder ihrem Datum); jede Nacht werden alle Tage neu gezählt. Von mir ergänzt: was die Tageswerte halten, folgt den Widgets und wird mit dem Lauf der Nacht neu bestimmt; ein Widget, das etwas Neues verlangt, rechnet bis dahin wie bisher; ein Zeitraum, der nicht um Mitternacht beginnt, beginnt aus den Tageswerten um die Mitternacht davor; die Tageswerte gehen nur an Personen, deren Leserecht nur aus Einheiten besteht und die jedes Feld lesen dürfen. Verworfen: nur die mitgelieferten Widgets; jede Nacht nur 90 Tage | 2026-11-17 | Pascal |
 | **E73** | **Gespeicherter Stand und Tageswerte (PL68, PL69, deine Entscheidungen 2026-11-17):** Zeiträume über 8 Tage (30 Tage, Jahr, Gesamt) und die Zahlen-Kacheln des Portals zeigen den gespeicherten Stand eines Widgets bis 5 min aus Valkey; Heute und 7 Tage rechnen immer frisch; der Schlüssel enthält Mandant, die Bedingung der Rechte der Person und die ganze Abfrage; ein Zeitraum, der mit der Uhr wandert, beginnt auf 5 min abgerundet. „Jetzt aktualisieren“ rechnet frisch (`fresh`). Die Seitenleiste eines Datensatzes rechnet immer frisch. LZ20 (frisch über Gesamt 12,7 bis 14,6 s, dabei einzelne Widgets in der Zeitgrenze) bleibt offen bis zu den Tageswerten. V2: Wer Rechte über Einheiten hat, liest lange Zeiträume aus den Tageswerten; wer nur einzelne Vorgänge sieht, bekommt den gespeicherten Stand. Verworfen: Zeitgrenze je Widget erhöhen; Tageswerte nur für wer alles sieht | 2026-11-17 | Pascal |
 | **E72** | **Dashboards bündeln (PL67, deine Entscheidungen 2026-11-17):** ein Aufruf liefert alle Widgets eines Dashboards stückweise, jedes sobald es fertig ist (NDJSON); höchstens 4 Auswertungen zugleich je Instanz (`ITSM_EVALUATIONS`), weitere warten. Von mir ergänzt nach der Messung auf `ki-lab`: Gruppen zählen nur mit Zeitraum in einem Durchlauf, weil PostgreSQL Gruppierungssätze ohne parallele Arbeiter rechnet (über „Gesamt“ 13 s); die Zeitgrenze gilt je Widget ab seinem Platz, nicht für den ganzen Strom. Befund LZ21b (Liste neben 20 Dashboards über alles 165 ms statt ≤ 150 ms) bleibt offen bis Stufe 3 und wird nach PL69 neu gemessen (deine Entscheidung 2026-11-17). Verworfen: alles auf einmal; sofort ablehnen; 8 zugleich; 2 zugleich; Auswertungen ohne parallele Arbeiter | 2026-11-17 | Pascal |
@@ -1683,6 +1685,49 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL70 — Dashboards: Tageswerte in Prod-Größe, 2026-11-17
+
+- **Grundlage:** Hauptplan E195, E198, LZ2, LZ18 bis LZ21; E74, E75; §2.1.
+- **Erstbefüllung auf `ki-lab` (H14, 18,25 Mio. Störungen):** der Job der Nacht, von Hand
+  gestartet (`POST /api/v1/jobs/schedules/dashboard.day_values_fill:run`), ohne Schreibsperre:
+  **133 s**, 3 Tageswert-Sätze (Störung nach Erstellung mit 4 Gruppen, nach Lösung mit 2
+  Zahlenfeldern, Anfrage), 211.307 Zeilen, 89 MB.
+- **Gefunden und gebaut:**
+  - `authz`: das Konto der Messung liest alle Störungen und hat daneben „beteiligt“ (LZ2);
+    `UnitsOnly` lehnte darum ab, und LZ20 blieb bei 13,6 s. Neu `rowGrants`: ein Recht ohne
+    Bedingung über alle oder über einen Knoten mit allem darunter deckt die Rechte darin ab;
+    `allRows`: neben allen Datensätzen zählen Leser und Genehmigende nicht (beide bleiben im
+    Mandanten). Die Bedingung wird kürzer, die Datensätze bleiben dieselben; Test
+    `TestCoveredGrants`.
+  - `dashboard`: der gespeicherte Stand kommt vor den Tageswerten, und was die Tageswerte
+    zeigen, wird gespeichert (`must`); vorher fragten 20 offene Dashboards bei jedem Öffnen die
+    Datenbank statt Valkey, und LZ21b stieg auf 204 ms. „Jetzt aktualisieren“ liest weiter die
+    Tageswerte.
+  - `jobs`: Warteschlange `days` mit eigenem Worker (`ITSM_WORKERS_DAYS`, 1); der Job jede
+    Minute stand hinter 3,9 Mio. Jobs der angelegten Störungen, und die Tageswerte zeigten
+    146.867 Störungen zu viel.
+  - Lastwerkzeug: `--database` bei `run` und `cleanup`; dann löscht das Aufräumen von LZ4 die
+    Störungen der Messung in einer Transaktion per SQL, mit allen Tabellen, die einen
+    Datensatz über `type_name` und `record_id` nennen (aus dem Schema), den wartenden Jobs und
+    den markierten Tagen der Tageswerte. LZ20 hat die Grenze 2 s.
+  - Auf H14 abgeräumt (E75): 876.000 wartende Jobs der Regeln und Benachrichtigungen und
+    2,9 Mio. Fristen-Jobs gelöschter Störungen, in unter 30 s.
+- **Belegt, 2026-11-17, auf `ki-lab` (H14):**
+  - Aufräumen: 277.900 Störungen in 1 min 4 s, 263.565 in 1 min 6 s (vorher über die API
+    265.261 in 26 min 8 s); danach Tageswerte und Tabelle beide 18.250.000, kein Job und kein
+    markierter Tag übrig.
+  - LZ2 allein p95 120 ms (≤ 150; mit dem Rückstau 164 ms), LZ18 57 ms (≤ 1 s), LZ18w 47 ms
+    (≤ 300 ms), LZ19 2,7 ms (≤ 1 s), **LZ20 49 ms** (≤ 2 s; vorher 13,6 s), LZ21a 3,6 ms
+    (≤ 50), LZ21c 37 ms (≤ 100); **LZ21b 171 ms (≤ 150, verfehlt)**.
+  - Jedes Widget von „Statistik“ über alles mit `fresh` in 1 bis 31 ms (vorher 1,5 bis 5,8 s).
+  - Go `TestDashboardDayValuesOverHTTP` mit gespeichertem Stand: die Tageswerte zeigen sich mit
+    `fresh`, und was sie zeigen, ist danach der gespeicherte Stand.
+  - Ganze CI grün am 2026-11-17 auf `ki-lab`: Go, Web (155 Vitest-Fälle, 22 Playwright-Fälle
+    mit axe), Leistungsgate gegen die Basislinie: LZ1 p95 0,44 ms (−83 %), LZ2 3,11 ms (−34 %), LZ3 4,39 ms (−53 %), LZ4 4,10 ms (−47 %),
+    LZ5 9.852 Zeilen/s, LZ13 8.872 Zeilen/s.
+- **Offen:** LZ21b bis PL71 (E75): das Lastwerkzeug, die 20 Dashboards und der Server teilen
+  sich die 16 Kerne von `ki-lab`.
 
 ### PL69 — Dashboards: Tageswerte, 2026-11-17
 

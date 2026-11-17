@@ -201,6 +201,9 @@ const prodCreateTitle = "LZ4 Drucker fällt aus"
 // purged one by one in parallel. Only records without a source and with the title of the
 // scenario, never the data of the fill.
 func cleanupCreatedProd(ctx context.Context, client *http.Client, base string) (int, error) {
+	if Database != "" {
+		return cleanupCreatedSQL(ctx, Database)
+	}
 	s, err := login(ctx, client, base)
 	if err != nil {
 		return 0, err

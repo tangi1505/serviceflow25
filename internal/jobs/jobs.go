@@ -36,16 +36,19 @@ import (
 )
 
 // The queues (Hauptplan E85, LZ10): work behind the interface never waits behind bulk runs
-// because every queue has workers of its own.
+// because every queue has workers of its own. The day values of the dashboards have theirs
+// (PL70, Pascal 2026-11-17): behind a flood of incidents in "default" their run of the minute
+// did not come for more than an hour, and the dashboards showed old numbers.
 const (
 	QueueInteractive = "interactive"
 	QueueDefault     = "default"
 	QueueBulk        = "bulk"
+	QueueDays        = "days"
 )
 
 // Queues lists the standard queues in order of precedence. Other names are allowed (an
 // installation may add queues with workers of their own; tests use queues no server works).
-var Queues = []string{QueueInteractive, QueueDefault, QueueBulk}
+var Queues = []string{QueueInteractive, QueueDefault, QueueBulk, QueueDays}
 
 // reloadChannel carries the name of a changed schedule to every instance (Valkey Pub/Sub).
 const reloadChannel = "jobs.schedule"

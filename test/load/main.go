@@ -123,14 +123,16 @@ func run(args []string, out io.Writer) error {
 // cmdCleanup removes what the scenarios created on a target without measuring (H14): for
 // incidents of LZ4 left by a run that stopped before its cleanup.
 //
-//	go run ./test/load cleanup --data=prod --target=http://127.0.0.1:18080
+//	go run ./test/load cleanup --data=prod --target=http://127.0.0.1:18080 [--database=postgres://…]
 func cmdCleanup(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("cleanup", flag.ContinueOnError)
 	target := fs.String("target", "", "base URL of the instance")
 	data := fs.String("data", "", "prod: the scenarios on the data set in Prod size")
+	dbURL := fs.String("database", "", "the database of the instance: delete with SQL at once instead of through the API")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	scenario.Database = *dbURL
 	if *target == "" {
 		return errors.New("cleanup needs --target=URL")
 	}
@@ -209,9 +211,11 @@ func cmdRun(args []string, out io.Writer) error {
 	data := fs.String("data", "ci", "ci, or prod for LZ1, LZ2 and LZ4 on the incidents of test/load fill (H14)")
 	only := fs.String("only", "", "comma-separated scenario ids, default all (a partial report never makes a baseline)")
 	waitIdle := fs.Duration("wait-for-idle", 0, "wait up to this long for the load to drop below the limit before measuring")
+	dbURL := fs.String("database", "", "the database of the instance: with --data=prod the cleanup deletes with SQL at once instead of through the API")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	scenario.Database = *dbURL
 	st, ok := stages[*stageName]
 	if !ok || *target == "" {
 		return errors.New("run needs --stage=quick|full and --target=URL")

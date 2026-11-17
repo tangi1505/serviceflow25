@@ -286,8 +286,8 @@ func prepareRefresh(ctx context.Context, client *http.Client, base string) (Call
 		f["fresh"] = true
 		periods = append(periods, f)
 	}
-	// Its own client: the one of the measurement gives up after 10 s, the target itself; a
-	// longer one is measured, not cut off.
+	// Its own client: the one of the measurement gives up after 10 s; a longer one is
+	// measured, not cut off.
 	patient := &http.Client{Timeout: 5 * time.Minute}
 	var turn atomic.Uint64
 	return func(ctx context.Context, _ *http.Client) bool {

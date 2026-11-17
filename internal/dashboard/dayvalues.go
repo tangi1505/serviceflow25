@@ -662,8 +662,9 @@ func (s *Service) RegisterDayValues(js *jobs.Service) error {
 		Name:     DayValuesArgs{}.Kind(),
 		Label:    map[string]string{"de": "Tageswerte der Dashboards nachführen", "en": "Update the day values of the dashboards"},
 		Schedule: "* * * * *",
-		Queue:    jobs.QueueDefault,
-		Args:     func() river.JobArgs { return DayValuesArgs{} },
+		// Its own queue (PL70): never behind the work of a flood in "default".
+		Queue: jobs.QueueDays,
+		Args:  func() river.JobArgs { return DayValuesArgs{} },
 	}); err != nil {
 		return err
 	}

@@ -5758,7 +5758,7 @@ export interface operations {
     listJobs: {
         parameters: {
             query?: {
-                /** @description a queue name; the standard queues are interactive, default and bulk */
+                /** @description a queue name; the standard queues are interactive, default, bulk and days */
                 queue?: string;
                 kind?: string;
                 state?: "available" | "cancelled" | "completed" | "discarded" | "pending" | "retryable" | "running" | "scheduled";

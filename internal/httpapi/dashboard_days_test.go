@@ -26,6 +26,7 @@ import (
 // The Prüfweg of PL69 (Hauptplan E195, Kern-Plan E73): after the count of the night, long
 // periods read the day values and show what counting shows; a write raises the day value once
 // the run of the minute counted its day; a person who reads her own records counts as before.
+// Since PL70 the stored state comes first, so the day values show with "fresh" or after it.
 func TestDashboardDayValuesOverHTTP(t *testing.T) {
 	base := os.Getenv("ITSM_TEST_DATABASE_URL")
 	if base == "" {
@@ -33,6 +34,7 @@ func TestDashboardDayValuesOverHTTP(t *testing.T) {
 	}
 	t.Setenv("ITSM_TEST_DATABASE_URL", dbtest.Isolated(t, base, "itsmtest_api_pl69"))
 	api := apiServer(t)
+	api.dashboards.Keep(&memStore{m: map[string][]byte{}})
 	ctx := t.Context()
 	create := func(a *testAPI, body string) {
 		t.Helper()
@@ -83,8 +85,11 @@ func TestDashboardDayValuesOverHTTP(t *testing.T) {
 		}
 		return r.body
 	}
-	year := fmt.Sprintf(`{"from": "%s"}`, time.Date(time.Now().Year(), 1, 1, 0, 0, 0, 0, time.FixedZone("CET", 3600)).Format(time.RFC3339))
+	from := time.Date(time.Now().Year(), 1, 1, 0, 0, 0, 0, time.FixedZone("CET", 3600)).Format(time.RFC3339)
+	year := fmt.Sprintf(`{"from": "%s"}`, from)
 	periods := []string{`{}`, year}
+	// Computed again past the stored state of PL68: since PL70 the stored state comes first.
+	fresh := map[string]string{`{}`: `{"fresh": true}`, year: fmt.Sprintf(`{"from": "%s", "fresh": true}`, from)}
 	titles := []string{"Alle", "Summe", "Mittel", "Nach Art", "Je Woche", "Offene"}
 	counted := map[string]map[string]any{}
 	for _, p := range periods {
@@ -107,7 +112,7 @@ func TestDashboardDayValuesOverHTTP(t *testing.T) {
 	}
 	for _, p := range periods {
 		for _, title := range titles {
-			if got := data(api, title, p); !reflect.DeepEqual(got, counted[p+title]) {
+			if got := data(api, title, fresh[p]); !reflect.DeepEqual(got, counted[p+title]) {
 				g, _ := json.Marshal(got)
 				c, _ := json.Marshal(counted[p+title])
 				t.Fatalf("%s %s: day values %s, counted %s", title, p, g, c)
@@ -126,7 +131,7 @@ func TestDashboardDayValuesOverHTTP(t *testing.T) {
 		}
 	}
 	create(api, `{"title": "PL69 neu", "kind": "fault", "priority": 5}`)
-	if v := data(api, "Alle", `{}`)["value"]; v != 5.0 {
+	if v := data(api, "Alle", fresh[`{}`])["value"]; v != 5.0 {
 		t.Fatalf("before the run of the minute: %v", v)
 	}
 	if err := days.Dispatch(ctx); err != nil {
@@ -135,8 +140,16 @@ func TestDashboardDayValuesOverHTTP(t *testing.T) {
 	if n, err := api.dashboards.CountDirtyDays(ctx); err != nil || n < 1 {
 		t.Fatalf("count the marked days: %d %v", n, err)
 	}
-	if v := data(api, "Alle", `{}`)["value"]; v != 6.0 {
+	if v := data(api, "Alle", fresh[`{}`])["value"]; v != 6.0 {
 		t.Fatalf("after the run of the minute: %v", v)
+	}
+	if v := data(api, "Summe", fresh[year])["value"]; v != 1.0+2+3+4+2+5 {
+		t.Fatalf("sum after the run: %v", v)
+	}
+	// "Jetzt aktualisieren" from the day values keeps what it showed: without fresh the
+	// stored state is the new one.
+	if v := data(api, "Alle", `{}`)["value"]; v != 6.0 {
+		t.Fatalf("stored state: %v", v)
 	}
 	if v := data(api, "Summe", year)["value"]; v != 1.0+2+3+4+2+5 {
 		t.Fatalf("sum after the run: %v", v)
