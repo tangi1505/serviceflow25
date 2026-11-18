@@ -427,7 +427,10 @@ Sie gelten nur in `C:\Users\PascalFrechen\Polizei\itsm`. Stand 2026-10-20, mit S
   während der Arbeit (die geänderten Stellen und was davon abhängt, ohne Lastmessung), die
   ganze CI vor jedem Commit; die Lastmessung läuft nur, wenn sich Go-Code des Servers,
   Migrationen oder das Lastwerkzeug seit dem letzten Commit geändert haben.
-- Das Repository liegt vorerst nur lokal; ein Remote kommt vor Meilenstein 1 (E48).
+- Das Repository liegt seit dem 2026-11-18 auch auf GitHub: `origin` ist
+  `https://github.com/tangi1505/serviceflow25.git`, `main` folgt `origin/main` (Hauptplan E48).
+  Committet wird lokal nach jeder fertigen Aufgabe; pushen tut nur die Abnahme. Die CI läuft
+  weiter auf `ki-lab`, nicht auf GitHub.
 - Eine Aufgabe, die Code ändert, ist erst fertig, wenn die Leistungsmessung aus Hauptplan H11 grün
   ist (E32), sobald H11 steht.
 - **Kurzzeichen und Dateien der Pläne:**
