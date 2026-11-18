@@ -238,8 +238,10 @@ function TypeView({
       ) : (
         <Filters type={type} conditions={conditions} onChange={setConditions} />
       )}
+      {/* self-start: beside the open preview the list keeps the height of its rows instead of
+          stretching to the height of the preview (UI46). */}
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 lg:self-start">
           <List
             type={type}
             where={where}

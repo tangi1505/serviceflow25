@@ -452,7 +452,7 @@ export function List({
   };
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <NewMenu type={type} />
         <details className="relative">
@@ -537,7 +537,10 @@ export function List({
       {chosen.length > 0 && <BatchBar type={type} rows={chosen} />}
       <div
         ref={parentRef}
-        className="relative flex-1 overflow-auto rounded-md border"
+        className="relative overflow-auto rounded-md border"
+        // As high as its rows, at most what the window leaves: a box of its own height never
+        // shows a vertical scroll bar for rows that fit, also not when the horizontal one takes
+        // its room (UI46).
         style={{ maxHeight: "calc(100vh - 12rem)" }}
       >
         <table className="w-full border-collapse text-sm" role="grid" aria-rowcount={rows.length}>

@@ -65,8 +65,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI42** | Kacheln des Portals mit Symbol (E43): Feld `icon` an `core.portal_tile` als Auswahl aus einer festen Liste, ohne Angabe ein Symbol nach der Art der Kachel; die Zeile mit der Art über dem Namen entfällt | 🟢 | 1,5 d (vorher 1 d) | Kachel „Störung melden“ mit einem Symbol aus dem Raster speichern → das Portal zeigt es im Kasten über dem Namen; eine Kachel ohne Angabe zeigt das Symbol ihres Ziels; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI43** | „Meine Vorgänge“ als eine Liste über alle Typen (E43): an der Überschrift die Zahl der offenen, je Zeile Titel, Nummer, Typ, Zeit, Status und ein Hinweis, wenn die Person am Zug ist; Umschalter „Offen, Alle“. Ersetzt die Karte je Typ samt ihrem „Neu“. Der Hinweis „Lösung bestätigen“ kommt aus den Übergängen, die der Anforderer auslöst; für „Rückfrage beantworten“ bekommt der Wartegrund die Angabe, dass er den Anforderer meint (§2.4) | 🟢 | 2 d | Eine Person mit einer Störung und zwei Anfragen sieht eine Liste mit drei Zeilen, die neueste oben, und „3 offen“ an der Überschrift; eine gelöste Anfrage, die auf ihre Bestätigung wartet, zeigt „Lösung bestätigen“; eine Störung mit einem Wartegrund, der den Anforderer meint, zeigt „Rückfrage beantworten“; „Alle“ zeigt auch die geschlossenen; es gibt keine Karte je Typ mehr; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Zustimmen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | 🟢 | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Zustimmen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI45** | Fehler: die Seite scrollt über ihren Inhalt hinaus, gesehen am Dashboard „Statistik“ (§2.5): Ursache finden und beheben; ab 768 px scrollt nur der Inhalt, nie das ganze Dokument samt Navigation | ⬜ | 0,5 d | Dashboard „Statistik“ in einem Fenster von 1700 × 1250 px bis ans Ende scrollen → unter dem letzten Widget steht kein leerer Bereich, die Navigation bleibt stehen; ein Playwright-Test prüft an Dashboard, Liste und Detailseite, dass das Dokument nicht höher ist als das Fenster; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI46** | Fehler: Höhe der Tabelle (E54, §2.5): die Tabelle ist so hoch wie ihre Zeilen und höchstens so hoch, wie das Fenster Platz lässt; neben der offenen Vorschau wächst sie nicht auf deren Höhe; ein senkrechter Rollbalken erscheint erst, wenn die Zeilen nicht mehr passen | ⬜ | 0,5 d | Liste „Anfrage“ mit 4 Datensätzen, eine Zeile wählen → die Tabelle endet unter der vierten Zeile, ohne senkrechten Rollbalken, die Vorschau steht daneben; die Liste des Typs `probe` mit 100.000 Datensätzen scrollt weiter ohne Ruckeln (UI2); `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI45** | Fehler: die Seite scrollt über ihren Inhalt hinaus, gesehen am Dashboard „Statistik“ (§2.5): Ursache finden und beheben; ab 768 px scrollt nur der Inhalt, nie das ganze Dokument samt Navigation | 🟢 | 0,5 d | Dashboard „Statistik“ in einem Fenster von 1700 × 1250 px bis ans Ende scrollen → unter dem letzten Widget steht kein leerer Bereich, die Navigation bleibt stehen; ein Playwright-Test prüft an Dashboard, Liste und Detailseite, dass das Dokument nicht höher ist als das Fenster; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI46** | Fehler: Höhe der Tabelle (E54, §2.5): die Tabelle ist so hoch wie ihre Zeilen und höchstens so hoch, wie das Fenster Platz lässt; neben der offenen Vorschau wächst sie nicht auf deren Höhe; ein senkrechter Rollbalken erscheint erst, wenn die Zeilen nicht mehr passen | 🟢 | 0,5 d | Liste „Anfrage“ mit 4 Datensätzen, eine Zeile wählen → die Tabelle endet unter der vierten Zeile, ohne senkrechten Rollbalken, die Vorschau steht daneben; die Liste des Typs `probe` mit 100.000 Datensätzen scrollt weiter ohne Ruckeln (UI2); `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI47** | Seitenkopf mit Knöpfen (E54, E56): ein Baustein für Titel, Anzahl und Aktionen; an der Liste das Menü „Anpassen“ mit „Typ anpassen“ und „Workflow“ (nur mit `customize`), „Neu“ rechts im Seitenkopf; die unterstrichenen Wörter in Seitenköpfen und Leisten werden Knöpfe (Zurück zur Liste, Typ-Editor und Workflow gegenseitig, Zurück zu den Rollen, Teilen der Suche); Verweise auf Datensätze bleiben Links | ⬜ | 1 d | Als Admin an der Liste „Anfrage“: der Knopf „Anpassen“ öffnet ein Menü mit zwei Einträgen, erreichbar mit Tab und Pfeiltasten, Esc schließt es; ohne das Recht `customize` fehlt der Knopf; in Typ-Editor, Workflow-Editor, Rolle, Formular und Detailseite steht „Zurück“ als Knopf; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI48** | Leiste über der Tabelle in einer Zeile (E54): links Suchen und Filter, rechts „Ansicht“ (Spalten und Zeilenhöhe in einem Menü) und „Exportieren“ (Menü mit XLSX, ODS, CSV) als Knöpfe mit Symbol, Namen und Tooltip; alle Bedienelemente 32 px hoch; die Massenaktionen (UI6) stehen als Leiste am Kopf der Tabelle, solange Zeilen gewählt sind | ⬜ | 1 d | An der Liste „Störung“: „Ansicht“ öffnet ein Menü, darin Zeilenhöhe umstellen und eine Spalte abwählen → die Liste folgt sofort; „Exportieren“ › „CSV“ lädt die Datei wie bisher (UI5); zwei Zeilen wählen → die Leiste „2 ausgewählt“ erscheint über dem Tabellenkopf; bei 375 px Breite bricht die Leiste um, nichts läuft aus dem Fenster; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI49** | Gespeicherte Suchen als Menü vor dem Filter (E54): der Knopf zeigt den Namen der Suche und einen Punkt, wenn die Filter von ihr abweichen; das Menü listet eigene und geteilte Suchen und bietet „Änderungen speichern“ (nur an eigenen), „Änderungen verwerfen“, „Als neue Suche speichern“ und „Teilen und verwalten“. Ersetzt die Auswahlliste mit ihren Knöpfen aus UI4 | ⬜ | 0,75 d | Suche „Meine offenen“ wählen, einen Filter dazusetzen → am Knopf steht ein Punkt; „Änderungen speichern“ im Menü → nach dem Neuladen steht der Filter noch; an einer geteilten Suche einer anderen Person fehlt „Änderungen speichern“; alles mit der Tastatur bedienbar; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -523,6 +523,54 @@ darum in keiner Aufgabe.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI46 — Höhe der Tabelle, 2026-11-18
+
+- **Grundlage:** E54, §2.5.
+- **Ursache, im Browser gemessen auf 8092 (1700 × 1250 px, Liste „Anfrage“ mit 4
+  Datensätzen):** ohne Vorschau ist der Kasten der Tabelle 262 px hoch (Kopf 37, Zeilen 208,
+  waagerechter Rollbalken 17); mit offener Vorschau 750 px. Die Zeile aus Liste und Vorschau
+  (`TypePage.tsx`) streckt ihre Spalten auf die Höhe der höchsten, die Vorschau ist 802 px
+  hoch, und die Liste füllte diese Höhe (`h-full`, Tabelle `flex-1`). Einen senkrechten
+  Rollbalken zeigte Chromium bei 100 % Zoom nicht (Inhalt 733 = Kasten 733); in einem Kasten
+  mit aufgezwungener Höhe kann er bei einer Skalierung von Windows aus Bruchteilen von Pixeln
+  entstehen. Ohne aufgezwungene Höhe ist der Kasten immer so hoch wie sein Inhalt.
+- **Gebaut:** die Spalte der Liste steht oben (`lg:self-start`) und wächst nicht mit der
+  Vorschau; die Liste füllt keine fremde Höhe mehr (ohne `h-full` und `flex-1`). Der Kasten
+  ist so hoch wie seine Zeilen und höchstens `calc(100vh - 12rem)`; bei mehr Zeilen scrollt
+  er wie bisher (UI2).
+- **Belegt, 2026-11-18:**
+  - Playwright `e2e/list-height.spec.ts`: vier eigene Datensätze über eine gespeicherte
+    Suche; der Kasten ist so hoch wie Kopf, Zeilen und Rollbalken, ohne senkrechten
+    Rollbalken, und behält mit offener Vorschau seine Höhe (die Vorschau ist höher). Gegen
+    den alten Stand rot (449 statt 247 px).
+  - Auf 8092 im Browser: Liste „Anfrage“, eine Zeile gewählt, die Tabelle endet unter der
+    vierten Zeile.
+  - Ganze CI grün am 2026-11-18 auf `ki-lab`: Go, Web (155 Vitest-Fälle, 24 Playwright-Fälle mit axe), Leistungsgate bestanden.
+- **Nicht geprüft:** die Liste des Typs `probe` mit 100.000 Datensätzen (UI2, braucht die
+  Testdaten aus `scripts/seed-probe.sql`); ein Browser unter Windows mit 125 % Skalierung.
+
+### UI45 — Die Seite scrollt über ihren Inhalt hinaus, 2026-11-18
+
+- **Grundlage:** §2.5.
+- **Ursache, im Browser gemessen auf 8092 (1700 × 1250 px, Dashboard „Statistik“):** das
+  Dokument war 1.945 px hoch statt 1.250. Hinter jedem Liniendiagramm steht eine Tabelle
+  für Screenreader (`sr-only`, also absolut platziert, `render/Chart.tsx`). Sie hatte keinen
+  platzierten Vorfahren, richtete sich darum am Dokument aus statt am Inhalt, der scrollt,
+  und ragte unter dem letzten Widget aus dem Rahmen. Das Dokument scrollte mit, samt
+  Navigation.
+- **Gebaut:** `main` im Rahmen (`app/AppShell.tsx`) ist platziert (`relative`). Damit bleibt
+  jedes absolut platzierte Element ohne näheren platzierten Vorfahren im Inhalt und scrollt
+  mit ihm, nicht nur die Tabelle der Diagramme.
+- **Belegt, 2026-11-18:**
+  - Playwright `e2e/page-height.spec.ts`: ein eigenes Dashboard mit acht Liniendiagrammen
+    unter dem Rand (die CI hat kein Paket `sd`), dazu Liste und Detailseite; das Dokument ist
+    nie höher als das Fenster, und am Ende des Inhalts steht die Navigation, wo sie stand.
+    Gegen den Stand ohne Korrektur rot, an der Prüfung des Dashboards.
+  - Auf 8092 im Browser: „Statistik“ bis ans Ende gescrollt, das Dokument ist 1.250 px hoch,
+    der Inhalt endet mit dem letzten Widget und dem Rand von 24 px, die Navigation bleibt.
+  - Ganze CI grün am 2026-11-18 auf `ki-lab`: Go, Web (155 Vitest-Fälle, 24 Playwright-Fälle mit axe), Leistungsgate bestanden.
+- **Nicht geprüft:** unter 768 px, wo absichtlich das Dokument scrollt.
 
 ### UI44 — Genehmigungen auf der Startseite des Portals, 2026-11-16
 
