@@ -1,0 +1,26 @@
+# Copyright (C) 2026 group24 AG
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The CI on ki-lab (Hauptplan E194) with fixed cores (PL71, Hauptplan E198, Pascal's decision
+# 2026-11-17, 2026-11-18): the database of the CI and the servers the load stage measures share
+# 8 threads and at most 32 GB, like the Prod server (a VM with 8 virtual CPUs and 32 GB for
+# application and database). ki-lab has 8 cores with 2 threads each, thread n and n+8 on one core:
+# the servers get the cores 0 to 3 with both their threads (0-3,8-11), the load tool the cores 4
+# and 5 (4,5,12,13), so it takes no time from them. The cores 6 and 7 belong to other projects
+# (Pascal 2026-11-18); the load guard judges only the cores 0 to 5 (ITSM_LOAD_WATCH_CPUS), so
+# runs there do not stop the measurement. Building and testing in the tool container stay on the
+# cores 0 to 5 too, so that every project runs on its own. ~/itsm-ci-run.sh on ki-lab adds this file:
+#   COMPOSE_FILE=compose.yaml:compose/ci-kilab.yaml scripts/ci-run.sh
+services:
+  postgres-ci:
+    cpuset: "0-3,8-11"
+    mem_limit: 24g
+  valkey-ci:
+    cpuset: "0-3,8-11"
+    mem_limit: 2g
+  tools:
+    cpuset: "0-5,8-13"
+    environment:
+      ITSM_LOAD_SERVER_CPUS: "0-3,8-11"
+      ITSM_LOAD_CLIENT_CPUS: "4,5,12,13"
+      ITSM_LOAD_WATCH_CPUS: "0-5,8-13"

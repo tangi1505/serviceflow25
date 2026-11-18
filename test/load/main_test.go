@@ -270,3 +270,33 @@ func TestGenerateTiny(t *testing.T) {
 		}
 	}
 }
+
+// The guard on own CPUs (PL71) reads lists like taskset and the counters of /proc/stat.
+func TestWatchedCPUs(t *testing.T) {
+	cpus, err := parseCPUList("0-3,8-11")
+	if err != nil || fmt.Sprint(cpus) != "[0 1 2 3 8 9 10 11]" {
+		t.Fatalf("parseCPUList = %v, %v", cpus, err)
+	}
+	if cpus, err := parseCPUList("4,5,12,13"); err != nil || len(cpus) != 4 {
+		t.Fatalf("parseCPUList = %v, %v", cpus, err)
+	}
+	for _, bad := range []string{"", "a", "3-1", "1,,2"} {
+		if _, err := parseCPUList(bad); err == nil {
+			t.Errorf("parseCPUList(%q) took it", bad)
+		}
+	}
+	stat := "cpu  50 0 50 900 0 0 0 0 0 0\ncpu0 10 0 10 70 10 0 0 0 0 0\ncpu1 5 0 5 90 0 0 0 0 0 0\nintr 1 2 3\n"
+	times, err := parseCPUTimes(stat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if times[0] != [2]uint64{100, 80} || times[1] != [2]uint64{100, 90} || len(times) != 2 {
+		t.Fatalf("parseCPUTimes = %v", times)
+	}
+	if _, err := os.Stat("/proc/stat"); err == nil {
+		busy, err := cpusBusy([]int{0}, 100*time.Millisecond)
+		if err != nil || busy < 0 || busy > 1 {
+			t.Fatalf("cpusBusy = %v, %v", busy, err)
+		}
+	}
+}

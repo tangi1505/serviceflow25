@@ -286,10 +286,28 @@ prepare_instance() {
   /tmp/itsm user grant markenpfleger admin >/dev/null 2>&1 || true
 }
 
+# pin runs a command on the cores given (taskset), or anywhere when none are given. On ki-lab
+# the measured servers and their database share 8 threads like the Prod server (a VM with 8
+# virtual CPUs), and the load tool has 4 threads on cores of its own (PL71, Hauptplan E198:
+# ITSM_LOAD_SERVER_CPUS, ITSM_LOAD_CLIENT_CPUS from compose/ci-kilab.yaml); the build and the
+# tests keep all cores.
+# A server started in the background with `pin ... &` runs in a subshell, and $! would be that
+# subshell: kill would end it but not the server, which kept the pipe of tee open and the CI
+# waiting for hours (2026-11-17). So pin replaces itself with the command (exec); called in the
+# foreground it runs in a subshell of its own for the same reason.
+pin() {
+  cpus=$1
+  shift
+  if [ -n "$cpus" ]; then
+    exec taskset -c "$cpus" "$@"
+  fi
+  exec "$@"
+}
+
 load_quick() {
   prepare_instance
   export ITSM_HTTP_ADDR=127.0.0.1:18080
-  /tmp/itsm serve --role=all &
+  pin "${ITSM_LOAD_SERVER_CPUS:-}" /tmp/itsm serve --role=all &
   server=$!
   trap 'kill "$server" "${baseline:-}" 2>/dev/null || true' EXIT
   tries=0
@@ -301,7 +319,7 @@ load_quick() {
   ab=""
   BASELINE_BIN=/var/lib/itsm-load/itsm-baseline
   if [ -x "$BASELINE_BIN" ]; then
-    ITSM_HTTP_ADDR=127.0.0.1:18081 "$BASELINE_BIN" serve --role=all &
+    pin "${ITSM_LOAD_SERVER_CPUS:-}" env ITSM_HTTP_ADDR=127.0.0.1:18081 "$BASELINE_BIN" serve --role=all &
     baseline=$!
     tries=0
     until ITSM_HTTP_ADDR=127.0.0.1:18081 "$BASELINE_BIN" healthcheck 2>/dev/null; do
@@ -313,9 +331,10 @@ load_quick() {
   else
     echo "no baseline build below /var/lib/itsm-load: measuring the new build only"
   fi
+  go build -o /tmp/load ./test/load
   # shellcheck disable=SC2086
-  go run ./test/load run --stage=quick --target=http://127.0.0.1:18080 $ab --wait-for-idle=120s --out=/tmp/load-quick.json
-  go run ./test/load gate --stage=quick --result=/tmp/load-quick.json --baseline=test/load/baseline.json
+  (pin "${ITSM_LOAD_CLIENT_CPUS:-}" /tmp/load run --stage=quick --target=http://127.0.0.1:18080 $ab --wait-for-idle=120s --out=/tmp/load-quick.json)
+  /tmp/load gate --stage=quick --result=/tmp/load-quick.json --baseline=test/load/baseline.json
 }
 
 web_install() { cd web && pnpm install --frozen-lockfile; }

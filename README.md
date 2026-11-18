@@ -156,6 +156,15 @@ Die CI misst bei jedem Lauf den neuen Stand im Wechsel mit dem freigegebenen Bas
 `test/load/baseline.json` ist das Protokoll der Freigabe. Ist der Rechner ausgelastet, bricht die
 Messung ab (Rückgabe 3). Die Ziele stehen im Hauptplan §2.5.
 
+Auf einem geteilten Server laufen die gemessenen Server und das Lastwerkzeug auf festen Kernen
+(PL71): `compose/ci-kilab.yaml` setzt PostgreSQL und Valkey der CI auf 8 Threads (4 Kerne mit
+je zwei Threads, wie eine VM mit 8 virtuellen CPUs) mit Speichergrenze und gibt `scripts/ci.sh` die Kerne für `taskset` mit (`ITSM_LOAD_SERVER_CPUS`,
+`ITSM_LOAD_CLIENT_CPUS`). Ohne die Variablen läuft alles auf allen Kernen.
+
+```bash
+COMPOSE_FILE=compose.yaml:compose/ci-kilab.yaml scripts/ci-run.sh --all
+```
+
 Den Datensatz in Prod-Größe erzeugen:
 
 ```bash

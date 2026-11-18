@@ -212,6 +212,7 @@ func cmdRun(args []string, out io.Writer) error {
 	only := fs.String("only", "", "comma-separated scenario ids, default all (a partial report never makes a baseline)")
 	waitIdle := fs.Duration("wait-for-idle", 0, "wait up to this long for the load to drop below the limit before measuring")
 	dbURL := fs.String("database", "", "the database of the instance: with --data=prod the cleanup deletes with SQL at once instead of through the API")
+	watch := fs.String("watch-cpus", os.Getenv("ITSM_LOAD_WATCH_CPUS"), "judge only how busy these CPUs are (e.g. 0-5,8-13), not the load of the whole machine")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -233,14 +234,20 @@ func cmdRun(args []string, out io.Writer) error {
 
 	// Load guard (E69): a busy machine gives no verdict, neither pass nor fail. The 1-minute
 	// load average decays slowly after the test phase of the CI, so the guard may wait first.
-	load, err := loadAverage()
-	if err == nil {
+	// On a shared server the measurement has CPUs of its own (PL71): then the guard judges only
+	// those, so that runs of others on their own CPUs do not stop it.
+	load, loadErr := loadAverage()
+	if *watch != "" {
+		if err := waitCPUsIdle(out, *watch, *waitIdle, *ignoreLoad); err != nil {
+			return err
+		}
+	} else if loadErr == nil {
 		limit := float64(runtime.NumCPU()) / 2
 		deadline := time.Now().Add(*waitIdle)
 		for load > limit && !*ignoreLoad && time.Now().Before(deadline) {
 			fmt.Fprintf(out, "Last %.1f auf %d Kernen, warte bis unter %.1f …\n", load, runtime.NumCPU(), limit)
 			time.Sleep(10 * time.Second)
-			if load, err = loadAverage(); err != nil {
+			if load, loadErr = loadAverage(); loadErr != nil {
 				break
 			}
 		}
@@ -590,6 +597,129 @@ func sha256File(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// cpuIdleLimit is how busy the watched CPUs may be before a measurement, like half the cores
+// for the load average.
+const cpuIdleLimit = 0.5
+
+// waitCPUsIdle waits up to wait until the CPUs in list are busy at most cpuIdleLimit, measured
+// over 5 seconds at a time.
+func waitCPUsIdle(out io.Writer, list string, wait time.Duration, ignore bool) error {
+	cpus, err := parseCPUList(list)
+	if err != nil {
+		return fmt.Errorf("--watch-cpus: %w", err)
+	}
+	deadline := time.Now().Add(wait)
+	for {
+		busy, err := cpusBusy(cpus, 5*time.Second)
+		if err != nil {
+			return fmt.Errorf("--watch-cpus: %w", err)
+		}
+		if busy <= cpuIdleLimit || ignore {
+			fmt.Fprintf(out, "Auslastung beim Start: %.0f %% auf den CPUs %s\n", busy*100, list)
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("%w: Auslastung %.0f %% auf den CPUs %s, erlaubt sind %.0f %%; Messung ungültig, bitte wiederholen, wenn die CPUs frei sind (oder --ignore-load)",
+				errBusy, busy*100, list, cpuIdleLimit*100)
+		}
+		fmt.Fprintf(out, "Auslastung %.0f %% auf den CPUs %s, warte bis unter %.0f %% …\n", busy*100, list, cpuIdleLimit*100)
+		time.Sleep(5 * time.Second)
+	}
+}
+
+// parseCPUList reads a list like taskset and cpuset take it: 0-3,8-11 or 4,5,12,13.
+func parseCPUList(list string) ([]int, error) {
+	var cpus []int
+	for _, part := range strings.Split(list, ",") {
+		lo, hi, isRange := strings.Cut(strings.TrimSpace(part), "-")
+		a, err := strconv.Atoi(lo)
+		if err != nil {
+			return nil, fmt.Errorf("no CPU list: %q", list)
+		}
+		z := a
+		if isRange {
+			if z, err = strconv.Atoi(hi); err != nil || z < a {
+				return nil, fmt.Errorf("no CPU list: %q", list)
+			}
+		}
+		for c := a; c <= z; c++ {
+			cpus = append(cpus, c)
+		}
+	}
+	return cpus, nil
+}
+
+// cpusBusy is the share of time the CPUs were not idle during d, from /proc/stat (which shows
+// the CPUs of the host also inside a container).
+func cpusBusy(cpus []int, d time.Duration) (float64, error) {
+	before, err := cpuTimes()
+	if err != nil {
+		return 0, err
+	}
+	time.Sleep(d)
+	after, err := cpuTimes()
+	if err != nil {
+		return 0, err
+	}
+	var total, idle uint64
+	for _, c := range cpus {
+		b, okB := before[c]
+		a, okA := after[c]
+		if !okB || !okA {
+			return 0, fmt.Errorf("no CPU %d in /proc/stat", c)
+		}
+		total += a[0] - b[0]
+		idle += a[1] - b[1]
+	}
+	if total == 0 {
+		return 0, nil
+	}
+	return float64(total-idle) / float64(total), nil
+}
+
+// cpuTimes reads, per CPU, the total time and the idle time (idle plus iowait) in ticks.
+func cpuTimes() (map[int][2]uint64, error) {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return nil, err
+	}
+	return parseCPUTimes(string(b))
+}
+
+func parseCPUTimes(stat string) (map[int][2]uint64, error) {
+	times := map[int][2]uint64{}
+	for _, line := range strings.Split(stat, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 6 || !strings.HasPrefix(fields[0], "cpu") || fields[0] == "cpu" {
+			continue
+		}
+		n, err := strconv.Atoi(strings.TrimPrefix(fields[0], "cpu"))
+		if err != nil {
+			continue
+		}
+		var total uint64
+		var vals []uint64
+		for _, f := range fields[1:] {
+			v, err := strconv.ParseUint(f, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("/proc/stat: %w", err)
+			}
+			vals = append(vals, v)
+		}
+		// user nice system idle iowait irq softirq steal; guest and guest_nice are in user.
+		for i, v := range vals {
+			if i < 8 {
+				total += v
+			}
+		}
+		times[n] = [2]uint64{total, vals[3] + vals[4]}
+	}
+	if len(times) == 0 {
+		return nil, errors.New("/proc/stat: no CPUs")
+	}
+	return times, nil
 }
 
 // loadAverage reads the 1-minute load average from /proc.
