@@ -104,7 +104,10 @@ export function AppShell() {
         />
         <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
           <Nav drawer={{ open: drawer, onClose: closeDrawer }} />
-          <main className="min-w-0 flex-1 p-4 md:overflow-y-auto md:p-6">
+          {/* relative: an absolutely placed element without a placed parent (sr-only, like the
+              table behind a chart) stays inside main and scrolls with it; on the document it
+              made the whole page scroll past its content (UI45). */}
+          <main className="relative min-w-0 flex-1 p-4 md:overflow-y-auto md:p-6">
             <Outlet />
           </main>
         </div>
