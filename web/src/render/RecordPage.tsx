@@ -9,7 +9,7 @@
 // UI3): a head with title, version, state and transitions; the fields with the timeline below
 // them; a sidebar with roles, SLA clocks and related records. Saving stays on the page.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -29,6 +29,7 @@ import { useLive } from "@/app/live";
 import { remember } from "@/app/recent";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { BackButton } from "@/ui/page-header";
 
 import { approvalsKey } from "./Approvals";
 import { fieldLabel } from "./fields";
@@ -57,14 +58,15 @@ function Head({
   title: string;
 }) {
   const { i18n } = useTranslation();
+  // Back to the list as a button (UI47, UI-Plan E56); the title stands in the head below.
   return (
-    <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
-      <Link to="/types/$typeName" params={{ typeName }} className="underline">
-        {labelOf(type.label, i18n.language, typeName)}
-      </Link>
-      <span aria-hidden="true"> / </span>
-      <span>{title}</span>
-    </nav>
+    <div className="mb-4" data-title={title}>
+      <BackButton
+        to="/types/$typeName"
+        params={{ typeName }}
+        label={labelOf(type.label, i18n.language, typeName)}
+      />
+    </div>
   );
 }
 

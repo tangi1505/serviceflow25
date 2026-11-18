@@ -9,11 +9,12 @@
 // in like a form of the portal; the new record opens afterwards. The menu "Neu" of a list and
 // the command line lead here.
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { api, labelOf, qualifiedName, typesQuery } from "@/api/client";
 import { FormFill } from "@/portal/FormFill";
+import { BackButton } from "@/ui/page-header";
 
 // workplaceFormsQuery are the forms offered in the workplace (SD9).
 export const workplaceFormsQuery = queryOptions({
@@ -35,11 +36,13 @@ export function WorkplaceFormPage() {
     <div className="flex flex-col gap-4 p-4">
       <FormFill
         formId={formId}
-        crumb={
+        back={
           typeName && (
-            <Link to="/types/$typeName" params={{ typeName }} className="underline">
-              {labelOf(target?.label, i18n.language, typeName)}
-            </Link>
+            <BackButton
+              to="/types/$typeName"
+              params={{ typeName }}
+              label={labelOf(target?.label, i18n.language, typeName)}
+            />
           )
         }
         onSaved={(saved, t) => {

@@ -56,7 +56,8 @@
     "unpin": "Von den Favoriten lösen: {{name}}",
     "appearance": "Erscheinungsbild",
     "open": "Navigation öffnen",
-    "close": "Navigation schließen"
+    "close": "Navigation schließen",
+    "back": "Zurück"
   },
   "header": {
     "tenant": "Mandant: {{name}}",
@@ -103,7 +104,13 @@
     },
     "newMenu": "Neu anlegen",
     "newFull": "{{type}} (alle Felder)",
-    "forms": "Formulare"
+    "forms": "Formulare",
+    "customize": "Anpassen",
+    "customizeType": "Felder, Beschriftungen und Reihenfolge",
+    "customizeWorkflow": "Status und Übergänge",
+    "newOf": "Neu: {{type}}",
+    "view": "Ansicht",
+    "viewHint": "Ansicht: Spalten und Zeilenhöhe"
   },
   "form": {
     "newTitle": "Neuer Datensatz",
@@ -308,7 +315,67 @@
       "null": "ist leer",
       "breached": "ist überschritten",
       "close": "ist knapp (ab 75 %)",
-      "dueBy": "fällig bis"
+      "dueBy": "fällig bis",
+      "in": "im Zeitraum"
+    },
+    "set": "Filter setzen",
+    "placeholder": "Filtern: Feld tippen, etwa „Status“ …",
+    "placeholderMore": "Weiterer Filter …",
+    "pickOp": "Vergleich wählen …",
+    "pickValue": "Wert tippen …",
+    "change": "Filter ändern",
+    "removeOne": "Filter entfernen: {{name}}",
+    "slash": "Mit / in die Filterzeile springen",
+    "take": "übernehmen",
+    "toMe": "mir",
+    "toMyGroups": "meinen Gruppen",
+    "typeDay": "Datum tippen, etwa 01.11.2026",
+    "typeName": "Mindestens einen Buchstaben eines Namens tippen …",
+    "typeValue": "Wert tippen, Enter übernimmt",
+    "nothing": "Nichts gefunden",
+    "keys": {
+      "enter": "übernehmen",
+      "comma": "weiterer Wert",
+      "left": "Vergleich",
+      "back": "zurück",
+      "esc": "schließen"
+    },
+    "kind": {
+      "text": "Text",
+      "number": "Zahl",
+      "date": "Datum",
+      "datetime": "Zeitpunkt",
+      "choice": "Auswahl",
+      "boolean": "Ja oder nein",
+      "reference": "Verweis",
+      "sequence": "Nummer",
+      "state": "Status",
+      "time": "Zeitpunkt",
+      "deadline": "Frist",
+      "role": "Rolle"
+    },
+    "period": {
+      "today": "heute",
+      "yesterday": "gestern",
+      "this_week": "diese Woche",
+      "this_month": "diesen Monat",
+      "this_year": "dieses Jahr",
+      "last_week": "letzte Woche",
+      "last_month": "letzten Monat",
+      "last": "letzte {{n}} {{unit}}",
+      "next": "nächste {{n}} {{unit}}"
+    },
+    "unit": {
+      "m_one": "Minute",
+      "m_other": "Minuten",
+      "h_one": "Stunde",
+      "h_other": "Stunden",
+      "d_one": "Tag",
+      "d_other": "Tage",
+      "w_one": "Woche",
+      "w_other": "Wochen",
+      "mo_one": "Monat",
+      "mo_other": "Monate"
     }
   },
   "search": {
@@ -325,7 +392,15 @@
     "forbidden": "Du darfst keine Suchen speichern.",
     "error": "Speichern nicht möglich: {{detail}}",
     "notFound": "Diese gespeicherte Suche gibt es nicht oder sie ist nicht mit dir geteilt.",
-    "raw": "Diese Suche hat eine Bedingung, die die Filter nicht darstellen können: {{where}}"
+    "raw": "Diese Suche hat eine Bedingung, die die Filter nicht darstellen können: {{where}}",
+    "allShort": "Alle Datensätze",
+    "changed": "geändert",
+    "discard": "Änderungen verwerfen",
+    "saveAsMore": "Als neue Suche speichern …",
+    "shareMore": "Teilen und verwalten …",
+    "detailsMore": "Über diese Suche …",
+    "button": "Gespeicherte Suche: {{name}}",
+    "buttonChanged": "Gespeicherte Suche: {{name}}, geändert"
   },
   "export": {
     "format": "Format des Exports",
@@ -334,10 +409,12 @@
     "ready": "Export fertig: {{rows}} Zeilen.",
     "download": "Datei herunterladen",
     "failed": "Der Export ist gescheitert.",
-    "error": "Export nicht möglich: {{detail}}"
+    "error": "Export nicht möglich: {{detail}}",
+    "as": "Exportieren als",
+    "hint": "Die Liste mit Filtern, Spalten und Sortierung als Datei"
   },
   "batch": {
-    "title": "{{count}} gewählt",
+    "title": "{{count}} ausgewählt",
     "action": "Aktion",
     "field": "Feld",
     "value": "Neuer Wert",
@@ -497,7 +574,11 @@
     "favoriteDown": "Favorit {{name}} nach unten",
     "unpinFavorite": "Favorit {{name}} lösen",
     "byOrganisation": "Stellt deine Organisation ein.",
-    "orgAccent": "Farbe der Organisation {{color}}"
+    "orgAccent": "Farbe der Organisation {{color}}",
+    "shortcuts": "Tastenkürzel aus einzelnen Tasten",
+    "shortcutsHint": "/, ? und N wirken nur außerhalb von Eingabefeldern. Ausgeschaltet lösen sie auch eine Spracheingabe nicht aus. Kürzel mit Strg gelten immer.",
+    "on": "An",
+    "off": "Aus"
   },
   "versions": {
     "title": "Fassungen",
@@ -1241,5 +1322,29 @@
     "triangle-alert": "Warndreieck",
     "users": "Personen",
     "wrench": "Schraubenschlüssel"
+  },
+  "keys": {
+    "title": "Tastenkürzel",
+    "button": "Tastenkürzel (?)",
+    "close": "Schließen",
+    "always": "Immer",
+    "single": "Einzelne Tasten",
+    "page": "Auf dieser Seite",
+    "off": "Abgeschaltet in Meine Einstellungen › Darstellung.",
+    "command": "Suchen oder Befehl",
+    "nav": "Seitenleiste ein- und ausklappen",
+    "esc": "Menü, Dialog oder Vorschau schließen",
+    "help": "Tastenkürzel zeigen",
+    "filter": "In die Filterzeile springen",
+    "new": "Neu anlegen",
+    "rows": "Zeile wechseln",
+    "preview": "Vorschau zeigen",
+    "shift": "Umschalt",
+    "ctrl": "Strg",
+    "open": "Vorgang öffnen",
+    "space": "Leertaste",
+    "choose": "Zeile auswählen",
+    "save": "Speichern",
+    "send": "Antwort senden"
   }
 }

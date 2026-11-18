@@ -95,6 +95,7 @@ export function formType(form: FormOffer, target: TypeDefinition) {
 export function FormFill({
   formId,
   crumb,
+  back,
   heading,
   submit,
   onSaved,
@@ -102,6 +103,8 @@ export function FormFill({
 }: {
   formId: string;
   crumb?: ReactNode;
+  // back is the button back to where the form was opened (UI47), in place of a crumb.
+  back?: ReactNode;
   // heading puts the form in a section of a page under this heading, without the form's own
   // title: the order of an offer (SD13).
   heading?: string;
@@ -156,6 +159,7 @@ export function FormFill({
   }
   return (
     <div className="flex flex-col gap-4">
+      {back}
       {crumb && (
         <nav aria-label="breadcrumb" className="text-sm text-muted-foreground">
           {crumb}

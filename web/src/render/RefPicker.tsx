@@ -42,8 +42,9 @@ export function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
-// useOptions finds the records of the types that match the text.
-function useOptions(targets: string[], text: string, open: boolean) {
+// useRefOptions are the records a text finds among the target types: searched where the type has
+// searchable fields, else the first 100 (UI28); also the values of the filter row (UI51).
+export function useRefOptions(targets: string[], text: string, open: boolean) {
   const types = useQuery(typesQuery);
   const q = useDebounced(text.trim(), 200);
   const defs = targets.map((name) => types.data?.find((t) => qualifiedName(t) === name));
@@ -120,7 +121,7 @@ export function RefPicker({
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const { options, pending, needsText, typeLabel } = useOptions(targets, text, open);
+  const { options, pending, needsText, typeLabel } = useRefOptions(targets, text, open);
   const chosen = new Set(value.map((v) => `${v.type}:${v.id}`));
   const shown = options.filter((o) => !chosen.has(`${o.type}:${o.id}`));
   const current = Math.min(active, shown.length - 1);

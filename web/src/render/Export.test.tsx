@@ -9,7 +9,7 @@
 // time zone) and saves the file; a large export shows its job and then the link to the file.
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -49,14 +49,14 @@ describe("Export", () => {
     const user = userEvent.setup();
     const { container } = renderAt("/types/probe.probe");
     await screen.findByText("6 Datensätze");
-    await user.click(screen.getByRole("button", { name: "Bedingung hinzufügen" }));
-    const condition = screen.getByRole("listitem", { name: "Bedingung 1" });
-    await user.selectOptions(within(condition).getByRole("combobox", { name: "Feld" }), "kind");
-    await user.selectOptions(within(condition).getByRole("combobox", { name: "Wert" }), "fault");
+    // The filter row (UI50): "Art ist Störung".
+    await user.click(screen.getByRole("combobox", { name: "Filter setzen" }));
+    await user.keyboard("art{Enter}stör{Enter}");
     await screen.findByText("2 Datensätze");
-    await user.selectOptions(screen.getByLabelText("Format des Exports"), "csv");
-    await expectAccessible(container);
+    // "Exportieren" is a menu of the formats in the bar (UI48); a format starts it.
     await user.click(screen.getByRole("button", { name: "Exportieren" }));
+    await expectAccessible(container);
+    await user.click(screen.getByRole("menuitem", { name: "CSV" }));
     await waitFor(() => expect(created).toHaveBeenCalledTimes(1));
     const call = state.calls.find((c) => c.path === "/api/v1/records/probe.probe:export")!;
     const body = JSON.parse(call.body!) as Record<string, unknown>;
@@ -76,8 +76,12 @@ describe("Export", () => {
     renderAt("/types/probe.probe");
     await screen.findByText("6 Datensätze");
     await user.click(screen.getByRole("button", { name: "Exportieren" }));
+    await user.click(screen.getByRole("menuitem", { name: "Excel (XLSX)" }));
     expect(await screen.findByText(/läuft als Job/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Exportieren" })).toBeDisabled();
+    // While the job runs, no second export starts.
+    await user.click(screen.getByRole("button", { name: "Exportieren" }));
+    expect(screen.getByRole("menuitem", { name: "CSV" })).toBeDisabled();
+    await user.keyboard("{Escape}");
     state.jobState = "completed";
     expect(
       await screen.findByText("Export fertig: 123456 Zeilen.", {}, { timeout: 5000 }),

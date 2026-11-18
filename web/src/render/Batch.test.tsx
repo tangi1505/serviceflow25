@@ -47,7 +47,7 @@ describe("Batch", () => {
     const { container } = renderAt("/types/probe.probe");
     await screen.findByText("6 Datensätze");
     await user.click(screen.getByRole("checkbox", { name: "Alle geladenen auswählen" }));
-    const bar = await screen.findByRole("region", { name: "6 gewählt" });
+    const bar = await screen.findByRole("region", { name: "6 ausgewählt" });
     await user.selectOptions(within(bar).getByRole("combobox", { name: "Feld" }), "kind");
     await user.selectOptions(within(bar).getByRole("combobox", { name: "Neuer Wert" }), "fault");
     await expectAccessible(container);
@@ -78,7 +78,7 @@ describe("Batch", () => {
     await screen.findByText("6 Datensätze");
     await user.click(screen.getByRole("checkbox", { name: "Auswählen: Probe 000001" }));
     await user.click(screen.getByRole("checkbox", { name: "Auswählen: Probe 000002" }));
-    const bar = await screen.findByRole("region", { name: "2 gewählt" });
+    const bar = await screen.findByRole("region", { name: "2 ausgewählt" });
     await user.selectOptions(within(bar).getByRole("combobox", { name: "Aktion" }), "transition");
     await user.selectOptions(within(bar).getByRole("combobox", { name: "Übergang" }), "start");
     await user.click(within(bar).getByRole("button", { name: "Auf 2 anwenden" }));

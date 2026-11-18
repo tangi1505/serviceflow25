@@ -69,14 +69,16 @@ describe("List and preview", () => {
     renderAt("/types/probe.probe");
     const row = await screen.findByRole("row", { name: /Probe 000001/ });
     expect(row).toHaveStyle({ height: "52px" });
+    // The row height sits in the menu "Ansicht" of the bar (UI48).
+    await user.click(screen.getByRole("button", { name: "Ansicht" }));
     const density = screen.getByRole("group", { name: "Zeilenhöhe" });
-    expect(within(density).getByRole("button", { name: "Normal" })).toHaveAttribute(
-      "aria-pressed",
+    expect(within(density).getByRole("menuitemradio", { name: "Normal" })).toHaveAttribute(
+      "aria-checked",
       "true",
     );
-    await user.click(within(density).getByRole("button", { name: "Kompakt" }));
+    await user.click(within(density).getByRole("menuitemradio", { name: "Kompakt" }));
     expect(
-      await screen.findByRole("button", { name: "Kompakt", pressed: true }),
+      await screen.findByRole("menuitemradio", { name: "Kompakt", checked: true }),
     ).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Probe 000001/ })).toHaveStyle({ height: "36px" });
     expect(state.settings).toMatchObject({ density: "compact" });

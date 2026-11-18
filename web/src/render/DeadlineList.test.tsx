@@ -78,21 +78,17 @@ describe("Deadline column", () => {
     const user = userEvent.setup();
     renderAt("/types/probe.probe");
     await screen.findByRole("row", { name: /Probe 000001/ });
-    await user.click(screen.getByRole("button", { name: "Bedingung hinzufügen" }));
-    const condition = screen.getByRole("listitem", { name: "Bedingung 1" });
-    await user.selectOptions(
-      within(condition).getByRole("combobox", { name: "Feld" }),
-      "sla_due_at",
-    );
-    expect(within(condition).getByRole("combobox", { name: "Vergleich" })).toHaveValue("breached");
+    // In the filter row (UI50): the deadline, arrow left to the comparison, "überschritten".
+    await user.click(screen.getByRole("combobox", { name: "Filter setzen" }));
+    await user.keyboard("frist{Enter}{ArrowLeft}über{Enter}");
+    expect(screen.getByRole("button", { name: /Frist\s*ist überschritten/ })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("row", { name: /Probe 000002/ })).toBeNull());
     expect(screen.getByRole("row", { name: /Probe 000001/ })).toBeInTheDocument();
     let query = state.calls.filter((c) => c.path === "/api/v1/records/probe.probe:query").at(-1)!;
     expect(JSON.parse(query.body!)).toMatchObject({ where: { field: "sla_due_at", lte: "@now" } });
-    await user.selectOptions(
-      within(condition).getByRole("combobox", { name: "Vergleich" }),
-      "close",
-    );
+    // A click on the chip changes it: the comparison "knapp" instead.
+    await user.click(screen.getByRole("button", { name: /Frist\s*ist überschritten/ }));
+    await user.keyboard("knapp{Enter}");
     expect(await screen.findByRole("row", { name: /Probe 000002/ })).toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Probe 000001/ })).toBeNull();
     query = state.calls.filter((c) => c.path === "/api/v1/records/probe.probe:query").at(-1)!;

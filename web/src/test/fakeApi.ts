@@ -861,6 +861,7 @@ export function fakeApi(state: FakeState) {
         start_dashboard: val("start_dashboard", ""),
         nav: val("nav", "wide"),
         accent: val("accent", "petrol"),
+        shortcuts: val("shortcuts", "on"),
         allowed: {
           color_scheme: state.orgSettings?.["root"]?.["ui.own_color_scheme"] !== false,
           accent: state.orgSettings?.["root"]?.["ui.own_accent"] !== false,

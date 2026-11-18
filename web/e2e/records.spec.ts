@@ -42,7 +42,7 @@ test("list, create, edit and resolve a conflict", async ({ page, context }) => {
   // machine the first page change pays for a cold server and browser. The reload afterwards
   // empties the query cache again, so the measured change loads its data like a first one.
   await page.goto("/types/probe.probe");
-  await expect(page.getByText(/Datensätze$/)).toBeVisible();
+  await expect(page.getByText(/^\d+\+? Datensätze$/)).toBeVisible();
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Probe" })).toBeVisible();
 
@@ -50,7 +50,7 @@ test("list, create, edit and resolve a conflict", async ({ page, context }) => {
   const started = Date.now();
   await page.getByRole("link", { name: "Probe" }).click();
   await expect(page.getByRole("heading", { name: "Probe", exact: true })).toBeVisible();
-  await expect(page.getByText(/Datensätze$/)).toBeVisible();
+  await expect(page.getByText(/^\d+\+? Datensätze$/)).toBeVisible();
   const elapsed = Date.now() - started;
   console.log(`LZ9 Seitenwechsel zur Liste: ${elapsed} ms`);
   expect(elapsed).toBeLessThan(500);
@@ -199,18 +199,27 @@ test("filter the list and save the view as a search", async ({ page }) => {
     expect(r.status()).toBe(201);
   }
   await page.goto("/types/probe.probe");
-  await page.getByRole("button", { name: "Bedingung hinzufügen" }).click();
-  const first = page.getByRole("listitem", { name: "Bedingung 1" });
-  await first.getByRole("textbox", { name: "Wert" }).fill(stamp);
-  await page.getByRole("button", { name: "Bedingung hinzufügen" }).click();
-  const second = page.getByRole("listitem", { name: "Bedingung 2" });
-  await second.getByRole("combobox", { name: "Feld" }).selectOption({ label: "Art" });
-  await second.getByRole("combobox", { name: "Wert" }).selectOption("fault");
+  // The filter row (UI50): "Titel enthält <stamp>", then "Art ist Störung", by keyboard.
+  const filter = page.getByRole("combobox", { name: "Filter setzen" });
+  await filter.click();
+  await page.keyboard.type("titel");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(stamp);
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("art");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("stör");
+  await page.keyboard.press("Enter");
   await expect(page.getByText("1 Datensätze")).toBeVisible();
   await expect(page.getByRole("grid")).toContainText(`${stamp} fault`);
   await expectNoViolations(page);
 
-  await page.getByRole("button", { name: "Als neue Suche speichern" }).click();
+  // Saved from the menu of the searches (UI49).
+  await page
+    .locator("main")
+    .getByRole("button", { name: /Gespeicherte Suche/ })
+    .click();
+  await page.getByRole("menuitem", { name: "Als neue Suche speichern …" }).click();
   await page.getByLabel("Name der Suche").fill(stamp);
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page).toHaveURL(/\?search=/);
@@ -220,14 +229,12 @@ test("filter the list and save the view as a search", async ({ page }) => {
   await page.goto(link);
   await expect(page.getByRole("heading", { name: new RegExp(stamp) })).toBeVisible();
   await expect(page.getByText("1 Datensätze")).toBeVisible();
-  await expect(
-    page.getByRole("listitem", { name: "Bedingung 2" }).getByRole("combobox", { name: "Wert" }),
-  ).toHaveValue("fault");
+  await expect(page.getByRole("button", { name: /Art\s*ist\s*Störung/ })).toBeVisible();
 
   // UI5: the export of this view holds exactly its row, the browser saves it as a file.
-  await page.getByLabel("Format des Exports").selectOption("csv");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Exportieren" }).click();
+  await page.getByRole("menuitem", { name: "CSV" }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^probe-probe-.*\.csv$/);
   const content = await (await file.createReadStream()).toArray();
@@ -256,11 +263,12 @@ test("set a field on 500 chosen records in one call", async ({ page }) => {
   expect(bulk.status()).toBe(200);
 
   await page.goto("/types/probe.probe");
-  await page.getByRole("button", { name: "Bedingung hinzufügen" }).click();
-  await page
-    .getByRole("listitem", { name: "Bedingung 1" })
-    .getByRole("textbox", { name: "Wert" })
-    .fill(stamp);
+  // The filter row (UI50): "Titel enthält <stamp>".
+  await page.getByRole("combobox", { name: "Filter setzen" }).click();
+  await page.keyboard.type("titel");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(stamp);
+  await page.keyboard.press("Enter");
   await expect(page.getByText(/^100\+? Datensätze$/)).toBeVisible();
   // Load every page: scroll the list to its end until all 500 are there.
   const grid = page.getByRole("grid").locator("..");
@@ -277,7 +285,7 @@ test("set a field on 500 chosen records in one call", async ({ page }) => {
     }
   });
   await page.getByRole("checkbox", { name: "Alle geladenen auswählen" }).check();
-  const bar = page.getByRole("region", { name: "500 gewählt" });
+  const bar = page.getByRole("region", { name: "500 ausgewählt" });
   await bar.getByRole("combobox", { name: "Feld" }).selectOption({ label: "Priorität" });
   await bar.getByRole("spinbutton", { name: "Neuer Wert" }).fill("5");
   await expectNoViolations(page);

@@ -33,6 +33,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import { ArrowLeft, Workflow } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -54,6 +55,7 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { LinkButton } from "@/ui/page-header";
 
 import { Handle, optionValue } from "./FormBuilder";
 import { fieldLabel, formatMoment, isCalculated } from "./fields";
@@ -233,14 +235,23 @@ export function CustomizePage() {
     <div className="flex max-w-4xl flex-col gap-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t("customize.title", { type: typeLabel })}</h1>
-        <div className="flex gap-4">
-          {/* The workflow editor (UI26.1) edits states and transitions of the same type. */}
-          <Link to="/types/$typeName/workflow" params={{ typeName }} className="text-sm underline">
+        <div className="flex flex-wrap gap-2">
+          {/* The workflow editor (UI26.1) edits states and transitions of the same type; both
+              are buttons in the head (UI47). */}
+          <LinkButton
+            to="/types/$typeName/workflow"
+            params={{ typeName }}
+            icon={<Workflow aria-hidden="true" className="size-4 text-foreground-2" />}
+          >
             {t("workflow.open")}
-          </Link>
-          <Link to="/types/$typeName" params={{ typeName }} className="text-sm underline">
+          </LinkButton>
+          <LinkButton
+            to="/types/$typeName"
+            params={{ typeName }}
+            icon={<ArrowLeft aria-hidden="true" className="size-4 text-foreground-2" />}
+          >
             {t("customize.toList")}
-          </Link>
+          </LinkButton>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">{t("customize.intro")}</p>

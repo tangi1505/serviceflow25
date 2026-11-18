@@ -67,10 +67,14 @@ test("the deadline column sorts and filters by the SLA clocks", async ({ page })
     ).toEqual([]);
 
     // The filter "ist überschritten" leaves the running one out.
-    await page.getByRole("button", { name: "Bedingung hinzufügen" }).click();
-    const condition = page.getByRole("listitem", { name: "Bedingung 1" });
-    await condition.getByRole("combobox", { name: "Feld" }).selectOption("sla_due_at");
-    await expect(condition.getByRole("combobox", { name: "Vergleich" })).toHaveValue("breached");
+    // In the filter row (UI50): the deadline, arrow left to the comparison, "überschritten".
+    await page.getByRole("combobox", { name: "Filter setzen" }).click();
+    await page.keyboard.type("frist");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.type("über");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: /Frist\s*ist überschritten/ })).toBeVisible();
     await expect(page.getByRole("row", { name: new RegExp(tag) })).toHaveCount(0);
   } finally {
     await page.request.delete(`/api/v1/records/core.sla/${slaId}`, { headers });

@@ -88,10 +88,11 @@ describe("notes of the workplace", () => {
   it("takes a phone note from the menu Neu", async () => {
     const user = userEvent.setup();
     const { router, container } = renderAt("/types/probe.probe");
-    await user.click(await screen.findByText("Neu"));
-    const menu = screen.getByRole("group", { name: "Neu anlegen" });
-    expect(within(menu).getByRole("link", { name: /alle Felder/ })).toBeInTheDocument();
-    await user.click(within(menu).getByRole("link", { name: "Telefonnotiz" }));
+    // The forms load after the list: then "Neu" is a menu button (expanded false).
+    await user.click(await screen.findByRole("button", { name: "Neu", expanded: false }));
+    const menu = screen.getByRole("menu", { name: "Neu anlegen" });
+    expect(within(menu).getByRole("menuitem", { name: /alle Felder/ })).toHaveFocus();
+    await user.click(within(menu).getByRole("menuitem", { name: "Telefonnotiz" }));
 
     await screen.findByRole("heading", { name: "Telefonnotiz" });
     expect(router.state.location.pathname).toBe("/forms/01a15a3c-8545-7691-b780-f00000000009");
@@ -119,6 +120,6 @@ describe("notes of the workplace", () => {
     state.forms = state.forms!.map((f) => ({ ...f, place: "portal" }));
     renderAt("/types/probe.probe");
     expect(await screen.findByRole("button", { name: "Neu" })).toBeInTheDocument();
-    expect(screen.queryByRole("group", { name: "Neu anlegen" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Neu anlegen" })).toBeNull();
   });
 });

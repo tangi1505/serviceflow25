@@ -45,6 +45,7 @@ import {
 import { NewDashboardButton } from "@/app/Dashboard";
 import { TenantMenu } from "@/app/Header";
 import { packageIcon } from "@/app/icons";
+import { inEditor } from "@/app/shortcuts";
 import { usePersist } from "@/app/Switches";
 import { usePopover } from "@/ui/popover";
 
@@ -336,6 +337,29 @@ export function Nav({ drawer }: { drawer?: Drawer }) {
     setNarrow(value === "narrow");
     keep({ nav: value });
   };
+  // Strg B folds the bar in and out like its button, kept like it (UI52, UI-Plan E55); in the
+  // text editor it stays "bold".
+  const flip = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    flip.current = () => width(narrow ? "wide" : "narrow");
+  });
+  useEffect(() => {
+    if (!arrangeable || !desktop) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== "b") {
+        return;
+      }
+      if (e.defaultPrevented || inEditor(e.target)) {
+        return;
+      }
+      e.preventDefault();
+      flip.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [arrangeable, desktop]);
   const toggle = (id: string) => {
     const next = { ...open, [id]: !(open[id] ?? true) };
     setOpen(next);

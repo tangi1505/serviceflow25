@@ -20,7 +20,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   type ColumnDef,
   type ColumnOrderState,
@@ -31,7 +31,8 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Columns3, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -45,8 +46,10 @@ import {
   type TypeDefinition,
 } from "@/api/client";
 import { useLive } from "@/app/live";
-import { Button, buttonVariants } from "@/ui/button";
+import { usePageShortcuts } from "@/app/shortcuts";
+import { Button } from "@/ui/button";
 import { PriorityMark, StatePill } from "@/ui/marks";
+import { Menu, MenuCheck, MenuLabel, MenuLink, primaryBarButton } from "@/ui/menu";
 import { cn } from "@/ui/utils";
 
 import { BatchBar } from "./Batch";
@@ -102,45 +105,51 @@ function loadVisibility(typeName: string, type: TypeDefinition): VisibilityState
   }
 }
 
-// NewMenu is the button "Neu"; with forms of the workplace for the type (SD9, mockup A) it
-// opens a list: the form with all fields first, then the forms such as the phone note.
-function NewMenu({ type }: { type: TypeDefinition }) {
+// NewMenu is the button "Neu" in the head of the list (UI47, UI-Plan E54); with forms of the
+// workplace for the type (SD9, mockup A) it opens a menu: the form with all fields first, then
+// the forms such as the phone note.
+export function NewMenu({ type }: { type: TypeDefinition }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const typeName = qualifiedName(type);
   const forms = useQuery(workplaceFormsQuery);
   const mine = (forms.data ?? []).filter((f) => f.target_type === typeName);
+  const plus = <Plus aria-hidden="true" className="size-4" />;
   if (mine.length === 0) {
+    // An action, so a button, though it leads to the page of the new record (E56).
     return (
-      <Button onClick={() => void navigate({ to: "/types/$typeName/new", params: { typeName } })}>
+      <button
+        type="button"
+        className={primaryBarButton}
+        onClick={() => void navigate({ to: "/types/$typeName/new", params: { typeName } })}
+      >
+        {plus}
         {t("list.new")}
-      </Button>
+      </button>
     );
   }
-  const item = "block px-3 py-2 hover:bg-secondary focus-visible:bg-secondary";
   return (
-    <details className="relative">
-      <summary className={cn(buttonVariants(), "cursor-pointer list-none")}>
-        {t("list.new")}
-      </summary>
-      <div
-        role="group"
-        aria-label={t("list.newMenu")}
-        className="absolute z-10 mt-1 flex min-w-64 flex-col rounded-md border bg-card py-1 text-sm shadow"
-      >
-        <Link to="/types/$typeName/new" params={{ typeName }} className={item}>
-          {t("list.newFull", { type: labelOf(type.label, i18n.language, typeName) })}
-        </Link>
-        <span className="px-3 pt-2 pb-1 text-xs font-medium uppercase text-muted-foreground">
-          {t("list.forms")}
-        </span>
-        {mine.map((f) => (
-          <Link key={f.id} to="/forms/$formId" params={{ formId: f.id }} className={item}>
-            {labelOf(f.definition.title, i18n.language, f.name)}
-          </Link>
-        ))}
-      </div>
-    </details>
+    <Menu
+      label={t("list.newMenu")}
+      primary
+      trigger={
+        <>
+          {plus}
+          {t("list.new")}
+        </>
+      }
+      width="w-72"
+    >
+      <MenuLink to="/types/$typeName/new" params={{ typeName }}>
+        {t("list.newFull", { type: labelOf(type.label, i18n.language, typeName) })}
+      </MenuLink>
+      <MenuLabel>{t("list.forms")}</MenuLabel>
+      {mine.map((f) => (
+        <MenuLink key={f.id} to="/forms/$formId" params={{ formId: f.id }}>
+          {labelOf(f.definition.title, i18n.language, f.name)}
+        </MenuLink>
+      ))}
+    </Menu>
   );
 }
 
@@ -151,6 +160,8 @@ export function List({
   onView,
   picked,
   onPick,
+  onCount,
+  toolbarStart,
 }: {
   type: TypeDefinition;
   // where is the condition of the JSON query; without one the plain list.
@@ -162,6 +173,11 @@ export function List({
   // on a narrow screen, a click opens the record page.
   picked?: string;
   onPick?: (id: string) => void;
+  // onCount gets the line "120 Datensätze" for the head of the page (UI47).
+  onCount?: (line: string) => void;
+  // toolbarStart stands left in the bar above the table: the saved searches and the filter
+  // row (UI48, UI-Plan E54); "Ansicht" and "Exportieren" stand right.
+  toolbarStart?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -178,7 +194,6 @@ export function List({
   const [order] = useState<ColumnOrderState>(() => ["select", ...(view?.columns ?? [])]);
   const [selection, setSelection] = useState<RowSelectionState>({});
   const ownView = (view?.columns?.length ?? 0) > 0;
-  const chooserId = useId();
   const settings = useQuery(mySettingsQuery);
   const density = settings.data?.density?.value === "compact" ? "compact" : "normal";
   const rowHeight = rowHeights[density];
@@ -394,6 +409,12 @@ export function List({
     .filter((c) => c !== "select")
     .join(",");
   const chosen = rows.filter((r) => selection[String(r["id"])]);
+  const countLine = query.isPending
+    ? t("list.loading")
+    : t("list.loaded", { count: rows.length, more: query.hasNextPage ? "+" : "" });
+  useEffect(() => {
+    onCount?.(countLine);
+  }, [onCount, countLine]);
   useEffect(() => {
     onView?.({ columns: shownColumns.split(","), sort: fields.sortParam });
   }, [onView, shownColumns, fields.sortParam]);
@@ -440,6 +461,29 @@ export function List({
     setSort((s) => (s.column === column ? { column, desc: !s.desc } : { column, desc: false }));
   };
 
+  // goTo moves the focus to a row; one outside the window of rows comes into view first.
+  const goTo = (index: number) => {
+    if (index < 0 || index >= tableRows.length) {
+      return;
+    }
+    const find = () =>
+      parentRef.current?.querySelector<HTMLTableRowElement>(`tbody tr[data-index="${index}"]`);
+    const now = find();
+    if (now) {
+      now.focus();
+      return;
+    }
+    virtualizer.scrollToIndex(index);
+    requestAnimationFrame(() => find()?.focus());
+  };
+  // What the keys of the list do, for the dialog "Tastenkürzel" (UI52, UI53).
+  usePageShortcuts([
+    { keys: ["↑", "↓"], label: t("keys.rows") },
+    { keys: ["Enter"], label: t("keys.preview") },
+    { keys: [t("keys.shift"), "Enter"], label: t("keys.open") },
+    { keys: [t("keys.space")], label: t("keys.choose") },
+  ]);
+
   const open = (row: RecordData) =>
     void navigate({ to: "/types/$typeName/$id", params: { typeName, id: String(row["id"]) } });
   // pick shows the record in the preview where there is room for it (UI30, from 1100 px).
@@ -453,72 +497,88 @@ export function List({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <NewMenu type={type} />
-        <details className="relative">
-          <summary className="cursor-pointer rounded-md border px-3 py-2 text-sm">
-            {t("list.columns")}
-          </summary>
-          <fieldset
-            id={chooserId}
-            className="absolute z-10 mt-1 flex max-h-80 flex-col gap-1 overflow-auto rounded-md border bg-card p-3 shadow"
-          >
-            <legend className="sr-only">{t("list.columns")}</legend>
-            {table
-              .getAllLeafColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <label key={column.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={column.getIsVisible()}
-                    onChange={column.getToggleVisibilityHandler()}
-                  />
-                  {typeof column.columnDef.header === "string"
-                    ? column.columnDef.header
-                    : column.id}
-                </label>
-              ))}
-          </fieldset>
-        </details>
-        {/* The row height, where the organisation lets the person choose it (UI39). */}
-        {settings.data?.allowed?.density !== false && (
-          <div
-            role="group"
-            aria-label={t("list.density")}
-            className="inline-flex rounded-md bg-muted p-0.5"
-          >
-            {(["compact", "normal"] as const).map((d) => (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={density === d}
-                disabled={setDensity.isPending}
-                onClick={() => setDensity.mutate(d)}
-                className={cn(
-                  "h-8 rounded-[6px] px-3 text-[13px] font-medium",
-                  density === d
-                    ? "bg-segment-active text-foreground shadow-sm"
-                    : "text-foreground-2",
-                )}
-              >
-                {t(`list.densities.${d}`)}
-              </button>
-            ))}
-          </div>
+      {/* One bar (UI48, UI-Plan E54): left the searches and the filters, right "Ansicht" and
+          "Exportieren"; it wraps on a narrow screen. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {toolbarStart}
+        {!onCount && (
+          <span className="text-sm text-foreground-2" aria-live="polite">
+            {countLine}
+          </span>
         )}
-        <span className="text-sm text-foreground-2" aria-live="polite">
-          {query.isPending
-            ? t("list.loading")
-            : t("list.loaded", { count: rows.length, more: query.hasNextPage ? "+" : "" })}
-        </span>
         {query.isError && <span className="text-sm text-destructive">{t("list.error")}</span>}
-        <ExportButton
-          typeName={typeName}
-          where={where}
-          columns={shownColumns.split(",")}
-          sort={fields.sortParam}
-        />
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Menu
+            label={t("list.view")}
+            title={t("list.viewHint")}
+            trigger={
+              <>
+                <Columns3 aria-hidden="true" className="size-4 text-foreground-2" />
+                {t("list.view")}
+              </>
+            }
+          >
+            {/* The row height, where the organisation lets the person choose it (UI39). */}
+            {settings.data?.allowed?.density !== false && (
+              <>
+                <MenuLabel>{t("list.density")}</MenuLabel>
+                <div
+                  role="group"
+                  aria-label={t("list.density")}
+                  className="mx-1 mb-1 flex rounded-md bg-muted p-0.5"
+                >
+                  {(["compact", "normal"] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={density === d}
+                      disabled={setDensity.isPending}
+                      onClick={() => setDensity.mutate(d)}
+                      className={cn(
+                        "h-7 flex-1 rounded-[6px] px-3 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        density === d
+                          ? "bg-segment-active text-foreground shadow-sm"
+                          : "text-foreground-2",
+                      )}
+                    >
+                      {t(`list.densities.${d}`)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <MenuLabel>{t("list.columns")}</MenuLabel>
+            <div
+              role="group"
+              aria-label={t("list.columns")}
+              className="flex max-h-72 flex-col overflow-y-auto"
+            >
+              {table
+                .getAllLeafColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <MenuCheck
+                    key={column.id}
+                    kind="checkbox"
+                    keepOpen
+                    checked={column.getIsVisible()}
+                    onSelect={() => column.toggleVisibility()}
+                  >
+                    {typeof column.columnDef.header === "string"
+                      ? column.columnDef.header
+                      : column.id}
+                  </MenuCheck>
+                ))}
+            </div>
+          </Menu>
+          <ExportButton
+            typeName={typeName}
+            where={where}
+            columns={shownColumns.split(",")}
+            sort={fields.sortParam}
+          />
+        </div>
       </div>
       {fresh > 0 && (
         <div role="status" className="flex items-center gap-2 text-sm">
@@ -598,8 +658,26 @@ export function List({
                   onClick={() => pick(row.original)}
                   onDoubleClick={() => open(row.original)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    // The keyboard of the list (UI53, UI-Plan E55): arrows change the row, Enter
+                    // shows the preview, Umschalt Enter opens the record, Space chooses it.
+                    if (e.target !== e.currentTarget) {
+                      return;
+                    }
+                    if (e.key === "Enter" && e.shiftKey) {
+                      e.preventDefault();
+                      open(row.original);
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
                       pick(row.original);
+                    } else if (e.key === " ") {
+                      e.preventDefault();
+                      row.toggleSelected();
+                    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                      e.preventDefault();
+                      goTo(virtualRow.index + (e.key === "ArrowDown" ? 1 : -1));
+                    } else if (e.key === "Home" || e.key === "End") {
+                      e.preventDefault();
+                      goTo(e.key === "Home" ? 0 : tableRows.length - 1);
                     }
                   }}
                 >

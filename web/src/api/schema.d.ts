@@ -3796,6 +3796,7 @@ export interface components {
             source: string;
         };
         MySettings: {
+            shortcuts: components["schemas"]["SettingValue"];
             language: components["schemas"]["SettingValue"];
             time_zone: components["schemas"]["SettingValue"];
             theme: components["schemas"]["SettingValue"];
@@ -8160,6 +8161,11 @@ export interface operations {
                      * @enum {string|null}
                      */
                     nav?: "wide" | "narrow" | null;
+                    /**
+                     * @description whether single keys such as / and N work (UI52); keys with Ctrl always do
+                     * @enum {string|null}
+                     */
+                    shortcuts?: "on" | "off" | null;
                     /**
                      * @description the accent colour for focus, selection and links (UI38); null takes ui.accent of the unit
                      * @enum {string|null}

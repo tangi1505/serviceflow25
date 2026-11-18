@@ -13,6 +13,7 @@
 // permissions are those of the API (PL8, PL9): a line is a type, an action and a scope.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -36,6 +37,7 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { LinkButton } from "@/ui/page-header";
 
 import { useProblemText } from "./CustomizePage";
 import { fieldLabel } from "./fields";
@@ -289,9 +291,12 @@ export function RolePage() {
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t("roles.roleTitle", { name: label })}</h1>
-        <Link to="/roles" className="text-sm underline">
+        <LinkButton
+          to="/roles"
+          icon={<ArrowLeft aria-hidden="true" className="size-4 text-foreground-2" />}
+        >
           {t("roles.toAll")}
-        </Link>
+        </LinkButton>
       </div>
       <p className="text-sm text-muted-foreground">
         {role.name} · {t("roles.intro")}

@@ -128,7 +128,8 @@ describe("Workflow editor", { timeout: 15_000 }, () => {
     const user = userEvent.setup();
     const view = renderAt("/types/probe.probe");
     await screen.findByRole("heading", { name: "Probe" });
-    await user.click(screen.getByRole("link", { name: "Workflow" }));
+    await user.click(screen.getByRole("button", { name: "Anpassen" }));
+    await user.click(screen.getByRole("menuitem", { name: /Workflow/ }));
     await screen.findByRole("heading", { name: "Workflow: Probe" });
     await expectAccessible(view.container);
 

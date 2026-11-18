@@ -57,7 +57,8 @@ test("a state and a transition made by keyboard work over the API at once", asyn
   await signIn(page);
   await takeBack(page, "k_ui26_");
   await page.goto("/types/probe.probe");
-  await page.getByRole("link", { name: "Workflow" }).click();
+  await page.locator("main").getByRole("button", { name: "Anpassen" }).click();
+  await page.getByRole("menuitem", { name: /Workflow/ }).click();
   await expect(page.getByRole("heading", { name: "Workflow: Probe" })).toBeVisible();
 
   // The state.

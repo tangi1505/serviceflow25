@@ -41,7 +41,8 @@ test("a field added in the editor is in list, form and export at once", async ({
     version = ((await res.json()) as { version: number }).version;
   }
   await page.goto("/types/probe.probe");
-  await page.getByRole("link", { name: "Typ anpassen" }).click();
+  await page.locator("main").getByRole("button", { name: "Anpassen" }).click();
+  await page.getByRole("menuitem", { name: /Typ anpassen/ }).click();
   await expect(page.getByRole("heading", { name: "Typ anpassen: Probe" })).toBeVisible();
 
   const form = page.getByRole("region", { name: "Neues Feld" });

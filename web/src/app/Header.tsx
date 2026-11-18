@@ -17,6 +17,7 @@ import {
   Check,
   ChevronDown,
   ExternalLink,
+  Keyboard,
   LayoutGrid,
   LogOut,
   Menu,
@@ -43,6 +44,7 @@ import {
 } from "@/api/client";
 import { BrandMark, defaultName, useBranding } from "@/app/Brand";
 import { useBrowserNotifications } from "@/app/Notifications";
+import { useShortcutsHelp } from "@/app/shortcuts";
 import { usePersist } from "@/app/Switches";
 import { languages, type Language } from "@/i18n";
 import { formatMoment } from "@/render/fields";
@@ -147,6 +149,7 @@ export function AppHeader({
         </button>
       )}
       <div className={`flex items-center justify-end gap-1 ${phone ? "flex-none" : "flex-1"}`}>
+        {!phone && <ShortcutsButton />}
         <InboxBell />
         <AccountMenu onLogout={onLogout} />
       </div>
@@ -226,6 +229,24 @@ export function TenantMenu() {
         </div>
       )}
     </div>
+  );
+}
+
+// ShortcutsButton opens the dialog "Tastenkürzel" (UI52, UI-Plan E55), like the key "?".
+function ShortcutsButton() {
+  const { t } = useTranslation();
+  const open = useShortcutsHelp();
+  return (
+    <button
+      type="button"
+      aria-label={t("keys.title")}
+      title={t("keys.button")}
+      aria-keyshortcuts="?"
+      onClick={open}
+      className={iconButton}
+    >
+      <Keyboard aria-hidden="true" className="size-5" />
+    </button>
   );
 }
 

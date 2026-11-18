@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CommandPalette } from "@/app/CommandPalette";
+import { ShortcutsProvider } from "@/app/shortcuts";
 import { LiveProvider } from "@/app/live";
 import { AppHeader, navOpenerId } from "@/app/Header";
 import { Nav, useDesktop } from "@/app/Nav";
@@ -93,26 +94,28 @@ export function AppShell() {
 
   return (
     <LiveProvider>
-      {/* From 768 px the header stays, and navigation and page scroll each for themselves (UI36);
+      <ShortcutsProvider>
+        {/* From 768 px the header stays, and navigation and page scroll each for themselves (UI36);
           below, the navigation is a drawer over the content (UI40) and the page scrolls. */}
-      <div className="flex min-h-screen flex-col md:h-screen md:min-h-0">
-        <AppHeader
-          onCommand={() => setCommand(true)}
-          onLogout={() => void logout()}
-          onMenu={desktop ? undefined : () => setDrawer(true)}
-          menuOpen={drawer}
-        />
-        <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
-          <Nav drawer={{ open: drawer, onClose: closeDrawer }} />
-          {/* relative: an absolutely placed element without a placed parent (sr-only, like the
+        <div className="flex min-h-screen flex-col md:h-screen md:min-h-0">
+          <AppHeader
+            onCommand={() => setCommand(true)}
+            onLogout={() => void logout()}
+            onMenu={desktop ? undefined : () => setDrawer(true)}
+            menuOpen={drawer}
+          />
+          <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
+            <Nav drawer={{ open: drawer, onClose: closeDrawer }} />
+            {/* relative: an absolutely placed element without a placed parent (sr-only, like the
               table behind a chart) stays inside main and scrolls with it; on the document it
               made the whole page scroll past its content (UI45). */}
-          <main className="relative min-w-0 flex-1 p-4 md:overflow-y-auto md:p-6">
-            <Outlet />
-          </main>
+            <main className="relative min-w-0 flex-1 p-4 md:overflow-y-auto md:p-6">
+              <Outlet />
+            </main>
+          </div>
+          {command && <CommandPalette onClose={() => setCommand(false)} />}
         </div>
-        {command && <CommandPalette onClose={() => setCommand(false)} />}
-      </div>
+      </ShortcutsProvider>
     </LiveProvider>
   );
 }

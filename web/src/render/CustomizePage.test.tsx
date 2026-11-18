@@ -55,7 +55,9 @@ describe("Type editor", () => {
     state.customize = false;
     renderAt("/types/probe.probe");
     await screen.findByRole("heading", { name: "Probe" });
-    expect(screen.queryByRole("link", { name: "Typ anpassen" })).not.toBeInTheDocument();
+    // The editors sit in the menu "Anpassen" of the head (UI47), which is not there at all.
+    expect(screen.queryByRole("button", { name: "Anpassen" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Typ anpassen/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Typen anpassen" })).not.toBeInTheDocument();
   });
 
@@ -63,7 +65,18 @@ describe("Type editor", () => {
     const user = userEvent.setup();
     const view = renderAt("/types/probe.probe");
     await screen.findByRole("heading", { name: "Probe" });
-    await user.click(screen.getByRole("link", { name: "Typ anpassen" }));
+    // The menu "Anpassen" opens with the first entry focused and leads to the editor (UI47).
+    await user.click(screen.getByRole("button", { name: "Anpassen" }));
+    const menu = screen.getByRole("menu", { name: "Anpassen" });
+    expect(screen.getByRole("menuitem", { name: /Typ anpassen/ })).toHaveFocus();
+    await expectAccessible(view.container);
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Workflow/ })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(menu).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anpassen" })).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Anpassen" }));
+    await user.click(screen.getByRole("menuitem", { name: /Typ anpassen/ }));
     await screen.findByRole("heading", { name: "Typ anpassen: Probe" });
     await expectAccessible(view.container);
 

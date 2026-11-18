@@ -76,8 +76,13 @@ describe("List", () => {
       "ascending",
     );
 
-    await user.click(screen.getByText("Spalten", { selector: "summary" }));
-    await user.click(screen.getByRole("checkbox", { name: "Priorität" }));
+    // Columns are chosen in the menu "Ansicht" of the bar (UI48); it stays open meanwhile.
+    await user.click(screen.getByRole("button", { name: "Ansicht" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Priorität" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: "Priorität" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
     await waitFor(() =>
       expect(screen.queryByRole("columnheader", { name: "Priorität" })).toBeNull(),
     );

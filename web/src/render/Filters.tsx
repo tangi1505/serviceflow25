@@ -21,18 +21,20 @@ import { fieldLabel, optionLabel } from "./fields";
 import { RefPicker } from "./RefPicker";
 
 export type Op =
-  "eq" | "neq" | "contains" | "starts" | "gte" | "lte" | "null" | "breached" | "close";
+  "eq" | "neq" | "contains" | "starts" | "gte" | "lte" | "null" | "breached" | "close" | "in";
+// value is one value, or a list for several (eq and neq become in and nin, UI50); with op
+// "in" it is a period that runs with the clock (UI51, UI-Plan E57), see Period.
 export type Condition = { field: string; op: Op; value: unknown };
 
 // A filterable thing of the type: a field, the state, a system time or a role.
-type Subject =
+export type Subject =
   | { kind: "field"; name: string; field: Field }
   | { kind: "state"; name: "state"; states: State[] }
   | { kind: "time"; name: "created_at" | "updated_at" }
   | { kind: "deadline"; name: "sla_due_at" }
   | { kind: "role"; name: string; to: string[]; label?: Record<string, string> };
 
-function subjects(type: TypeDefinition): Subject[] {
+export function subjects(type: TypeDefinition): Subject[] {
   return [
     ...type.fields.map<Subject>((f) => ({ kind: "field", name: f.name, field: f })),
     ...(type.states?.length
@@ -56,9 +58,10 @@ export function opsFor(s: Subject): Op[] {
     case "state":
       return ["eq", "neq"];
     case "time":
-      return ["gte", "lte"];
+      // A period first (UI51), then from and until a day.
+      return ["in", "gte", "lte"];
     case "deadline":
-      return ["breached", "close", "lte"];
+      return ["in", "breached", "close", "lte"];
     case "role":
       return ["eq", "null"];
   }
@@ -66,13 +69,14 @@ export function opsFor(s: Subject): Op[] {
     case "text":
       return ["contains", "eq", "starts", "null"];
     case "number":
-    case "date":
       return ["eq", "gte", "lte", "null"];
+    case "date":
+      return ["in", "eq", "gte", "lte", "null"];
     case "sequence":
       // The running number, with or without its prefix (PL49).
       return ["eq", "gte", "lte"];
     case "datetime":
-      return ["gte", "lte", "null"];
+      return ["in", "gte", "lte", "null"];
     case "choice":
       return ["eq", "neq", "null"];
     case "boolean":
@@ -94,7 +98,135 @@ function isMoment(type: TypeDefinition, field: string): boolean {
 }
 
 // valueless are the comparisons without a value.
-const valueless: Op[] = ["null", "breached", "close"];
+export const valueless: Op[] = ["null", "breached", "close"];
+
+// --- periods that run with the clock (UI51, UI-Plan E57, Kern-Plan PL72) ---
+//
+// A period is kept as a word of the JSON query, never as a fixed day, so that a saved search
+// shows "today" again tomorrow: "today" is gte @today, "the last 5 days" gte @now-5d (exactly
+// 5 × 24 hours back, your decision V13), "last month" gte @month-1mo and lt @month. As a
+// condition value it is one of the names below, or last:<n>:<unit> and next:<n>:<unit> (the
+// next ones at a deadline: "due in the next 2 days").
+export const fixedPeriods = [
+  "today",
+  "yesterday",
+  "this_week",
+  "this_month",
+  "this_year",
+  "last_week",
+  "last_month",
+] as const;
+export type Unit = "m" | "h" | "d" | "w" | "mo";
+export const units: Unit[] = ["m", "h", "d", "w", "mo"];
+
+// periodNodes are the conditions of a period on a field; none for a value that is no period.
+export function periodNodes(field: string, period: string): Record<string, unknown>[] {
+  const fixed: Record<string, [string, string?]> = {
+    today: ["@today"],
+    yesterday: ["@today-1d", "@today"],
+    this_week: ["@week"],
+    this_month: ["@month"],
+    this_year: ["@year"],
+    last_week: ["@week-1w", "@week"],
+    last_month: ["@month-1mo", "@month"],
+  };
+  const f = fixed[period];
+  if (f) {
+    return f[1]
+      ? [
+          { field, gte: f[0] },
+          { field, lt: f[1] },
+        ]
+      : [{ field, gte: f[0] }];
+  }
+  const m = /^(last|next):(\d+):(mo|m|h|d|w)$/.exec(period);
+  if (!m) {
+    return [];
+  }
+  return m[1] === "last"
+    ? [{ field, gte: `@now-${m[2]}${m[3]}` }]
+    : [
+        { field, gte: "@now" },
+        { field, lte: `@now+${m[2]}${m[3]}` },
+      ];
+}
+
+// readPeriods takes the conditions of periods out of a list of where nodes: the periods by
+// field, and the nodes that are left.
+function readPeriods(list: unknown[]): { periods: Condition[]; rest: unknown[] } {
+  const node = (n: unknown) =>
+    typeof n === "object" && n !== null ? (n as Record<string, unknown>) : undefined;
+  const used = new Set<number>();
+  const periods: Condition[] = [];
+  const find = (field: unknown, op: string, value: string) =>
+    list.findIndex(
+      (n, i) =>
+        !used.has(i) &&
+        node(n)?.["field"] === field &&
+        node(n)?.[op] === value &&
+        Object.keys(node(n)!).length === 2,
+    );
+  list.forEach((n, i) => {
+    const x = node(n);
+    if (used.has(i) || !x || Object.keys(x).length !== 2 || typeof x["gte"] !== "string") {
+      return;
+    }
+    const field = x["field"];
+    const from = x["gte"];
+    const pairs: Record<string, [string, string]> = {
+      "@today-1d": ["@today", "yesterday"],
+      "@week-1w": ["@week", "last_week"],
+      "@month-1mo": ["@month", "last_month"],
+    };
+    const pair = pairs[from];
+    if (pair) {
+      const j = find(field, "lt", pair[0]);
+      if (j >= 0) {
+        used.add(i).add(j);
+        periods.push({ field: String(field), op: "in", value: pair[1] });
+      }
+      return;
+    }
+    const single: Record<string, string> = {
+      "@today": "today",
+      "@week": "this_week",
+      "@month": "this_month",
+      "@year": "this_year",
+    };
+    if (single[from]) {
+      used.add(i);
+      periods.push({ field: String(field), op: "in", value: single[from] });
+      return;
+    }
+    const last = /^@now-(\d+)(mo|m|h|d|w)$/.exec(from);
+    if (last) {
+      used.add(i);
+      periods.push({ field: String(field), op: "in", value: `last:${last[1]}:${last[2]}` });
+      return;
+    }
+    if (from === "@now") {
+      const j = list.findIndex((m, k) => {
+        const y = node(m);
+        if (!y || used.has(k) || k === i) {
+          return false;
+        }
+        const until = y["lte"];
+        return (
+          y["field"] === field &&
+          typeof until === "string" &&
+          /^@now\+\d+(mo|m|h|d|w)$/.test(until) &&
+          Object.keys(y).length === 2
+        );
+      });
+      if (j >= 0) {
+        const next = /^@now\+(\d+)(mo|m|h|d|w)$/.exec(String(node(list[j])!["lte"]))!;
+        used.add(i).add(j);
+        periods.push({ field: String(field), op: "in", value: `next:${next[1]}:${next[2]}` });
+      }
+    }
+  });
+  return { periods, rest: list.filter((_, i) => !used.has(i)) };
+}
 
 // toWhere turns the conditions into the where of the JSON query; incomplete ones are left out.
 export function toWhere(
@@ -119,7 +251,19 @@ export function toWhere(
           { field: "sla_due_at", gt: "@now" },
         ];
       }
-      let v = c.value;
+      if (c.op === "in") {
+        return periodNodes(c.field, String(c.value));
+      }
+      // Several values: one of them, or none of them (UI50).
+      if (Array.isArray(c.value)) {
+        if (c.value.length === 0) {
+          return [];
+        }
+        if (c.value.length > 1 && (c.op === "eq" || c.op === "neq")) {
+          return [{ field: c.field, [c.op === "eq" ? "in" : "nin"]: c.value }];
+        }
+      }
+      let v = Array.isArray(c.value) ? c.value[0] : c.value;
       if (isMoment(type, c.field) && typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
         v = new Date(`${v}T${c.op === "lte" ? "23:59:59.999" : "00:00:00"}`).toISOString();
       }
@@ -137,7 +281,8 @@ export function fromWhere(where: unknown): Condition[] | null {
   if (where === undefined || where === null) {
     return [];
   }
-  const all = (where as { and?: unknown[] }).and ?? [where];
+  const read = readPeriods((where as { and?: unknown[] }).and ?? [where]);
+  const all = read.rest;
   // The deadline against "@now" reads back as breached or close (UI34).
   const isNode = (n: unknown, field: string, op: string) =>
     typeof n === "object" &&
@@ -148,7 +293,7 @@ export function fromWhere(where: unknown): Condition[] | null {
   const list = all.filter(
     (n) => !(close && (isNode(n, "sla_warn_at", "lte") || isNode(n, "sla_due_at", "gt"))),
   );
-  const out: Condition[] = [];
+  const out: Condition[] = [...read.periods];
   if (close) {
     out.push({ field: "sla_due_at", op: "close", value: "" });
   }
@@ -161,7 +306,13 @@ export function fromWhere(where: unknown): Condition[] | null {
     if (keys.length !== 1) {
       return null;
     }
-    const op = keys[0] as Op;
+    const key = keys[0]!;
+    // Several values read back as one condition with a list (UI50).
+    if ((key === "in" || key === "nin") && Array.isArray(rest[key])) {
+      out.push({ field: String(field), op: key === "in" ? "eq" : "neq", value: rest[key] });
+      continue;
+    }
+    const op = key as Op;
     if (!["eq", "neq", "contains", "starts", "gte", "lte", "null"].includes(op)) {
       return null;
     }
@@ -342,7 +493,10 @@ export function Filters({
   const set = (i: number, c: Condition) => onChange(conditions.map((x, j) => (j === i ? c : x)));
   const add = () => {
     const first = all[0]!;
-    onChange([...conditions, { field: first.name, op: opsFor(first)[0]!, value: "" }]);
+    onChange([
+      ...conditions,
+      { field: first.name, op: opsFor(first).find((o) => o !== "in")!, value: "" },
+    ]);
   };
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border p-3">
@@ -366,7 +520,7 @@ export function Filters({
                 value={c.field}
                 onChange={(e) => {
                   const s = all.find((x) => x.name === e.target.value)!;
-                  set(i, { field: s.name, op: opsFor(s)[0]!, value: "" });
+                  set(i, { field: s.name, op: opsFor(s).find((o) => o !== "in")!, value: "" });
                 }}
               >
                 {all.map((s) => (
@@ -381,13 +535,15 @@ export function Filters({
                 value={c.op}
                 onChange={(e) => set(i, { ...c, op: e.target.value as Op })}
               >
-                {opsFor(subject).map((op) => (
-                  <option key={op} value={op}>
-                    {subject.kind === "deadline" && op === "lte"
-                      ? t("filter.ops.dueBy")
-                      : t(`filter.ops.${op}`)}
-                  </option>
-                ))}
+                {opsFor(subject)
+                  .filter((op) => op !== "in")
+                  .map((op) => (
+                    <option key={op} value={op}>
+                      {subject.kind === "deadline" && op === "lte"
+                        ? t("filter.ops.dueBy")
+                        : t(`filter.ops.${op}`)}
+                    </option>
+                  ))}
               </select>
               <ValueInput
                 id={id}

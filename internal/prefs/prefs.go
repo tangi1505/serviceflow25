@@ -114,6 +114,12 @@ func isNav(v string) bool { return v == "wide" || v == "narrow" }
 // DefaultNav is the width of the navigation without an own setting.
 const DefaultNav = "wide"
 
+// DefaultShortcuts says that single keys such as / and N work (UI52, UI-Plan E55); a person
+// may turn them off, so that a voice input does not set them off (WCAG 2.1.4).
+const DefaultShortcuts = "on"
+
+func isShortcuts(v string) bool { return v == "on" || v == "off" }
+
 // The arrangement of the navigation (UI37, UI-Plan E50): lists of keys the interface knows
 // (areas such as package.incident, entries such as package.incident/incident.incident). The
 // server only bounds them; a key without its area or entry is passed by in the interface.
@@ -174,6 +180,9 @@ type Prefs struct {
 	// DashboardPeriods is the person's last period per dashboard id (PL65); a dashboard
 	// without one opens with its own default.
 	DashboardPeriods map[string]string `json:"dashboard_periods"`
+	// Shortcuts is on or off: whether single keys such as / and N work (UI52); keys with Ctrl
+	// always do. Only the person sets it.
+	Shortcuts Value `json:"shortcuts"`
 }
 
 // Settings reads a setting of the tree with the node it comes from.
@@ -341,6 +350,10 @@ func (s *Service) Get(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	out.NavOrder = list("nav_order")
 	out.NavHidden = list("nav_hidden")
 	out.Favorites = list("favorites")
+	out.Shortcuts = Value{DefaultShortcuts, SourceDefault}
+	if v := str("shortcuts"); isShortcuts(v) {
+		out.Shortcuts = Value{v, SourceOwn}
+	}
 	return out, nil
 }
 
@@ -408,9 +421,9 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	}
 	for name := range input {
 		switch name {
-		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "nav_order", "nav_hidden", "favorites", "defaults", "dashboard_periods":
+		case "language", "time_zone", "theme", "color_scheme", "density", "start_dashboard", "accent", "nav", "nav_order", "nav_hidden", "favorites", "defaults", "dashboard_periods", "shortcuts":
 		default:
-			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites, defaults and dashboard_periods")
+			bad(name, "unknown", "is no setting; settings are language, time_zone, theme, color_scheme, density, start_dashboard, accent, nav, nav_order, nav_hidden, favorites, defaults, dashboard_periods and shortcuts")
 		}
 	}
 	// The lists of the navigation (UI37): keys without repeats; null or an empty list takes
@@ -460,6 +473,7 @@ func (s *Service) Set(ctx context.Context, account uuid.UUID, personID *uuid.UUI
 	text("color_scheme", isColorScheme, "must be light, dark or system")
 	text("density", isDensity, "must be compact or normal")
 	text("nav", isNav, "must be wide or narrow")
+	text("shortcuts", isShortcuts, "must be on or off")
 	text("accent", isAccent, "must be one of petrol, steel, indigo, violet, umber, graphite")
 	text("start_dashboard", func(v string) bool {
 		if v == StartNone {

@@ -123,6 +123,21 @@ func TestSettingsOverHTTP(t *testing.T) {
 	if v, _ := value(r, "nav"); v != "wide" {
 		t.Fatalf("nav removed: %s", r.raw)
 	}
+	// Single keys as shortcuts (UI52): on by default, off one's own, others refused, null back.
+	if v, src := value(r, "shortcuts"); v != "on" || src != "default" {
+		t.Fatalf("shortcuts default: %s", r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"shortcuts": "off"}`, nil)
+	if v, src := value(r, "shortcuts"); r.code != 200 || v != "off" || src != "own" {
+		t.Fatalf("own shortcuts: %d %s", r.code, r.raw)
+	}
+	if r := call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"shortcuts": "some"}`, nil); r.code != 422 || !strings.Contains(r.raw, "on or off") {
+		t.Fatalf("bad shortcuts: %d %s", r.code, r.raw)
+	}
+	r = call(t, u.api, http.MethodPatch, "/api/v1/me/settings", `{"shortcuts": null}`, nil)
+	if v, _ := value(r, "shortcuts"); v != "on" {
+		t.Fatalf("shortcuts removed: %s", r.raw)
+	}
 	// The accent colour (UI38): petrol by default, one of the six as one's own, others refused.
 	if v, src := value(r, "accent"); v != "petrol" || src != "default" {
 		t.Fatalf("accent default: %s", r.raw)

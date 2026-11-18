@@ -688,6 +688,12 @@ web/src/
   Summen; alles aus der Definition (Merkmale, Rollen, Summenfelder).
 - **Lange Listen** laufen mit TanStack Table und Virtual. Die Daten kommen seitenweise per
   Schlüssel, und Spalten werden nur gerendert, wenn sie sichtbar sind.
+- **Liste, Filter und Tastatur** (UI47 bis UI53, UI-Plan E54 bis E57): Seitenkopf mit
+  „Anpassen“ und „Neu“ (`ui/page-header.tsx`, `ui/menu.tsx`), eine Leiste mit gespeicherten
+  Suchen als Menü, der Filterzeile zum Tippen (`render/FilterRow.tsx`: Feld, Vergleich, Wert als
+  Combobox; Zeiträume als Zeitwörter der Abfrage, PL72) sowie „Ansicht“ und „Exportieren“.
+  Tastenkürzel meldet jede Seite an einer Stelle an (`app/shortcuts.tsx`); einzelne Tasten
+  gelten nicht in Feldern und lassen sich je Person abschalten (Einstellung `shortcuts`).
 - **Live:** SSE aktualisiert offene Listen und Detailseiten. Arbeitet jemand anderes am selben
   Datensatz, zeigt die Seite das an (E29); die Anwesenheit liegt in Valkey (`internal/presence`,
   E130).

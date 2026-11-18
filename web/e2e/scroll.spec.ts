@@ -37,11 +37,11 @@ test("scrolls through a list of 100,000 records", async ({ page }) => {
     // The count grows when the next page arrived.
     await expect
       .poll(async () => {
-        const text = await page.getByText(/Datensätze$/).textContent();
+        const text = await page.getByText(/^\d+\+? Datensätze$/).textContent();
         return Number((text ?? "0").replace(/\D/g, ""));
       })
       .toBeGreaterThan(loaded);
-    const text = await page.getByText(/Datensätze$/).textContent();
+    const text = await page.getByText(/^\d+\+? Datensätze$/).textContent();
     loaded = Number((text ?? "0").replace(/\D/g, ""));
     timings.push(Date.now() - started);
     const rows = await page.locator("tbody tr").count();

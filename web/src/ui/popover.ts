@@ -16,7 +16,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 
-const items = '[role="menuitem"],[role="menuitemradio"]';
+const items = '[role="menuitem"],[role="menuitemradio"],[role="menuitemcheckbox"]';
 const focusable = `${items},button:not([disabled]),a[href]`;
 
 export function usePopover() {

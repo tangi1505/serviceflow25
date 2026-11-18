@@ -7,12 +7,14 @@
 
 // The export of a list (UI5, Hauptplan E125): the format, then the file with the condition,
 // columns and sort the list has now. Up to 100,000 rows the browser saves it at once; a
-// larger one runs as a job, and the page offers the file when it is done.
-import { useEffect, useId, useState } from "react";
+// larger one runs as a job, and the page offers the file when it is done. Since UI48 a menu
+// "Exportieren" in the bar of the list (UI-Plan E54): a format starts the export at once.
+import { Download } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "@/api/client";
-import { Button } from "@/ui/button";
+import { Menu, MenuItem, MenuLabel } from "@/ui/menu";
 
 import { currentTimeZone } from "./fields";
 
@@ -40,8 +42,6 @@ export function ExportButton({
   sort: string;
 }) {
   const { t, i18n } = useTranslation();
-  const id = useId();
-  const [format, setFormat] = useState<Format>("xlsx");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [jobId, setJobId] = useState<number | null>(null);
@@ -81,7 +81,10 @@ export function ExportButton({
     };
   }, [jobId, t]);
 
-  const run = async () => {
+  const run = async (format: Format) => {
+    if (busy || jobId !== null) {
+      return;
+    }
     setBusy(true);
     setMessage(null);
     setFile(null);
@@ -111,24 +114,35 @@ export function ExportButton({
     }
   };
 
+  const formats: [Format, string][] = [
+    ["xlsx", "Excel (XLSX)"],
+    ["ods", "OpenDocument (ODS)"],
+    ["csv", "CSV"],
+  ];
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label htmlFor={`${id}-format`} className="sr-only">
-        {t("export.format")}
-      </label>
-      <select
-        id={`${id}-format`}
-        className="h-10 rounded-md border border-input bg-background px-2 text-sm"
-        value={format}
-        onChange={(e) => setFormat(e.target.value as Format)}
+      <Menu
+        label={t("export.run")}
+        title={t("export.hint")}
+        trigger={
+          <>
+            <Download aria-hidden="true" className="size-4 text-foreground-2" />
+            {t("export.run")}
+          </>
+        }
+        width="w-60"
       >
-        <option value="xlsx">Excel (XLSX)</option>
-        <option value="ods">OpenDocument (ODS)</option>
-        <option value="csv">CSV</option>
-      </select>
-      <Button variant="outline" disabled={busy || jobId !== null} onClick={() => void run()}>
-        {t("export.run")}
-      </Button>
+        <MenuLabel>{t("export.as")}</MenuLabel>
+        {formats.map(([format, name]) => (
+          <MenuItem
+            key={format}
+            disabled={busy || jobId !== null}
+            onSelect={() => void run(format)}
+          >
+            {name}
+          </MenuItem>
+        ))}
+      </Menu>
       {message && (
         <span role="status" className="text-sm">
           {message}

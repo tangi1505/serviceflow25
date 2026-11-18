@@ -56,7 +56,8 @@
     "unpin": "Unpin from favourites: {{name}}",
     "appearance": "Appearance",
     "open": "Open the navigation",
-    "close": "Close the navigation"
+    "close": "Close the navigation",
+    "back": "Back"
   },
   "header": {
     "tenant": "Tenant: {{name}}",
@@ -103,7 +104,13 @@
     },
     "newMenu": "Create",
     "newFull": "{{type}} (all fields)",
-    "forms": "Forms"
+    "forms": "Forms",
+    "customize": "Customize",
+    "customizeType": "Fields, labels and order",
+    "customizeWorkflow": "States and transitions",
+    "newOf": "New: {{type}}",
+    "view": "View",
+    "viewHint": "View: columns and row height"
   },
   "form": {
     "newTitle": "New record",
@@ -308,7 +315,67 @@
       "null": "is empty",
       "breached": "is breached",
       "close": "is close (from 75 %)",
-      "dueBy": "due by"
+      "dueBy": "due by",
+      "in": "in the period"
+    },
+    "set": "Set a filter",
+    "placeholder": "Filter: type a field, such as “State” …",
+    "placeholderMore": "Another filter …",
+    "pickOp": "Choose a comparison …",
+    "pickValue": "Type a value …",
+    "change": "Change the filter",
+    "removeOne": "Remove the filter: {{name}}",
+    "slash": "Press / to jump to the filter row",
+    "take": "take",
+    "toMe": "me",
+    "toMyGroups": "my groups",
+    "typeDay": "Type a day, such as 2026-11-01",
+    "typeName": "Type at least a letter of a name …",
+    "typeValue": "Type a value, Enter takes it",
+    "nothing": "Nothing found",
+    "keys": {
+      "enter": "take",
+      "comma": "another value",
+      "left": "comparison",
+      "back": "back",
+      "esc": "close"
+    },
+    "kind": {
+      "text": "Text",
+      "number": "Number",
+      "date": "Date",
+      "datetime": "Moment",
+      "choice": "Choice",
+      "boolean": "Yes or no",
+      "reference": "Reference",
+      "sequence": "Number",
+      "state": "State",
+      "time": "Moment",
+      "deadline": "Deadline",
+      "role": "Role"
+    },
+    "period": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "this_week": "this week",
+      "this_month": "this month",
+      "this_year": "this year",
+      "last_week": "last week",
+      "last_month": "last month",
+      "last": "last {{n}} {{unit}}",
+      "next": "next {{n}} {{unit}}"
+    },
+    "unit": {
+      "m_one": "minute",
+      "m_other": "minutes",
+      "h_one": "hour",
+      "h_other": "hours",
+      "d_one": "day",
+      "d_other": "days",
+      "w_one": "week",
+      "w_other": "weeks",
+      "mo_one": "month",
+      "mo_other": "months"
     }
   },
   "search": {
@@ -325,7 +392,15 @@
     "forbidden": "You may not save searches.",
     "error": "Could not save: {{detail}}",
     "notFound": "This saved search does not exist or is not shared with you.",
-    "raw": "This search has a condition the filters cannot show: {{where}}"
+    "raw": "This search has a condition the filters cannot show: {{where}}",
+    "allShort": "All records",
+    "changed": "changed",
+    "discard": "Discard changes",
+    "saveAsMore": "Save as new search …",
+    "shareMore": "Share and manage …",
+    "detailsMore": "About this search …",
+    "button": "Saved search: {{name}}",
+    "buttonChanged": "Saved search: {{name}}, changed"
   },
   "export": {
     "format": "Format of the export",
@@ -334,10 +409,12 @@
     "ready": "Export done: {{rows}} rows.",
     "download": "Download the file",
     "failed": "The export failed.",
-    "error": "Could not export: {{detail}}"
+    "error": "Could not export: {{detail}}",
+    "as": "Export as",
+    "hint": "The list with its filters, columns and sort as a file"
   },
   "batch": {
-    "title": "{{count}} chosen",
+    "title": "{{count}} selected",
     "action": "Action",
     "field": "Field",
     "value": "New value",
@@ -497,7 +574,11 @@
     "favoriteDown": "Move favourite {{name}} down",
     "unpinFavorite": "Unpin favourite {{name}}",
     "byOrganisation": "Set by your organisation.",
-    "orgAccent": "colour of the organisation {{color}}"
+    "orgAccent": "colour of the organisation {{color}}",
+    "shortcuts": "Shortcuts of single keys",
+    "shortcutsHint": "/, ? and N only work outside of fields. Turned off, a voice input cannot set them off either. Shortcuts with Ctrl always work.",
+    "on": "On",
+    "off": "Off"
   },
   "versions": {
     "title": "Versions",
@@ -1241,5 +1322,29 @@
     "triangle-alert": "Warning triangle",
     "users": "People",
     "wrench": "Wrench"
+  },
+  "keys": {
+    "title": "Keyboard shortcuts",
+    "button": "Keyboard shortcuts (?)",
+    "close": "Close",
+    "always": "Always",
+    "single": "Single keys",
+    "page": "On this page",
+    "off": "Turned off in My settings › Appearance.",
+    "command": "Search or command",
+    "nav": "Fold the side bar in and out",
+    "esc": "Close a menu, dialog or preview",
+    "help": "Show the keyboard shortcuts",
+    "filter": "Jump to the filter row",
+    "new": "Create new",
+    "rows": "Change the row",
+    "preview": "Show the preview",
+    "shift": "Shift",
+    "ctrl": "Ctrl",
+    "open": "Open the record",
+    "space": "Space",
+    "choose": "Choose the row",
+    "save": "Save",
+    "send": "Send the answer"
   }
 }

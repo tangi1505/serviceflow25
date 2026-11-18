@@ -44,11 +44,14 @@ test("compact rows, the preview beside the list, the navigation on a phone", asy
   await expect(row).toBeVisible();
   const height = async () => (await row.boundingBox())!.height;
   expect(await height()).toBe(52);
+  // The row height is in the menu "Ansicht" of the bar (UI48).
+  await page.getByRole("button", { name: "Ansicht" }).click();
   await page
     .getByRole("group", { name: "Zeilenhöhe" })
-    .getByRole("button", { name: "Kompakt" })
+    .getByRole("menuitemradio", { name: "Kompakt" })
     .click();
-  await expect(page.getByRole("button", { name: "Kompakt", pressed: true })).toBeVisible();
+  await expect(page.getByRole("menuitemradio", { name: "Kompakt", checked: true })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect.poll(height).toBe(36);
   await page.reload();
   await expect(page.getByRole("row", { name: new RegExp(title) })).toBeVisible();

@@ -90,6 +90,11 @@ export function RichEditor({
         class: cn("min-h-24 px-3 py-2 text-sm focus:outline-none", prose),
       },
       handleKeyDown: (_view, event) => {
+        // Strg Enter sends what the editor stands in (UI53): no line break here, the form around
+        // it takes the key. A line break stays Umschalt Enter.
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          return true;
+        }
         // Alt+T opens the text modules; the key code, since Alt changes the letter on a Mac.
         if (event.altKey && event.code === "KeyT" && offersSnippets.current) {
           event.preventDefault();

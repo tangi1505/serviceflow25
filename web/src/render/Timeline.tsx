@@ -28,6 +28,7 @@ import {
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
+import { usePageShortcuts } from "@/app/shortcuts";
 
 import { fieldLabel, formatMoment, formatValue } from "./fields";
 import { RefName } from "./RefName";
@@ -216,13 +217,23 @@ function NewEntry({ typeName, id, portal }: { typeName: string; id: string; port
           : t("timeline.error", { detail: err instanceof Error ? err.message : String(err) }),
       ),
   });
+  usePageShortcuts([{ keys: [t("keys.ctrl"), "Enter"], label: t("keys.send") }]);
   return (
+    // Strg Enter sends the answer (UI53, UI-Plan E55), also from inside the editor; the dialog
+    // "Tastenkürzel" names it (usePageShortcuts above).
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         if (body.trim()) {
           add.mutate();
+        }
+      }}
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.requestSubmit();
         }
       }}
     >

@@ -34,6 +34,7 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { usePageShortcuts } from "@/app/shortcuts";
 
 import {
   changedFields,
@@ -503,8 +504,32 @@ export function Form({
     );
   };
 
+  // Strg S saves (UI53, UI-Plan E55), and the browser opens no "Speichern unter": the form the
+  // focus is in, else the first one of the page.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== "s") {
+        return;
+      }
+      const active = document.activeElement;
+      const target =
+        (active instanceof HTMLElement ? active.closest("form[data-save-key]") : null) ??
+        document.querySelector("form[data-save-key]");
+      if (target === formRef.current) {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  usePageShortcuts([{ keys: [t("keys.ctrl"), "S"], label: t("keys.save") }]);
+
   return (
     <form
+      ref={formRef}
+      data-save-key=""
       className="flex max-w-2xl flex-col gap-4"
       onSubmit={handleSubmit((v) => save(v))}
       noValidate

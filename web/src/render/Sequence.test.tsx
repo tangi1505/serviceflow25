@@ -71,10 +71,9 @@ describe("Running number", () => {
     const user = userEvent.setup();
     renderAt("/types/probe.probe");
     await screen.findByRole("row", { name: /Probe 000001/ });
-    await user.click(screen.getByRole("button", { name: "Bedingung hinzufügen" }));
-    const condition = screen.getByRole("listitem", { name: "Bedingung 1" });
-    await user.selectOptions(within(condition).getByRole("combobox", { name: "Feld" }), "k_nummer");
-    await user.type(within(condition).getByRole("textbox", { name: "Wert" }), "K-3");
+    // The filter row (UI50): the number is typed as it is, with its prefix.
+    await user.click(screen.getByRole("combobox", { name: "Filter setzen" }));
+    await user.keyboard("nummer{Enter}K-3{Enter}");
     const query = await vi.waitFor(() => {
       const last = state.calls.filter((c) => c.path === "/api/v1/records/probe.probe:query").at(-1);
       expect(last).toBeDefined();

@@ -67,13 +67,13 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI44** | Genehmigungen auf der Startseite des Portals (E43): der Abschnitt „Wartet auf Ihre Genehmigung“ mit den offenen Fragen der Person, je Zeile „Zustimmen“ und „Ablehnen“ wie auf der Seite der Genehmigung; ohne offene Frage fehlt der Abschnitt | 🟢 | 1 d | Eine Person mit zwei offenen Fragen sieht den Abschnitt mit zwei Zeilen; „Zustimmen“ entscheidet, die Zeile verschwindet und die Zahl am Bereich „Genehmigungen“ sinkt auf 1; eine Person ohne offene Frage sieht den Abschnitt nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI45** | Fehler: die Seite scrollt über ihren Inhalt hinaus, gesehen am Dashboard „Statistik“ (§2.5): Ursache finden und beheben; ab 768 px scrollt nur der Inhalt, nie das ganze Dokument samt Navigation | 🟢 | 0,5 d | Dashboard „Statistik“ in einem Fenster von 1700 × 1250 px bis ans Ende scrollen → unter dem letzten Widget steht kein leerer Bereich, die Navigation bleibt stehen; ein Playwright-Test prüft an Dashboard, Liste und Detailseite, dass das Dokument nicht höher ist als das Fenster; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI46** | Fehler: Höhe der Tabelle (E54, §2.5): die Tabelle ist so hoch wie ihre Zeilen und höchstens so hoch, wie das Fenster Platz lässt; neben der offenen Vorschau wächst sie nicht auf deren Höhe; ein senkrechter Rollbalken erscheint erst, wenn die Zeilen nicht mehr passen | 🟢 | 0,5 d | Liste „Anfrage“ mit 4 Datensätzen, eine Zeile wählen → die Tabelle endet unter der vierten Zeile, ohne senkrechten Rollbalken, die Vorschau steht daneben; die Liste des Typs `probe` mit 100.000 Datensätzen scrollt weiter ohne Ruckeln (UI2); `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI47** | Seitenkopf mit Knöpfen (E54, E56): ein Baustein für Titel, Anzahl und Aktionen; an der Liste das Menü „Anpassen“ mit „Typ anpassen“ und „Workflow“ (nur mit `customize`), „Neu“ rechts im Seitenkopf; die unterstrichenen Wörter in Seitenköpfen und Leisten werden Knöpfe (Zurück zur Liste, Typ-Editor und Workflow gegenseitig, Zurück zu den Rollen, Teilen der Suche); Verweise auf Datensätze bleiben Links | ⬜ | 1 d | Als Admin an der Liste „Anfrage“: der Knopf „Anpassen“ öffnet ein Menü mit zwei Einträgen, erreichbar mit Tab und Pfeiltasten, Esc schließt es; ohne das Recht `customize` fehlt der Knopf; in Typ-Editor, Workflow-Editor, Rolle, Formular und Detailseite steht „Zurück“ als Knopf; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI48** | Leiste über der Tabelle in einer Zeile (E54): links Suchen und Filter, rechts „Ansicht“ (Spalten und Zeilenhöhe in einem Menü) und „Exportieren“ (Menü mit XLSX, ODS, CSV) als Knöpfe mit Symbol, Namen und Tooltip; alle Bedienelemente 32 px hoch; die Massenaktionen (UI6) stehen als Leiste am Kopf der Tabelle, solange Zeilen gewählt sind | ⬜ | 1 d | An der Liste „Störung“: „Ansicht“ öffnet ein Menü, darin Zeilenhöhe umstellen und eine Spalte abwählen → die Liste folgt sofort; „Exportieren“ › „CSV“ lädt die Datei wie bisher (UI5); zwei Zeilen wählen → die Leiste „2 ausgewählt“ erscheint über dem Tabellenkopf; bei 375 px Breite bricht die Leiste um, nichts läuft aus dem Fenster; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI49** | Gespeicherte Suchen als Menü vor dem Filter (E54): der Knopf zeigt den Namen der Suche und einen Punkt, wenn die Filter von ihr abweichen; das Menü listet eigene und geteilte Suchen und bietet „Änderungen speichern“ (nur an eigenen), „Änderungen verwerfen“, „Als neue Suche speichern“ und „Teilen und verwalten“. Ersetzt die Auswahlliste mit ihren Knöpfen aus UI4 | ⬜ | 0,75 d | Suche „Meine offenen“ wählen, einen Filter dazusetzen → am Knopf steht ein Punkt; „Änderungen speichern“ im Menü → nach dem Neuladen steht der Filter noch; an einer geteilten Suche einer anderen Person fehlt „Änderungen speichern“; alles mit der Tastatur bedienbar; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI50** | Filterzeile zum Tippen, Grundform (E54, §2.5): eine Zeile mit den gesetzten Filtern als Chips und einem Eingabefeld; Schritte Feld, Vergleich (vorgewählt), Wert, je Schritt mit Vorschlägen nach dem WAI-ARIA-Muster „Combobox“; Tastatur nach E54; ein Filter wirkt sofort; Werte für Auswahl, Status, Wahrheitswert, Zahl, Text, laufende Nummer und Frist; mehrere Werte je Filter. Ersetzt die Zeilen aus Auswahllisten in `Filters.tsx`; `toWhere` und `fromWhere` lernen mehrere Werte, eine gespeicherte Suche liest sich sonst wie bisher | ⬜ | 1,5 d | An der Liste „Störung“ nur mit der Tastatur: Fokus in die Filterzeile, „stat“, Enter, „wart“, Enter → der Chip „Status ist Wartet“ steht in der Zeile und die Liste zeigt nur wartende; ein Komma statt Enter nimmt einen zweiten Wert; die Rücktaste im leeren Feld nimmt den letzten Filter Schritt für Schritt zurück; ein Klick auf einen Chip ändert ihn; eine Bedingung, die die Filter nicht zeigen können, erscheint weiter als Hinweis (UI4); `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI51** | Filterzeile: Verweise, Rollen und Zeit (E54, E57, §2.5): Werte für Verweise und Rollen kommen aus der Suche des Auswahlfelds (UI28), bei Rollen dazu „mir“ und „meinen Gruppen“. Für Datum, Zeitpunkt und Frist der Vergleich „in“ mit relativen Zeiträumen: als Vorschlag „heute“, „gestern“, „diese Woche“, „diesen Monat“, „dieses Jahr“, „letzte Woche“, „letzten Monat“; getippt „letzte 5 Minuten“, Stunden, Tage, Wochen oder Monate, an der Frist auch „nächste“; daneben „ab“ und „bis“ mit einem Datum. Gespeichert wird der Zeitraum als Zeitwort der Abfrage (Kern-Plan PL72), der Chip zeigt ihn in Worten | 🔒 PL72 | 1,5 d (vorher 1 d) | „bearb“, Enter, „mir“, Enter → nur die eigenen Störungen; „bearb“, Enter, drei Buchstaben eines Namens → Vorschläge aus den Personen, Enter setzt den Filter; „angelegt“, Enter, „letzte 5 t“, Enter → der Chip „Angelegt: letzte 5 Tage“ und nur Störungen aus dieser Zeit; als Suche speichern und neu laden → der Chip steht wieder so da, und in der gespeicherten Abfrage steht `@now-5d`, kein festes Datum; „heute“ zeigt eine Störung von gestern 23:50 Uhr nicht; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI52** | Tastenkürzel im Rahmen (E55): eine Stelle, an der Seiten ihre Kürzel anmelden; Strg B klappt die Seitenleiste ein und aus (wie der Knopf, gemerkt wie in UI36); `?` und ein Knopf in der Kopfzeile öffnen den Dialog „Tastenkürzel“ mit den Kürzeln der offenen Seite; `/` setzt den Fokus in die Filterzeile, `N` legt an der Liste neu an; Esc schließt Menü, Dialog und Vorschau. Einzelne Tasten gelten nicht in Eingabefeldern und im Texteditor und lassen sich in Meine Einstellungen › Darstellung abschalten (eine Einstellung der Person) | ⬜ | 1 d | Strg B klappt die Leiste ein, nochmal Strg B wieder aus, nach dem Neuladen steht sie wie zuletzt; im Texteditor einer Störung macht Strg B weiter fett; `?` öffnet den Dialog, Esc schließt ihn, und der Fokus steht wieder, wo er war; mit abgeschalteten Einzeltasten tut `/` nichts, Strg B und Strg K gehen weiter; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI53** | Liste und Formular mit der Tastatur (E55): in der Liste wechseln die Pfeiltasten die Zeile, Enter zeigt die Vorschau, Umschalt Enter öffnet den Vorgang, die Leertaste wählt die Zeile aus; im Formular speichert Strg S, Strg Enter sendet die Antwort in der Zeitleiste | ⬜ | 1 d | An der Liste „Störung“ ohne Maus: Pfeil nach unten bis zur dritten Zeile, Enter → Vorschau der dritten Störung, Umschalt Enter → ihre Detailseite; dort einen Wert ändern, Strg S → gespeichert, der Browser öffnet kein „Speichern unter“; eine Antwort tippen, Strg Enter → sie steht in der Zeitleiste; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI47** | Seitenkopf mit Knöpfen (E54, E56): ein Baustein für Titel, Anzahl und Aktionen; an der Liste das Menü „Anpassen“ mit „Typ anpassen“ und „Workflow“ (nur mit `customize`), „Neu“ rechts im Seitenkopf; die unterstrichenen Wörter in Seitenköpfen und Leisten werden Knöpfe (Zurück zur Liste, Typ-Editor und Workflow gegenseitig, Zurück zu den Rollen, Teilen der Suche); Verweise auf Datensätze bleiben Links | 🟢 | 1 d | Als Admin an der Liste „Anfrage“: der Knopf „Anpassen“ öffnet ein Menü mit zwei Einträgen, erreichbar mit Tab und Pfeiltasten, Esc schließt es; ohne das Recht `customize` fehlt der Knopf; in Typ-Editor, Workflow-Editor, Rolle, Formular und Detailseite steht „Zurück“ als Knopf; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI48** | Leiste über der Tabelle in einer Zeile (E54): links Suchen und Filter, rechts „Ansicht“ (Spalten und Zeilenhöhe in einem Menü) und „Exportieren“ (Menü mit XLSX, ODS, CSV) als Knöpfe mit Symbol, Namen und Tooltip; alle Bedienelemente 32 px hoch; die Massenaktionen (UI6) stehen als Leiste am Kopf der Tabelle, solange Zeilen gewählt sind | 🟢 | 1 d | An der Liste „Störung“: „Ansicht“ öffnet ein Menü, darin Zeilenhöhe umstellen und eine Spalte abwählen → die Liste folgt sofort; „Exportieren“ › „CSV“ lädt die Datei wie bisher (UI5); zwei Zeilen wählen → die Leiste „2 ausgewählt“ erscheint über dem Tabellenkopf; bei 375 px Breite bricht die Leiste um, nichts läuft aus dem Fenster; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI49** | Gespeicherte Suchen als Menü vor dem Filter (E54): der Knopf zeigt den Namen der Suche und einen Punkt, wenn die Filter von ihr abweichen; das Menü listet eigene und geteilte Suchen und bietet „Änderungen speichern“ (nur an eigenen), „Änderungen verwerfen“, „Als neue Suche speichern“ und „Teilen und verwalten“. Ersetzt die Auswahlliste mit ihren Knöpfen aus UI4 | 🟢 | 0,75 d | Suche „Meine offenen“ wählen, einen Filter dazusetzen → am Knopf steht ein Punkt; „Änderungen speichern“ im Menü → nach dem Neuladen steht der Filter noch; an einer geteilten Suche einer anderen Person fehlt „Änderungen speichern“; alles mit der Tastatur bedienbar; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI50** | Filterzeile zum Tippen, Grundform (E54, §2.5): eine Zeile mit den gesetzten Filtern als Chips und einem Eingabefeld; Schritte Feld, Vergleich (vorgewählt), Wert, je Schritt mit Vorschlägen nach dem WAI-ARIA-Muster „Combobox“; Tastatur nach E54; ein Filter wirkt sofort; Werte für Auswahl, Status, Wahrheitswert, Zahl, Text, laufende Nummer und Frist; mehrere Werte je Filter. Ersetzt die Zeilen aus Auswahllisten in `Filters.tsx`; `toWhere` und `fromWhere` lernen mehrere Werte, eine gespeicherte Suche liest sich sonst wie bisher | 🟢 | 1,5 d | An der Liste „Störung“ nur mit der Tastatur: Fokus in die Filterzeile, „stat“, Enter, „wart“, Enter → der Chip „Status ist Wartet“ steht in der Zeile und die Liste zeigt nur wartende; ein Komma statt Enter nimmt einen zweiten Wert; die Rücktaste im leeren Feld nimmt den letzten Filter Schritt für Schritt zurück; ein Klick auf einen Chip ändert ihn; eine Bedingung, die die Filter nicht zeigen können, erscheint weiter als Hinweis (UI4); `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI51** | Filterzeile: Verweise, Rollen und Zeit (E54, E57, §2.5): Werte für Verweise und Rollen kommen aus der Suche des Auswahlfelds (UI28), bei Rollen dazu „mir“ und „meinen Gruppen“. Für Datum, Zeitpunkt und Frist der Vergleich „in“ mit relativen Zeiträumen: als Vorschlag „heute“, „gestern“, „diese Woche“, „diesen Monat“, „dieses Jahr“, „letzte Woche“, „letzten Monat“; getippt „letzte 5 Minuten“, Stunden, Tage, Wochen oder Monate, an der Frist auch „nächste“; daneben „ab“ und „bis“ mit einem Datum. Gespeichert wird der Zeitraum als Zeitwort der Abfrage (Kern-Plan PL72), der Chip zeigt ihn in Worten | 🟢 | 1,5 d (vorher 1 d) | „bearb“, Enter, „mir“, Enter → nur die eigenen Störungen; „bearb“, Enter, drei Buchstaben eines Namens → Vorschläge aus den Personen, Enter setzt den Filter; „angelegt“, Enter, „letzte 5 t“, Enter → der Chip „Angelegt: letzte 5 Tage“ und nur Störungen aus dieser Zeit; als Suche speichern und neu laden → der Chip steht wieder so da, und in der gespeicherten Abfrage steht `@now-5d`, kein festes Datum; „heute“ zeigt eine Störung von gestern 23:50 Uhr nicht; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI52** | Tastenkürzel im Rahmen (E55): eine Stelle, an der Seiten ihre Kürzel anmelden; Strg B klappt die Seitenleiste ein und aus (wie der Knopf, gemerkt wie in UI36); `?` und ein Knopf in der Kopfzeile öffnen den Dialog „Tastenkürzel“ mit den Kürzeln der offenen Seite; `/` setzt den Fokus in die Filterzeile, `N` legt an der Liste neu an; Esc schließt Menü, Dialog und Vorschau. Einzelne Tasten gelten nicht in Eingabefeldern und im Texteditor und lassen sich in Meine Einstellungen › Darstellung abschalten (eine Einstellung der Person) | 🟢 | 1 d | Strg B klappt die Leiste ein, nochmal Strg B wieder aus, nach dem Neuladen steht sie wie zuletzt; im Texteditor einer Störung macht Strg B weiter fett; `?` öffnet den Dialog, Esc schließt ihn, und der Fokus steht wieder, wo er war; mit abgeschalteten Einzeltasten tut `/` nichts, Strg B und Strg K gehen weiter; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI53** | Liste und Formular mit der Tastatur (E55): in der Liste wechseln die Pfeiltasten die Zeile, Enter zeigt die Vorschau, Umschalt Enter öffnet den Vorgang, die Leertaste wählt die Zeile aus; im Formular speichert Strg S, Strg Enter sendet die Antwort in der Zeitleiste | 🟢 | 1 d | An der Liste „Störung“ ohne Maus: Pfeil nach unten bis zur dritten Zeile, Enter → Vorschau der dritten Störung, Umschalt Enter → ihre Detailseite; dort einen Wert ändern, Strg S → gespeichert, der Browser öffnet kein „Speichern unter“; eine Antwort tippen, Strg Enter → sie steht in der Zeitleiste; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -523,6 +523,92 @@ darum in keiner Aufgabe.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI47 bis UI53 — Liste, Filter und Tastatur, 2026-11-18
+
+- **Grundlage:** E54 bis E57, §2.5; Mockup „ITSM Liste: Filter, Leiste und Tastenkürzel“;
+  Hauptplan E199, E200; Kern-Plan PL72 (Zeitwörter). Nacheinander gebaut ohne CI dazwischen,
+  am Ende zusammen geprüft (deine Vorgabe 2026-11-18).
+- **Gebaut:**
+  - **UI47 Seitenkopf:** `ui/page-header.tsx` (Titel, Zeile darunter, Aktionen; `BackButton`,
+    `LinkButton`) und `ui/menu.tsx` (Menüknopf nach WAI-ARIA, 32 px, Einträge `MenuItem`,
+    `MenuLink`, `MenuCheck`; Pfeiltasten, Pos1, Ende, Esc gibt den Fokus an den Knopf zurück).
+    An der Liste das Menü „Anpassen“ mit „Typ anpassen“ und „Workflow“ (nur mit `customize`),
+    „Neu“ rechts als Hauptknopf (mit Formularen der Werkbank ein Menü), die Zahl der Datensätze
+    unter dem Titel. Zurück als Knopf in Detailseite, Formular der Werkbank, Typ-Editor,
+    Workflow-Editor und Rolle; Typ-Editor und Workflow führen als Knöpfe zueinander. Verweise
+    auf Datensätze in Text, Tabellen und Zeitleiste bleiben Links (E56). Navigation bleibt
+    darunter ein Link, sieht aber aus wie ein Knopf; „Neu“ ohne Formulare ist ein echter Knopf.
+  - **UI48 Leiste:** eine Zeile über der Tabelle: links Suchen und Filter, rechts „Ansicht“
+    (Zeilenhöhe als Auswahl und Spalten zum Abhaken in einem Menü, das beim Abhaken offen
+    bleibt) und „Exportieren“ (XLSX, ODS, CSV; ein Format startet den Export). Beide zeigen
+    Symbol und Namen wie im Plan, nicht nur das Symbol wie im Mockup. Die Leiste der
+    Massenaktionen heißt jetzt „2 ausgewählt“ und steht über dem Tabellenkopf. Bei 375 px bricht
+    alles um, nichts läuft aus dem Fenster (gemessen).
+  - **UI49 Gespeicherte Suchen:** ein Menü vor der Filterzeile; der Knopf zeigt die Suche und
+    einen Punkt bei Abweichung (Filter, Spalten oder Sortierung; der Vergleich läuft über die
+    Bedingung, wie die Filter sie schreiben), sein Name nennt beides („Gespeicherte Suche:
+    Störungen, geändert“). Das Menü: alle Datensätze, eigene und geteilte Suchen, „Änderungen
+    speichern“ (nur an eigenen), „Änderungen verwerfen“, „Als neue Suche speichern …“ (ein
+    Namensfeld in der Leiste) und „Teilen und verwalten …“ bzw. „Über diese Suche …“.
+  - **UI50 Filterzeile:** `render/FilterRow.tsx`, Combobox mit Listbox nach WAI-ARIA: Feld,
+    Vergleich (vorgewählt), Wert, je Schritt Vorschläge; Treffer am Anfang vor Treffern im Wort
+    („art“ findet „Art“ vor „Wartegrund“). Enter übernimmt, ein Komma nimmt einen weiteren Wert
+    (`in` und `nin`), Pfeil links geht zum Vergleich, die Rücktaste im leeren Feld geht einen
+    Schritt zurück, auch in den letzten Filter; Enter auf leerem Feld beendet einen Filter mit
+    mehreren Werten. Ein Klick auf einen Chip holt ihn zurück zum Ändern, das Kreuz entfernt
+    ihn. Werte für Auswahl, Status, ja/nein, Zahl, Text, laufende Nummer und Frist (überschritten,
+    knapp, fällig bis). `toWhere` und `fromWhere` (`render/Filters.tsx`) lernen mehrere Werte und
+    Zeiträume; eine gespeicherte Suche liest sich wie bisher, eine Bedingung, die die Zeile nicht
+    zeigen kann, bleibt ein Hinweis. Die alten Bedingungskästen bleiben nur im Dashboard.
+  - **UI51 Verweise, Rollen, Zeit:** Werte für Verweise und Rollen aus der Suche des
+    Auswahlfelds (`useRefOptions`, UI28), bei Rollen dazu „mir“ und „meinen Gruppen“. Für
+    Datum, Zeitpunkt und Frist der Vergleich „im Zeitraum“ (vorgewählt) mit „heute“, „gestern“,
+    „diese Woche“, „diesen Monat“, „dieses Jahr“, „letzte Woche“, „letzten Monat“ und getippt
+    „letzte 5 t“ (Minuten, Stunden, Tage, Wochen, Monate; deutsch und englisch), an der Frist
+    auch „nächste“; daneben „ab“ und „bis“ mit einem Tag (1.11.2026 oder 2026-11-01).
+    Gespeichert werden Zeitwörter (`@today`, `@now-5d`, `@month-1mo` mit `lt @month`), der Chip
+    zeigt den Zeitraum in Worten („Angelegt: letzte 5 Tage“).
+  - **UI52 Tastenkürzel:** `app/shortcuts.tsx`: Seiten melden ihre Kürzel an
+    (`usePageShortcuts`), der Dialog „Tastenkürzel“ zeigt „Immer“, „Einzelne Tasten“ und „Auf
+    dieser Seite“; `?` und ein Knopf in der Kopfzeile öffnen ihn, Esc schließt ihn, der Fokus
+    kehrt zurück. Strg B klappt die Seitenleiste wie ihr Knopf und merkt es (im Texteditor
+    bleibt Strg B fett); `/` springt in die Filterzeile, `N` legt neu an; Esc schließt auch die
+    Vorschau. Einzelne Tasten gelten nicht in Feldern und im Editor und lassen sich in Meine
+    Einstellungen › Darstellung abschalten: neue Einstellung `shortcuts` (on, off) der Person in
+    `internal/prefs` und in der OpenAPI.
+  - **UI53 Liste und Formular:** in der Liste Pfeiltasten (auch aus dem Fenster der
+    gerenderten Zeilen hinaus), Pos1 und Ende, Enter zeigt die Vorschau, Umschalt Enter öffnet
+    den Vorgang, die Leertaste wählt aus. Strg S speichert das Formular, in dem der Fokus steht
+    (sonst das erste der Seite), und hält das „Speichern unter“ des Browsers an; Strg Enter
+    sendet die Antwort der Zeitleiste, auch aus dem Editor (dort kein Zeilenumbruch mehr per Strg
+    Enter, Umschalt Enter bleibt).
+- **Belegt, 2026-11-18:**
+  - Vitest (162 Fälle in 47 Dateien grün), neu `FilterRow.test.tsx` (Tippen, Komma, Rücktaste,
+    Pfeil links, Chip ändern, Kreuz, Esc; Rolle „mir“; „letzte 5 t“ als `@now-5d`; „gestern“
+    als zwei Vergleiche; „ab“ mit einem Tag), `shortcuts.test.tsx` (Strg B hin und zurück
+    gemerkt, `?` und Knopf, Fokus zurück, `/`, `N`; abgeschaltet tun `/`, `n`, `?` nichts, Strg K
+    geht), `Keyboard.test.tsx` (Pfeile, Enter, Esc, Leertaste, Umschalt Enter; Strg S speichert
+    und bricht das Ereignis ab; Strg Enter sendet), dazu angepasst: Menü „Anpassen“, „Neu“ als
+    Menü, „Ansicht“, „Exportieren“, Suchen-Menü mit Speichern und Verwerfen, Frist und laufende
+    Nummer über die Filterzeile; `toWhere`/`fromWhere` mit Listen und Zeiträumen hin und zurück.
+  - Go `TestSettingsOverHTTP`: `shortcuts` voreingestellt „on“, eigen „off“, anderes 422, null
+    zurück.
+  - Playwright neu `e2e/list-keys.spec.ts` gegen 8092 grün: „Anpassen“ mit zwei Einträgen, Esc,
+    Fokus zurück; die Bedienelemente der Leiste 32 px hoch; `/`, „titel“, Enter, Wert; „letzte 5
+    t“ schickt `@now-5d`; Pfeil, Enter zeigt die Vorschau, Esc schließt sie; `?` mit „Vorgang
+    öffnen“, Esc, Fokus zurück; Strg B hin und zurück; Umschalt Enter öffnet; axe ohne Befund
+    mit offenem Menü, offenen Vorschlägen und offenem Dialog. Dabei gefunden und behoben: zu
+    schwacher Kontrast der grauen Hinweise auf grauem Grund (Vorschlag, Chip).
+  - Auf 8092 im Browser: Störungen mit „Status ist Neu“ und „Angelegt: letzte 5 Tage“ → 2
+    Datensätze; Dialog mit drei Gruppen; Strg B klappt die Leiste; bei 375 px kein waagerechtes
+    Scrollen.
+  - Ganze CI grün am 2026-11-18 auf `ki-lab` (19 Schritte; Go-Tests, schnelle Laststufe mit allen Zielen, LZ16 +7 %, Vitest 162, Playwright 25 mit axe). Davor zwei rote Läufe: ein Browser-Test fand „Alle Datensätze“ als zweite Zahl der Datensätze (Muster in `records.spec.ts` und `scroll.spec.ts` eindeutig gemacht), danach LZ16 genau an der Grenze von 10 % (Messrauschen, Server unverändert bis auf `shortcuts`).
+- **Nicht geprüft:** ein Chip mit einem Datensatz einer zweiten Art einer Rolle (Person und
+  Gruppe): der Name wird über die erste Art nachgeschlagen, sonst steht die Kennung da; die
+  Liste mit 100.000 Datensätzen und den Pfeiltasten über viele Seiten.
+- **Bewusst so:** Esc auf einem Filter, der zum Ändern in die Zeile geholt wurde, verwirft ihn
+  (die Zeile verlassen heißt verwerfen).
 
 ### UI46 — Höhe der Tabelle, 2026-11-18
 

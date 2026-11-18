@@ -11,8 +11,9 @@
 // link opens it. Saving keeps the conditions, the columns in their order and the sort; sharing
 // is the role "shared with" on the page of the search (UI28).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useCallback, useId, useState } from "react";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Bookmark, SlidersHorizontal, Workflow } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -27,12 +28,24 @@ import {
   type TypeDefinition,
 } from "@/api/client";
 import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import {
+  barButton,
+  Menu,
+  MenuCheck,
+  MenuItem,
+  MenuLabel,
+  MenuLink,
+  MenuSeparator,
+  primaryBarButton,
+} from "@/ui/menu";
+import { PageHeader } from "@/ui/page-header";
+import { isTyping, usePageShortcuts } from "@/app/shortcuts";
 
-import { Filters, fromWhere, toWhere, type Condition } from "./Filters";
-import { List, type ListView } from "./List";
+import { fromWhere, toWhere, type Condition } from "./Filters";
+import { FilterRow } from "./FilterRow";
+import { List, NewMenu, type ListView } from "./List";
 import { Preview } from "./Preview";
 
 const searchType = "core.saved_search";
@@ -55,16 +68,25 @@ function parseWhere(raw: unknown): unknown {
   }
 }
 
-function SearchBar({
+// SearchMenu is the button of the saved searches in front of the filters (UI49, UI-Plan E54):
+// it shows the search shown now and a dot when filters, columns or sort differ from it. Its
+// menu lists one's own and the shared searches, then saves or discards the changes (saving
+// only one's own), saves as a new search, and leads to sharing. It replaces the list and the
+// buttons of UI4.
+function SearchMenu({
   typeName,
   current,
   where,
   view,
+  dirty,
+  onReset,
 }: {
   typeName: string;
   current?: RecordData;
   where?: Record<string, unknown>;
   view?: ListView;
+  dirty: boolean;
+  onReset: () => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -74,6 +96,13 @@ function SearchBar({
   const formId = useId();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
+  // "Als neue Suche speichern" puts the focus into the name.
+  const nameField = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (naming) {
+      nameField.current?.focus();
+    }
+  }, [naming]);
   const [failure, setFailure] = useState<string | null>(null);
   const items = searches.data?.items ?? [];
   const own = items.filter((s) => s["created_by"] === me.data?.id);
@@ -118,62 +147,63 @@ function SearchBar({
     onError: fail,
   });
   const mine = current !== undefined && current["created_by"] === me.data?.id;
+  const currentId = current ? String(current["id"]) : "";
+  const pick = (s: RecordData) => (
+    <MenuCheck
+      key={String(s["id"])}
+      checked={String(s["id"]) === currentId}
+      onSelect={() => open(String(s["id"]))}
+    >
+      {String(s["name"])}
+    </MenuCheck>
+  );
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${formId}-pick`}>{t("search.saved")}</Label>
-          <select
-            id={`${formId}-pick`}
-            className="h-10 min-w-56 rounded-md border border-input bg-background px-3 text-sm"
-            value={current ? String(current["id"]) : ""}
-            onChange={(e) => open(e.target.value || undefined)}
-          >
-            <option value="">{t("search.all")}</option>
-            {own.length > 0 && (
-              <optgroup label={t("search.own")}>
-                {own.map((s) => (
-                  <option key={String(s["id"])} value={String(s["id"])}>
-                    {String(s["name"])}
-                  </option>
-                ))}
-              </optgroup>
+    <>
+      <Menu
+        label={t("search.saved")}
+        buttonLabel={t(dirty ? "search.buttonChanged" : "search.button", {
+          name: current ? String(current["name"]) : t("search.allShort"),
+        })}
+        align="start"
+        width="w-72"
+        title={t("search.saved")}
+        trigger={
+          <>
+            <Bookmark aria-hidden="true" className="size-4 text-foreground-2" />
+            <span className="max-w-48 truncate">
+              {current ? String(current["name"]) : t("search.allShort")}
+            </span>
+            {dirty && (
+              <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-accent" />
             )}
-            {shared.length > 0 && (
-              <optgroup label={t("search.shared")}>
-                {shared.map((s) => (
-                  <option key={String(s["id"])} value={String(s["id"])}>
-                    {String(s["name"])}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        </div>
-        {mine && (
-          <Button variant="outline" disabled={update.isPending} onClick={() => update.mutate()}>
+          </>
+        }
+      >
+        <MenuCheck checked={currentId === ""} onSelect={() => open(undefined)}>
+          {t("search.allShort")}
+        </MenuCheck>
+        {own.length > 0 && <MenuLabel>{t("search.own")}</MenuLabel>}
+        {own.map(pick)}
+        {shared.length > 0 && <MenuLabel>{t("search.shared")}</MenuLabel>}
+        {shared.map(pick)}
+        <MenuSeparator />
+        {dirty && mine && (
+          <MenuItem className="font-medium" onSelect={() => update.mutate()}>
             {t("search.update")}
-          </Button>
+          </MenuItem>
         )}
-        {!naming && (
-          <Button variant="outline" onClick={() => setNaming(true)}>
-            {t("search.saveAs")}
-          </Button>
-        )}
+        {dirty && <MenuItem onSelect={onReset}>{t("search.discard")}</MenuItem>}
+        <MenuItem onSelect={() => setNaming(true)}>{t("search.saveAsMore")}</MenuItem>
         {current && (
-          <Link
-            to="/types/$typeName/$id"
-            params={{ typeName: searchType, id: String(current["id"]) }}
-            className="self-center text-sm underline"
-          >
-            {mine ? t("search.share") : t("search.details")}
-          </Link>
+          <MenuLink to="/types/$typeName/$id" params={{ typeName: searchType, id: currentId }}>
+            {mine ? t("search.shareMore") : t("search.detailsMore")}
+          </MenuLink>
         )}
-      </div>
+      </Menu>
       {naming && (
         <form
-          className="flex flex-wrap items-end gap-2"
+          className="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             if (name.trim()) {
@@ -181,25 +211,62 @@ function SearchBar({
             }
           }}
         >
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${formId}-name`}>{t("search.name")}</Label>
-            <Input
-              id={`${formId}-name`}
-              maxLength={100}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <Button type="submit" disabled={!name.trim() || create.isPending}>
+          <Label htmlFor={`${formId}-name`} className="sr-only">
+            {t("search.name")}
+          </Label>
+          <Input
+            id={`${formId}-name`}
+            className="h-8 w-56"
+            placeholder={t("search.name")}
+            maxLength={100}
+            ref={nameField}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setNaming(false);
+              }
+            }}
+          />
+          <button
+            type="submit"
+            className={primaryBarButton}
+            disabled={!name.trim() || create.isPending}
+          >
             {t("search.save")}
-          </Button>
-          <Button variant="outline" onClick={() => setNaming(false)}>
+          </button>
+          <button type="button" className={barButton} onClick={() => setNaming(false)}>
             {t("form.cancel")}
-          </Button>
+          </button>
         </form>
       )}
-      {failure && <Alert variant="destructive">{failure}</Alert>}
-    </div>
+      {failure && (
+        <Alert variant="destructive" className="basis-full">
+          {failure}
+        </Alert>
+      )}
+    </>
+  );
+}
+
+// sameView says whether the list shows what the saved search keeps: the same condition, and
+// the columns and sort it names (a search without columns leaves them to the browser).
+function sameView(
+  saved: RecordData | undefined,
+  base: unknown,
+  where: Record<string, unknown> | undefined,
+  view: ListView | undefined,
+) {
+  if (JSON.stringify(base ?? null) !== JSON.stringify(where ?? null)) {
+    return false;
+  }
+  if (!saved || !view) {
+    return true;
+  }
+  const columns = String(saved["columns"] ?? "");
+  const sort = String(saved["sort"] ?? "");
+  return (
+    (columns === "" || columns === view.columns.join(",")) && (sort === "" || sort === view.sort)
   );
 }
 
@@ -208,11 +275,16 @@ function TypeView({
   type,
   saved,
   initialWhere,
+  onCount,
+  onReset,
 }: {
   type: TypeDefinition;
   saved?: RecordData;
   // initialWhere is a condition from the address, such as a click on a dashboard (UI13).
   initialWhere?: string;
+  onCount: (line: string) => void;
+  // onReset shows the saved search again as it is stored (UI49, "Änderungen verwerfen").
+  onReset: () => void;
 }) {
   const { t } = useTranslation();
   const typeName = qualifiedName(type);
@@ -225,19 +297,31 @@ function TypeView({
   const onView = useCallback((v: ListView) => setView(v), []);
   // The record in the preview beside the list (UI30).
   const [picked, setPicked] = useState<string>();
+  // Esc closes the preview (UI52), when no menu or dialog took it before.
+  useEffect(() => {
+    if (!picked) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented && !isTyping(e.target)) {
+        setPicked(undefined);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [picked]);
   const where = raw ?? toWhere(type, conditions);
+  // Changed against the saved search (UI49): the condition as the filters write it, so that
+  // the order of keys in the stored text does not count.
+  const base = raw ?? (parsed ? toWhere(type, parsed) : undefined);
+  const dirty = saved !== undefined && !sameView(saved, base, where, view);
   const columns = String(saved?.["columns"] ?? "")
     .split(",")
     .map((c) => c.trim())
     .filter(Boolean);
   return (
     <div className="flex flex-col gap-4">
-      <SearchBar typeName={typeName} current={saved} where={where} view={view} />
-      {raw ? (
-        <Alert>{t("search.raw", { where: JSON.stringify(raw) })}</Alert>
-      ) : (
-        <Filters type={type} conditions={conditions} onChange={setConditions} />
-      )}
+      {raw && <Alert>{t("search.raw", { where: JSON.stringify(raw) })}</Alert>}
       {/* self-start: beside the open preview the list keeps the height of its rows instead of
           stretching to the height of the preview (UI46). */}
       <div className="flex flex-col gap-4 lg:flex-row">
@@ -249,6 +333,21 @@ function TypeView({
             onView={onView}
             picked={picked}
             onPick={setPicked}
+            onCount={onCount}
+            toolbarStart={
+              <>
+                <SearchMenu
+                  typeName={typeName}
+                  current={saved}
+                  where={where}
+                  view={view}
+                  dirty={dirty}
+                  onReset={onReset}
+                />
+                {/* The filter row (UI50); a condition it cannot show stays a note above. */}
+                {!raw && <FilterRow type={type} conditions={conditions} onChange={setConditions} />}
+              </>
+            }
           />
         </div>
         {picked && (
@@ -267,6 +366,20 @@ export function TypePage() {
   const me = useQuery(meQuery);
   const saved = useQuery({ ...recordQuery(searchType, search ?? ""), enabled: Boolean(search) });
   const type = types.data?.find((candidate) => qualifiedName(candidate) === typeName);
+  // The number of records stands under the title (UI47); the list reports it.
+  const [count, setCount] = useState("");
+  // A new round shows the saved search again as stored (UI49).
+  const [round, setRound] = useState(0);
+  const navigate = useNavigate();
+  // N creates a new record, like the button "Neu" (UI52).
+  usePageShortcuts([
+    {
+      keys: ["N"],
+      key: "n",
+      label: t("keys.new"),
+      run: () => void navigate({ to: "/types/$typeName/new", params: { typeName } }),
+    },
+  ]);
   if (types.isPending || (search && saved.isPending)) {
     return <p>{t("list.loading")}</p>;
   }
@@ -275,39 +388,70 @@ export function TypePage() {
   }
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">
-          {labelOf(type.label, i18n.language, typeName)}
-          {saved.data && (
-            <span className="text-muted-foreground"> · {String(saved.data["name"])}</span>
-          )}
-        </h1>
-        {/* The editor of the type (UI25) for those who may change types. */}
-        {me.data?.customize === true && (
-          <div className="flex gap-4">
-            <Link
-              to="/types/$typeName/customize"
-              params={{ typeName }}
-              className="text-sm underline"
-            >
-              {t("customize.open")}
-            </Link>
-            <Link
-              to="/types/$typeName/workflow"
-              params={{ typeName }}
-              className="text-sm underline"
-            >
-              {t("workflow.open")}
-            </Link>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title={
+          <>
+            {labelOf(type.label, i18n.language, typeName)}
+            {saved.data && (
+              <span className="text-muted-foreground"> · {String(saved.data["name"])}</span>
+            )}
+          </>
+        }
+        line={count}
+        actions={
+          <>
+            {/* The editors of the type (UI25, UI26) for those who may change types (UI47). */}
+            {me.data?.customize === true && (
+              <Menu
+                label={t("list.customize")}
+                trigger={
+                  <>
+                    <SlidersHorizontal aria-hidden="true" className="size-4 text-foreground-2" />
+                    {t("list.customize")}
+                  </>
+                }
+                width="w-72"
+              >
+                <MenuLink
+                  to="/types/$typeName/customize"
+                  params={{ typeName }}
+                  description={t("list.customizeType")}
+                  icon={
+                    <SlidersHorizontal
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 flex-none text-foreground-2"
+                    />
+                  }
+                >
+                  {t("customize.open")}
+                </MenuLink>
+                <MenuLink
+                  to="/types/$typeName/workflow"
+                  params={{ typeName }}
+                  description={t("list.customizeWorkflow")}
+                  icon={
+                    <Workflow
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 flex-none text-foreground-2"
+                    />
+                  }
+                >
+                  {t("workflow.open")}
+                </MenuLink>
+              </Menu>
+            )}
+            <NewMenu type={type} />
+          </>
+        }
+      />
       {search && saved.isError && <Alert variant="destructive">{t("search.notFound")}</Alert>}
       <TypeView
-        key={`${typeName}-${search ?? ""}-${String(saved.data?.["version"] ?? "")}-${where ?? ""}`}
+        key={`${typeName}-${search ?? ""}-${String(saved.data?.["version"] ?? "")}-${where ?? ""}-${round}`}
         type={type}
         saved={saved.data}
         initialWhere={where}
+        onCount={setCount}
+        onReset={() => setRound((r) => r + 1)}
       />
     </>
   );

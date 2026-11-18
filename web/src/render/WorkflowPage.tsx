@@ -14,7 +14,8 @@
 // transitions that are disabled. Above the tables stands the graph (UI26.2, E31): a click
 // on an edge marks the transition's row, a dragged connection prefills the new transition.
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
+import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -33,6 +34,7 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { LinkButton } from "@/ui/page-header";
 
 import { Changes, useCustomizer, type Apply } from "./CustomizePage";
 import { WorkflowGraph } from "./WorkflowGraph";
@@ -113,13 +115,21 @@ export function WorkflowPage() {
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t("workflow.title", { type: typeLabel })}</h1>
-        <div className="flex gap-4">
-          <Link to="/types/$typeName/customize" params={{ typeName }} className="text-sm underline">
+        <div className="flex flex-wrap gap-2">
+          <LinkButton
+            to="/types/$typeName/customize"
+            params={{ typeName }}
+            icon={<SlidersHorizontal aria-hidden="true" className="size-4 text-foreground-2" />}
+          >
             {t("workflow.toFields")}
-          </Link>
-          <Link to="/types/$typeName" params={{ typeName }} className="text-sm underline">
+          </LinkButton>
+          <LinkButton
+            to="/types/$typeName"
+            params={{ typeName }}
+            icon={<ArrowLeft aria-hidden="true" className="size-4 text-foreground-2" />}
+          >
             {t("customize.toList")}
-          </Link>
+          </LinkButton>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">{t("workflow.intro")}</p>

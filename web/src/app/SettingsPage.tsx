@@ -473,6 +473,33 @@ function Appearance({
           </div>
         </Section>
       )}
+      {/* Single keys such as / and N, which the person may turn off (UI52, UI-Plan E55). */}
+      <Section title={t("settings.shortcuts")} hint={t("settings.shortcutsHint")}>
+        <div
+          role="group"
+          aria-label={t("settings.shortcuts")}
+          className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
+        >
+          {(["on", "off"] as const).map((v) => {
+            const on = (settings.shortcuts?.value ?? "on") === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={on}
+                onClick={() => keep({ shortcuts: v })}
+                className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  on
+                    ? "bg-segment-active font-medium text-foreground shadow-sm"
+                    : "text-foreground-2"
+                }`}
+              >
+                {t(`settings.${v}`)}
+              </button>
+            );
+          })}
+        </div>
+      </Section>
       {workplace && allowed.nav && <Navigation settings={settings} keep={keep} />}
       {!(allowed.color_scheme && allowed.accent && allowed.density && allowed.nav) && (
         <p className="text-sm text-muted-foreground">{t("settings.byOrganisation")}</p>
@@ -673,6 +700,7 @@ export function MySettingsPage() {
         ...(s.allowed.color_scheme ? { color_scheme: null } : {}),
         ...(s.allowed.accent ? { accent: null } : {}),
         ...(s.allowed.density ? { density: null } : {}),
+        shortcuts: null,
         ...(workplace
           ? {
               start_dashboard: null,

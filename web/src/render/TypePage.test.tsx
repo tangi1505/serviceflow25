@@ -73,6 +73,43 @@ describe("TypePage with filters", () => {
     expect(new Date(day.lte).getHours()).toBe(23);
     // More than AND of conditions is shown as it is.
     expect(fromWhere({ or: [{ field: "kind", eq: "fault" }] })).toBeNull();
+    // Several values are one of them or none of them, and read back as one condition (UI50).
+    const several = toWhere(probeType, [
+      { field: "kind", op: "eq", value: ["question", "wish"] },
+      { field: "kind", op: "neq", value: ["fault"] },
+    ]);
+    expect(several).toEqual({
+      and: [
+        { field: "kind", in: ["question", "wish"] },
+        { field: "kind", neq: "fault" },
+      ],
+    });
+    expect(fromWhere({ field: "kind", nin: ["fault", "wish"] })).toEqual([
+      { field: "kind", op: "neq", value: ["fault", "wish"] },
+    ]);
+    // Periods are time words of the query (UI51, PL72), never fixed days, and read back.
+    const periods = toWhere(probeType, [
+      { field: "created_at", op: "in", value: "last:5:d" },
+      { field: "updated_at", op: "in", value: "last_month" },
+      { field: "seen_at", op: "in", value: "today" },
+      { field: "sla_due_at", op: "in", value: "next:2:d" },
+    ]);
+    expect(periods).toEqual({
+      and: [
+        { field: "created_at", gte: "@now-5d" },
+        { field: "updated_at", gte: "@month-1mo" },
+        { field: "updated_at", lt: "@month" },
+        { field: "seen_at", gte: "@today" },
+        { field: "sla_due_at", gte: "@now" },
+        { field: "sla_due_at", lte: "@now+2d" },
+      ],
+    });
+    expect(fromWhere(periods)).toEqual([
+      { field: "created_at", op: "in", value: "last:5:d" },
+      { field: "updated_at", op: "in", value: "last_month" },
+      { field: "seen_at", op: "in", value: "today" },
+      { field: "sla_due_at", op: "in", value: "next:2:d" },
+    ]);
   });
 
   it("filters, saves the search, opens it by link, and keeps shared ones apart", async () => {
@@ -92,19 +129,20 @@ describe("TypePage with filters", () => {
     const first = renderAt("/types/probe.probe");
     await screen.findByText("9 Datensätze");
 
-    // Kind is fault: three of nine (kind cycles question, fault, wish).
-    await user.click(screen.getByRole("button", { name: "Bedingung hinzufügen" }));
-    const condition = screen.getByRole("listitem", { name: "Bedingung 1" });
-    await user.selectOptions(within(condition).getByRole("combobox", { name: "Feld" }), "kind");
-    await user.selectOptions(within(condition).getByRole("combobox", { name: "Wert" }), "fault");
+    // Kind is fault: three of nine (kind cycles question, fault, wish), typed in the row (UI50).
+    const row = screen.getByRole("combobox", { name: "Filter setzen" });
+    await user.click(row);
+    await user.keyboard("art{Enter}stör{Enter}");
     expect(await screen.findByText("3 Datensätze")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Art\s*ist\s*Störung/ })).toBeInTheDocument();
     const query = state.calls.filter((c) => c.path === "/api/v1/records/probe.probe:query").at(-1)!;
     expect(JSON.parse(query.body!)).toMatchObject({ where: { field: "kind", eq: "fault" } });
     await expectAccessible(first.container);
 
-    // Save it: the search keeps condition, columns and sort, and comes into the address.
-    await user.click(screen.getByRole("button", { name: "Als neue Suche speichern" }));
-    await user.type(screen.getByLabelText("Name der Suche"), "Störungen");
+    // Save it from the menu of the searches (UI49): condition, columns and sort, and the address.
+    await user.click(screen.getByRole("button", { name: /Gespeicherte Suche: Alle Datensätze/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Als neue Suche speichern …" }));
+    await user.type(screen.getByRole("textbox", { name: "Name der Suche" }), "Störungen");
     await user.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() =>
       expect(first.router.state.location.search).toMatchObject({ search: expect.any(String) }),
@@ -114,25 +152,51 @@ describe("TypePage with filters", () => {
     expect(String(mine["columns"])).toContain("title");
     expect(mine["sort"]).toBe("-updated_at");
     expect(await screen.findByRole("heading", { name: /Probe.*Störungen/ })).toBeInTheDocument();
-    const picker = screen.getByLabelText("Gespeicherte Suchen");
-    expect(within(picker).getByRole("group", { name: "Eigene" })).toHaveTextContent("Störungen");
-    expect(within(picker).getByRole("group", { name: "Mit mir geteilt" })).toHaveTextContent(
-      "Von Kollegin",
+    await user.click(screen.getByRole("button", { name: /Gespeicherte Suche: Störungen/ }));
+    const menu = screen.getByRole("menu", { name: "Gespeicherte Suchen" });
+    expect(within(menu).getByRole("menuitemradio", { name: "Störungen" })).toHaveAttribute(
+      "aria-checked",
+      "true",
     );
+    expect(within(menu).getByText("Eigene")).toBeInTheDocument();
+    expect(within(menu).getByText("Mit mir geteilt")).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitemradio", { name: "Von Kollegin" })).toBeInTheDocument();
+    // Unchanged: nothing to save or discard.
+    expect(within(menu).queryByRole("menuitem", { name: "Änderungen speichern" })).toBeNull();
+    await user.keyboard("{Escape}");
     first.unmount();
 
-    // The link opens it again with its condition in the filters.
+    // The link opens it again with its condition as a chip; a further filter marks it changed,
+    // "Änderungen verwerfen" shows it as saved again.
     renderAt(`/types/probe.probe?search=${String(mine["id"])}`);
     expect(await screen.findByText("3 Datensätze")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Wert" })).toHaveValue("fault");
-    expect(screen.getByRole("button", { name: "Änderungen speichern" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Art\s*ist\s*Störung/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Filter setzen" }));
+    await user.keyboard("prio{Enter}3{Enter}");
+    expect(await screen.findByText("1 Datensätze")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Gespeicherte Suche: Störungen, geändert" }),
+    );
+    expect(screen.getByRole("menuitem", { name: "Änderungen speichern" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Änderungen verwerfen" }));
+    expect(await screen.findByText("3 Datensätze")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gespeicherte Suche: Störungen" }),
+    ).toBeInTheDocument();
 
-    // A shared one: its own condition, no saving of changes, a page about it instead.
-    await user.selectOptions(screen.getByLabelText("Gespeicherte Suchen"), "Von Kollegin");
+    // A shared one: its own condition; changed, it cannot be saved, only discarded.
+    await user.click(screen.getByRole("button", { name: "Gespeicherte Suche: Störungen" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Von Kollegin" }));
     expect(await screen.findByRole("heading", { name: /Probe.*Von Kollegin/ })).toBeInTheDocument();
     expect(await screen.findByText("3 Datensätze")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Wert" })).toHaveValue("wish");
-    expect(screen.queryByRole("button", { name: "Änderungen speichern" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Über diese Suche" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Art\s*ist\s*Wunsch/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Filter setzen" }));
+    await user.keyboard("prio{Enter}3{Enter}");
+    await user.click(
+      await screen.findByRole("button", { name: "Gespeicherte Suche: Von Kollegin, geändert" }),
+    );
+    expect(screen.queryByRole("menuitem", { name: "Änderungen speichern" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Änderungen verwerfen" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Über diese Suche …" })).toBeInTheDocument();
   });
 });
