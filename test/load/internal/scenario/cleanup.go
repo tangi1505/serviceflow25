@@ -114,5 +114,16 @@ func cleanupCreatedSQL(ctx context.Context, dbURL string) (int, error) {
 			return 0, err
 		}
 	}
-	return n, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	// The deleted incidents are dead rows among the newest, which the list of LZ2 reads first,
+	// and its roles in actor; autovacuum would come only later (PL73), so the next measurement
+	// would read them. The other tables (history, timeline) no list reads.
+	for _, t := range []string{strings.Trim(table, `"`), "actor"} {
+		if _, err := db.Exec(ctx, "VACUUM (ANALYZE) "+pgx.Identifier{t}.Sanitize()); err != nil {
+			return n, fmt.Errorf("cleanup: vacuum %s: %w", t, err)
+		}
+	}
+	return n, nil
 }

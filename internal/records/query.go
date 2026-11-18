@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/meta"
@@ -502,6 +503,40 @@ func planned(args []any) []any {
 	return append([]any{pgx.QueryExecModeCacheDescribe}, args...)
 }
 
+// listSettings open the transaction of a list (PL73, your decision 2026-11-18, Kern-Plan E77):
+// no JIT and no parallel workers. Both are defaults of PostgreSQL that start by the estimated
+// cost, not by the work: the queue of a team on 18.25 million incidents was estimated at
+// 382,000, compiled for 10 ms and sorted all 88,000 open incidents in two processes (110 ms);
+// without them PostgreSQL reads the newest by index (30 ms), and on 8 threads four times as
+// many lists fit. Aggregates, counts and the dashboards keep both.
+const listSettings = "BEGIN; SET LOCAL jit = off; SET LOCAL max_parallel_workers_per_gather = 0"
+
+// listQuery runs the SELECT of a list with listSettings on a connection of its own; done ends
+// the transaction and gives the connection back. A connection left inside a transaction (a
+// cancelled request) is closed by the pool instead of reused.
+func listQuery(ctx context.Context, pool *pgxpool.Pool, sql string, args []any) (pgx.Rows, func(), error) {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Without arguments pgx sends the three statements in one round trip (simple protocol).
+	if _, err := conn.Exec(ctx, listSettings); err != nil {
+		conn.Release()
+		return nil, nil, err
+	}
+	rows, err := conn.Query(ctx, sql, args...)
+	if err != nil {
+		_, _ = conn.Exec(context.WithoutCancel(ctx), "ROLLBACK")
+		conn.Release()
+		return nil, nil, err
+	}
+	return rows, func() {
+		rows.Close()
+		_, _ = conn.Exec(context.WithoutCancel(ctx), "COMMIT")
+		conn.Release()
+	}, nil
+}
+
 // neverEmpty are the system columns without empty values (NOT NULL in every type table).
 var neverEmpty = map[string]bool{"version": true, "created_at": true, "updated_at": true}
 
@@ -633,11 +668,11 @@ func (s *Service) records(b *builder, q Query, where []string) (Page, *Rows, err
 		order = fmt.Sprintf("%s %s, id %s", sortExpr, dir, dir)
 	}
 	sql := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s LIMIT %d", strings.Join(selects, ", "), table(t), strings.Join(where, " AND "), order, limit+1)
-	rows, err := s.db.Tenant(b.ctx).Query(b.ctx, sql, planned(b.args)...)
+	rows, done, err := listQuery(b.ctx, s.db.Tenant(b.ctx), sql, planned(b.args))
 	if err != nil {
 		return Page{}, nil, fmt.Errorf("records: query %s: %w", t.QualifiedName(), err)
 	}
-	defer rows.Close()
+	defer done()
 	page := Page{Total: total}
 	for rows.Next() {
 		vals, err := rows.Values()

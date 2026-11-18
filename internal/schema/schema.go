@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -191,6 +192,9 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 		}
 	}
 	if err := ensureTrigger(ctx, tx, table, run); err != nil {
+		return nil, err
+	}
+	if err := ensureVacuum(ctx, tx, table, run); err != nil {
 		return nil, err
 	}
 	if err := ensureUnique(ctx, tx, table, table+"_source_key", sourceKeyIndex(table), run); err != nil {
@@ -413,6 +417,34 @@ func ensureTrigger(ctx context.Context, tx pgx.Tx, table string, run func(change
 	}
 	return run("trigger tenant", fmt.Sprintf("CREATE TRIGGER %s BEFORE INSERT OR UPDATE OF org_path ON %s FOR EACH ROW EXECUTE FUNCTION set_tenant()",
 		pgx.Identifier{name}.Sanitize(), pgx.Identifier{table}.Sanitize()))
+}
+
+// vacuumOptions are the thresholds of autovacuum for a type table (PL73, Kern-Plan E77). By
+// default PostgreSQL cleans a table when a fifth of its rows are dead and analyses it when a
+// tenth changed: with 18 million incidents 3.6 million dead rows, which every change of an
+// incident and every cleanup of a measurement leave, mostly among the newest. With 0.2 % and
+// 1 % a table of 18 million rows is cleaned from about 37,000 dead rows and analysed from about
+// 180,000 changes; a small one from about 1,000, as the threshold of 1,000 adds.
+var vacuumOptions = []string{
+	"autovacuum_vacuum_scale_factor=0.002",
+	"autovacuum_vacuum_threshold=1000",
+	"autovacuum_analyze_scale_factor=0.01",
+	"autovacuum_analyze_threshold=1000",
+}
+
+// ensureVacuum sets vacuumOptions on the table when one of them is missing or different.
+func ensureVacuum(ctx context.Context, tx pgx.Tx, table string, run func(change, stmt string) error) error {
+	var have []string
+	err := tx.QueryRow(ctx, "SELECT coalesce(reloptions, '{}') FROM pg_class WHERE oid = $1::regclass", pgx.Identifier{table}.Sanitize()).Scan(&have)
+	if err != nil {
+		return fmt.Errorf("schema: read options of %s: %w", table, err)
+	}
+	for _, o := range vacuumOptions {
+		if !slices.Contains(have, o) {
+			return run("autovacuum", fmt.Sprintf("ALTER TABLE %s SET (%s)", pgx.Identifier{table}.Sanitize(), strings.Join(vacuumOptions, ", ")))
+		}
+	}
+	return nil
 }
 
 // indexDef is the definition of an index of the table, empty when there is none.

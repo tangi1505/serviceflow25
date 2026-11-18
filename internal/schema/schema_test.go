@@ -83,9 +83,18 @@ func TestCreateTableAddColumnUniqueIndexAndLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	// create table + 4 system indexes (the deadline since UI34) + the tenant trigger (PL46) +
-	// 7 columns + 1 unique index + the index on created_at (PL54)
-	if len(changes) != 15 {
-		t.Fatalf("got %d changes, want 15: %+v", len(changes), changes)
+	// the thresholds of autovacuum (PL73) + 7 columns + 1 unique index + the index on
+	// created_at (PL54)
+	if len(changes) != 16 {
+		t.Fatalf("got %d changes, want 16: %+v", len(changes), changes)
+	}
+	// The table is cleaned by autovacuum from 0.2 % dead rows, not from a fifth (PL73).
+	var opts []string
+	if err := pool.QueryRow(ctx, "SELECT reloptions FROM pg_class WHERE oid = 'rec_schematest_alpha'::regclass").Scan(&opts); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(opts, ",") != strings.Join(vacuumOptions, ",") {
+		t.Errorf("options %v, want %v", opts, vacuumOptions)
 	}
 
 	cols, err := q.TableColumns(ctx, "rec_schematest_alpha")
@@ -197,9 +206,10 @@ func TestParallelApplyEndsWithOneTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Exactly one creation: create table + 4 indexes (the deadline since UI34) + the tenant
-	// trigger (PL46) + 1 column + 1 unique index + the index on created_at (PL54).
-	if len(log) != 9 {
-		t.Fatalf("schema log has %d rows, want 9 (one creation only)", len(log))
+	// trigger (PL46) + the thresholds of autovacuum (PL73) + 1 column + 1 unique index + the
+	// index on created_at (PL54).
+	if len(log) != 10 {
+		t.Fatalf("schema log has %d rows, want 10 (one creation only)", len(log))
 	}
 }
 

@@ -750,8 +750,13 @@ Meilenstein. Werkzeug: `test/load` (E51).
   Minute läuft in der eigenen Warteschlange `days` (PL70, Kern-Plan E75).
 - **Feste Kerne** (PL71, Hauptplan E198): auf dem geteilten Server `ki-lab` laufen Server,
   PostgreSQL und Valkey der Messungen auf 8 Threads mit zusammen 32 GB, wie die Prod (eine VM
-  mit 8 virtuellen CPUs), das Lastwerkzeug auf eigenen Kernen. Damit hält alles außer der
-  Liste (LZ2: 833 ms) sein Ziel; die Liste ist offen (Kern-Plan PL71).
+  mit 8 virtuellen CPUs), das Lastwerkzeug auf eigenen Kernen.
+- **Listen ohne JIT und Hilfsprozesse** (PL73, Kern-Plan E77): das `SELECT` einer Liste läuft
+  in einer eigenen Transaktion mit `jit = off` und ohne parallele Hilfsprozesse; beides sind
+  Voreinstellungen von PostgreSQL, die nach den geschätzten Kosten greifen und bei vielen
+  gleichzeitigen Listen den Durchsatz vierteln. Zählungen, Auswertungen und Dashboards behalten
+  sie. Typtabellen räumt PostgreSQL ab 0,2 % toten Zeilen auf statt ab 20 %. Auf 8 Threads
+  halten damit alle gemessenen Ziele (LZ2 89 ms bei 407 Listen/s).
 
 ---
 
