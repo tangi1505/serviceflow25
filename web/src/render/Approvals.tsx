@@ -33,10 +33,12 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { Td, Th, THead, Tr } from "@/ui/table";
 
 import { fieldLabel, formatMoment } from "./fields";
 import { RefName } from "./RefName";
 import { RefPicker } from "./RefPicker";
+import { DensityTable } from "./TableTools";
 import { ChangeValue } from "./Timeline";
 import { plain, Words } from "./Versions";
 import { wordDiff } from "./wordDiff";
@@ -315,24 +317,22 @@ function StageView({ stage, count }: { stage: ApprovalStage; count: number }) {
             : ""}
         </p>
       )}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-[11.5px] uppercase tracking-wide text-muted-foreground">
-              <th className="px-2 py-1 font-medium">{t("approvals.approver")}</th>
-              <th className="px-2 py-1 font-medium">{t("approvals.decision")}</th>
-              <th className="px-2 py-1 font-medium">{t("approvals.decidedBy")}</th>
-              <th className="px-2 py-1 font-medium">{t("approvals.when")}</th>
-              <th className="px-2 py-1 font-medium">{t("approvals.comment")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stage.steps.map((s) => (
-              <StepRow key={s.id} step={s} language={i18n.language} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DensityTable>
+        <THead>
+          <tr>
+            <Th>{t("approvals.approver")}</Th>
+            <Th>{t("approvals.decision")}</Th>
+            <Th>{t("approvals.decidedBy")}</Th>
+            <Th>{t("approvals.when")}</Th>
+            <Th>{t("approvals.comment")}</Th>
+          </tr>
+        </THead>
+        <tbody>
+          {stage.steps.map((s) => (
+            <StepRow key={s.id} step={s} language={i18n.language} />
+          ))}
+        </tbody>
+      </DensityTable>
     </div>
   );
 }
@@ -340,17 +340,15 @@ function StageView({ stage, count }: { stage: ApprovalStage; count: number }) {
 function StepRow({ step, language }: { step: ApprovalStep; language: string }) {
   const { t } = useTranslation();
   return (
-    <tr className={"border-t border-border-soft " + (step.mine ? "bg-accent-soft" : "")}>
-      <td className="px-2 py-1.5">
+    <Tr className={step.mine ? "bg-accent-soft" : undefined}>
+      <Td>
         <RefName refTo={step.approver as ActorRef} />
         {step.mine && (
           <span className="ml-2 text-[12.5px] text-muted-foreground">{t("approvals.you")}</span>
         )}
-      </td>
-      <td className={"px-2 py-1.5 " + (stateClass[step.state] ?? "")}>
-        {t(`approvals.stepState.${step.state}`)}
-      </td>
-      <td className="px-2 py-1.5">
+      </Td>
+      <Td className={stateClass[step.state] ?? ""}>{t(`approvals.stepState.${step.state}`)}</Td>
+      <Td>
         {step.decided_by && <RefName refTo={{ type: "core.person", id: step.decided_by }} />}
         {step.on_behalf && (
           <>
@@ -358,12 +356,12 @@ function StepRow({ step, language }: { step: ApprovalStep; language: string }) {
             {t("approvals.for")} <RefName refTo={{ type: "core.person", id: step.on_behalf }} />
           </>
         )}
-      </td>
-      <td className="px-2 py-1.5 font-mono text-[12.5px]">
+      </Td>
+      <Td className="font-mono text-[12.5px]">
         {step.decided_at ? formatMoment(step.decided_at, language) : ""}
-      </td>
-      <td className="px-2 py-1.5">{step.comment ?? ""}</td>
-    </tr>
+      </Td>
+      <Td>{step.comment ?? ""}</Td>
+    </Tr>
   );
 }
 

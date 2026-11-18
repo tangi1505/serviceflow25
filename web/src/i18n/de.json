@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "itsm",
+    "title": "ServiceFlow25",
     "version": {
       "loading": "Verbindung zum Server wird geprüft …",
       "value": "Server-Version {{version}}",
@@ -601,7 +601,7 @@
     "tilesTitle": "Was möchten Sie tun?",
     "opensNew": "(öffnet in neuem Fenster)",
     "until": "bis {{time}}",
-    "title": "itsm Portal",
+    "title": "Portal",
     "toWorkplace": "Zum Arbeitsplatz",
     "mine": "Meine Vorgänge",
     "none": "Noch nichts angelegt.",
@@ -772,7 +772,8 @@
       "status": "Status",
       "action": "Aktion",
       "type": "Typ",
-      "count": "Änderungen"
+      "count": "Änderungen",
+      "technical": "Technischer Name"
     },
     "status": {
       "active": "wirkt",
@@ -819,7 +820,11 @@
       "moved": "„{{name}}“ steht jetzt hinter „{{after}}“.",
       "movedFirst": "„{{name}}“ steht jetzt am Anfang.",
       "takenBack": "Zurückgenommen: {{change}}."
-    }
+    },
+    "typeCount_one": "{{count}} Typ",
+    "typeCount_other": "{{count}} Typen",
+    "search": "Typen durchsuchen",
+    "noMatch": "Kein Typ passt zur Suche."
   },
   "workflow": {
     "open": "Workflow",
@@ -985,7 +990,11 @@
       "specialOff": "„{{name}}“ entzogen.",
       "assigned": "Rolle an {{node}} zugewiesen.",
       "unassigned": "Zuweisung an {{node}} entfernt."
-    }
+    },
+    "count_one": "{{count}} Rolle",
+    "count_other": "{{count}} Rollen",
+    "search": "Rollen durchsuchen",
+    "noMatch": "Keine Rolle passt zur Suche."
   },
   "colorScheme": {
     "system": "Wie das System",
@@ -1270,7 +1279,7 @@
       "light": "Logo für hell",
       "dark": "Logo für dunkel"
     },
-    "noLogo": "Kein Logo: die Marke „it“",
+    "noLogo": "Kein Logo: die Marke „sf“",
     "removeLogo": "Entfernen",
     "logoHint": "PNG oder SVG, höchstens 256 KB. Ohne Logo für dunkel gilt das für hell und umgekehrt.",
     "color": "Farbe der Organisation",
@@ -1294,7 +1303,8 @@
     },
     "defaults": "Vorgaben",
     "saved": "Gespeichert. Gilt ab jetzt für alle.",
-    "invalid": "Nicht gespeichert: Bitte die markierten Angaben prüfen."
+    "invalid": "Nicht gespeichert: Bitte die markierten Angaben prüfen.",
+    "defaultsHint": "Gilt für alle, die nichts Eigenes gewählt haben. Rechts siehst du, wie es aussieht."
   },
   "icons": {
     "none": "Ohne",
@@ -1346,5 +1356,8 @@
     "choose": "Zeile auswählen",
     "save": "Speichern",
     "send": "Antwort senden"
+  },
+  "look": {
+    "label": "Vorschau: {{scheme}}, Zeilenhöhe {{density}}, Leiste {{nav}}"
   }
 }

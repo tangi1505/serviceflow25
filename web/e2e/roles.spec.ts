@@ -51,7 +51,11 @@ test("narrowing a role in the matrix shows the person fewer records at once", as
   // The role editor from the navigation.
   await admin.goto("/");
   await admin.getByRole("link", { name: "Rollen und Rechte" }).click();
-  await admin.getByRole("link", { name: "Rollenprüfung (Test)" }).click();
+  // The overview in the look of the list (UI54): the field narrows the rows, Enter opens one.
+  await admin.getByRole("searchbox", { name: "Rollen durchsuchen" }).fill("Rollenprüfung");
+  await expect(admin.locator("tbody tr")).toHaveCount(1);
+  await admin.getByRole("row", { name: /Rollenprüfung \(Test\)/ }).focus();
+  await admin.keyboard.press("Enter");
   await expect(admin.getByRole("heading", { name: "Rolle: Rollenprüfung (Test)" })).toBeVisible();
   const read = admin.getByRole("combobox", { name: "Probe: lesen" });
   await expect(read).toHaveValue("all");

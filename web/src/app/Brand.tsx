@@ -5,15 +5,15 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// The mark of the organisation (UI39, UI plan E51): its logo for the mode, else the badge "it",
-// and its name; the name is the title of the browser, and the main action takes the accent if
-// the organisation says so (E25).
+// The mark of the organisation (UI39, UI plan E51): its logo for the mode, else the badge "sf"
+// of ServiceFlow25 (UI56), and its name; the name is the title of the browser, and the main
+// action takes the accent if the organisation says so (E25).
 import { useEffect } from "react";
 
 import type { Branding } from "@/api/client";
 import { applyPrimary } from "@/ui/accent";
 
-export const defaultName = "itsm";
+export const defaultName = "ServiceFlow25";
 
 // useBranding sets the title of the browser and the colour of the main action.
 export function useBranding(branding: Branding | undefined): void {
@@ -48,7 +48,7 @@ export function BrandMark({ branding }: { branding: Branding | undefined }) {
       aria-hidden="true"
       className="inline-grid size-[26px] place-items-center rounded-md bg-primary font-mono text-xs font-medium text-primary-foreground"
     >
-      it
+      sf
     </span>
   );
 }

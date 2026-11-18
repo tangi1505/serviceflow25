@@ -91,9 +91,22 @@ describe("Role editor", () => {
     const view = renderAt("/");
     await user.click(await screen.findByRole("link", { name: "Rollen und Rechte" }));
     await screen.findByRole("heading", { name: "Rollen" });
-    expect(screen.getByRole("link", { name: "Bearbeiter" })).toBeInTheDocument();
+    // The overview in the look of the list (UI54): the number under the title, a field that
+    // narrows the rows, a whole row that opens with Enter; "Neue Rolle" opens the form.
+    const rows = () => screen.getAllByRole("row").filter((r) => r.closest("tbody"));
+    expect(screen.getByText("1 Rolle")).toBeInTheDocument();
+    expect(within(rows()[0]!).getByText("Bearbeiter")).toBeInTheDocument();
+    const search = screen.getByRole("searchbox", { name: "Rollen durchsuchen" });
+    await user.type(search, "AGEN");
+    expect(rows()).toHaveLength(1);
+    await user.type(search, "x");
+    expect(rows()).toHaveLength(0);
+    expect(screen.getByText("Keine Rolle passt zur Suche.")).toBeInTheDocument();
+    await user.clear(search);
     await expectAccessible(view.container);
+    await user.click(screen.getByRole("button", { name: "Neue Rolle" }));
     const form = screen.getByRole("form", { name: "Neue Rolle" });
+    expect(within(form).getByLabelText("Beschriftung")).toHaveFocus();
     await user.type(within(form).getByLabelText("Beschriftung"), "Prüfer");
     await user.type(within(form).getByLabelText("Technischer Name"), "pruefer");
     await user.click(within(form).getByRole("button", { name: "Rolle anlegen" }));

@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.16.0
+version: 0.16.1
 # The symbol of the area in the navigation (UI36), from the fixed list of the core.
 icon: database
 # The area of the navigation is called so (UI plan E48).
@@ -54,7 +54,7 @@ settings:
     label: {de: Name der Anwendung, en: Name of the application}
     description: {de: "Steht oben links, im Titel des Browsers und auf der Anmeldeseite.", en: "Shown top left, in the title of the browser and on the sign-in page."}
     pattern: '[^\n\r\t<>]{1,40}'
-    default: itsm
+    default: ServiceFlow25
     tenant: true
   - key: ui.accent
     kind: color

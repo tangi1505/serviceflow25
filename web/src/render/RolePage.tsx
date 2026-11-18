@@ -12,9 +12,9 @@
 // Every change is one call that holds at once and stands in the security log (PL27); the
 // permissions are those of the API (PL8, PL9): a line is a type, an action and a scope.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowLeft, Plus } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -37,12 +37,15 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
-import { LinkButton } from "@/ui/page-header";
+import { primaryBarButton } from "@/ui/menu";
+import { LinkButton, PageHeader } from "@/ui/page-header";
+import { Table, Td, Th, THead, Tr } from "@/ui/table";
 
 import { useProblemText } from "./CustomizePage";
 import { fieldLabel } from "./fields";
 import { RefName } from "./RefName";
 import { RefPicker } from "./RefPicker";
+import { DensityTable, matches, TableSearch, useDensity } from "./TableTools";
 
 const any = "*";
 const actions = ["read", "create", "update", "delete"] as const;
@@ -127,6 +130,17 @@ export function RolesOverview() {
   const [labelDe, setLabelDe] = useState("");
   const [labelEn, setLabelEn] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
+  // The overview of roles in the look of the list (UI54): the number under the title, "Neue
+  // Rolle" on the right opens the form, a field narrows the rows, a row opens its role.
+  const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
+  const density = useDensity();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (creating) {
+      formRef.current?.querySelector("input")?.focus();
+    }
+  }, [creating]);
   const nameOk = /^[a-z][a-z0-9_]{0,62}$/.test(name);
   const create = (e: FormEvent) => {
     e.preventDefault();
@@ -150,126 +164,140 @@ export function RolesOverview() {
   if (roles.isPending) {
     return <p>{t("list.loading")}</p>;
   }
+  const shown = (roles.data ?? []).filter((r) =>
+    matches(query, labelOf(r.label, i18n.language, r.name), r.name),
+  );
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t("roles.title")}</h1>
+    <div className="flex max-w-5xl flex-col gap-4">
+      <PageHeader
+        className="mb-0"
+        title={t("roles.title")}
+        line={roles.data ? t("roles.count", { count: roles.data.length }) : undefined}
+        actions={
+          <button
+            type="button"
+            className={primaryBarButton}
+            aria-expanded={creating}
+            onClick={() => setCreating((c) => !c)}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            {t("roles.new")}
+          </button>
+        }
+      />
       <p className="text-sm text-muted-foreground">{t("roles.intro")}</p>
       {failure && <Alert variant="destructive">{failure}</Alert>}
       {done && <Alert variant="success">{done}</Alert>}
       {roles.isError && <Alert variant="destructive">{t("roles.forbidden")}</Alert>}
-      {roles.data && (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.role")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.name")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.permissions")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.assignments")}
-              </th>
-              <th scope="col" className="py-2">
-                <span className="sr-only">{t("customize.col.action")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {roles.data.map((r) => {
-              const label = labelOf(r.label, i18n.language, r.name);
-              const held = assignments.data?.filter((a) => a.role === r.name).length ?? 0;
-              return (
-                <tr key={r.name} className="border-b">
-                  <td className="py-2 pr-3">
-                    <Link
-                      to="/roles/$name"
-                      params={{ name: r.name }}
-                      className="font-medium underline"
-                    >
-                      {label}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-xs">{r.name}</td>
-                  <td className="py-2 pr-3">{r.permissions.length}</td>
-                  <td className="py-2 pr-3">{held}</td>
-                  <td className="py-2">
-                    {r.name !== "admin" &&
-                      (removing === r.name ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm">
-                            {t("roles.confirmRemove", { name: label })}
-                          </span>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => {
-                              setRemoving(null);
-                              run(t("roles.done.removed", { name: label }), () =>
-                                api.deleteRole(r.name),
-                              );
-                            }}
-                          >
-                            {t("roles.removeYes")}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setRemoving(null)}>
-                            {t("form.cancel")}
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRemoving(r.name)}
-                          aria-label={t("customize.remove", { name: label })}
-                        >
-                          {t("customize.removeShort")}
-                        </Button>
-                      ))}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {creating && (
+        <form
+          ref={formRef}
+          className="flex flex-col gap-3 rounded-md border bg-card p-3"
+          aria-labelledby={`${id}-new`}
+          onSubmit={create}
+        >
+          <h2 id={`${id}-new`} className="font-medium">
+            {t("roles.new")}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-de`}>{t("customize.labelDe")}</Label>
+              <Input id={`${id}-de`} value={labelDe} onChange={(e) => setLabelDe(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-en`}>{t("customize.labelEn")}</Label>
+              <Input id={`${id}-en`} value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-name`}>{t("customize.technical")}</Label>
+              <Input
+                id={`${id}-name`}
+                value={name}
+                aria-invalid={name !== "" && !nameOk}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <Button type="submit" disabled={busy || !nameOk || labelDe.trim() === ""}>
+              {t("roles.create")}
+            </Button>
+          </div>
+        </form>
       )}
-      <form
-        className="flex flex-col gap-3 rounded-md border p-3"
-        aria-labelledby={`${id}-new`}
-        onSubmit={create}
-      >
-        <h2 id={`${id}-new`} className="font-medium">
-          {t("roles.new")}
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-de`}>{t("customize.labelDe")}</Label>
-            <Input id={`${id}-de`} value={labelDe} onChange={(e) => setLabelDe(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-en`}>{t("customize.labelEn")}</Label>
-            <Input id={`${id}-en`} value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-name`}>{t("customize.technical")}</Label>
-            <Input
-              id={`${id}-name`}
-              value={name}
-              aria-invalid={name !== "" && !nameOk}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-        </div>
-        <div>
-          <Button type="submit" disabled={busy || !nameOk || labelDe.trim() === ""}>
-            {t("roles.create")}
-          </Button>
-        </div>
-      </form>
+      {roles.data && (
+        <>
+          <TableSearch label={t("roles.search")} value={query} onChange={setQuery} />
+          <Table density={density} aria-label={t("roles.title")}>
+            <THead>
+              <Tr>
+                <Th>{t("roles.col.role")}</Th>
+                <Th>{t("roles.col.name")}</Th>
+                <Th>{t("roles.col.permissions")}</Th>
+                <Th>{t("roles.col.assignments")}</Th>
+                <Th>
+                  <span className="sr-only">{t("customize.col.action")}</span>
+                </Th>
+              </Tr>
+            </THead>
+            <tbody>
+              {shown.map((r) => {
+                const label = labelOf(r.label, i18n.language, r.name);
+                const held = assignments.data?.filter((a) => a.role === r.name).length ?? 0;
+                return (
+                  <Tr
+                    key={r.name}
+                    onOpen={() => void navigate({ to: "/roles/$name", params: { name: r.name } })}
+                  >
+                    <Td className="font-medium">{label}</Td>
+                    <Td className="font-mono text-xs">{r.name}</Td>
+                    <Td>{r.permissions.length}</Td>
+                    <Td>{held}</Td>
+                    <Td className="text-right">
+                      {r.name !== "admin" &&
+                        (removing === r.name ? (
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <span className="text-sm">
+                              {t("roles.confirmRemove", { name: label })}
+                            </span>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => {
+                                setRemoving(null);
+                                run(t("roles.done.removed", { name: label }), () =>
+                                  api.deleteRole(r.name),
+                                );
+                              }}
+                            >
+                              {t("roles.removeYes")}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setRemoving(null)}>
+                              {t("form.cancel")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRemoving(r.name)}
+                            aria-label={t("customize.remove", { name: label })}
+                          >
+                            {t("customize.removeShort")}
+                          </Button>
+                        ))}
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+          {shown.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t("roles.noMatch")}</p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -374,23 +402,19 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
       </div>
       <p className="text-sm text-muted-foreground">{t("roles.matrixHelp")}</p>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.type")}
-              </th>
+        <DensityTable>
+          <THead>
+            <tr>
+              <Th>{t("roles.col.type")}</Th>
               {actions.map((a) => (
-                <th key={a} scope="col" className="py-2 pr-3">
-                  {actionLabel(a)}
-                </th>
+                <Th key={a}>{actionLabel(a)}</Th>
               ))}
             </tr>
-          </thead>
+          </THead>
           <tbody>
             {shown.map((typeName) => (
-              <tr key={typeName} className="border-b align-top">
-                <th scope="row" className="py-2 pr-3 font-medium">
+              <Tr key={typeName} className="align-top">
+                <th scope="row" className="px-3 py-1.5 text-left font-medium">
                   {typeLabel(typeName)}
                 </th>
                 {actions.map((a) => {
@@ -399,7 +423,7 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
                   const isOpen = open?.type === typeName && open.action === a;
                   const extra = have.some((p) => p.condition || p.fields);
                   return (
-                    <td key={a} className="py-2 pr-3">
+                    <Td key={a}>
                       <div className="flex items-center gap-1">
                         <select
                           aria-label={where(c)}
@@ -436,13 +460,13 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
                       {extra && (
                         <div className="text-xs text-muted-foreground">{t("roles.narrowed")}</div>
                       )}
-                    </td>
+                    </Td>
                   );
                 })}
-              </tr>
+              </Tr>
             ))}
           </tbody>
-        </table>
+        </DensityTable>
       </div>
       {open && (
         <CellDetails
@@ -768,32 +792,26 @@ function Others({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
       </h2>
       <p className="text-sm text-muted-foreground">{t("roles.othersHelp")}</p>
       {others.length > 0 && (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.type")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.action")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.scope")}
-              </th>
-              <th scope="col" className="py-2">
+        <DensityTable>
+          <THead>
+            <tr>
+              <Th>{t("roles.col.type")}</Th>
+              <Th>{t("roles.col.action")}</Th>
+              <Th>{t("roles.col.scope")}</Th>
+              <Th>
                 <span className="sr-only">{t("customize.col.action")}</span>
-              </th>
+              </Th>
             </tr>
-          </thead>
+          </THead>
           <tbody>
             {others.map((p) => {
               const where = `${typeLabel(p.type_name)}: ${actionLabel(p.action)}`;
               return (
-                <tr key={`${p.type_name}:${p.action}:${p.scope}`} className="border-b">
-                  <td className="py-2 pr-3">{typeLabel(p.type_name)}</td>
-                  <td className="py-2 pr-3">{actionLabel(p.action)}</td>
-                  <td className="py-2 pr-3">{scopeLabel(p.scope)}</td>
-                  <td className="py-2">
+                <Tr key={`${p.type_name}:${p.action}:${p.scope}`}>
+                  <Td>{typeLabel(p.type_name)}</Td>
+                  <Td>{actionLabel(p.action)}</Td>
+                  <Td>{scopeLabel(p.scope)}</Td>
+                  <Td>
                     <Button
                       variant="outline"
                       size="sm"
@@ -807,12 +825,12 @@ function Others({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
                     >
                       {t("customize.removeShort")}
                     </Button>
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               );
             })}
           </tbody>
-        </table>
+        </DensityTable>
       )}
       <form
         className="flex flex-wrap items-end gap-3"
@@ -896,32 +914,28 @@ function Assignments({ role, busy, run }: { role: Role; busy: boolean; run: Run 
       {mine.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("roles.noAssignments")}</p>
       ) : (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.holder")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("roles.col.node")}
-              </th>
-              <th scope="col" className="py-2">
+        <DensityTable>
+          <THead>
+            <tr>
+              <Th>{t("roles.col.holder")}</Th>
+              <Th>{t("roles.col.node")}</Th>
+              <Th>
                 <span className="sr-only">{t("customize.col.action")}</span>
-              </th>
+              </Th>
             </tr>
-          </thead>
+          </THead>
           <tbody>
             {mine.map((a) => {
               const ref: ActorRef = a.group_id
                 ? { type: "core.group", id: a.group_id }
                 : { type: "core.person", id: a.person_id ?? "" };
               return (
-                <tr key={a.id} className="border-b">
-                  <td className="py-2 pr-3">
+                <Tr key={a.id}>
+                  <Td>
                     <RefName refTo={ref} />
-                  </td>
-                  <td className="py-2 pr-3">{nodeLabel(a.org_path)}</td>
-                  <td className="py-2">
+                  </Td>
+                  <Td>{nodeLabel(a.org_path)}</Td>
+                  <Td>
                     <Button
                       variant="outline"
                       size="sm"
@@ -935,12 +949,12 @@ function Assignments({ role, busy, run }: { role: Role; busy: boolean; run: Run 
                     >
                       {t("customize.removeShort")}
                     </Button>
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               );
             })}
           </tbody>
-        </table>
+        </DensityTable>
       )}
       <form
         className="flex flex-wrap items-end gap-3"

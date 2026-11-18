@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 
 import { api, ApiError, labelOf, meQuery, myBrandingQuery } from "@/api/client";
 import { defaultName } from "@/app/Brand";
+import { LookPreview } from "@/app/LookPreview";
 import { accentTokens, contrast } from "@/ui/accent";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
@@ -184,12 +185,19 @@ export function AppearancePage() {
   const nameError =
     form.name.trim() === "" ? t("appearance.nameRequired") : fieldErrors["ui.app_name"];
   const tokens = accentTokens(validHex ? form.accent : "#0B6E80");
+  // The preview of the colour in the mode the page has: the variables --pick-… and the mode on
+  // the element let the tokens give light or dark (UI55; before, the soft accent of light
+  // stood white under light text in dark).
   const preview = {
-    "--accent": tokens.light,
-    "--accent-soft": tokens.softLight,
-    "--ring": tokens.light,
-    ...(form.primary ? { "--primary": tokens.light } : {}),
+    "--pick-accent-light": tokens.light,
+    "--pick-accent-dark": tokens.dark,
+    "--pick-accent-soft-light": tokens.softLight,
+    "--pick-accent-soft-dark": tokens.softDark,
+    ...(form.primary
+      ? { "--pick-primary-light": tokens.light, "--pick-primary-dark": tokens.dark }
+      : {}),
   } as CSSProperties;
+  const pageMode = document.documentElement.dataset.colorScheme === "dark" ? "dark" : "light";
   const tenantName =
     labelOf(me.data?.tenants?.find((x) => x.path === node)?.label, i18n.language, "") ||
     (node === "root" ? t("appearance.allTenants") : node);
@@ -334,6 +342,7 @@ export function AppearancePage() {
         </label>
         <div
           style={preview}
+          data-color-scheme={pageMode}
           className="flex flex-wrap items-center gap-3 rounded-md border bg-background p-3"
           aria-label={t("appearance.preview")}
           role="group"
@@ -379,53 +388,65 @@ export function AppearancePage() {
         </div>
       </Section>
 
-      <Section title={t("appearance.defaults")}>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-scheme`}>{t("settings.mode")}</Label>
-            <select
-              id={`${id}-scheme`}
-              className={selectClass}
-              value={form.scheme}
-              onChange={(e) => set({ scheme: e.target.value })}
-            >
-              {(["system", "light", "dark"] as const).map((v) => (
-                <option key={v} value={v}>
-                  {t(`colorScheme.${v}`)}
-                </option>
-              ))}
-            </select>
+      <Section title={t("appearance.defaults")} hint={t("appearance.defaultsHint")}>
+        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-scheme`}>{t("settings.mode")}</Label>
+              <select
+                id={`${id}-scheme`}
+                className={selectClass}
+                value={form.scheme}
+                onChange={(e) => set({ scheme: e.target.value })}
+              >
+                {(["system", "light", "dark"] as const).map((v) => (
+                  <option key={v} value={v}>
+                    {t(`colorScheme.${v}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-density`}>{t("settings.density")}</Label>
+              <select
+                id={`${id}-density`}
+                className={selectClass}
+                value={form.density}
+                onChange={(e) => set({ density: e.target.value })}
+              >
+                {(["normal", "compact"] as const).map((v) => (
+                  <option key={v} value={v}>
+                    {t(`list.densities.${v}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`${id}-nav`}>{t("settings.navWidth")}</Label>
+              <select
+                id={`${id}-nav`}
+                className={selectClass}
+                value={form.nav}
+                onChange={(e) => set({ nav: e.target.value })}
+              >
+                {(["wide", "narrow"] as const).map((v) => (
+                  <option key={v} value={v}>
+                    {t(`settings.navWidths.${v}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-density`}>{t("settings.density")}</Label>
-            <select
-              id={`${id}-density`}
-              className={selectClass}
-              value={form.density}
-              onChange={(e) => set({ density: e.target.value })}
-            >
-              {(["normal", "compact"] as const).map((v) => (
-                <option key={v} value={v}>
-                  {t(`list.densities.${v}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${id}-nav`}>{t("settings.navWidth")}</Label>
-            <select
-              id={`${id}-nav`}
-              className={selectClass}
-              value={form.nav}
-              onChange={(e) => set({ nav: e.target.value })}
-            >
-              {(["wide", "narrow"] as const).map((v) => (
-                <option key={v} value={v}>
-                  {t(`settings.navWidths.${v}`)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <LookPreview
+            scheme={form.scheme}
+            density={form.density}
+            nav={form.nav}
+            accent={validHex ? form.accent : null}
+            primary={form.primary}
+            name={form.name.trim() || defaultName}
+            logoLight={logoOf("light")}
+            logoDark={logoOf("dark")}
+          />
         </div>
       </Section>
 

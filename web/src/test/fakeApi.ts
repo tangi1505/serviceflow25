@@ -515,7 +515,7 @@ export function fakeApi(state: FakeState) {
       const at = { ...(state.orgSettings?.["root"] ?? {}) };
       const base = url.pathname + "/logo/";
       return json(200, {
-        name: (at["ui.app_name"] as string | undefined) ?? "itsm",
+        name: (at["ui.app_name"] as string | undefined) ?? "ServiceFlow25",
         accent: (at["ui.accent"] as string | undefined) ?? "#0B6E80",
         primary_accent: (at["ui.primary_accent"] as boolean | undefined) ?? false,
         logo_light: state.logos?.["light"] ? base + "light?v=1" : null,
@@ -993,7 +993,7 @@ export function fakeApi(state: FakeState) {
       }
       state.logos[logo[2]!] = bodyText;
       return json(200, {
-        name: "itsm",
+        name: "ServiceFlow25",
         accent: "#0B6E80",
         primary_accent: false,
         logo_light: null,

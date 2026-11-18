@@ -22,12 +22,15 @@ import {
   labelOf,
   dashboardsQuery,
   meQuery,
+  myBrandingQuery,
   mySettingsQuery,
   qualifiedName,
   typesQuery,
   type MySettings,
   type SettingsChange,
 } from "@/api/client";
+import { defaultName } from "@/app/Brand";
+import { LookPreview } from "@/app/LookPreview";
 import { arrange, pinned, useAreas } from "@/app/Nav";
 import { languages } from "@/i18n";
 import { FieldValue } from "@/render/Batch";
@@ -371,6 +374,7 @@ function Appearance({
   workplace: boolean;
 }) {
   const { t } = useTranslation();
+  const branding = useQuery(myBrandingQuery);
   const dashboards = useQuery({ ...dashboardsQuery, enabled: workplace });
   const boards = (dashboards.data?.items ?? []).map((b) => ({
     value: String(b["id"]),
@@ -386,136 +390,154 @@ function Appearance({
   const scheme = settings.color_scheme.value;
   const accent = settings.accent?.value ?? "petrol";
   const density = settings.density.value;
+  // Beside the choices a small picture of the interface that follows them at once (UI55).
   return (
-    <>
-      {allowed.color_scheme && (
-        <Section title={t("settings.mode")}>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            {(["light", "dark", "system"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={scheme === m}
-                onClick={() => keep({ color_scheme: m })}
-                className={card(scheme === m)}
-              >
-                <span
-                  aria-hidden="true"
-                  className="block h-14 rounded-sm border"
-                  style={{ background: modePreview[m] }}
-                />
-                <span className={`text-sm ${scheme === m ? "font-semibold" : ""}`}>
-                  {t(`colorScheme.${m}`)}
-                </span>
-              </button>
-            ))}
-          </div>
-          <InForce settings={settings} name="color_scheme" show={(v) => t(`colorScheme.${v}`)} />
-        </Section>
-      )}
-      {allowed.accent && (
-        <Section title={t("settings.accent")} hint={t("settings.accentHint")}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {accents.map((a) => (
-              <button
-                key={a}
-                type="button"
-                aria-pressed={accent === a}
-                onClick={() => keep({ accent: a })}
-                className={`flex h-11 items-center gap-2.5 rounded-md border px-2.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  accent === a
-                    ? "border-accent bg-accent-soft font-medium"
-                    : "hover:bg-surface-active"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="inline-grid size-6 flex-none place-items-center rounded-full text-white ring-1 ring-border-strong/40"
-                  style={{ background: accentColors[a] }}
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="flex min-w-0 flex-col gap-4">
+        {allowed.color_scheme && (
+          <Section title={t("settings.mode")}>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {(["light", "dark", "system"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={scheme === m}
+                  onClick={() => keep({ color_scheme: m })}
+                  className={card(scheme === m)}
                 >
-                  {accent === a && <Check className="size-3.5" />}
-                </span>
-                {t(`accent.${a}`)}
-              </button>
-            ))}
-          </div>
-          <InForce
-            settings={settings}
-            name="accent"
-            show={(v) =>
-              v.startsWith("#") ? t("settings.orgAccent", { color: v }) : t(`accent.${v}`)
-            }
-          />
-        </Section>
-      )}
-      {allowed.density && (
-        <Section title={t("settings.density")} hint={t("settings.densityHint")}>
+                  <span
+                    aria-hidden="true"
+                    className="block h-14 rounded-sm border"
+                    style={{ background: modePreview[m] }}
+                  />
+                  <span className={`text-sm ${scheme === m ? "font-semibold" : ""}`}>
+                    {t(`colorScheme.${m}`)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <InForce settings={settings} name="color_scheme" show={(v) => t(`colorScheme.${v}`)} />
+          </Section>
+        )}
+        {allowed.accent && (
+          <Section title={t("settings.accent")} hint={t("settings.accentHint")}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {accents.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  aria-pressed={accent === a}
+                  onClick={() => keep({ accent: a })}
+                  className={`flex h-11 items-center gap-2.5 rounded-md border px-2.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    accent === a
+                      ? "border-accent bg-accent-soft font-medium"
+                      : "hover:bg-surface-active"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="inline-grid size-6 flex-none place-items-center rounded-full text-white ring-1 ring-border-strong/40"
+                    style={{ background: accentColors[a] }}
+                  >
+                    {accent === a && <Check className="size-3.5" />}
+                  </span>
+                  {t(`accent.${a}`)}
+                </button>
+              ))}
+            </div>
+            <InForce
+              settings={settings}
+              name="accent"
+              show={(v) =>
+                v.startsWith("#") ? t("settings.orgAccent", { color: v }) : t(`accent.${v}`)
+              }
+            />
+          </Section>
+        )}
+        {allowed.density && (
+          <Section title={t("settings.density")} hint={t("settings.densityHint")}>
+            <div
+              role="group"
+              aria-label={t("settings.density")}
+              className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
+            >
+              {(["compact", "normal"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={density === d}
+                  onClick={() => keep({ density: d })}
+                  className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    density === d
+                      ? "bg-segment-active font-medium text-foreground shadow-sm"
+                      : "text-foreground-2"
+                  }`}
+                >
+                  {t(`list.densities.${d}`)}
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+        {/* Single keys such as / and N, which the person may turn off (UI52, UI-Plan E55). */}
+        <Section title={t("settings.shortcuts")} hint={t("settings.shortcutsHint")}>
           <div
             role="group"
-            aria-label={t("settings.density")}
+            aria-label={t("settings.shortcuts")}
             className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
           >
-            {(["compact", "normal"] as const).map((d) => (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={density === d}
-                onClick={() => keep({ density: d })}
-                className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  density === d
-                    ? "bg-segment-active font-medium text-foreground shadow-sm"
-                    : "text-foreground-2"
-                }`}
-              >
-                {t(`list.densities.${d}`)}
-              </button>
-            ))}
+            {(["on", "off"] as const).map((v) => {
+              const on = (settings.shortcuts?.value ?? "on") === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => keep({ shortcuts: v })}
+                  className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    on
+                      ? "bg-segment-active font-medium text-foreground shadow-sm"
+                      : "text-foreground-2"
+                  }`}
+                >
+                  {t(`settings.${v}`)}
+                </button>
+              );
+            })}
           </div>
         </Section>
-      )}
-      {/* Single keys such as / and N, which the person may turn off (UI52, UI-Plan E55). */}
-      <Section title={t("settings.shortcuts")} hint={t("settings.shortcutsHint")}>
-        <div
-          role="group"
-          aria-label={t("settings.shortcuts")}
-          className="inline-flex w-fit gap-0.5 rounded-md bg-muted p-0.5"
-        >
-          {(["on", "off"] as const).map((v) => {
-            const on = (settings.shortcuts?.value ?? "on") === v;
-            return (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={on}
-                onClick={() => keep({ shortcuts: v })}
-                className={`h-8 rounded-sm px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  on
-                    ? "bg-segment-active font-medium text-foreground shadow-sm"
-                    : "text-foreground-2"
-                }`}
-              >
-                {t(`settings.${v}`)}
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-      {workplace && allowed.nav && <Navigation settings={settings} keep={keep} />}
-      {!(allowed.color_scheme && allowed.accent && allowed.density && allowed.nav) && (
-        <p className="text-sm text-muted-foreground">{t("settings.byOrganisation")}</p>
-      )}
-      {workplace && (
-        <div className="rounded-md border bg-card p-4">
-          <Choice
-            name="start_dashboard"
-            settings={settings}
-            onChange={(v) => keep({ start_dashboard: v || null })}
-            options={[...boards, { value: "none", label: t("settings.startNone") }]}
-            show={showBoard}
-          />
-        </div>
-      )}
-    </>
+        {workplace && allowed.nav && <Navigation settings={settings} keep={keep} />}
+        {!(allowed.color_scheme && allowed.accent && allowed.density && allowed.nav) && (
+          <p className="text-sm text-muted-foreground">{t("settings.byOrganisation")}</p>
+        )}
+        {workplace && (
+          <div className="rounded-md border bg-card p-4">
+            <Choice
+              name="start_dashboard"
+              settings={settings}
+              onChange={(v) => keep({ start_dashboard: v || null })}
+              options={[...boards, { value: "none", label: t("settings.startNone") }]}
+              show={showBoard}
+            />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5 lg:sticky lg:top-4">
+        <span className="text-xs font-medium tracking-wide text-foreground-2 uppercase">
+          {t("appearance.preview")}
+        </span>
+        <LookPreview
+          scheme={scheme}
+          density={density}
+          nav={settings.nav.value}
+          accent={accent}
+          primary={branding.data?.primary_accent ?? false}
+          name={branding.data?.name ?? defaultName}
+          logoLight={branding.data?.logo_light ?? null}
+          logoDark={branding.data?.logo_dark ?? null}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -729,7 +751,7 @@ export function MySettingsPage() {
     }
   };
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className={`flex ${tab === "appearance" ? "max-w-5xl" : "max-w-3xl"} flex-col gap-5`}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{t("settings.title")}</h1>

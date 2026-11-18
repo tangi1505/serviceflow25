@@ -33,7 +33,7 @@ func TestBrandingOverHTTP(t *testing.T) {
 	defer clean()
 
 	r := call(t, admin, http.MethodGet, "/api/v1/branding", "", anon)
-	if r.code != 200 || r.body["name"] != "itsm" || r.body["accent"] != "#0B6E80" || r.body["primary_accent"] != false ||
+	if r.code != 200 || r.body["name"] != "ServiceFlow25" || r.body["accent"] != "#0B6E80" || r.body["primary_accent"] != false ||
 		r.body["logo_light"] != nil || r.body["logo_dark"] != nil {
 		t.Fatalf("defaults without a session: %d %s", r.code, r.raw)
 	}

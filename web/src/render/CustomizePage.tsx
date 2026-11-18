@@ -32,8 +32,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, Workflow } from "lucide-react";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowLeft, Download, Workflow } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -55,9 +55,12 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
-import { LinkButton } from "@/ui/page-header";
+import { barButton } from "@/ui/menu";
+import { LinkButton, PageHeader } from "@/ui/page-header";
+import { Table, Td, Th, THead, Tr } from "@/ui/table";
 
 import { Handle, optionValue } from "./FormBuilder";
+import { DensityTable, matches, TableSearch, useDensity } from "./TableTools";
 import { fieldLabel, formatMoment, isCalculated } from "./fields";
 
 // prefix marks the fields of the customer layer (Kern-Plan PL43).
@@ -109,29 +112,29 @@ function save(file: Blob, name: string) {
 }
 
 // ExportButton downloads every customer layer as JSON, the content of a package of the
-// customer (PL43).
-function ExportButton() {
+// customer (PL43); a button of the page head (UI54), a failure goes to the page.
+function ExportButton({ onFailure }: { onFailure: (detail: string | null) => void }) {
   const { t } = useTranslation();
-  const [failure, setFailure] = useState<string | null>(null);
   const run = useMutation({
     mutationFn: api.customerLayers,
-    onMutate: () => setFailure(null),
+    onMutate: () => onFailure(null),
     onSuccess: (layers) =>
       save(
         new Blob([JSON.stringify(layers, null, 2)], { type: "application/json" }),
         "kundenschicht.json",
       ),
-    onError: (err) => setFailure(err instanceof Error ? err.message : String(err)),
+    onError: (err) => onFailure(err instanceof Error ? err.message : String(err)),
   });
   return (
-    <div className="flex flex-col gap-2">
-      <div>
-        <Button variant="outline" disabled={run.isPending} onClick={() => run.mutate()}>
-          {t("customize.export")}
-        </Button>
-      </div>
-      {failure && <Alert variant="destructive">{t("customize.error", { detail: failure })}</Alert>}
-    </div>
+    <button
+      type="button"
+      className={barButton}
+      disabled={run.isPending}
+      onClick={() => run.mutate()}
+    >
+      <Download aria-hidden="true" className="size-4 text-foreground-2" />
+      {t("customize.export")}
+    </button>
   );
 }
 
@@ -909,6 +912,7 @@ export function Changes({
   const { t, i18n } = useTranslation();
   const describe = useDescribe(type);
   const changes = [...layer.changes].reverse().filter(only ?? (() => true));
+  const [exportFailure, setExportFailure] = useState<string | null>(null);
   return (
     <section aria-labelledby="customize-changes" className="flex flex-col gap-3">
       <h2 id="customize-changes" className="text-lg font-semibold">
@@ -917,41 +921,33 @@ export function Changes({
       {changes.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("customize.noChanges")}</p>
       ) : (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("customize.col.change")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("customize.col.by")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("customize.col.at")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("customize.col.status")}
-              </th>
-              <th scope="col" className="py-2">
+        <DensityTable>
+          <THead>
+            <tr>
+              <Th>{t("customize.col.change")}</Th>
+              <Th>{t("customize.col.by")}</Th>
+              <Th>{t("customize.col.at")}</Th>
+              <Th>{t("customize.col.status")}</Th>
+              <Th>
                 <span className="sr-only">{t("customize.col.action")}</span>
-              </th>
+              </Th>
             </tr>
-          </thead>
+          </THead>
           <tbody>
             {changes.map((c) => {
               const text = describe(c);
               return (
-                <tr key={c.id} className="border-b align-top">
-                  <td className="py-2 pr-3">{text}</td>
-                  <td className="py-2 pr-3">{c.by_name ?? "—"}</td>
-                  <td className="py-2 pr-3">{c.at ? formatMoment(c.at, i18n.language) : ""}</td>
-                  <td className="py-2 pr-3">
+                <Tr key={c.id} className="align-top">
+                  <Td>{text}</Td>
+                  <Td>{c.by_name ?? "—"}</Td>
+                  <Td>{c.at ? formatMoment(c.at, i18n.language) : ""}</Td>
+                  <Td>
                     <span className={c.status === "active" ? "" : "font-medium text-destructive"}>
                       {t(`customize.status.${c.status ?? "active"}`)}
                     </span>
                     {c.reason && <div className="text-xs text-muted-foreground">{c.reason}</div>}
-                  </td>
-                  <td className="py-2">
+                  </Td>
+                  <Td>
                     <Button
                       variant="outline"
                       size="sm"
@@ -963,14 +959,19 @@ export function Changes({
                     >
                       {t("customize.takeBackShort")}
                     </Button>
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               );
             })}
           </tbody>
-        </table>
+        </DensityTable>
       )}
-      <ExportButton />
+      <div>
+        <ExportButton onFailure={setExportFailure} />
+      </div>
+      {exportFailure && (
+        <Alert variant="destructive">{t("customize.error", { detail: exportFailure })}</Alert>
+      )}
     </section>
   );
 }
@@ -979,6 +980,7 @@ export function Changes({
 // links to their editors (Verwaltung › Typen anpassen).
 export function CustomizeOverview() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const types = useQuery(typesQuery);
   const me = useQuery(meQuery);
   const layers = useQuery({
@@ -986,6 +988,11 @@ export function CustomizeOverview() {
     queryFn: api.customerLayers,
     enabled: me.data?.customize === true,
   });
+  // The overview in the look of the list (UI54): the number under the title, the export on the
+  // right, a field narrows the rows, a row opens the editor of its type.
+  const [query, setQuery] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
+  const density = useDensity();
   if (me.data && me.data.customize !== true) {
     return <Alert variant="destructive">{t("customize.forbidden")}</Alert>;
   }
@@ -993,43 +1000,51 @@ export function CustomizeOverview() {
     return <p>{t("list.loading")}</p>;
   }
   const count = (name: string) => layers.data?.find((l) => l.type === name)?.changes.length ?? 0;
+  const all = types.data ?? [];
+  const shown = all.filter((c) => {
+    const name = qualifiedName(c);
+    return matches(query, labelOf(c.label, i18n.language, name), name);
+  });
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("customize.overview")}</h1>
+    <div className="flex max-w-4xl flex-col gap-4">
+      <PageHeader
+        className="mb-0"
+        title={t("customize.overview")}
+        line={t("customize.typeCount", { count: all.length })}
+        actions={<ExportButton onFailure={setFailure} />}
+      />
       <p className="text-sm text-muted-foreground">{t("customize.overviewIntro")}</p>
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b">
-            <th scope="col" className="py-2 pr-3">
-              {t("customize.col.type")}
-            </th>
-            <th scope="col" className="py-2">
-              {t("customize.col.count")}
-            </th>
-          </tr>
-        </thead>
+      {failure && <Alert variant="destructive">{t("customize.error", { detail: failure })}</Alert>}
+      <TableSearch label={t("customize.search")} value={query} onChange={setQuery} />
+      <Table density={density} aria-label={t("customize.overview")}>
+        <THead>
+          <Tr>
+            <Th>{t("customize.col.type")}</Th>
+            <Th>{t("customize.col.technical")}</Th>
+            <Th className="text-right">{t("customize.col.count")}</Th>
+          </Tr>
+        </THead>
         <tbody>
-          {(types.data ?? []).map((c) => {
+          {shown.map((c) => {
             const name = qualifiedName(c);
             return (
-              <tr key={name} className="border-b">
-                <td className="py-2 pr-3">
-                  <Link
-                    to="/types/$typeName/customize"
-                    params={{ typeName: name }}
-                    className="underline"
-                  >
-                    {labelOf(c.label, i18n.language, name)}
-                  </Link>
-                  <span className="ml-2 text-xs text-muted-foreground">{name}</span>
-                </td>
-                <td className="py-2">{count(name)}</td>
-              </tr>
+              <Tr
+                key={name}
+                onOpen={() =>
+                  void navigate({ to: "/types/$typeName/customize", params: { typeName: name } })
+                }
+              >
+                <Td className="font-medium">{labelOf(c.label, i18n.language, name)}</Td>
+                <Td className="font-mono text-xs text-foreground-2">{name}</Td>
+                <Td className="text-right">{count(name)}</Td>
+              </Tr>
             );
           })}
         </tbody>
-      </table>
-      <ExportButton />
+      </Table>
+      {shown.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("customize.noMatch")}</p>
+      )}
     </div>
   );
 }

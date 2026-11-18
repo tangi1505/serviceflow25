@@ -18,10 +18,12 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { Table, Td, Th, THead, Tr } from "@/ui/table";
 
 import { formatMoment } from "./fields";
 import { RefName } from "./RefName";
 import { RefPicker } from "./RefPicker";
+import { useDensity } from "./TableTools";
 
 const detail = (err: unknown) =>
   err instanceof ApiError ? (err.problem?.detail ?? err.message) : String(err);
@@ -37,6 +39,7 @@ export function Substitutes({ personId }: { personId: string }) {
   const list = useQuery({ queryKey: key, queryFn: () => api.substitutes(personId), retry: false });
   const [who, setWho] = useState<ActorRef[]>([]);
   const [from, setFrom] = useState("");
+  const density = useDensity();
   const [until, setUntil] = useState("");
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: key });
@@ -80,55 +83,49 @@ export function Substitutes({ personId }: { personId: string }) {
         <p className="text-sm text-muted-foreground">{t("substitutes.none")}</p>
       )}
       {list.data && list.data.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11.5px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-2 py-1 font-medium">{t("substitutes.who")}</th>
-                <th className="px-2 py-1 font-medium">{t("substitutes.from")}</th>
-                <th className="px-2 py-1 font-medium">{t("substitutes.until")}</th>
-                <th className="px-2 py-1 font-medium">{t("substitutes.now")}</th>
-                <th className="px-2 py-1">
-                  <span className="sr-only">{t("substitutes.actions")}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.data.map((x) => (
-                <tr key={x.id} className="border-t border-border-soft">
-                  <td className="px-2 py-1.5">
-                    <RefName refTo={{ type: "core.person", id: x.substitute }} />
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-[12.5px]">
-                    {formatMoment(x.valid_from, i18n.language)}
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-[12.5px]">
-                    {x.valid_until
-                      ? formatMoment(x.valid_until, i18n.language)
-                      : t("substitutes.forGood")}
-                  </td>
-                  <td
-                    className={
-                      "px-2 py-1.5 " + (x.active ? "text-success" : "text-muted-foreground")
-                    }
+        <Table density={density}>
+          <THead>
+            <tr>
+              <Th>{t("substitutes.who")}</Th>
+              <Th>{t("substitutes.from")}</Th>
+              <Th>{t("substitutes.until")}</Th>
+              <Th>{t("substitutes.now")}</Th>
+              <Th>
+                <span className="sr-only">{t("substitutes.actions")}</span>
+              </Th>
+            </tr>
+          </THead>
+          <tbody>
+            {list.data.map((x) => (
+              <Tr key={x.id}>
+                <Td>
+                  <RefName refTo={{ type: "core.person", id: x.substitute }} />
+                </Td>
+                <Td className="font-mono text-[12.5px]">
+                  {formatMoment(x.valid_from, i18n.language)}
+                </Td>
+                <Td className="font-mono text-[12.5px]">
+                  {x.valid_until
+                    ? formatMoment(x.valid_until, i18n.language)
+                    : t("substitutes.forGood")}
+                </Td>
+                <Td className={x.active ? "text-success" : "text-foreground-2"}>
+                  {x.active ? t("substitutes.active") : t("substitutes.inactive")}
+                </Td>
+                <Td className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(x.id)}
                   >
-                    {x.active ? t("substitutes.active") : t("substitutes.inactive")}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={remove.isPending}
-                      onClick={() => remove.mutate(x.id)}
-                    >
-                      {t("substitutes.remove")}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {t("substitutes.remove")}
+                  </Button>
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
       )}
       <form
         aria-label={t("substitutes.add")}

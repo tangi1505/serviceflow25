@@ -34,9 +34,11 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { Td, Th, THead, Tr } from "@/ui/table";
 import { LinkButton } from "@/ui/page-header";
 
 import { Changes, useCustomizer, type Apply } from "./CustomizePage";
+import { DensityTable } from "./TableTools";
 import { WorkflowGraph } from "./WorkflowGraph";
 
 const prefix = "k_";
@@ -238,23 +240,17 @@ function States({ type, busy, apply }: { type: TypeDefinition; busy: boolean; ap
         {t("workflow.states")}
       </h2>
       {states.length > 0 && (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.label")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.name")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.initial")}
-              </th>
-              <th scope="col" className="py-2">
+        <DensityTable>
+          <THead>
+            <tr>
+              <Th>{t("workflow.col.label")}</Th>
+              <Th>{t("workflow.col.name")}</Th>
+              <Th>{t("workflow.col.initial")}</Th>
+              <Th>
                 <span className="sr-only">{t("customize.col.action")}</span>
-              </th>
+              </Th>
             </tr>
-          </thead>
+          </THead>
           <tbody>
             {states.map((s) => (
               <StateRow
@@ -267,7 +263,7 @@ function States({ type, busy, apply }: { type: TypeDefinition; busy: boolean; ap
               />
             ))}
           </tbody>
-        </table>
+        </DensityTable>
       )}
       <form
         className="flex flex-col gap-3 rounded-md border p-3"
@@ -349,12 +345,12 @@ function StateRow({
   };
   return (
     <>
-      <tr className="border-b align-top">
-        <td className="py-2 pr-3 font-medium">{name}</td>
-        <td className="py-2 pr-3 text-muted-foreground">
+      <Tr className="align-top">
+        <Td className="font-medium">{name}</Td>
+        <Td className="text-muted-foreground">
           {state.name} · {own(state.name) ? t("customize.flag.own") : t("customize.flag.package")}
-        </td>
-        <td className="py-2 pr-3">
+        </Td>
+        <Td>
           <input
             type="radio"
             name="initial"
@@ -368,8 +364,8 @@ function StateRow({
               )
             }
           />
-        </td>
-        <td className="py-2">
+        </Td>
+        <Td>
           <div className="flex flex-wrap gap-1">
             <Button
               variant="outline"
@@ -397,11 +393,11 @@ function StateRow({
               </Button>
             )}
           </div>
-        </td>
-      </tr>
+        </Td>
+      </Tr>
       {editing && (
-        <tr className="border-b">
-          <td colSpan={4} className="py-2">
+        <Tr>
+          <Td colSpan={4}>
             <form
               className="grid gap-3 sm:grid-cols-3"
               aria-label={t("customize.edit", { name })}
@@ -432,8 +428,8 @@ function StateRow({
                 </Button>
               </div>
             </form>
-          </td>
-        </tr>
+          </Td>
+        </Tr>
       )}
     </>
   );
@@ -637,26 +633,18 @@ function Transitions({
         {t("workflow.transitions")}
       </h2>
       {transitions.length > 0 && (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.label")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.from")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.to")}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {t("workflow.col.when")}
-              </th>
-              <th scope="col" className="py-2">
+        <DensityTable>
+          <THead>
+            <tr>
+              <Th>{t("workflow.col.label")}</Th>
+              <Th>{t("workflow.col.from")}</Th>
+              <Th>{t("workflow.col.to")}</Th>
+              <Th>{t("workflow.col.when")}</Th>
+              <Th>
                 <span className="sr-only">{t("customize.col.action")}</span>
-              </th>
+              </Th>
             </tr>
-          </thead>
+          </THead>
           <tbody>
             {transitions.map((tr) => (
               <TransitionRow
@@ -674,7 +662,7 @@ function Transitions({
               />
             ))}
           </tbody>
-        </table>
+        </DensityTable>
       )}
       {states.length > 0 && (
         <form
@@ -792,27 +780,27 @@ function TransitionRow({
   };
   return (
     <>
-      <tr
+      <Tr
         className={[
-          "border-b align-top",
+          "align-top",
           tr.disabled ? "text-muted-foreground" : "",
           selected ? "bg-primary/10" : "",
         ].join(" ")}
         aria-selected={selected}
         onClick={onSelect}
       >
-        <td className="py-2 pr-3">
+        <Td>
           <span className="font-medium">{name}</span>
           <div className="text-xs text-muted-foreground">
             {tr.name} · {own(tr.name) ? t("customize.flag.own") : t("customize.flag.package")}
             {tr.disabled ? ` · ${t("workflow.flag.disabled")}` : ""}
             {selected ? ` · ${t("workflow.graph.marked")}` : ""}
           </div>
-        </td>
-        <td className="py-2 pr-3">{tr.from.map(stateName).join(", ")}</td>
-        <td className="py-2 pr-3">{stateName(tr.to)}</td>
-        <td className="py-2 pr-3 font-mono text-xs">{tr.when ?? ""}</td>
-        <td className="py-2">
+        </Td>
+        <Td>{tr.from.map(stateName).join(", ")}</Td>
+        <Td>{stateName(tr.to)}</Td>
+        <Td className="font-mono text-xs">{tr.when ?? ""}</Td>
+        <Td>
           <div className="flex flex-wrap gap-1">
             <Button
               variant="outline"
@@ -854,11 +842,11 @@ function TransitionRow({
               </Button>
             )}
           </div>
-        </td>
-      </tr>
+        </Td>
+      </Tr>
       {editing && (
-        <tr className="border-b">
-          <td colSpan={5} className="py-2">
+        <Tr>
+          <Td colSpan={5}>
             <form
               className="flex flex-col gap-3"
               aria-label={t("customize.edit", { name })}
@@ -889,8 +877,8 @@ function TransitionRow({
                 </Button>
               </div>
             </form>
-          </td>
-        </tr>
+          </Td>
+        </Tr>
       )}
     </>
   );

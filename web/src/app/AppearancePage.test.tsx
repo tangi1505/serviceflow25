@@ -55,6 +55,23 @@ describe("Erscheinungsbild", () => {
       await screen.findByRole("heading", { level: 1, name: "Erscheinungsbild" }),
     ).toBeInTheDocument();
     await expectAccessible(view.container);
+    // Without a name and a logo of its own: the mark "sf" and ServiceFlow25 (UI56).
+    const banner = screen.getByRole("banner");
+    expect(within(banner).getByText("sf")).toBeInTheDocument();
+    expect(within(banner).getByText("ServiceFlow25")).toBeInTheDocument();
+
+    // Beside the defaults a small picture follows the choices at once (UI55).
+    const preview = screen.getByRole("img", {
+      name: "Vorschau: Wie das System, Zeilenhöhe Normal, Leiste Breit",
+    });
+    await user.selectOptions(screen.getByRole("combobox", { name: "Modus" }), "dark");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Zeilenhöhe der Listen" }),
+      "compact",
+    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "Breite der Leiste" }), "narrow");
+    expect(preview).toHaveAccessibleName("Vorschau: Dunkel, Zeilenhöhe Kompakt, Leiste Schmal");
+    expect(preview).toHaveAttribute("data-color-scheme", "dark");
 
     const name = screen.getByLabelText("Name der Anwendung");
     await user.clear(name);

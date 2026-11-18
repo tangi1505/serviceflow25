@@ -37,8 +37,8 @@ const (
 	KeyPrimary = "ui.primary_accent"
 )
 
-// DefaultName is the name without a setting.
-const DefaultName = "itsm"
+// DefaultName is the name without a setting: the product (UI56, Hauptplan V1).
+const DefaultName = "ServiceFlow25"
 
 // DefaultAccent is petrol, the accent without a setting.
 const DefaultAccent = "#0B6E80"

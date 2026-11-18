@@ -9,14 +9,17 @@
   A theme package sets --accent and, if it wants, --primary for both modes (E25); ground,
   lines and the deadline colours stay, so that their meaning is the same everywhere. The theme
   "probe" proves that one changed colour reaches every component. The accent a person chooses
-  (UI38, accent.ts) comes as --pick-accent-… and goes before the theme's.
+  (UI38, accent.ts) comes as --pick-accent-… and goes before the theme's. An element with its
+  own data-color-scheme takes that mode inside, whatever the page has: the preview of the
+  appearance shows light and dark (UI55).
 */
 @import "tailwindcss";
 
 /* Dark mode follows the attribute, not the media query: the setting decides (E24). */
 @custom-variant dark (&:where([data-color-scheme="dark"], [data-color-scheme="dark"] *));
 
-:root {
+:root,
+[data-color-scheme="light"] {
   color-scheme: light;
   --background: #f6f6f3;
   --card: #ffffff;
@@ -66,7 +69,8 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
-:root[data-color-scheme="dark"] {
+:root[data-color-scheme="dark"],
+[data-color-scheme="dark"] {
   color-scheme: dark;
   --background: #111315;
   --card: #181a1d;
@@ -165,8 +169,10 @@
 }
 
 @layer base {
+  /* --border directly, not --color-border: that one is worked out once at <html>, and an
+     element with its own mode (UI55) would keep the lines of the page. */
   * {
-    border-color: var(--color-border);
+    border-color: var(--border);
   }
   body {
     background-color: var(--color-background);

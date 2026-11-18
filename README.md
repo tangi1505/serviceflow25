@@ -6,7 +6,8 @@ Practice ein Paket ist. Produkt der group24 AG, Kern unter AGPL-3.0-only.
 
 - **Repository:** <https://github.com/tangi1505/serviceflow25>
 - **Name:** ServiceFlow25 ist der vorgeschlagene Produktname (Hauptplan V1, noch ohne
-  Markenprüfung). Im Code heißt das Werkzeug weiter `itsm`: Binary, Modulpfad `group24.de/itsm`,
+  Markenprüfung). Die Oberfläche heißt ohne eigene Einstellung so und zeigt ohne Logo die Marke
+  „sf“ (UI56). Im Code heißt das Werkzeug weiter `itsm`: Binary, Modulpfad `group24.de/itsm`,
   Variablen `ITSM_…`.
 - **Pläne und Entscheidungen:** [Hauptplan](docs/0_maintask.md),
   [Architektur](docs/architektur.md), [Entscheidungen](docs/adr/).

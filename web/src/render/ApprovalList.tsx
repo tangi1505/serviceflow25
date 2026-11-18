@@ -11,15 +11,17 @@
 // A row leads to the record: in the workspace its page, in the portal a page to read it and
 // to answer.
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, labelOf, qualifiedName, typesQuery, type MyApproval } from "@/api/client";
 import { Alert } from "@/ui/alert";
+import { Table, Td, Th, THead, Tr } from "@/ui/table";
 
 import { formatMoment } from "./fields";
 import { RefName } from "./RefName";
+import { useDensity } from "./TableTools";
 
 export function ApprovalList({ portal = false }: { portal?: boolean }) {
   const { t, i18n } = useTranslation();
@@ -33,12 +35,25 @@ export function ApprovalList({ portal = false }: { portal?: boolean }) {
   const typeLabel = (name: string) =>
     labelOf(types.data?.find((x) => qualifiedName(x) === name)?.label, i18n.language, name);
   const seg = "inline-flex h-8 items-center rounded-md px-3.5 text-sm font-medium";
+  const navigate = useNavigate();
+  const density = useDensity();
+  const open = (m: MyApproval) =>
+    void (portal
+      ? navigate({
+          to: "/portal/approvals/$typeName/$id",
+          params: { typeName: m.type_name, id: m.record_id },
+        })
+      : navigate({
+          to: "/types/$typeName/$id",
+          params: { typeName: m.type_name, id: m.record_id },
+        }));
   const goal = (m: MyApproval) =>
     portal ? (
       <Link
         to="/portal/approvals/$typeName/$id"
         params={{ typeName: m.type_name, id: m.record_id }}
         className="underline"
+        tabIndex={-1}
       >
         {m.title || m.record_id}
       </Link>
@@ -47,6 +62,7 @@ export function ApprovalList({ portal = false }: { portal?: boolean }) {
         to="/types/$typeName/$id"
         params={{ typeName: m.type_name, id: m.record_id }}
         className="underline"
+        tabIndex={-1}
       >
         {m.title || m.record_id}
       </Link>
@@ -83,60 +99,52 @@ export function ApprovalList({ portal = false }: { portal?: boolean }) {
         </p>
       )}
       {list.data && list.data.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-surface-subtle text-left text-[11.5px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 font-medium">{t("approvals.record")}</th>
-                <th className="px-3 py-2 font-medium">{t("approvals.kind")}</th>
-                <th className="px-3 py-2 font-medium">{t("approvals.from")}</th>
-                <th className="px-3 py-2 font-medium">{t("approvals.stageColumn")}</th>
-                <th className="px-3 py-2 font-medium">
-                  {state === "open" ? t("approvals.since") : t("approvals.decided")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.data.map((m) => (
-                <tr key={m.step} className="border-t border-border-soft">
-                  <td className="px-3 py-2">
-                    {goal(m)}
-                    {m.on_behalf && (
-                      <span className="block text-[12.5px] text-muted-foreground">
-                        {t("approvals.standIn")}{" "}
-                        <RefName refTo={{ type: "core.person", id: m.on_behalf }} />
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">{typeLabel(m.type_name)}</td>
-                  <td className="px-3 py-2">
-                    {m.requester ? (
-                      <RefName refTo={{ type: "core.person", id: m.requester }} />
-                    ) : (
-                      ""
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {t("approvals.stage", { n: m.stage, of: m.stages })}
-                    {m.stage_name ? ` · ${m.stage_name}` : ""}
-                    {state === "done" && (
-                      <span
-                        className={
-                          "ml-2 " + (m.state === "approved" ? "text-success" : "text-destructive")
-                        }
-                      >
-                        {t(`approvals.stepState.${m.state}`)}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-[12.5px]">
-                    {formatMoment(state === "open" ? m.requested_at : m.decided_at, i18n.language)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table density={density}>
+          <THead>
+            <tr>
+              <Th>{t("approvals.record")}</Th>
+              <Th>{t("approvals.kind")}</Th>
+              <Th>{t("approvals.from")}</Th>
+              <Th>{t("approvals.stageColumn")}</Th>
+              <Th>{state === "open" ? t("approvals.since") : t("approvals.decided")}</Th>
+            </tr>
+          </THead>
+          <tbody>
+            {list.data.map((m) => (
+              <Tr key={m.step} onOpen={() => open(m)}>
+                <Td>
+                  {goal(m)}
+                  {m.on_behalf && (
+                    <span className="block text-[12.5px] text-muted-foreground">
+                      {t("approvals.standIn")}{" "}
+                      <RefName refTo={{ type: "core.person", id: m.on_behalf }} />
+                    </span>
+                  )}
+                </Td>
+                <Td>{typeLabel(m.type_name)}</Td>
+                <Td>
+                  {m.requester ? <RefName refTo={{ type: "core.person", id: m.requester }} /> : ""}
+                </Td>
+                <Td>
+                  {t("approvals.stage", { n: m.stage, of: m.stages })}
+                  {m.stage_name ? ` · ${m.stage_name}` : ""}
+                  {state === "done" && (
+                    <span
+                      className={
+                        "ml-2 " + (m.state === "approved" ? "text-success" : "text-destructive")
+                      }
+                    >
+                      {t(`approvals.stepState.${m.state}`)}
+                    </span>
+                  )}
+                </Td>
+                <Td className="font-mono text-[12.5px]">
+                  {formatMoment(state === "open" ? m.requested_at : m.decided_at, i18n.language)}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
       )}
     </section>
   );

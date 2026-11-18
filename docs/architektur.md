@@ -694,6 +694,11 @@ web/src/
   Combobox; Zeiträume als Zeitwörter der Abfrage, PL72) sowie „Ansicht“ und „Exportieren“.
   Tastenkürzel meldet jede Seite an einer Stelle an (`app/shortcuts.tsx`); einzelne Tasten
   gelten nicht in Feldern und lassen sich je Person abschalten (Einstellung `shortcuts`).
+- **Tabellen** (UI54, UI-Plan E58): schlichte Tabellen nehmen `ui/table.tsx` mit der Optik
+  der Liste und der Zeilenhöhe der Person; eine Zeile mit Ziel ist eine ganze Zeile zum
+  Anklicken und für die Tastatur. Die virtuelle Liste der Datensätze behält ihre eigene Tabelle.
+- **Darstellung:** `ui/tokens.css` gilt auch für ein Element mit eigenem `data-color-scheme`;
+  so zeigt `app/LookPreview.tsx` hell und dunkel auf derselben Seite (UI55).
 - **Live:** SSE aktualisiert offene Listen und Detailseiten. Arbeitet jemand anderes am selben
   Datensatz, zeigt die Seite das an (E29); die Anwesenheit liegt in Valkey (`internal/presence`,
   E130).

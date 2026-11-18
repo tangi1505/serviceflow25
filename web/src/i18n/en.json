@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "itsm",
+    "title": "ServiceFlow25",
     "version": {
       "loading": "Checking the connection to the server …",
       "value": "Server version {{version}}",
@@ -601,7 +601,7 @@
     "tilesTitle": "What would you like to do?",
     "opensNew": "(opens in a new window)",
     "until": "until {{time}}",
-    "title": "itsm portal",
+    "title": "Portal",
     "toWorkplace": "To the workplace",
     "mine": "My records",
     "none": "Nothing created yet.",
@@ -772,7 +772,8 @@
       "status": "Status",
       "action": "Action",
       "type": "Type",
-      "count": "Changes"
+      "count": "Changes",
+      "technical": "Technical name"
     },
     "status": {
       "active": "applies",
@@ -819,7 +820,11 @@
       "moved": "“{{name}}” now stands behind “{{after}}”.",
       "movedFirst": "“{{name}}” now stands at the start.",
       "takenBack": "Taken back: {{change}}."
-    }
+    },
+    "typeCount_one": "{{count}} type",
+    "typeCount_other": "{{count}} types",
+    "search": "Search types",
+    "noMatch": "No type matches the search."
   },
   "workflow": {
     "open": "Workflow",
@@ -985,7 +990,11 @@
       "specialOff": "“{{name}}” withdrawn.",
       "assigned": "Role assigned at {{node}}.",
       "unassigned": "Assignment at {{node}} removed."
-    }
+    },
+    "count_one": "{{count}} role",
+    "count_other": "{{count}} roles",
+    "search": "Search roles",
+    "noMatch": "No role matches the search."
   },
   "colorScheme": {
     "system": "Like the system",
@@ -1270,7 +1279,7 @@
       "light": "Logo for light",
       "dark": "Logo for dark"
     },
-    "noLogo": "No logo: the mark “it”",
+    "noLogo": "No logo: the mark “sf”",
     "removeLogo": "Remove",
     "logoHint": "PNG or SVG, at most 256 KB. Without a logo for dark the one for light holds, and the other way round.",
     "color": "Colour of the organisation",
@@ -1294,7 +1303,8 @@
     },
     "defaults": "Defaults",
     "saved": "Saved. Holds for everyone from now on.",
-    "invalid": "Not saved: please check the marked entries."
+    "invalid": "Not saved: please check the marked entries.",
+    "defaultsHint": "Holds for everyone who has chosen nothing of their own. On the right you see how it looks."
   },
   "icons": {
     "none": "None",
@@ -1346,5 +1356,8 @@
     "choose": "Choose the row",
     "save": "Save",
     "send": "Send the answer"
+  },
+  "look": {
+    "label": "Preview: {{scheme}}, row height {{density}}, side bar {{nav}}"
   }
 }
