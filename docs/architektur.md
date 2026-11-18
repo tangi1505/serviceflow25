@@ -510,6 +510,10 @@ E40:
 - **Dieselbe Sprache** gilt für gespeicherte Suchen, Dashboards, Berichte und die Bedingungen der
   Rechte.
 - **Aggregate** (`group`, `count`, `sum`) sind für Dashboards da (KF11).
+- **Zeitwörter** (PL72, Kern-Plan E76): eine Bedingung auf eine Zeit nimmt `@now`, `@today`,
+  `@week`, `@month` oder `@year` mit einem Versatz wie `@now-5m` oder `@month-1mo`; die
+  Abfrage rechnet sie beim Abfragen aus, die Anfänge in der Zeitzone der Person. Eine
+  gespeicherte Suche hält das Wort, ihr Zeitraum wandert mit.
 - **Der Abfragebau** fügt immer die Rechtebedingung (§5) und den Ausschluss des Papierkorbs an.
   Er wählt Indexe nicht selbst; dafür sorgen Indexe, die das Paket je Typ deklariert.
 
@@ -744,6 +748,10 @@ Meilenstein. Werkzeug: `test/load` (E51).
   ab (`rowGrants`, PL70). Reihenfolge: gespeicherter Stand, dann Tageswerte (deren Ergebnis
   gespeichert wird), dann zählen; `fresh` überspringt nur den gespeicherten Stand. Der Job jede
   Minute läuft in der eigenen Warteschlange `days` (PL70, Kern-Plan E75).
+- **Feste Kerne** (PL71, Hauptplan E198): auf dem geteilten Server `ki-lab` laufen Server,
+  PostgreSQL und Valkey der Messungen auf 8 Threads mit zusammen 32 GB, wie die Prod (eine VM
+  mit 8 virtuellen CPUs), das Lastwerkzeug auf eigenen Kernen. Damit hält alles außer der
+  Liste (LZ2: 833 ms) sein Ziel; die Liste ist offen (Kern-Plan PL71).
 
 ---
 

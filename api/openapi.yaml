@@ -3990,7 +3990,7 @@ components:
         where:
           type: object
           additionalProperties: true
-          description: '{"and": [{"field": "state", "in": ["new"]}, {"field": "priority", "gte": 3}, {"not": {"field": "parent.title", "contains": "x"}}, {"field": "actors.assigned", "eq": "@my_groups"}]}; roles at the record take eq, in (ids, @me, @my_groups) and null'
+          description: '{"and": [{"field": "state", "in": ["new"]}, {"field": "priority", "gte": 3}, {"not": {"field": "parent.title", "contains": "x"}}, {"field": "actors.assigned", "eq": "@my_groups"}]}; roles at the record take eq, in (ids, @me, @my_groups) and null; a condition on a time (created_at and the other system times, datetime and date fields) takes time words worked out when the query runs, in the time zone of the person: @now, @today, @week (from Monday), @month and @year, each with one offset like @now-5m, @today-1d, @month-1mo (units m, h, d, w, mo, y; PL72)'
         fields:
           type: array
           items: { type: string }

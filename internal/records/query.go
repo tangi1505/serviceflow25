@@ -85,6 +85,8 @@ type builder struct {
 	alias    string
 	args     []any
 	problems []Problem
+	// zone is the time zone of the time words, looked up at the first word (PL72).
+	zone *time.Location
 }
 
 func (b *builder) self() string {
@@ -244,12 +246,15 @@ func (b *builder) value(field string, r resolved, v any) (any, bool) {
 			}
 			return s, true
 		}
-		// "@now" is the moment of the query on a system time, so that a saved search for what
-		// is overdue stays right (UI34).
-		if s, ok := v.(string); ok && s == "@now" && strings.HasSuffix(r.system, "_at") {
-			return time.Now().UTC(), true
+		// A time word is worked out when the query runs, so that a saved search for what is
+		// overdue (UI34) or what came in today stays right (PL72).
+		if s, ok := isTimeWordLike(v); ok && strings.HasSuffix(r.system, "_at") {
+			return b.timeValue(field, s, false)
 		}
 		return v, true
+	}
+	if s, ok := isTimeWordLike(v); ok && (r.field.Type == meta.FieldDateTime || r.field.Type == meta.FieldDate) {
+		return b.timeValue(field, s, r.field.Type == meta.FieldDate)
 	}
 	out, p := coerce(r.field, v)
 	if p != nil {
@@ -388,7 +393,7 @@ func (b *builder) related(node map[string]json.RawMessage, depth int) string {
 		b.problem("where", "rel", "direction must be out or in")
 		return "TRUE"
 	}
-	inner := &builder{s: b.s, ctx: b.ctx, t: target, alias: alias, args: b.args}
+	inner := &builder{s: b.s, ctx: b.ctx, t: target, alias: alias, args: b.args, zone: b.zone}
 	cond, args := authz.From(b.ctx).Filter(target.QualifiedName(), authz.ActionRead, inner.args)
 	inner.args = args
 	where := []string{alias + ".deleted_at IS NULL", cond}

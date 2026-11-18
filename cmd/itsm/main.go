@@ -246,6 +246,24 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		}
 		return c.Between(from, to)
 	}
+	// The time words of a query (PL72) start their days in the time zone of the person; a job
+	// without a person counts in the default zone.
+	prefSvc := prefs.New(rt, rec, orgSvc.Setting)
+	rec.Zone = func(ctx context.Context) *time.Location {
+		a := authz.From(ctx)
+		if a.AccountID == uuid.Nil {
+			return nil
+		}
+		p, err := prefSvc.Get(ctx, a.AccountID, a.PersonID)
+		if err != nil {
+			return nil
+		}
+		loc, err := time.LoadLocation(p.TimeZone.Value)
+		if err != nil {
+			return nil
+		}
+		return loc
+	}
 	if err := records.RegisterRemindJob(js, rec, logger); err != nil {
 		return err
 	}
@@ -359,7 +377,7 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 		SecLog:         secLog,
 		KV:             kv,
 		Presence:       presence.New(kv),
-		Prefs:          prefs.New(rt, rec, orgSvc.Setting),
+		Prefs:          prefSvc,
 		Forms:          forms.New(rec).WithRelations(rels),
 		Portal:         portal.New(rec),
 		Snippets:       snippetSvc,

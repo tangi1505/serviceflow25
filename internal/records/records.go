@@ -86,6 +86,11 @@ type Service struct {
 	// SettingValue reads a setting of a node with the default of its declaration (SD20:
 	// setting("…") in formulas); nil means formulas see no settings.
 	SettingValue func(ctx context.Context, path, key string) (json.RawMessage, string, error)
+	// Zone is the time zone of the person of a session, in which the time words of a query
+	// start their days, weeks, months and years (PL72); nil means DefaultZone.
+	Zone func(ctx context.Context) *time.Location
+	// clock is the moment of a query in tests; nil means time.Now.
+	clock func() time.Time
 }
 
 func (s *Service) afterWrite(ctx context.Context, typeName string) {

@@ -101,8 +101,8 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL68** | Dashboards, Stufe 2: gespeicherter Stand. Das Ergebnis je Widget, Filter und Rechten der Person liegt 5 min in Valkey; der Schlüssel enthält die Bedingung der Rechte, damit niemand die Zahlen eines anderen sieht. Heute und 7 Tage rechnen immer frisch. Die Oberfläche zeigt „Stand hh:mm“ und den Knopf „Jetzt aktualisieren“; beim frischen Rechnen bleibt der alte Stand sichtbar (Hauptplan E195; §2.1) | 🟢 | 1,5 d | „Statistik“ mit „Gesamt“ zweimal öffnen → das zweite Mal unter 1 s mit „Stand hh:mm“; „Jetzt aktualisieren“ → neuer Stand in ≤ 10 s; zwei Personen mit verschiedenen Rechten sehen verschiedene Zahlen; Lastwerkzeug mit `--only=LZ19,LZ20` erfüllt |
 | **PL69** | Dashboards, Stufe 3: Tageswerte. Je Typ eine Tabelle mit Zahl und Summen je Tag, Einheit und den Feldern, nach denen die mitgelieferten Widgets gruppieren; ein Hintergrundlauf führt sie nach (asynchron, Hauptplan E191), ein Abgleich je Nacht zählt nach. Lange Zeiträume lesen daraus, wenn sich die Rechte der Person auf Einheiten zurückführen lassen; sonst gilt der Weg aus PL68 (Hauptplan E195; §2.1) | 🟢 | 2 d | eine Störung anlegen → der Tageswert steigt innerhalb einer Minute; die Summe der Tageswerte eines Monats gleicht der gezählten Zahl; eine Person nur mit „beteiligt“ bekommt dieselben Zahlen wie vor PL69 |
 | **PL70** | Dashboards, Stufe 3: befüllen und messen. Erstbefüllung der Tageswerte in Prod-Größe auf `ki-lab` ohne Schreibsperre, Dauer festgehalten; Messung von LZ19 und LZ20 mit der Grenze von 2 s (Hauptplan E195) | 🟢 | 1,5 d | Lastwerkzeug auf `ki-lab` mit `--only=LZ19,LZ20` → „Jetzt aktualisieren“ bei „Gesamt“ in ≤ 2 s; die Dauer der Erstbefüllung steht im Umsetzungsstand |
-| **PL71** | Feste Kerne und Speichergrenze auf `ki-lab` (Hauptplan E198): H14 und die CI laufen auf eigenen Kernen (`cpuset`) mit einer Speichergrenze nach der Zielgröße Prod (8 Kerne, 32 GB), die Einstellungen von PostgreSQL passend dazu; danach H14 und die Basislinie neu gemessen | ⬜ | 1 d | `docker inspect` auf `ki-lab` zeigt Kerne und Grenze je Container; die volle Stufe von H14 und die ganze CI laufen mit den Grenzen, die Werte stehen im Umsetzungsstand |
-| **PL72** | Zeitwörter in der JSON-Abfrage (E76, Hauptplan E199; Bedarf aus UI51, UI-Plan E57): als Wert einer Bedingung auf eine Systemzeit, ein Zeitpunkt- oder ein Datumsfeld gelten `@now`, `@today`, `@week`, `@month` und `@year`, je mit Versatz wie `@now-5m`, `@today-1d`, `@month-1mo` (Einheiten `m`, `h`, `d`, `w`, `mo`, `y`, auch mit `+`). Gerechnet wird beim Abfragen; Tages-, Wochen-, Monats- und Jahresanfang gelten in der Zeitzone der Person, die Woche beginnt am Montag. Gilt überall, wo ein `where` steht: `:query`, gespeicherte Suchen, Export, Widgets. Ein unbekanntes Wort ist ein Fehler der Eingabe. Wie der gespeicherte Stand und die Tageswerte der Dashboards (PL68, PL69) mit einem Zeitwort umgehen, klärt die Aufgabe | ⬜ | 1 d | `curl` auf `:query` mit `{"field":"created_at","gte":"@now-5m"}` → nur Datensätze der letzten fünf Minuten; Tests mit fester Uhr: `@today` um 00:30 Uhr in `Europe/Berlin` beginnt um 00:00 Uhr Berliner Zeit, `@month-1mo` am 2026-03-31 ist der 2026-02-01, `@week` an einem Sonntag ist der Montag davor; `@heute` → 400 mit dem Feld; eine gespeicherte Suche mit `@now-5d` liefert am nächsten Tag ein anderes Fenster; Lastwerkzeug: LZ2 und LZ16 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL71** | Feste Kerne und Speichergrenze auf `ki-lab` (Hauptplan E198): H14 und die CI laufen auf eigenen Kernen (`cpuset`) mit einer Speichergrenze nach der Zielgröße Prod (8 Kerne, 32 GB), die Einstellungen von PostgreSQL passend dazu; danach H14 und die Basislinie neu gemessen | 🟢 | 1 d | `docker inspect` auf `ki-lab` zeigt Kerne und Grenze je Container; die volle Stufe von H14 und die ganze CI laufen mit den Grenzen, die Werte stehen im Umsetzungsstand |
+| **PL72** | Zeitwörter in der JSON-Abfrage (E76, Hauptplan E199; Bedarf aus UI51, UI-Plan E57): als Wert einer Bedingung auf eine Systemzeit, ein Zeitpunkt- oder ein Datumsfeld gelten `@now`, `@today`, `@week`, `@month` und `@year`, je mit Versatz wie `@now-5m`, `@today-1d`, `@month-1mo` (Einheiten `m`, `h`, `d`, `w`, `mo`, `y`, auch mit `+`). Gerechnet wird beim Abfragen; Tages-, Wochen-, Monats- und Jahresanfang gelten in der Zeitzone der Person, die Woche beginnt am Montag. Gilt überall, wo ein `where` steht: `:query`, gespeicherte Suchen, Export, Widgets. Ein unbekanntes Wort ist ein Fehler der Eingabe. Wie der gespeicherte Stand und die Tageswerte der Dashboards (PL68, PL69) mit einem Zeitwort umgehen, klärt die Aufgabe | 🟢 | 1 d | `curl` auf `:query` mit `{"field":"created_at","gte":"@now-5m"}` → nur Datensätze der letzten fünf Minuten; Tests mit fester Uhr: `@today` um 00:30 Uhr in `Europe/Berlin` beginnt um 00:00 Uhr Berliner Zeit, `@month-1mo` am 2026-03-31 ist der 2026-02-01, `@week` an einem Sonntag ist der Montag davor; `@heute` → 400 mit dem Feld; eine gespeicherte Suche mit `@now-5d` liefert am nächsten Tag ein anderes Fenster; Lastwerkzeug: LZ2 und LZ16 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -176,7 +176,7 @@ Die übergreifenden Entscheidungen stehen im Hauptplan §1 und in [`adr/`](adr/)
 | **E38** | Die Rate zählt je Zugang und Minute in Valkey (`INCR` mit Ablauf, kein gleitendes Fenster); `Retry-After` nennt die Sekunden bis zur nächsten Minute. Die Adresse ist der Peer, hinter einem vertrauten Proxy der erste Eintrag von `X-Forwarded-For`; IPv4-in-IPv6 wird entpackt | 2026-10-26 | Umsetzung |
 | **E39** | Pfade über Referenzen werden als korrelierte skalare Unterabfragen gebaut (`(SELECT h0.title FROM rec_… h0 WHERE h0.id = rec_….parent AND h0.deleted_at IS NULL)`), nicht als JOIN: so bleibt die Basistabelle ohne Alias, und die Rechtebedingung aus `authz.Filter` (nackte Spaltennamen) gilt unverändert; die äußere Spalte ist qualifiziert, weil der Zieltyp dieselbe Spalte haben kann (Elternteil vom gleichen Typ). Sortieren nach Pfaden geht nicht (kein Schlüsselsatz-Cursor), Werte werden mit `coerce` auf den Feldtyp geprüft, Muster für `contains` mit `\`, `%`, `_` maskiert | 2026-10-26 | Umsetzung |
 | **E40** | Paket `internal/relations` nutzt den Record-Dienst für Rechte und Spuren: `records.Check` (Datensatz lesen und Aktion prüfen) und `records.Trace` (Audit und Ereignis ohne Zeilenänderung, Version bleibt). Der Graph wird je Richtung als rekursive CTE geholt und in Go zusammengesetzt (`both` = Vereinigung, kleinste Tiefe gewinnt); Titel der Knoten aus `title_field`. Die Sichtbarkeit je Knoten läuft über `records.Get` mit Zwischenspeicher je Aufruf, was bei Graphen mit hunderten Knoten reicht und für tausende später eine SQL-Lösung braucht | 2026-10-26 | Umsetzung |
-| **E76** | **Zeitwörter in der JSON-Abfrage (PL72; Anlass: deine Vorgabe am 2026-11-18, Filter mit relativen Zeiträumen, UI-Plan E57, Hauptplan E199):** Die Abfrage bekommt Wörter für Zeitpunkte, die sie beim Abfragen ausrechnet: einen Anker `@now` (jetzt), `@today`, `@week`, `@month` oder `@year` (jeweils der Anfang) und dahinter wahlweise einen Versatz aus Vorzeichen, Zahl und Einheit (`m`, `h`, `d`, `w`, `mo`, `y`). „Heute“ ist damit `gte @today`, „letzte 5 Minuten“ `gte @now-5m`, „letzten Monat“ `gte @month-1mo` und `lt @month`. Ein Zeitraum bleibt also zwei gewöhnliche Vergleiche, ein eigener Vergleich kommt nicht dazu. Die Anfänge gelten in der Zeitzone der Person (`internal/prefs`, Vorgabe `Europe/Berlin`), die Woche beginnt am Montag. Stand im Code: Es gibt nur `@now`, und nur an Systemzeiten (`internal/records/query.go:247` bis `:250`). Die Schreibweise ist ein Vorschlag der Umsetzung. Verworfen: den Zeitraum im Browser ausrechnen und feste Grenzen speichern (eine gespeicherte Suche bliebe stehen); ein eigener Vergleich `within` mit einer Dauer (kann „letzten Monat“ und Zeiträume in der Zukunft nicht ohne zweite Form) | 2026-11-18 | Umsetzung |
+| **E76** | **Zeitwörter in der JSON-Abfrage (PL72; Anlass: deine Vorgabe am 2026-11-18, Filter mit relativen Zeiträumen, UI-Plan E57, Hauptplan E199):** Die Abfrage bekommt Wörter für Zeitpunkte, die sie beim Abfragen ausrechnet: einen Anker `@now` (jetzt), `@today`, `@week`, `@month` oder `@year` (jeweils der Anfang) und dahinter wahlweise einen Versatz aus Vorzeichen, Zahl und Einheit (`m`, `h`, `d`, `w`, `mo`, `y`). „Heute“ ist damit `gte @today`, „letzte 5 Minuten“ `gte @now-5m`, „letzten Monat“ `gte @month-1mo` und `lt @month`. Ein Zeitraum bleibt also zwei gewöhnliche Vergleiche, ein eigener Vergleich kommt nicht dazu. Die Anfänge gelten in der Zeitzone der Person (`internal/prefs`, Vorgabe `Europe/Berlin`), die Woche beginnt am Montag. Stand im Code: Es gibt nur `@now`, und nur an Systemzeiten (`internal/records/query.go:247` bis `:250`). Die Schreibweise ist ein Vorschlag der Umsetzung. Verworfen: den Zeitraum im Browser ausrechnen und feste Grenzen speichern (eine gespeicherte Suche bliebe stehen); ein eigener Vergleich `within` mit einer Dauer (kann „letzten Monat“ und Zeiträume in der Zukunft nicht ohne zweite Form). **Dashboards (deine Entscheidung 2026-11-18):** ein Widget mit Zeitwort rechnet wie jedes andere; sein gespeicherter Stand (PL68) darf wie bisher bis 5 min alt sein, mit „berechnet um“ und „Jetzt aktualisieren“, kurz nach Mitternacht zeigt „heute“ also bis 5 min den Vortag. Die Tageswerte (PL69) betrifft es nicht, sie nehmen nur Widgets ohne Bedingung. Verworfen: Widgets mit Zeitwort immer frisch (kostet über „Gesamt“ Sekunden); nur Wörter an `@now` frisch (mehr Regeln) | 2026-11-18 | Umsetzung, Dashboards du |
 | **E75** | **Tageswerte in Prod-Größe (PL70, deine Entscheidungen 2026-11-17):** der Job jede Minute der Tageswerte läuft in einer eigenen Warteschlange `days` mit eigenem Worker (`ITSM_WORKERS_DAYS`, 1), weil er auf `ki-lab` hinter 3,9 Mio. Jobs einer Flut über eine Stunde nicht drankam; der Rückstau aus den Messungen auf H14 wurde abgeräumt; die Messung räumt ihre Störungen auf der Messinstanz per SQL in einer Transaktion ab (`--database`), die Instanz ist nur für die Messung da; LZ21b (LZ2 neben 20 Dashboards, 171 ms statt ≤ 150 ms) bleibt offen bis zur Messung mit festen Kernen (PL71, Hauptplan E198). Von mir ergänzt: ein Recht ohne Bedingung über alle oder über einen Knoten mit allem darunter deckt die Rechte darin ab (gleiche Datensätze, kürzere Bedingung), damit eine Person mit „alle“ und „beteiligt“ daneben die Tageswerte liest; der gespeicherte Stand kommt vor den Tageswerten, und was die Tageswerte zeigen, wird gespeichert. Verworfen: die schnelle Warteschlange `interactive`; den Rückstau abarbeiten lassen; ein Sammel-Aufruf zum Löschen in der API; die Datenbank vor jeder Messung neu einspielen (125 GB, 5 h 30 min); die Grenze von LZ21b auf 200 ms; das ganze Dashboard am Stück speichern | 2026-11-17 | Pascal |
 | **E74** | **Tageswerte (PL69, deine Entscheidungen 2026-11-17):** alle passenden Widgets lesen lange Zeiträume aus den Tageswerten (mit Zeitraum, ohne Bedingung außer „Datum gesetzt“, zählen, summieren oder mitteln, gruppiert nach einem Feld, einer Rolle oder ihrem Datum); jede Nacht werden alle Tage neu gezählt. Von mir ergänzt: was die Tageswerte halten, folgt den Widgets und wird mit dem Lauf der Nacht neu bestimmt; ein Widget, das etwas Neues verlangt, rechnet bis dahin wie bisher; ein Zeitraum, der nicht um Mitternacht beginnt, beginnt aus den Tageswerten um die Mitternacht davor; die Tageswerte gehen nur an Personen, deren Leserecht nur aus Einheiten besteht und die jedes Feld lesen dürfen. Verworfen: nur die mitgelieferten Widgets; jede Nacht nur 90 Tage | 2026-11-17 | Pascal |
 | **E73** | **Gespeicherter Stand und Tageswerte (PL68, PL69, deine Entscheidungen 2026-11-17):** Zeiträume über 8 Tage (30 Tage, Jahr, Gesamt) und die Zahlen-Kacheln des Portals zeigen den gespeicherten Stand eines Widgets bis 5 min aus Valkey; Heute und 7 Tage rechnen immer frisch; der Schlüssel enthält Mandant, die Bedingung der Rechte der Person und die ganze Abfrage; ein Zeitraum, der mit der Uhr wandert, beginnt auf 5 min abgerundet. „Jetzt aktualisieren“ rechnet frisch (`fresh`). Die Seitenleiste eines Datensatzes rechnet immer frisch. LZ20 (frisch über Gesamt 12,7 bis 14,6 s, dabei einzelne Widgets in der Zeitgrenze) bleibt offen bis zu den Tageswerten. V2: Wer Rechte über Einheiten hat, liest lange Zeiträume aus den Tageswerten; wer nur einzelne Vorgänge sieht, bekommt den gespeicherten Stand. Verworfen: Zeitgrenze je Widget erhöhen; Tageswerte nur für wer alles sieht | 2026-11-17 | Pascal |
@@ -1687,6 +1687,94 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL71 — Feste Kerne und Speichergrenze auf `ki-lab`, 2026-11-17 und 2026-11-18
+
+- **Grundlage:** Hauptplan E198; deine Entscheidungen 2026-11-18: 8 Threads wie eine VM mit 8
+  virtuellen CPUs (so ist die Prod gemeint), Aufteilung von `ki-lab` mit FinScenario.
+- **Aufteilung von `ki-lab`** (8 Kerne mit je 2 Threads, Thread n und n+8 auf einem Kern):
+  Server, PostgreSQL und Valkey auf `0-3,8-11` mit 6, 24 und 2 GB, das Lastwerkzeug auf
+  `4,5,12,13`, Build und Tests der CI auf `0-5,8-13`; die Kerne 6 und 7 hat FinScenario. Die
+  erste Fassung (Server `0-7`, Lastwerkzeug `8-11`) lag mit dem Lastwerkzeug auf denselben
+  Kernen wie der Server.
+- **Gebaut:**
+  - `compose/ci-kilab.yaml`: Kerne und Grenzen der CI-Server und des Werkzeug-Containers,
+    `ITSM_LOAD_SERVER_CPUS`, `ITSM_LOAD_CLIENT_CPUS`, `ITSM_LOAD_WATCH_CPUS`; `~/itsm-ci-run.sh`
+    auf `ki-lab` setzt `COMPOSE_FILE=compose.yaml:compose/ci-kilab.yaml`.
+  - `scripts/ci.sh`: `pin` startet Server und Lastwerkzeug mit `taskset`. `pin` ersetzt sich
+    mit `exec` durch den Befehl; vorher war `$!` die Unter-Shell, `kill` traf die Server nicht,
+    und die CI wartete nach der Lastmessung zehn Stunden (2026-11-17).
+  - Lastwerkzeug: `--watch-cpus` (`ITSM_LOAD_WATCH_CPUS`) beurteilt nur die eigenen CPUs aus
+    `/proc/stat` (höchstens 50 % belegt, sonst warten bis `--wait-for-idle`), nicht die Last
+    der ganzen Maschine; Läufe anderer auf ihren Kernen halten die Messung nicht mehr an.
+    Test `TestWatchedCPUs`.
+  - H14 (`ki-lab:itsm-h14`): dieselben Kerne und Grenzen, PostgreSQL mit 8 GB
+    `shared_buffers`, 16 GB `effective_cache_size`, 8 parallelen Arbeitern.
+  - Neue Basislinie aus dem Stand von PL70 (`3351b8b`) auf den festen Kernen, von dir
+    freigegeben am 2026-11-17; die alte aus UI14b hing auf 8 Kernen bei LZ4 (die
+    Pool-Verklemmung, behoben in PL58).
+- **Belegt:**
+  - `docker inspect` auf `ki-lab` am 2026-11-18: PostgreSQL, Valkey und Server von H14 auf
+    `0-3,8-11` mit 24, 2 und 6 GB.
+  - Volle Stufe von H14 am 2026-11-18 (18,25 Mio. Störungen, vorher 1,93 Mio. tote Zeilen
+    per `VACUUM` abgeräumt): LZ1 p95 2,0 ms, LZ3 156 ms, LZ4 64 ms, LZ5 8.526 Zeilen/s, LZ13
+    8.166, LZ14 0,35 s, LZ15 1,65 s, LZ16 9,7 ms, LZ17 33 ms, LZ18 34 ms, LZ18w 34 ms, LZ19
+    2,5 ms, LZ20 66 ms, LZ21a 5,0 ms, LZ21c 79 ms, alle erfüllt; **LZ2 833 ms und LZ21b
+    823 ms statt ≤ 150 ms**. Die Messung begann bei Last 24 der Maschine (FinScenario auf
+    seinen Kernen) mit 1 % auf den eigenen CPUs.
+  - Ganze CI am 2026-11-18 auf `ki-lab` grün, mit Build und Tests auf `0-5,8-13`: Go, Web
+    (155 Vitest-Fälle, 24 Playwright-Fälle), Leistungsgate gegen die neue Basislinie (LZ1
+    p95 0,45 ms, 0 %; LZ2 4,23 ms, −2 %; LZ4 5,39 ms, −1 %), 28 min mit Warten auf die Sperre.
+- **Befunde:**
+  - **Die Liste in Prod-Größe hält ihr Ziel auf 8 Threads nicht** (LZ2, LZ21b). Auf allen 16
+    Threads lag sie bei 120 ms (PL70). Die Datenbank las in der Messung praktisch nichts von
+    der Platte; es ist Rechenzeit. Der Plan der Abfrage ist noch nicht angesehen.
+  - **Tote Zeilen:** in `rec_incident_incident` standen 1,93 Mio. tote Zeilen, das letzte
+    automatische Aufräumen war 17 h her. PostgreSQL räumt eine Tabelle erst ab 20 % toten
+    Zeilen auf, bei 18 Mio. also ab 3,6 Mio. Die Messungen hinterlassen sie beim Löschen, in
+    der Prod jede Änderung einer Störung. Auf die Liste wirkten sie nicht messbar (vorher
+    537 ms mit falschen Kernen, danach 833 ms mit den richtigen).
+- **Offen:** beide Befunde zu deiner Entscheidung.
+
+### PL72 — Zeitwörter in der JSON-Abfrage, 2026-11-18
+
+- **Grundlage:** E76, Hauptplan E199 und E200; UI-Plan E57 (Bedarf aus UI51).
+- **Gebaut:**
+  - `internal/records/timewords.go`: ein Zeitwort ist ein Anker (`@now`, `@today`, `@week`,
+    `@month`, `@year`) mit höchstens einem Versatz aus Vorzeichen, bis sechs Ziffern und
+    Einheit (`m`, `h`, `d`, `w`, `mo`, `y`). Minuten und Stunden zählen als Dauer, Tage und
+    Wochen als Tage des Kalenders (über die Umstellung auf Sommerzeit bleibt `@now-1d` um
+    dieselbe Uhrzeit), Monate und Jahre behalten den letzten Tag des Monats (31. März minus
+    ein Monat ist der 28. Februar, nicht der 3. März wie bei `time.AddDate`).
+  - `internal/records/query.go`: an einer Systemzeit (`…_at`) und an Feldern vom Typ
+    `datetime` wird ein Wert, der mit `@` beginnt, als Zeitwort gerechnet, an Feldern vom
+    Typ `date` als Tag in der Zeitzone der Person. Ein unbekanntes Wort ist ein Problem mit
+    Feld und Code `time_word` (422 wie jedes Problem der Eingabe). An Textfeldern bleibt
+    `@…` Text. Das alte `@now` an Systemzeiten (UI34) ist darin aufgegangen.
+  - Die Zeitzone: `records.Service.Zone`, in `cmd/itsm` aus den Einstellungen der Person
+    (`prefs`, Vorgabe `Europe/Berlin`), nachgeschlagen beim ersten Wort einer Abfrage, nicht
+    bei jeder; ohne Person (Jobs) `Europe/Berlin`. Gilt überall, wo ein `where` durch die
+    Abfrage geht: `:query`, gespeicherte Suchen, Export, Widgets.
+  - OpenAPI: die Beschreibung von `where` nennt die Zeitwörter.
+- **Belegt, 2026-11-18:**
+  - Go `TestResolveTimeWord` mit fester Uhr: `@today` um 00:30 Uhr in Berlin ist 00:00 Uhr
+    Berliner Zeit (in UTC noch der Vortag); `@month-1mo` am 2026-03-31 ist der 2026-02-01;
+    `@week` am Sonntag, dem 2026-11-22, ist Montag, der 16.; `@now-1mo` am 31. März ist der
+    28. Februar; `@now-1d` über die Sommerzeit; `@heute`, `@now-5`, `@NOW` und andere sind
+    keine Wörter.
+  - Go `TestQueryTimeWords` gegen PostgreSQL, Zone Berlin, Uhr 00:30: „heute“ nimmt den
+    Datensatz von gestern 23:50 Uhr nicht, gestern und letzter Monat als zwei Vergleiche,
+    ein Datumsfeld mit `@today` und `@week`, `created_at` mit `@now-5m` und `@now+1h`;
+    `@heute` gibt ein Problem an `seen_at`; `@today` an einem Textfeld bleibt Text.
+  - Auf 8092 per HTTP: `{"field": "created_at", "gte": "@now-5m"}` gibt nur den eben
+    angelegten Datensatz, `@now+1h` keinen, `@heute` 422 mit Feld `created_at` und Code
+    `time_word`.
+  - Eine gespeicherte Suche hält das Wort selbst, nicht ein Datum; sie geht bei jedem
+    Öffnen durch dieselbe Abfrage, ihr Fenster wandert also mit (gelesen, nicht über zwei
+    Tage beobachtet).
+  - Ganze CI grün am 2026-11-18 auf `ki-lab`: Go, Web (155 Vitest-Fälle, 24 Playwright-Fälle mit axe); Leistungsgate gegen die Basislinie: LZ2 p95 4,23 ms (−2 %), LZ16 2,19 ms (+1 %), also unverändert.
+- **Nicht geprüft:** ein Export und ein Widget mit Zeitwort im Browser (beide gehen durch
+  dieselbe Abfrage); die Zeitzone einer Person außerhalb von Berlin über HTTP.
 
 ### PL70 — Dashboards: Tageswerte in Prod-Größe, 2026-11-17
 
