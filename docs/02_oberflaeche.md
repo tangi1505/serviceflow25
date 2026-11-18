@@ -517,6 +517,7 @@ darum in keiner Aufgabe.
 | # | Frage | Hängt daran |
 | --- | --- | --- |
 | **V10** 🟡 | Bereiche der Navigation fachlich neu ordnen, etwa die 21 Einträge der Stammdaten aufteilen? Zurückgestellt am 2026-11-15, bis alle Pakete da sind | – |
+
 **Beantwortet am 2026-10-20:** V1 (E1), V2 (E2). **Am 2026-10-30:** V3 (E24), V4 (E25), V5 (E23), V6 (E27). **Am 2026-11-02:** V7 (E28). **Am 2026-11-15:** V9 (E42), V8 (E45), V11 (E46). **Am 2026-11-18:** V12 (Hauptplan E199), V13 (E57).
 
 Die Fragen an die Fachseite stehen im Hauptplan.
