@@ -141,7 +141,10 @@ describe("Tab of suggestions", () => {
     );
     await waitFor(() => expect(screen.getByLabelText(/^Titel/)).toHaveValue("VPN verbindet nicht"));
     expect(screen.getByLabelText(/^Art/)).toHaveAttribute("data-value", "fault");
-    expect(panel).toHaveTextContent("im Formular noch nicht gespeichert");
+    // The result comes as a message at the bottom right (UI60).
+    expect(
+      await screen.findByText(/im Formular noch nicht gespeichert/, { selector: "p" }),
+    ).toBeInTheDocument();
     expect(state.relations).toHaveLength(1);
     expect(state.calls.some((c) => c.method === "PATCH")).toBe(false);
 

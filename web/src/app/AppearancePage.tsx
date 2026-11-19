@@ -22,6 +22,7 @@ import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { Select } from "@/ui/select";
+import { toast } from "@/ui/toast";
 
 const hexRe = /^#[0-9a-fA-F]{6}$/;
 const variants = ["light", "dark"] as const;
@@ -70,7 +71,6 @@ export function AppearancePage() {
   const [form, setForm] = useState<Form | null>(null);
   const [logos, setLogos] = useState<Partial<Record<Variant, File | "remove">>>({});
   const [previews, setPreviews] = useState<Partial<Record<Variant, string>>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -139,12 +139,11 @@ export function AppearancePage() {
       }
     },
     onMutate: () => {
-      setMessage(null);
       setFieldErrors({});
     },
     onSuccess: () => {
       setLogos({});
-      setMessage(t("appearance.saved"));
+      toast.success(t("appearance.saved"));
       void queryClient.invalidateQueries({ queryKey: ["me"] });
       void queryClient.invalidateQueries({ queryKey: ["org", "settings"] });
       void queryClient.invalidateQueries({ queryKey: ["branding"] });
@@ -152,10 +151,12 @@ export function AppearancePage() {
     onError: (err) => {
       if (err instanceof ApiError && err.status === 422) {
         setFieldErrors(Object.fromEntries(err.fieldErrors.map((e) => [e.field, e.message])));
-        setMessage(t("appearance.invalid"));
+        toast.error(t("appearance.invalid"));
         return;
       }
-      setMessage(t("settings.error", { detail: err instanceof Error ? err.message : String(err) }));
+      toast.error(
+        t("settings.error", { detail: err instanceof Error ? err.message : String(err) }),
+      );
     },
   });
 
@@ -449,9 +450,6 @@ export function AppearancePage() {
         >
           {t("form.save")}
         </Button>
-        <span role="status" className="text-sm text-muted-foreground">
-          {message}
-        </span>
       </div>
     </div>
   );

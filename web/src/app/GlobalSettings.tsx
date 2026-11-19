@@ -27,6 +27,7 @@ import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
 import { Select } from "@/ui/select";
 import { Input } from "@/ui/input";
+import { toast } from "@/ui/toast";
 
 const mib = 1024 * 1024;
 
@@ -47,7 +48,6 @@ export function GlobalSettingsPage() {
   const [path, setPath] = useState("root");
   const [draft, setDraft] = useState<Draft>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const nodes = useQuery({ queryKey: ["org", "nodes"], queryFn: api.orgNodes });
   const defs = useQuery({ queryKey: ["settings", "definitions"], queryFn: api.settingDefinitions });
   const current = useQuery({
@@ -65,18 +65,19 @@ export function GlobalSettingsPage() {
   const change = (key: string, value: unknown) => {
     setDraft((d) => ({ ...d, [key]: value }));
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)));
-    setMessage(null);
   };
   const discard = () => {
     setDraft({});
     setErrors({});
-    setMessage(dirty ? t("settings.discarded") : null);
+    if (dirty) {
+      toast.info(t("settings.discarded"));
+    }
   };
   const save = () => {
     if (!dirty) return;
     void api.applyOrgSettings(path, draft).then(
       () => {
-        setMessage(t("settings.saved", { count: dirty, node: here }));
+        toast.success(t("settings.saved", { count: dirty, node: here }));
         setDraft({});
         setErrors({});
         void queryClient.invalidateQueries({ queryKey: ["org", "settings"] });
@@ -84,7 +85,7 @@ export function GlobalSettingsPage() {
       },
       (err: unknown) => {
         if (err instanceof ApiError && err.status === 403) {
-          setMessage(t("settings.forbidden"));
+          toast.error(t("settings.forbidden"));
           return;
         }
         if (
@@ -96,10 +97,10 @@ export function GlobalSettingsPage() {
           const byKey: Record<string, string> = {};
           for (const e of err.problem.errors) byKey[e.field] = e.message;
           setErrors(byKey);
-          setMessage(t("settings.invalid"));
+          toast.error(t("settings.invalid"));
           return;
         }
-        setMessage(
+        toast.error(
           t("settings.error", { detail: err instanceof Error ? err.message : String(err) }),
         );
       },
@@ -110,7 +111,6 @@ export function GlobalSettingsPage() {
     setPath(next);
     setDraft({});
     setErrors({});
-    setMessage(null);
   };
 
   // Sections in the order of the declarations: by group, else by package.
@@ -174,11 +174,6 @@ export function GlobalSettingsPage() {
           }))}
         />
       </div>
-      {message && (
-        <p className="rounded-md border bg-muted p-3 text-sm" role="alert">
-          {message}
-        </p>
-      )}
       {(defs.isError || current.isError) && <p role="alert">{t("settings.loadError")}</p>}
       {sections.map((s) => (
         <section

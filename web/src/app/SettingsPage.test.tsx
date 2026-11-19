@@ -134,7 +134,8 @@ describe("Settings", () => {
     await user.click(await screen.findByRole("option", { name: "Störung" }));
     // Kept a moment after the last change, without a button (E49).
     expect(
-      await within(presets).findByText("Gespeichert.", {}, { timeout: 3000 }),
+      // As a message at the bottom right, outside the section (UI60).
+      await screen.findByText("Gespeichert.", {}, { timeout: 3000 }),
     ).toBeInTheDocument();
     expect(state.settings?.["defaults"]).toEqual({ "probe.probe": { kind: "fault" } });
     first.unmount();

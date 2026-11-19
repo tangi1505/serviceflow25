@@ -19,7 +19,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
-import { toast, Toaster } from "@/ui/toast";
+import { toast } from "@/ui/toast";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -27,7 +27,6 @@ function renderAt(path: string) {
   const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-      <Toaster />
     </QueryClientProvider>,
   );
   return { router, ...view };

@@ -28,6 +28,7 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { toast } from "@/ui/toast";
 
 // suggesters are the types whose suggest names this type, by its name or by a trait it has,
 // as the server decides it (meta.Suggest.Suggests): a trait of the type's own package may be
@@ -119,7 +120,6 @@ export function SuggestionTab({
   const id = String(record["id"]);
   const [draft, setDraft] = useState("");
   const [text, setText] = useState("");
-  const [note, setNote] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const line = useRatingLine();
   const values = Object.fromEntries((from.suggest?.from ?? []).map((f) => [f, record[f]]));
@@ -164,10 +164,9 @@ export function SuggestionTab({
     },
     onMutate: () => {
       setFailure(null);
-      setNote(null);
     },
     onSuccess: (hit) => {
-      setNote(t("suggest.applied", { title: hit.title ?? hit.id }));
+      toast.success(t("suggest.applied", { title: hit.title ?? hit.id }));
       refresh();
     },
     onError: fail,
@@ -184,9 +183,6 @@ export function SuggestionTab({
       </h2>
       <p className="text-sm text-muted-foreground">
         {text ? t("suggest.ownSearch", { text }) : t("suggest.fromFields", { fields })}
-      </p>
-      <p role="status" className="text-sm">
-        {note ?? ""}
       </p>
       {failure && <Alert variant="destructive">{failure}</Alert>}
       {found.isPending && <p className="text-sm">{t("list.loading")}</p>}

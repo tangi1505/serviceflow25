@@ -65,6 +65,7 @@ import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
 import { Select } from "@/ui/select";
 import { Input } from "@/ui/input";
+import { toast } from "@/ui/toast";
 
 const kinds = ["number", "pie", "bar", "line", "list", "text"] as const;
 const measures = ["count", "sum", "avg", "min", "max"] as const;
@@ -619,7 +620,6 @@ function DashboardEditor({
   const [openWith, setOpenWith] = useState(isPeriod(d["period"]) ? String(d["period"]) : "all");
   const [selected, setSelected] = useState<string | undefined>(start[0]?.key);
   const [errors, setErrors] = useState<Record<string, Record<string, string>>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const dirty =
     name !== String(d["name"] ?? "") ||
     description !== String(d["description"] ?? "") ||
@@ -698,14 +698,14 @@ function DashboardEditor({
             setErrors(byWidget);
             const first = Object.keys(byWidget).find((k) => k !== "dashboard");
             if (first) setSelected(first);
-            setMessage(t("dashboard.invalid"));
+            toast.error(t("dashboard.invalid"));
             return;
           }
           if (err instanceof ApiError && err.status === 409) {
-            setMessage(t("dashboard.conflict"));
+            toast.error(t("dashboard.conflict"));
             return;
           }
-          setMessage(
+          toast.error(
             t("dashboard.saveError", { detail: err instanceof Error ? err.message : String(err) }),
           );
         },
@@ -741,11 +741,6 @@ function DashboardEditor({
           </Button>
         </div>
       </div>
-      {message && (
-        <p role="alert" className="rounded-md border bg-muted p-3 text-sm">
-          {message}
-        </p>
-      )}
       <p className="text-sm text-muted-foreground">{t("dashboard.dragHint")}</p>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={widgets.map((w) => w.key)} strategy={rectSortingStrategy}>

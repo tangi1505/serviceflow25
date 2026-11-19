@@ -44,11 +44,21 @@ import { RolePage, RolesOverview } from "@/render/RolePage";
 import { SearchPage } from "@/render/SearchPage";
 import { WorkflowPage } from "@/render/WorkflowPage";
 import { TypePage } from "@/render/TypePage";
+import { Toaster } from "@/ui/toast";
 import { WorkplaceFormPage } from "@/render/FormPage";
 
 type RouterContext = { queryClient: QueryClient };
 
-const rootRoute = createRootRouteWithContext<RouterContext>()({ component: Outlet });
+// The root shows the page and, once for app, portal and sign-in, the messages at the bottom
+// right (UI59, UI60).
+const rootRoute = createRootRouteWithContext<RouterContext>()({
+  component: () => (
+    <>
+      <Outlet />
+      <Toaster />
+    </>
+  ),
+});
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,

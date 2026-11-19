@@ -39,6 +39,7 @@ import { titleOf } from "./RefName";
 import { Sidebar } from "./Sidebar";
 import { RecordTabs } from "./RecordTabs";
 import { Transitions } from "./Transitions";
+import { toast } from "@/ui/toast";
 
 function useType(typeName: string): { type?: TypeDefinition; pending: boolean } {
   const types = useQuery(typesQuery);
@@ -115,8 +116,6 @@ export function RecordPage() {
   const { type, pending } = useType(typeName);
   const record = useQuery(recordQuery(typeName, id));
   const states = useQuery(fieldStatesQuery(typeName, id));
-  // savedAt is the version the last save on this page produced, for the confirmation.
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   // Live (UI8): unsaved changes in the form, who else is on the record, and who changed it
   // while the form held changes.
   const [dirty, setDirty] = useState(false);
@@ -183,9 +182,6 @@ export function RecordPage() {
         <div>
           <h1 className="mb-1 text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">{t("form.version", { version })}</p>
-          <p role="status" className="text-sm">
-            {savedAt === version ? t("form.saved") : ""}
-          </p>
           <PresenceLine others={others} />
         </div>
         <Transitions type={type} record={record.data} />
@@ -238,7 +234,7 @@ export function RecordPage() {
             apply={applied}
             onSaved={(saved: RecordData) => {
               queryClient.setQueryData(recordQuery(typeName, id).queryKey, saved);
-              setSavedAt(Number(saved["version"]));
+              toast.success(t("form.saved"));
               setStaleBy(null);
               // Field states, transitions, timeline and clocks follow the new version.
               void queryClient.invalidateQueries({

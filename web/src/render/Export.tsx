@@ -17,6 +17,7 @@ import { api, ApiError } from "@/api/client";
 import { Menu, MenuItem, MenuLabel } from "@/ui/menu";
 
 import { currentTimeZone } from "./fields";
+import { toast } from "@/ui/toast";
 
 type Format = "csv" | "xlsx" | "ods";
 
@@ -43,7 +44,6 @@ export function ExportButton({
 }) {
   const { t, i18n } = useTranslation();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [jobId, setJobId] = useState<number | null>(null);
   const [file, setFile] = useState<string | null>(null);
 
@@ -60,12 +60,12 @@ export function ExportButton({
           const output = job.output as { file?: string; rows?: number } | undefined;
           if (job.state === "completed" && output?.file) {
             setFile(output.file);
-            setMessage(t("export.ready", { rows: output.rows ?? 0 }));
+            toast.success(t("export.ready", { rows: output.rows ?? 0 }));
             setJobId(null);
             return;
           }
           if (job.state === "discarded" || job.state === "cancelled") {
-            setMessage(t("export.failed"));
+            toast.error(t("export.failed"));
             setJobId(null);
             return;
           }
@@ -86,7 +86,6 @@ export function ExportButton({
       return;
     }
     setBusy(true);
-    setMessage(null);
     setFile(null);
     try {
       const result = await api.export(typeName, {
@@ -99,12 +98,12 @@ export function ExportButton({
       });
       if ("job" in result) {
         setJobId(result.job.id);
-        setMessage(t("export.queued"));
+        toast.info(t("export.queued"));
       } else {
         save(result.file, result.name);
       }
     } catch (err) {
-      setMessage(
+      toast.error(
         err instanceof ApiError
           ? t("export.error", { detail: err.problem?.detail ?? err.message })
           : t("export.error", { detail: String(err) }),
@@ -143,11 +142,6 @@ export function ExportButton({
           </MenuItem>
         ))}
       </Menu>
-      {message && (
-        <span role="status" className="text-sm">
-          {message}
-        </span>
-      )}
       {file && (
         <a className="text-sm underline" href={`/api/v1/files/${file}`} download>
           {t("export.download")}

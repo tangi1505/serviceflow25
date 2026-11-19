@@ -13,8 +13,12 @@ import { cleanup } from "@testing-library/react";
 import axe from "axe-core";
 import { afterEach, expect } from "vitest";
 
+import { toast } from "@/ui/toast";
+
 afterEach(() => {
   cleanup();
+  // The messages live outside React; each test starts without (UI59).
+  toast.clear();
 });
 
 // jsdom has no layout; the router's scroll restoration calls scrollTo on every navigation.

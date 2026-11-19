@@ -41,6 +41,7 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
 import { Select } from "@/ui/select";
+import { toast } from "@/ui/toast";
 
 // timeZones are the zones the browser knows; Europe/Berlin first.
 export function timeZones(): string[] {
@@ -63,15 +64,14 @@ function useSource() {
 
 type Key = "language" | "time_zone" | "color_scheme" | "density" | "start_dashboard" | "accent";
 
-// useSave keeps a change at once and tells how it went (E49).
+// useSave keeps a change at once and tells how it went (E49), as a message at the bottom right
+// (UI60): the page does not move.
 function useSave() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [message, setMessage] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: (change: SettingsChange) => api.setMySettings(change),
     onMutate: (change) => {
-      setMessage(null);
       // The lists of the navigation show at once (UI37), so that a second click builds on the
       // first; the server's answer replaces them.
       const lists = Object.fromEntries(
@@ -87,16 +87,17 @@ function useSave() {
     },
     onSuccess: (saved) => {
       queryClient.setQueryData(mySettingsQuery.queryKey, saved);
-      setMessage(t("form.saved"));
+      toast.success(t("form.saved"));
     },
     onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: mySettingsQuery.queryKey });
-      setMessage(t("settings.error", { detail: err instanceof Error ? err.message : String(err) }));
+      toast.error(
+        t("settings.error", { detail: err instanceof Error ? err.message : String(err) }),
+      );
     },
   });
   return {
     keep: (change: SettingsChange) => save.mutate(change),
-    message,
     pending: save.isPending,
   };
 }
@@ -542,12 +543,10 @@ function Presets({ settings }: { settings: MySettings }) {
   const [typeName, setTypeName] = useState("");
   const [rows, setRows] = useState<{ field: string; value: unknown }[]>([]);
   const [dirty, setDirty] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const type = types.data?.find((x) => qualifiedName(x) === typeName);
   const fields = (type?.fields ?? []).filter((f) => !isCalculated(f) && f.format !== "rich");
   const pick = (name: string) => {
     setTypeName(name);
-    setMessage(null);
     setDirty(false);
     setRows(
       Object.entries(settings.defaults[name] ?? {}).map(([field, value]) => ({
@@ -583,10 +582,12 @@ function Presets({ settings }: { settings: MySettings }) {
     onSuccess: (saved) => {
       queryClient.setQueryData(mySettingsQuery.queryKey, saved);
       setDirty(false);
-      setMessage(t("form.saved"));
+      toast.success(t("form.saved"));
     },
     onError: (err) =>
-      setMessage(t("settings.error", { detail: err instanceof Error ? err.message : String(err) })),
+      toast.error(
+        t("settings.error", { detail: err instanceof Error ? err.message : String(err) }),
+      ),
   });
   const { mutate } = save;
   useEffect(() => {
@@ -667,11 +668,6 @@ function Presets({ settings }: { settings: MySettings }) {
           </Button>
         </>
       )}
-      {message && (
-        <p role="status" className="text-sm">
-          {message}
-        </p>
-      )}
     </Section>
   );
 }
@@ -685,7 +681,7 @@ export function MySettingsPage() {
   const me = useQuery(meQuery);
   const settings = useQuery(mySettingsQuery);
   const workplace = me.data?.workplace !== false;
-  const { keep, message } = useSave();
+  const { keep } = useSave();
   const [tab, setTab] = useState<Tab>("language");
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   if (!settings.data) {
@@ -746,9 +742,6 @@ export function MySettingsPage() {
           <p className="text-sm text-muted-foreground">{t("settings.intro")}</p>
         </div>
         <div className="flex items-center gap-3">
-          <span role="status" className="text-sm text-muted-foreground">
-            {message}
-          </span>
           {reset[tab] && (
             <Button variant="outline" onClick={reset[tab]}>
               {t("settings.reset")}
