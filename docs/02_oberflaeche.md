@@ -606,6 +606,10 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   „nach oben“ und dann „anzeigen“ aus). Der Browser-Test der Navigation fand das in der CI.
   Jetzt ersetzt nur die Antwort auf die letzte laufende Änderung die Einstellungen
   (`useSave` in `web/src/app/SettingsPage.tsx`).
+- **Auf 8092 gefunden und behoben:** Nach dem Wechsel der Sprache auf Englisch kam die Meldung
+  noch deutsch („Gespeichert.“), weil der Rahmen die Sprache erst nach der Antwort umstellt.
+  Die Meldung nimmt jetzt die Sprache aus der Antwort (`useSave`); der Test des
+  Sprachwechsels prüft „Saved.“.
 - **Browser-Test der Navigation angepasst:** Das Kästchen „Probe anzeigen“ zeigt den neuen
   Stand einen Augenblick nach dem Klick (der Spiegel der Einstellungen zeichnet die Seite neu);
   bis UI60 zeichnete das Leeren der alten Statuszeile beim Speichern die Seite sofort neu.

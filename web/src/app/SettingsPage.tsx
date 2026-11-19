@@ -67,7 +67,7 @@ type Key = "language" | "time_zone" | "color_scheme" | "density" | "start_dashbo
 // useSave keeps a change at once and tells how it went (E49), as a message at the bottom right
 // (UI60): the page does not move.
 function useSave() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationKey: ["me", "settings", "save"],
@@ -92,7 +92,9 @@ function useSave() {
       if (queryClient.isMutating({ mutationKey: ["me", "settings", "save"] }) <= 1) {
         queryClient.setQueryData(mySettingsQuery.queryKey, saved);
       }
-      toast.success(t("form.saved"));
+      // In the language of the answer: a change of the language is confirmed in the new one,
+      // which the frame switches to only after this (UI60, seen on 8092).
+      toast.success(i18n.getFixedT(saved.language.value)("form.saved"));
     },
     onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: mySettingsQuery.queryKey });

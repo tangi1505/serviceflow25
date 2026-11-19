@@ -61,6 +61,8 @@ describe("Settings", () => {
     await selectOption(user, screen.getByLabelText("Sprache"), "en");
     expect(await screen.findByRole("heading", { name: "My settings" })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("en");
+    // The message answers in the new language (UI60).
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
     await selectOption(user, screen.getByLabelText("Time zone"), "Europe/London");
     await waitFor(() =>
       expect(state.settings).toMatchObject({ language: "en", time_zone: "Europe/London" }),
