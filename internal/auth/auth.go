@@ -61,6 +61,10 @@ func refused(reason string, account *uuid.UUID) error {
 
 var usernameRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
+// ValidUsername tells whether a name may be an account: a letter, then letters, digits or _ (at
+// most 63). API clients take their id as the name of their account.
+func ValidUsername(name string) bool { return usernameRe.MatchString(name) }
+
 // Account is a local account without its hash.
 type Account struct {
 	ID                uuid.UUID
@@ -311,15 +315,16 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 // (PL28); an invalid one counts for the account only.
 func (s *Service) Login(ctx context.Context, username, password string, ip netip.Addr) (Session, error) {
 	p := s.Policy(ctx)
-	if s.locked(ctx, username, ip) {
-		s.logger.Info("login refused", "username", username, "reason", "locked")
-		_, _ = HashPassword(password)
-		return Session{}, refused("locked", nil)
+	// A locked name or address gets 429 at once, without the password check (AP6): a flood of
+	// wrong sign-ins must not cost Argon2 each. Unknown names are counted and locked too, so the
+	// answer tells nothing about which accounts exist.
+	if lock := s.locked(ctx, accountKey(username), ip); lock != nil {
+		return Session{}, lock
 	}
 	sess, err := s.login(ctx, p, username, password)
 	var le *LoginError
 	if errors.As(err, &le) && le.Reason != "local_login_disabled" {
-		s.failed(ctx, p, username, ip)
+		s.failed(ctx, p, accountKey(username), ip)
 	} else if err == nil {
 		s.succeeded(ctx, username)
 	}
@@ -335,8 +340,11 @@ func (s *Service) login(ctx context.Context, p Policy, username, password string
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Info("login refused", "username", username, "reason", "unknown account")
-			// Hash anyway so that the timing does not tell whether the account exists.
-			_, _ = HashPassword(password)
+			// Hash anyway so that the timing does not tell whether the account exists; when no
+			// place is free the answer is the same 503 a known account gets (AP6).
+			if _, err := HashPassword(password); errors.Is(err, ErrBusy) {
+				return Session{}, err
+			}
 			return Session{}, refused("unknown_account", nil)
 		}
 		return Session{}, fmt.Errorf("auth: login: %w", err)
@@ -344,7 +352,9 @@ func (s *Service) login(ctx context.Context, p Policy, username, password string
 	if row.PasswordHash == "" {
 		// An account from an identity provider (PL11) has no local password.
 		s.logger.Info("login refused", "username", username, "reason", "no local password")
-		_, _ = HashPassword(password)
+		if _, err := HashPassword(password); errors.Is(err, ErrBusy) {
+			return Session{}, err
+		}
 		return Session{}, refused("no_local_password", &row.ID)
 	}
 	ok, err := VerifyPassword(row.PasswordHash, password)

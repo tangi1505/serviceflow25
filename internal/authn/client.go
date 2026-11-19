@@ -229,6 +229,11 @@ func newSecret() string { return random() }
 
 // CreateClient makes account, person and client; the secret is returned this once.
 func (s *Service) CreateClient(ctx context.Context, id string, in ClientInput, by *uuid.UUID) (Client, string, error) {
+	// The id is the name of the client's account: the rule of the account, checked before
+	// anything is stored, so that the answer names it (AP1 found the database refusing it).
+	if !auth.ValidUsername(id) {
+		return Client{}, "", fmt.Errorf("%w: client_id %q: a lowercase letter, then lowercase letters, digits or _ (at most 63)", ErrInvalid, id)
+	}
 	if in.Name == "" {
 		in.Name = id
 	}
@@ -415,7 +420,21 @@ func (s *Service) setting(ctx context.Context, key string, def int) int {
 }
 
 // IssueToken checks client id, secret, state and address and returns a token (RFC 6749 §4.4).
+// A refused client counts towards the lockout of the sign-in (AP6): five per client, twenty per
+// address, then 429 without the check of the secret (auth.LockError).
 func (s *Service) IssueToken(ctx context.Context, clientID, secret string, addr netip.Addr) (Token, error) {
+	if s.auth != nil {
+		if lock := s.auth.ClientLocked(ctx, clientID, addr); lock != nil {
+			return Token{}, lock
+		}
+	}
+	refuse := func(reason string) (Token, error) {
+		s.logger.Info("token refused", "client", clientID, "reason", reason)
+		if s.auth != nil {
+			s.auth.ClientFailed(ctx, clientID, addr)
+		}
+		return Token{}, ErrInvalidClient
+	}
 	q, err := s.clientDB(ctx, clientID)
 	if err != nil {
 		return Token{}, err
@@ -423,8 +442,11 @@ func (s *Service) IssueToken(ctx context.Context, clientID, secret string, addr 
 	row, err := q.GetClient(ctx, clientID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			_, _ = auth.HashPassword(secret) // the same time as a real check
-			return Token{}, ErrInvalidClient
+			// The same time as a real check; when no place is free, the same 503 (AP6).
+			if _, err := auth.HashPassword(secret); errors.Is(err, auth.ErrBusy) {
+				return Token{}, err
+			}
+			return refuse("unknown client")
 		}
 		return Token{}, fmt.Errorf("authn: client: %w", err)
 	}
@@ -432,9 +454,11 @@ func (s *Service) IssueToken(ctx context.Context, clientID, secret string, addr 
 	if err != nil {
 		return Token{}, err
 	}
-	if !ok || !row.Enabled {
-		s.logger.Info("token refused", "client", clientID, "reason", map[bool]string{true: "disabled", false: "wrong secret"}[row.Enabled && !ok])
-		return Token{}, ErrInvalidClient
+	if !ok {
+		return refuse("wrong secret")
+	}
+	if !row.Enabled {
+		return refuse("disabled")
 	}
 	if !addressAllowed(row.IpRanges, addr) {
 		s.logger.Info("token refused", "client", clientID, "reason", "address", "addr", addr.String())
@@ -461,6 +485,9 @@ func (s *Service) IssueToken(ctx context.Context, clientID, secret string, addr 
 	list, _ := s.kv.Get(ctx, tokenPrefix+"of:"+clientID)
 	_ = s.kv.Set(ctx, tokenPrefix+"of:"+clientID, []byte(strings.Trim(string(list)+","+t, ",")), 30*24*time.Hour)
 	_ = q.TouchClient(ctx, clientID)
+	if s.auth != nil {
+		s.auth.ClientSucceeded(ctx, clientID)
+	}
 	s.logger.Info("token issued", "client", clientID, "ttl_seconds", ttl)
 	return Token{AccessToken: t, TokenType: "Bearer", ExpiresIn: ttl}, nil
 }

@@ -64,6 +64,13 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setFailure(t("login.failed"));
+      } else if (err instanceof ApiError && err.status === 429) {
+        // Locked after failed sign-ins (AP6): the time left in whole minutes.
+        setFailure(
+          t("login.locked", { count: Math.max(1, Math.ceil((err.retryAfter ?? 60) / 60)) }),
+        );
+      } else if (err instanceof ApiError && err.status === 503) {
+        setFailure(t("login.busy"));
       } else {
         setFailure(t("login.error", { detail: err instanceof Error ? err.message : String(err) }));
       }

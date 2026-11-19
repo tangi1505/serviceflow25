@@ -1732,7 +1732,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with a local account
-         * @description Sets the session cookie. Unknown name, wrong password and disabled account all answer 401.
+         * @description Sets the session cookie. Unknown name, wrong password and disabled account all answer 401. After failed sign-ins the name or the address is locked: 429 with Retry-After (the seconds left), no password is checked (AP6). Too many password checks at once in the instance: 503 with Retry-After 1.
          */
         post: operations["login"];
         delete?: never;
@@ -2771,7 +2771,7 @@ export interface components {
             enabled?: boolean;
         };
         ClientCreate: {
-            /** @description also the username of the client's account */
+            /** @description also the username of the client's account: a lowercase letter, then lowercase letters, digits or _ */
             client_id: string;
         } & components["schemas"]["ClientInput"];
         Client: {
@@ -7549,6 +7549,8 @@ export interface operations {
             401: components["responses"]["Problem"];
             403: components["responses"]["Problem"];
             422: components["responses"]["ValidationProblem"];
+            429: components["responses"]["Problem"];
+            503: components["responses"]["Problem"];
         };
     };
     logout: {
@@ -8604,6 +8606,20 @@ export interface operations {
             };
             /** @description access_denied, the address is outside the client's ranges */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description slow_down: the client or the address is locked after refused requests, as sign-ins are (AP6); Retry-After gives the seconds left */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description temporarily_unavailable: too many secret checks at once in this instance (AP6); Retry-After 1 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -4,7 +4,8 @@
 [Plattform-Kern](../01_plattform-kern.md), Etappe 2 (Meilenstein 1) bis 4. Geprüft gegen `main`
 bei `37aba66`. Grundlage: [Architektur](../architektur.md) §6, Hauptplan E11, E20, E71 und E90,
 die Leistungsziele im [Hauptplan](../0_maintask.md) §2.5 und die Messung H14 (Hauptplan §7). Die
-Befunde stehen in §2 dieses Plans; eine eigene Bewertung gibt es nicht. Nichts davon ist gebaut.
+Befunde stehen in §2 dieses Plans; eine eigene Bewertung gibt es nicht. Gebaut sind AP1
+(Flut-Messung) und AP6 (Schutz vor der Anmeldung), beide 🟢 am 2026-11-19 (§4).
 
 > **Worum es geht:** prüfen und sichern, dass die API das erste Produkt ist: vollständig
 > beschrieben, vollständig getestet, gegen eine Flut geschützt und von einem Agenten ohne Wissen
@@ -27,7 +28,7 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP1** | Flut-Szenario im Lastwerkzeug: eine Stufe mit fester Rate statt fester Arbeiter; fünf Fälle (ohne Anmeldung, Login, Token, eine Sitzung, ein Zugang); daneben misst ein normaler Nutzer LZ1 und LZ4; 2xx, 429 und 503 als eigene Spalten statt als Fehler; kein Teil der CI (§2.3); gemessen wird auf `ki-lab` (E3) | ⬜ | 1 d | `docker compose run --rm tools go run ./test/load run --stage=flood --rate=1000 --target=http://itsm:8080` → je Fall eine Zeile mit dem Anteil 2xx, 429 und 503 und dem p95 des normalen Nutzers; der Bericht steht im Umsetzungsstand |
+| **AP1** | Flut-Szenario im Lastwerkzeug: eine Stufe mit fester Rate statt fester Arbeiter; fünf Fälle (ohne Anmeldung, Login, Token, eine Sitzung, ein Zugang); daneben misst ein normaler Nutzer LZ1 und LZ4; 2xx, 429 und 503 als eigene Spalten statt als Fehler; kein Teil der CI (§2.3); gemessen wird auf `ki-lab` (E3) | 🟢 | 1 d | `docker compose run --rm tools go run ./test/load run --stage=flood --rate=1000 --target=http://itsm:8080` → je Fall eine Zeile mit dem Anteil 2xx, 429 und 503 und dem p95 des normalen Nutzers; der Bericht steht im Umsetzungsstand |
 | **AP2** | Vertragstest über alle Operationen: jede Antwort des Mandanten-Rundgangs (PL44), auch Fehler und Schreiben, wird gegen die OpenAPI geprüft (§2.4) | ⬜ | 1,5 d | `docker compose run --rm tools go test ./internal/httpapi -run TestContract -v` meldet 157 von 157 Operationen; eine absichtlich falsche Antwort in einem Probe-Zweig macht ihn rot |
 | **AP3** | Fehlerfälle: 405 unter `/api`, Body über 1 MiB an normalen Endpunkten, unbekannte Felder an Login und Bulk, Seitengrenzen (`limit` 0, negativ, über 500, kaputter `after`), Token nach Ablauf, eine echte langsame Abfrage bis zum 503, zwei PATCH mit derselben Version zugleich (§2.4) | ⬜ | 1 d | die neuen Tests in `internal/httpapi` sind grün; bei den zwei PATCH genau eine 200 und eine 409; jede Antwort ist `application/problem+json` |
 | **AP4** | Fuzzing für JSON-Abfrage, Filter, Sortierung und Cursor, dazu Einschleus-Zeichenketten; der gefundene Korpus läuft als normaler Test in der CI (§2.4) | ⬜ | 1 d | `docker compose run --rm tools go test ./internal/records -fuzz FuzzQuery -fuzztime 60s` endet ohne Fund; `scripts/ci.sh` führt den Korpus aus |
@@ -37,7 +38,7 @@ langsamer macht (E32). Der Prüfweg nennt nur, was dazukommt. Alle Befehle laufe
 
 | # | Aufgabe | Status | Aufwand | So prüfst du es |
 | --- | --- | --- | --- | --- |
-| **AP6** | Schutz vor der Anmeldung: Zähler je Adresse in Valkey an Login und Token, geprüft vor Argon2; Sperre auch am Token-Endpunkt; Obergrenze gleichzeitiger Argon2-Rechnungen je Instanz (§2.3, Schicht 1) | ⬜ | 1 d | AP1, Fälle Login und Token: über der Grenze 429 mit `Retry-After` ohne Hash-Rechnung; der normale Nutzer hält daneben LZ1 |
+| **AP6** | Schutz vor der Anmeldung: Zähler je Adresse in Valkey an Login und Token, geprüft vor Argon2; Sperre auch am Token-Endpunkt; Obergrenze gleichzeitiger Argon2-Rechnungen je Instanz (§2.3, Schicht 1); Einzelheiten E18 | 🟢 | 1 d | AP1, Fälle Login und Token: über der Grenze 429 mit `Retry-After` ohne Hash-Rechnung; der normale Nutzer hält daneben LZ1 |
 | **AP7** | Lastabwurf je Instanz: Obergrenze gleichzeitiger Anfragen nahe der Poolgröße, kurze Warteschlange, danach sofort 503 mit `Retry-After`; eigene Budgets für Suche, Export und Aggregate; `ReadTimeout`, `IdleTimeout` und `MaxHeaderBytes` am Server (§2.3, Schicht 2) | ⬜ | 1,5 d | AP1, Fall Sitzung mit 1.000 Suchen je Sekunde: der normale Nutzer hält LZ1 und LZ4, Überzähliges bekommt 503 in unter 100 ms |
 | **AP8** | Rate für jeden Aufrufer, auch Sitzungen, und je Mandant: ein Zähler für alle, Prüfung ohne Datenbank (Zugang und Einstellung im Speicher wie bei PL58), gleitendes Fenster statt Minutenfenster (§2.3, Schicht 3) | ⬜ | 1,5 d | AP1, Fall Zugang: abgewiesene Anfragen erzeugen keine Abfrage in PostgreSQL (`pg_stat_statements` vor und nach dem Lauf); an der Minutengrenze geht nicht mehr die doppelte Menge durch |
 | **AP9** | Metriken im Server: Anfragen, 429, 503, Wartezeit am Pool (Architektur §11, „Sichtbar machen“); Dashboards und Alarme bleiben beim Betrieb (BT) | ⬜ | 1 d | `curl -s localhost:8092/metrics` zeigt die Zähler; nach einem Lauf von AP1 sind 429 und 503 gestiegen |
@@ -113,6 +114,7 @@ E7 bis E10 dieses Plans für alle Pläne zusammen).
 | **E14** | Fällt die verantwortliche Person eines Dienstkontos weg (Konto gesperrt oder gelöscht), werden die Admins sofort benachrichtigt; nach 30 Tagen ohne neue Person wird der Zugang gesperrt. Die Frist ist eine Einstellung (AP22). Verworfen: nur melden; sofort sperren | 2026-11-16 | Pascal |
 | **E15** | **Leseprotokoll nur für Agenten und Dienstkonten, und Protokolle immer asynchron (V5, Hauptplan E191).** Lesezugriffe von Menschen an der Oberfläche werden nicht festgehalten. Logs und Protokolle dürfen das Lesen und die Anwendung nicht langsamer machen: Die Anfrage legt den Eintrag in einen Puffer im Speicher und wartet nie; ein Hintergrundlauf schreibt in Stapeln. Die Folge, bewusst in Kauf genommen: Bei einem Absturz fehlen die Einträge der letzten Sekunde, bei vollem Puffer werden Einträge verworfen und gezählt; das Protokoll ist unveränderbar, aber nicht lückenlos garantiert. Eine Liste oder Suche ist ein Eintrag mit Abfrage und Zahl der Treffer; welche Datensätze sie zeigte, steht nicht im Protokoll. Der Verlauf der Änderungen bleibt in der Transaktion des Schreibens; er ist Teil der Daten, kein Protokoll. Verworfen: auch Menschen; synchron in PostgreSQL; synchron in einen Strom in Valkey (Vorschlag der Umsetzung, kostet 0,1 bis 0,3 ms je Lesen); ein Eintrag mit den IDs der Treffer (Empfehlung der Umsetzung); je gezeigtem Datensatz ein Eintrag; auch der Verlauf asynchron | 2026-11-16 | Pascal |
 | **E16** | Tokens des Identitätsanbieters nimmt itsm anbieterneutral nach OIDC an (AP21): Prüfung gegen die veröffentlichten Schlüssel, Empfänger und Feld der Zuordnung einstellbar, kein Code je Anbieter. Keycloak, AD FS und Entra ID sollen damit gehen (aus der Erinnerung der Umsetzung, nicht an den Unterlagen der Hersteller geprüft); geprüft wird mit dem Probe-Anbieter und von Hand mit Keycloak. Es bleibt bei einem Anbieter je Installation (Hauptplan E88). AP21 wartet damit nicht mehr auf Hauptplan V41. Verworfen: mehrere Anbieter zugleich; erst den Kunden fragen | 2026-11-16 | Pascal |
+| **E18** | **Schutz vor der Anmeldung (AP6, deine Antworten vom 2026-11-18):** Ist der Name, der Zugang oder die Adresse gesperrt, antworten Anmeldung und Token-Endpunkt sofort mit 429 und `Retry-After` (Sekunden bis zum Ende der Sperre), ohne das Kennwort zu prüfen; die Anmeldeseite sagt „Zu viele Fehlversuche. Bitte in X Minuten erneut versuchen.“ Höchstens so viele Argon2-Rechnungen zugleich wie die Instanz Kerne hat; wer 1 s keinen Platz bekommt, erhält 503 mit `Retry-After: 1` („Gerade melden sich sehr viele an …“). Der Token-Endpunkt sperrt wie die Anmeldung: Fehlversuche je Zugang und je Adresse, die Adresse zählt mit den Anmeldungen zusammen. Das Sicherheitsprotokoll fasst die Abweisungen einer Sperre zusammen: die erste sofort, danach höchstens ein Eintrag je Minute mit der Zahl. Mitkorrigiert: die ID eines Zugangs folgt dem Muster der Kontonamen, eine falsche ID gibt eine lesbare Meldung statt der Meldung der Datenbank. Verworfen: 401 wie bisher und erst nach der Prüfung; feste Zahl von Plätzen; kein Warten; Token-Endpunkt nur je Adresse; jede Abweisung ein Eintrag | 2026-11-18 | Pascal |
 | **E17** | Aufbewahrung des Leseprotokolls: Vorgabe bis zum Ende des folgenden Jahres, einstellbar je Installation (AP26). Was der Kunde verlangt, fragt Hauptplan V42. Verworfen als Vorgabe: 12 Monate; 90 Tage | 2026-11-16 | Pascal |
 
 ## 2. Begründung und Befunde
@@ -348,6 +350,103 @@ SD15) berühren diesen Plan. Hauptplan V18 (MCP-Server) und V22 (Pooler) sind am
 beantwortet: E192 und E193 dort.
 
 ## 4. Umsetzungsstand
+
+### AP6 — Schutz vor der Anmeldung, 2026-11-19
+
+- **Gebaut** (E18, Hauptplan E205):
+  - Sperre vor der Prüfung: `auth.LockError` mit der Restzeit und dem gesperrten Schlüssel
+    (`internal/auth/lockout.go`); die Anmeldung gibt sie zurück, bevor Argon2 rechnet
+    (`internal/auth/auth.go`); die API antwortet 429 `locked` mit `Retry-After`
+    (`internal/httpapi/auth.go`, `problem.go`).
+  - Obergrenze der Kennwortprüfungen: so viele Plätze wie `GOMAXPROCS`, 1 s Warten, sonst
+    `auth.ErrBusy` → 503 mit `Retry-After: 1` (`internal/auth/password.go`). Gilt für
+    `HashPassword` und `VerifyPassword`, also auch für die Schein-Prüfung bei unbekanntem Namen
+    und für Geheimnisse der Zugänge.
+  - Token-Endpunkt: Sperre je Zugang (`client:<id>`) und je Adresse vor der Prüfung, Fehlversuche
+    zählen bei unbekanntem Zugang, falschem Geheimnis und gesperrtem Zugang; Erfolg setzt den
+    Zähler zurück; 429 `slow_down`, 503 `temporarily_unavailable` (`internal/authn/client.go`,
+    `internal/httpapi/clients.go`).
+  - Sicherheitsprotokoll: die erste Abweisung einer Sperre sofort, danach höchstens ein Eintrag je
+    Minute mit `refused: n` (`internal/httpapi/seclog.go`, Schlüssel `auth:lockedlog:…` in
+    Valkey). Grund: die erste Fassung schrieb 120.000 Einträge in zwei Minuten und machte jede 429
+    1,1 bis 1,6 s langsam (Tabelle unten).
+  - Anmeldeseite: Meldungen für 429 (Minuten aus `Retry-After`) und 503
+    (`web/src/app/LoginPage.tsx`, `ApiError.retryAfter` in `web/src/api/client.ts`).
+  - Mitkorrigiert (deine Antwort vom 2026-11-18): Die ID eines Zugangs folgt dem Muster der
+    Kontonamen (`^[a-z][a-z0-9_]{0,62}$`, OpenAPI und `auth.ValidUsername`); vorher gab ein
+    Bindestrich 422 mit der rohen Meldung der Datenbank.
+- **Tests:** `internal/auth/gate_test.go` (die Plätze begrenzen, ein voller Platz gibt
+  `ErrBusy`), `policy_test.go` (Sperre als `LockError` vor der Prüfung), `security_test.go` (429
+  mit `Retry-After` zwischen 1 und 900, zusammengefasstes Protokoll mit einem Eintrag
+  `locked`), `client_test.go` (fünf falsche Geheimnisse, dann 429 `slow_down`),
+  `LoginPage.test.tsx` (beide Meldungen). CI auf `ki-lab` grün (siehe unten).
+- **Gemessen** auf `ki-lab` gegen H14 (18,25 Mio. Störungen), 1.000 Anfragen je Sekunde je Fall
+  über 60 s, daneben eine Person mit LZ1 und LZ4 (AP1); vor AP6 siehe AP1:
+
+  | Fall | erste Fassung (2026-11-18) | mit Zusammenfassung (2026-11-19) |
+  | --- | --- | --- |
+  | F4 Token mit falschem Geheimnis | 99,9 % 429, p95 1.099 ms; daneben LZ1 3,2 ms, LZ4 9,0 ms | 99,9 % 429, p95 0,6 ms; daneben LZ1 0,5 ms, LZ4 3,9 ms |
+  | F5 Anmeldung mit falschem Kennwort | 100 % 429, p95 1.587 ms; daneben LZ1 3,3 ms, LZ4 9,3 ms | 100 % 429, p95 0,6 ms; daneben LZ1 0,5 ms, LZ4 3,4 ms |
+
+  Ohne Flut daneben: LZ1 0,5 ms, LZ4 3,1 ms. F1 bis F3 unverändert gegenüber AP1. Im
+  Sicherheitsprotokoll stehen aus beiden Fluten zusammen 2 Einträge `locked`. Der Server lief
+  durch (kein Neustart, 109 MiB).
+- **Ohne Sperre gemessen** (F5 mit `security.lockout.account_failures` und `ip_failures` auf 0,
+  so wie eine Flut von vielen Adressen; danach wieder entfernt): 22,3 % 401, 77,7 % 503 in
+  p95 1,7 s, keine Anfrage ohne Antwort, kein Absturz. Die Person daneben bekommt Antworten, aber
+  langsamer: LZ1 p95 118 ms, LZ4 265 ms.
+- **Befunde, offen zur Entscheidung:**
+  - Ohne Sperre belegen die Argon2-Rechnungen alle Kerne; LZ1 hält sein Ziel, wird aber 200-mal
+    langsamer. Weniger Plätze (etwa die Hälfte der Kerne) würde mehr Luft lassen und mehr 503
+    geben; AP7 (Lastabwurf) und der Proxy davor (Schicht 4) wirken ebenfalls. Nicht gebaut, weil
+    du „so viele wie Kerne“ gewählt hast.
+  - Ohne Sperre schreibt jede abgewiesene Anmeldung einen Eintrag `unknown_account` (13.385 in
+    der Minute, synchron). Die Zusammenfassung gilt nur für Sperren. Ein Fall für die
+    asynchronen Protokolle (E15) oder für eine Zusammenfassung je Adresse.
+- **Nicht geprüft:** mehrere Instanzen hinter einem Proxy (die Plätze gelten je Instanz); eine
+  Flut von wirklich vielen Adressen (die Messung schaltet die Sperre ab und kommt von einer).
+- **Prüfweg:** auf 8092 abmelden, sechsmal mit dem Namen `sperrprobe` und einem beliebigen
+  Kennwort anmelden → fünfmal „Benutzername oder Kennwort ist falsch.“, beim sechsten Mal „Zu viele
+  Fehlversuche. Bitte in 15 Minuten erneut versuchen.“; in den Entwicklerwerkzeugen hat die
+  Antwort 429 und `Retry-After: 900` oder knapp darunter. Die Sperre gilt nur für diesen Namen;
+  die eigene Adresse sperrt erst nach 20 Fehlversuchen.
+
+### AP1 — Flut-Messung, 2026-11-19
+
+- **Gebaut:** Stufe `flood` im Lastwerkzeug (`test/load/flood.go`): offene Schleife mit fester
+  Rate (`internal/measure/rate.go`, alle 10 ms ein Takt, höchstens viermal die Rate
+  gleichzeitig unterwegs, Überzähliges wird als „übersprungen“ gezählt), fünf Fälle
+  (`internal/scenario/flood.go`), daneben eine Person mit LZ1 und LZ4 je ein Arbeiter. 2xx,
+  401, 429, 503, andere und „ohne Antwort“ sind eigene Spalten. Schalter `--rate` (1.000),
+  `--flood-duration` (1 min), `--pause` (20 s), `--only=F1,F5`. Der Bericht kommt als Tabelle und
+  als JSON (`--out`). Kein Teil der CI. Test: `rate_test.go`.
+- **Gemessen** auf `ki-lab` gegen H14 am 2026-11-18, vor AP6, 1.000 je Sekunde, 60 s je Fall:
+
+  | Fall | Antworten | p95 Flut | LZ1 p95 daneben | LZ4 p95 daneben |
+  | --- | --- | ---: | ---: | ---: |
+  | ohne Flut | | | 0,5 ms | 3,3 ms |
+  | F1 ohne Anmeldung auf geschützten Pfad | 100 % 401 | 0,2 ms | 0,5 ms | 3,6 ms |
+  | F2 eine Sitzung liest einen Datensatz | 100 % 2xx | 1,2 ms | 0,5 ms | 3,7 ms |
+  | F3 ein Zugang liest (Limit 600 je Minute) | 2,0 % 2xx, 98,0 % 429 | 1,9 ms | 0,5 ms | 3,6 ms |
+  | F4 Token mit falschem Geheimnis | 30 % 401, 26 % 503, 44 % ohne Antwort; 40.283 übersprungen | 14,6 s | alle Aufrufe Fehler | alle Aufrufe Fehler |
+  | F5 Anmeldung mit falschem Kennwort | 99,9 % ohne Antwort; 11.253 übersprungen | 8,0 s | alle Aufrufe Fehler | alle Aufrufe Fehler |
+
+  In F5 hat Docker den Server wegen Speichers beendet (Grenze 6 GiB, Argon2 mit 19 MiB je
+  Rechnung); er stand danach, bis ich ihn von Hand gestartet habe. Das bestätigt §2.3: Login und
+  Token waren der schwerste Fall, darum AP6 sofort danach (Hauptplan E205).
+- **Befunde:**
+  - F3: in einer Minute gehen 1.200 statt 600 durch, weil das Fenster an der Minutengrenze
+    springt; das baut AP8 (gleitendes Fenster).
+  - Die erste Fassung legte den Zugang der Messung mit Bindestrich an und bekam 422 mit der
+    rohen Meldung der Datenbank; behoben in AP6.
+  - F2 (eine Sitzung, 1.000 Lesen je Sekunde) bleibt ohne Limit und schadet der Person daneben
+    nicht; bei teuren Abfragen ist das anders (§2.3), das misst AP7.
+  - In der CI lag LZ16 zweimal über 10 % (+10 %, +13 %) bei unverändertem Server; Rauschen der
+    Messung, beim dritten Lauf grün.
+- **Nicht geprüft:** die Fälle aus mehreren Adressen; teure Abfragen in der Flut (AP7).
+- **Prüfweg:** auf `ki-lab` in `~/itsm-h14/src`
+  `go run ./test/load run --stage=flood --rate=1000 --target=http://itsm:8080 --out=flood.json`
+  im Netz der Instanz → je Fall eine Zeile wie oben, mit AP6 überall 429 statt Fehlern.
 
 ### AP12 — Anforderungen an Agenten entschieden, 2026-11-16
 

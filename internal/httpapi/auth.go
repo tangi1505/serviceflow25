@@ -362,6 +362,14 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	sess, err := s.o.Auth.Login(r.Context(), c.Username, c.Password, clientAddr(r, s.o.TrustProxy))
 	if err != nil {
+		// A locked name or address: 429 with the time left, no password checked (AP6).
+		var lock *auth.LockError
+		if errors.As(err, &lock) {
+			s.lockedAttempt(r, "login", c.Username, lock)
+			retryAfter(w, lock.RetryAfter)
+			writeProblem(w, r, http.StatusTooManyRequests, "locked", "too many failed sign-ins; try again later", nil)
+			return
+		}
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			reason, account := "invalid_credentials", (*uuid.UUID)(nil)
 			var le *auth.LoginError

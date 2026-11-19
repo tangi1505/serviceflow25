@@ -15,7 +15,9 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"time"
 
+	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authn"
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/httpapi/gen"
@@ -77,7 +79,18 @@ func (s *server) IssueToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token, err := s.o.Authn.IssueToken(r.Context(), id, secret, clientAddr(r, s.o.TrustProxy))
+	var lock *auth.LockError
 	switch {
+	case errors.As(err, &lock):
+		// The client or the address is locked after refused requests (AP6).
+		s.lockedAttempt(r, "token", id, lock)
+		retryAfter(w, lock.RetryAfter)
+		oauthError(http.StatusTooManyRequests, "slow_down", "too many refused requests; try again later")
+		return
+	case errors.Is(err, auth.ErrBusy):
+		retryAfter(w, time.Second)
+		oauthError(http.StatusServiceUnavailable, "temporarily_unavailable", "too many sign-ins at once; try again in a second")
+		return
 	case errors.Is(err, authn.ErrInvalidClient):
 		s.signIn(r, "token", nil, id, "invalid_client", nil)
 		w.Header().Set("WWW-Authenticate", `Basic realm="itsm"`)

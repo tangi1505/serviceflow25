@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -61,11 +62,27 @@ func TestSecuritySettingsOverHTTP(t *testing.T) {
 	for range 3 {
 		call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "`+name+`", "password": "falsch"}`, map[string]string{"Cookie": ""})
 	}
-	if r := call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "`+name+`", "password": "Wolke-Tisch-Lampe-8!"}`, map[string]string{"Cookie": ""}); r.code != 401 {
-		t.Fatalf("locked: %d %s", r.code, r.raw)
+	// Locked: 429 with the seconds left of the 15 minutes, no password checked (AP6).
+	r = call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "`+name+`", "password": "Wolke-Tisch-Lampe-8!"}`, map[string]string{"Cookie": ""})
+	if secs, _ := strconv.Atoi(r.hdr.Get("Retry-After")); r.code != 429 || secs < 1 || secs > 900 {
+		t.Fatalf("locked: %d %s %v", r.code, r.raw, r.hdr)
 	}
 	if p := securityLog(t, admin, "/api/v1/audit/auth?limit=1&username="+name); len(p.Items) != 1 || p.Items[0].Reason != "locked" {
 		t.Fatalf("lockout in the log: %+v", p.Items)
+	}
+	// Further refusals of the same lock within the minute are summed up, not written one by one
+	// (AP6): still one entry with the reason locked.
+	for range 3 {
+		call(t, admin, http.MethodPost, "/api/v1/auth/login", `{"username": "`+name+`", "password": "falsch"}`, map[string]string{"Cookie": ""})
+	}
+	locked := 0
+	for _, it := range securityLog(t, admin, "/api/v1/audit/auth?limit=20&username="+name).Items {
+		if it.Reason == "locked" {
+			locked++
+		}
+	}
+	if locked != 1 {
+		t.Fatalf("refusals of one lock in one minute: %d entries, want 1", locked)
 	}
 	if err := admin.auth.Unlock(ctx, name); err != nil {
 		t.Fatal(err)

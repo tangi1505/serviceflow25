@@ -2334,7 +2334,7 @@ paths:
     post:
       operationId: login
       summary: Sign in with a local account
-      description: Sets the session cookie. Unknown name, wrong password and disabled account all answer 401.
+      description: "Sets the session cookie. Unknown name, wrong password and disabled account all answer 401. After failed sign-ins the name or the address is locked: 429 with Retry-After (the seconds left), no password is checked (AP6). Too many password checks at once in the instance: 503 with Retry-After 1."
       tags: [auth]
       requestBody:
         required: true
@@ -2353,6 +2353,8 @@ paths:
         "401": { $ref: "#/components/responses/Problem" }
         "403": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/ValidationProblem" }
+        "429": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
   /api/v1/auth/logout:
     post:
       operationId: logout
@@ -3084,6 +3086,8 @@ paths:
         "400": { description: invalid_request or unsupported_grant_type }
         "401": { description: invalid_client }
         "403": { description: "access_denied, the address is outside the client's ranges" }
+        "429": { description: "slow_down: the client or the address is locked after refused requests, as sign-ins are (AP6); Retry-After gives the seconds left" }
+        "503": { description: "temporarily_unavailable: too many secret checks at once in this instance (AP6); Retry-After 1" }
   /api/v1/clients:
     get:
       operationId: listClients
@@ -3727,7 +3731,7 @@ components:
         - type: object
           required: [client_id]
           properties:
-            client_id: { type: string, pattern: "^[a-z][a-z0-9_-]{0,62}$", description: also the username of the client's account }
+            client_id: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$", description: "also the username of the client's account: a lowercase letter, then lowercase letters, digits or _" }
         - $ref: "#/components/schemas/ClientInput"
     Client:
       type: object

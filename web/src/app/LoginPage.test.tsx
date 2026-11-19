@@ -62,6 +62,23 @@ describe("LoginPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Benutzername oder Kennwort ist falsch.",
     );
+
+    // Locked after failed sign-ins: the minutes left from Retry-After (840 s); a full instance
+    // asks to try again in a moment (AP6).
+    await user.clear(screen.getByLabelText("Benutzername"));
+    await user.type(screen.getByLabelText("Benutzername"), "gesperrt");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(
+      await screen.findByText("Zu viele Fehlversuche. Bitte in 14 Minuten erneut versuchen."),
+    ).toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Benutzername"));
+    await user.type(screen.getByLabelText("Benutzername"), "voll");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(
+      await screen.findByText(
+        "Gerade melden sich sehr viele an. Bitte gleich noch einmal versuchen.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("leads to the shell with the navigation and signs out again", async () => {

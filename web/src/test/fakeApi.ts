@@ -541,6 +541,15 @@ export function fakeApi(state: FakeState) {
         state.signedIn = true;
         return json(200, me);
       }
+      // A locked name and a full instance (AP6).
+      if (body.username === "gesperrt") {
+        const r = problem(429, "locked");
+        r.headers.set("Retry-After", "840");
+        return r;
+      }
+      if (body.username === "voll") {
+        return problem(503, "busy");
+      }
       return problem(401, "invalid_credentials");
     }
     if (!state.signedIn) {

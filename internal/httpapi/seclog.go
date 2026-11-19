@@ -8,6 +8,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/netip"
 	"strings"
@@ -78,6 +79,31 @@ func (s *server) signIn(r *http.Request, kind string, account *uuid.UUID, userna
 	}
 	s.secRecord(r, seclog.Event{Category: seclog.Auth, Kind: kind, Outcome: outcome, Account: account, Username: username,
 		Reason: reason, Details: details})
+}
+
+// lockedAttempt records sign-ins refused because of a lock (AP6, Pascal 2026-11-18): the first
+// of a lock at once, then at most one entry a minute with the number refused since the last
+// entry. A flood of 1,000 a second wrote 120,000 entries in two minutes before and slowed
+// every answer down to 1.6 s. Grouped by the lock, not by the name: from a locked address every
+// new name would otherwise be a first one. Without Valkey every refusal is an entry.
+func (s *server) lockedAttempt(r *http.Request, kind, username string, lock *auth.LockError) {
+	kv := s.o.KV
+	if kv == nil {
+		s.signIn(r, kind, nil, username, "locked", nil)
+		return
+	}
+	ctx := context.WithoutCancel(r.Context())
+	base := "auth:lockedlog:" + kind + ":" + lock.Key
+	n, err := kv.IncrExpire(ctx, base+":n", 10*time.Minute)
+	if err != nil {
+		s.signIn(r, kind, nil, username, "locked", nil)
+		return
+	}
+	if gate, err := kv.IncrExpire(ctx, base+":gate", time.Minute); err != nil || gate != 1 {
+		return
+	}
+	_ = kv.Del(ctx, base+":n")
+	s.signIn(r, kind, nil, username, "locked", map[string]any{"refused": n, "lock": lock.Key})
 }
 
 // changed records a successful change of accounts, rights, rules, clients, directories or

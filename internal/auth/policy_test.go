@@ -128,10 +128,14 @@ func TestSecuritySettings(t *testing.T) {
 			t.Fatalf("failure %d: %v", i, err)
 		}
 	}
-	// Locked: even the right password is refused, with the reason locked.
-	var le *LoginError
-	if _, err := svc.Login(ctx, user, "Wolke-Tisch-7!", ip); !errors.As(err, &le) || le.Reason != "locked" {
+	// Locked: even the right password is refused, as a LockError with the time left, before
+	// the password is checked (AP6; before: an ErrInvalidCredentials with the reason locked).
+	var lock *LockError
+	if _, err := svc.Login(ctx, user, "Wolke-Tisch-7!", ip); !errors.As(err, &lock) || lock.RetryAfter <= 0 || lock.RetryAfter > 15*time.Minute {
 		t.Fatalf("locked account: %v", err)
+	}
+	if errors.Is(lock, ErrInvalidCredentials) {
+		t.Fatal("a lock is no wrong password")
 	}
 	if err := svc.Unlock(ctx, user); err != nil {
 		t.Fatal(err)
@@ -153,7 +157,7 @@ func TestSecuritySettings(t *testing.T) {
 	for i := range 5 {
 		_, _ = svc.Login(ctx, fmt.Sprintf("authtest_nobody%d", i), "x", ip)
 	}
-	if _, err := svc.Login(ctx, user, "Wolke-Tisch-7!", ip); !errors.As(err, &le) || le.Reason != "locked" {
+	if _, err := svc.Login(ctx, user, "Wolke-Tisch-7!", ip); !errors.As(err, &lock) {
 		t.Fatalf("locked address: %v", err)
 	}
 	if _, err := svc.Login(ctx, user, "Wolke-Tisch-7!", netip.Addr{}); err != nil {
@@ -163,6 +167,7 @@ func TestSecuritySettings(t *testing.T) {
 	// Local sign-in: none refuses everyone, admins only who may manage rights.
 	settings[SettingLocalLogin] = `"none"`
 	svc.ForgetPolicy()
+	var le *LoginError
 	if _, err := svc.Login(ctx, user, "Wolke-Tisch-7!", netip.Addr{}); !errors.As(err, &le) || le.Reason != "local_login_disabled" {
 		t.Fatalf("local login none: %v", err)
 	}

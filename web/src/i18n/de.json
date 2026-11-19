@@ -30,7 +30,10 @@
       "state": "Die Anmeldung ist abgelaufen, bitte erneut versuchen.",
       "disabled": "Das Konto ist gesperrt.",
       "provider": "Der Anbieter ist nicht erreichbar."
-    }
+    },
+    "locked_one": "Zu viele Fehlversuche. Bitte in {{count}} Minute erneut versuchen.",
+    "locked_other": "Zu viele Fehlversuche. Bitte in {{count}} Minuten erneut versuchen.",
+    "busy": "Gerade melden sich sehr viele an. Bitte gleich noch einmal versuchen."
   },
   "nav": {
     "start": "Start",

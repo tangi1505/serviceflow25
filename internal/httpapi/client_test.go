@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"testing"
@@ -92,6 +93,21 @@ func TestAPIClients(t *testing.T) {
 	code, body := token("apitest_client", "wrong")
 	if code != 401 || body["error"] != "invalid_client" {
 		t.Fatalf("wrong secret: %d %v", code, body)
+	}
+	// Refused requests lock the client as failed sign-ins lock a name (AP6): after five, 429
+	// slow_down without checking the secret; unknown ids count too. The address counts as well
+	// and is freed afterwards, for the other tests from 127.0.0.1.
+	unknown := fmt.Sprintf("apitest_nobody%d", time.Now().UnixNano())
+	for i := range 5 {
+		if code, body := token(unknown, "wrong"); code != 401 {
+			t.Fatalf("refusal %d: %d %v", i, code, body)
+		}
+	}
+	if code, body := token(unknown, "wrong"); code != 429 || body["error"] != "slow_down" {
+		t.Fatalf("locked client: %d %v", code, body)
+	}
+	if err := admin.auth.UnlockAddress(ctx, netip.MustParseAddr("127.0.0.1")); err != nil {
+		t.Fatal(err)
 	}
 	code, body = token("apitest_client", secret)
 	if code != 200 || body["token_type"] != "Bearer" || body["expires_in"] != 3600.0 || body["access_token"] == nil {

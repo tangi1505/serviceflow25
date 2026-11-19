@@ -13,7 +13,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
+	"time"
 	"unicode"
 
 	"golang.org/x/crypto/argon2"
@@ -60,13 +62,46 @@ func CheckPassword(pw string) error {
 	return nil
 }
 
+// ErrBusy says that too many password checks run at once in this instance (AP6): the caller
+// answers 503 with a short Retry-After instead of letting a flood of sign-ins take the memory.
+var ErrBusy = errors.New("auth: too many password checks at once")
+
+// Each Argon2 computation takes 19 MiB and a core for some 25 ms. Without a bound, 1,000 wrong
+// sign-ins a second filled 6 GiB and the instance was killed (AP1, 2026-11-18). So as many run
+// at once as the instance has cores; a further one waits at most argonWait for a place.
+var (
+	argonSlots = make(chan struct{}, runtime.GOMAXPROCS(0))
+	argonWait  = time.Second
+)
+
+// checking runs one Argon2 computation in a place of argonSlots, or gives ErrBusy.
+func checking(compute func()) error {
+	select {
+	case argonSlots <- struct{}{}:
+	default:
+		t := time.NewTimer(argonWait)
+		defer t.Stop()
+		select {
+		case argonSlots <- struct{}{}:
+		case <-t.C:
+			return ErrBusy
+		}
+	}
+	defer func() { <-argonSlots }()
+	compute()
+	return nil
+}
+
 // HashPassword returns the Argon2id hash in PHC string format.
 func HashPassword(pw string) (string, error) {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("auth: salt: %w", err)
 	}
-	key := argon2.IDKey([]byte(pw), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	var key []byte
+	if err := checking(func() { key = argon2.IDKey([]byte(pw), salt, argonTime, argonMemory, argonThreads, argonKeyLen) }); err != nil {
+		return "", err
+	}
 	enc := base64.RawStdEncoding
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, argonMemory, argonTime, argonThreads,
 		enc.EncodeToString(salt), enc.EncodeToString(key)), nil
@@ -100,6 +135,9 @@ func VerifyPassword(hash, pw string) (bool, error) {
 	if len(want) != argonKeyLen {
 		return false, errors.New("auth: unsupported hash length")
 	}
-	got := argon2.IDKey([]byte(pw), salt, times, memory, threads, argonKeyLen)
+	var got []byte
+	if err := checking(func() { got = argon2.IDKey([]byte(pw), salt, times, memory, threads, argonKeyLen) }); err != nil {
+		return false, err
+	}
 	return subtle.ConstantTimeCompare(got, want) == 1, nil
 }

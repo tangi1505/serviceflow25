@@ -80,6 +80,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly problem?: Problem | ValidationProblem,
+    // retryAfter is the Retry-After of a 429 or 503 in seconds (AP6).
+    public readonly retryAfter?: number,
   ) {
     super(problem?.title ?? `HTTP ${status}`);
     this.name = "ApiError";
@@ -249,7 +251,12 @@ function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): T
   if (result.response.ok) {
     return result.data as T;
   }
-  throw new ApiError(result.response.status, result.error as Problem | undefined);
+  const wait = Number(result.response.headers.get("Retry-After"));
+  throw new ApiError(
+    result.response.status,
+    result.error as Problem | undefined,
+    Number.isFinite(wait) && wait > 0 ? wait : undefined,
+  );
 }
 
 export const api = {

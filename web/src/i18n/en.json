@@ -30,7 +30,10 @@
       "state": "The sign-in expired, please try again.",
       "disabled": "The account is disabled.",
       "provider": "The provider cannot be reached."
-    }
+    },
+    "locked_one": "Too many failed attempts. Please try again in {{count}} minute.",
+    "locked_other": "Too many failed attempts. Please try again in {{count}} minutes.",
+    "busy": "Very many are signing in right now. Please try again in a moment."
   },
   "nav": {
     "start": "Start",

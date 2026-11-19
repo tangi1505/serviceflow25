@@ -13,7 +13,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"time"
 
+	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authn"
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/events"
@@ -50,6 +53,14 @@ var titles = map[string]map[string]string{
 	"cancelled":             {"de": "Abgebrochen", "en": "Cancelled"},
 	"too_large":             {"de": "Anfrage zu groß", "en": "Request too large"},
 	"unavailable":           {"de": "Nicht verfügbar", "en": "Unavailable"},
+	"locked":                {"de": "Zu viele Versuche", "en": "Too many attempts"},
+	"busy":                  {"de": "Überlastet", "en": "Busy"},
+}
+
+// retryAfter sets Retry-After in whole seconds, at least one.
+func retryAfter(w http.ResponseWriter, d time.Duration) {
+	secs := int((d + time.Second - 1) / time.Second)
+	w.Header().Set("Retry-After", strconv.Itoa(max(secs, 1)))
 }
 
 // writeProblem answers with application/problem+json.
@@ -85,6 +96,10 @@ func writeError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err
 		// server; the request log shows it with 499 as nginx does, and nobody reads the answer.
 		logger.Info("request cancelled by the client", "method", r.Method, "path", r.URL.Path)
 		writeProblem(w, r, statusClientClosed, "cancelled", "the client cancelled the request", nil)
+	case errors.Is(err, auth.ErrBusy):
+		// Too many password checks at once in this instance (AP6): come back in a second.
+		retryAfter(w, time.Second)
+		writeProblem(w, r, http.StatusServiceUnavailable, "busy", "too many sign-ins at once; try again in a second", nil)
 	case errors.Is(err, records.ErrNotFound):
 		writeProblem(w, r, http.StatusNotFound, "not_found", err.Error(), nil)
 	case errors.Is(err, records.ErrConflict), errors.Is(err, records.ErrNotAllowed),

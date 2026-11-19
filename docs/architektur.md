@@ -479,6 +479,11 @@ E11:
 - **Anmeldung:** Der Browser nutzt ein Sitzungscookie nach OIDC. Maschinen nutzen OAuth 2 Client
   Credentials mit einem technischen Nutzer, der Rollen hat wie jeder andere.
 - **Ratenbegrenzung** je Zugang in Valkey.
+- **Schutz vor der Anmeldung** (AP6): Fehlversuche je Name, je Zugang und je Adresse in Valkey;
+  gesperrt heißt 429 mit `Retry-After`, bevor ein Kennwort geprüft wird. Kennwörter prüft eine
+  Instanz höchstens so oft zugleich, wie sie Kerne hat; wer 1 s keinen Platz bekommt, erhält 503.
+  So beendet eine Flut an Anmeldung oder Token-Endpunkt den Server nicht mehr nach Speicher
+  (Argon2 mit 19 MiB je Rechnung).
 
 ### 6.2 Schreiben
 
