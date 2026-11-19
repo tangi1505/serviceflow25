@@ -4075,7 +4075,7 @@ components:
           description: number of matching records over all pages, when count was asked for
     TypeDefinition:
       type: object
-      description: the effective definition of an entity type; "timed" is true when SLA clocks run on its records (UI34)
+      description: 'the effective definition of an entity type; "timed" is true when SLA clocks run on its records (UI34); "may" lists the actions the session holds on the type somewhere: read, create, update, delete, purge (PL75), a right on part of the records counts, each record is still checked'
       additionalProperties: true
     RelationEnd:
       type: object

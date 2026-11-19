@@ -968,7 +968,8 @@
       "read": "lesen",
       "create": "anlegen",
       "update": "ändern",
-      "delete": "löschen"
+      "delete": "löschen",
+      "purge": "endgültig löschen"
     },
     "scope": {
       "own": "eigene",

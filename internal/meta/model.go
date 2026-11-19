@@ -277,6 +277,9 @@ type Type struct {
 	// Timed tells that SLA clocks run on the records of the type; the API sets it, so that the
 	// list shows the deadline (UI34). No part of a package.
 	Timed bool `json:"timed,omitempty" yaml:"-"`
+	// May are the actions the session holds on the type somewhere: read, create, update,
+	// delete, purge (PL75, Kern-Plan E79); the API sets it. No part of a package.
+	May []string `json:"may,omitempty" yaml:"-"`
 	// Traits are the definition building blocks the type pulls in by name (architektur.md B2;
 	// PL16 knows "list", PL17 adds the rest).
 	Traits []string `json:"traits,omitempty" yaml:"traits"`

@@ -122,6 +122,8 @@ describe("Role editor", () => {
     const view = renderAt("/roles/agent");
     await screen.findByRole("heading", { name: "Rolle: Bearbeiter" });
     const read = screen.getByRole("combobox", { name: "Probe: lesen" });
+    // Deleting for good is a right of its own, a column of the matrix (PL75).
+    expect(screen.getByRole("combobox", { name: "Probe: endgültig löschen" })).toBeInTheDocument();
     expect(read).toHaveAttribute("data-value", "all");
     expect(screen.getByRole("combobox", { name: "Probe: ändern" })).toHaveAttribute(
       "data-value",

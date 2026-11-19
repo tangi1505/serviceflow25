@@ -136,6 +136,9 @@ test("IBM Plex, graphite and petrol from the tool itself; dark after signing in 
 // UI38: every accent colour in both modes passes axe with contrast where the accent shows: the
 // focus, the chosen row and tab, the links (§2.3).
 test("six accent colours, light and dark, without findings of axe", async ({ page }) => {
+  // Twelve rounds of two pages with axe each: about 25 s on an idle ki-lab, 36 s when the
+  // machine is shared (PL75 CI, 2026-11-19); the default of 30 s is too tight for that.
+  test.setTimeout(90_000);
   await signIn(page);
   for (const mode of ["light", "dark"] as const) {
     for (const accent of ["petrol", "steel", "indigo", "violet", "umber", "graphite"]) {

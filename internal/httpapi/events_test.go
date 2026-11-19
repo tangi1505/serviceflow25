@@ -104,7 +104,8 @@ func TestEventsAPI(t *testing.T) {
 	if r := call(t, admin, http.MethodPost, "/api/v1/roles", `{"name": "ev_own"}`, nil); r.code != 201 {
 		t.Fatalf("role: %d %s", r.code, r.raw)
 	}
-	for _, action := range []string{"read", "create", "delete"} {
+	// purge is its own action since PL75; the person purges an own record below.
+	for _, action := range []string{"read", "create", "delete", "purge"} {
 		if r := call(t, admin, http.MethodPut, "/api/v1/roles/ev_own/permissions", `{"type_name": "probe.probe", "action": "`+action+`", "scope": "own"}`, nil); r.code != 204 {
 			t.Fatalf("permission: %d %s", r.code, r.raw)
 		}

@@ -1090,7 +1090,8 @@ func (s *Service) purge(ctx context.Context, typeName string, id uuid.UUID, acto
 		if err != nil {
 			return err
 		}
-		if err := checkAccess(ctx, t, old, authz.ActionDelete); err != nil {
+		// Purging needs its own right; delete only moves to the trash and back (PL75).
+		if err := checkAccess(ctx, t, old, authz.ActionPurge); err != nil {
 			return err
 		}
 		if old["deleted_at"] == nil {

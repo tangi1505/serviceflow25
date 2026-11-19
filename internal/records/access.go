@@ -142,6 +142,7 @@ func EventPath(e Event) string {
 // read (for the type listing and the OpenAPI, PL9).
 func VisibleType(ctx context.Context, t meta.Type) meta.Type {
 	a := authz.From(ctx)
+	t.May = a.Actions(t.QualifiedName())
 	if a.IsSystem() {
 		return t
 	}

@@ -3112,7 +3112,7 @@ export interface components {
              */
             total?: number;
         };
-        /** @description the effective definition of an entity type; "timed" is true when SLA clocks run on its records (UI34) */
+        /** @description the effective definition of an entity type; "timed" is true when SLA clocks run on its records (UI34); "may" lists the actions the session holds on the type somewhere: read, create, update, delete, purge (PL75), a right on part of the records counts, each record is still checked */
         TypeDefinition: {
             [key: string]: unknown;
         };

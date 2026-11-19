@@ -6,7 +6,7 @@
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
 // The role editor (UI27, UI-Plan E33): the roles and, per role, its permissions as a matrix of
-// types and the actions read, create, update and delete, with the scope in every cell; the
+// types and the actions read, create, update, delete and purge, with the scope in every cell; the
 // condition, the field rights and further scopes of a cell in its details below; the special
 // rights as boxes; every other permission in a list; and who holds the role at which node.
 // Every change is one call that holds at once and stands in the security log (PL27); the
@@ -49,10 +49,11 @@ import { DensityTable, matches, TableSearch, useDensity } from "./TableTools";
 import { Select } from "@/ui/select";
 
 const any = "*";
-const actions = ["read", "create", "update", "delete"] as const;
+// purge: delete for good from the trash, its own right since PL75.
+const actions = ["read", "create", "update", "delete", "purge"] as const;
 const scopes: Scope[] = ["own", "group", "involved", "unit", "subtree", "all"];
 
-// specials are the rights the code knows beyond the four actions, on the type it checks them
+// specials are the rights the code knows beyond the five actions, on the type it checks them
 // on. A box sets the right with scope all.
 const specials: { type: string; action: string }[] = [
   { type: "core.ui", action: "workplace" },

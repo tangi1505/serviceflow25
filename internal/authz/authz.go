@@ -48,6 +48,9 @@ const (
 	ActionCreate = "create"
 	ActionUpdate = "update"
 	ActionDelete = "delete"
+	// ActionPurge deletes a record in the trash for good (PL75, Kern-Plan E78); delete alone
+	// moves it to the trash and takes it out again.
+	ActionPurge = "purge"
 	// Any stands for every type or every action in a permission.
 	Any = "*"
 )
@@ -398,6 +401,22 @@ func (a *Access) involved() []uuid.UUID {
 // Allowed reports whether the action on the type is granted at all (for some records).
 func (a *Access) Allowed(typeName, action string) bool {
 	return a.IsSystem() || len(a.readers(typeName, action)) > 0 || len(a.grantsFor(typeName, action)) > 0
+}
+
+// typeActions are the actions every type has, in the order the interface names them.
+var typeActions = []string{ActionRead, ActionCreate, ActionUpdate, ActionDelete, ActionPurge}
+
+// Actions lists the actions every type has that the session holds on a type somewhere (PL75,
+// Kern-Plan E79): the interface offers "Löschen" and "Endgültig löschen" by them. A right on a
+// part of the records counts; each record is still checked when it is changed.
+func (a *Access) Actions(typeName string) []string {
+	out := make([]string, 0, len(typeActions))
+	for _, act := range typeActions {
+		if a.Allowed(typeName, act) {
+			out = append(out, act)
+		}
+	}
+	return out
 }
 
 // Roles lists the roles the access holds in the tenant, for the session to choose from (PL10).

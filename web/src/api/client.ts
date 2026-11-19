@@ -201,6 +201,9 @@ export type TypeDefinition = {
   layout?: Record<string, { x: number; y: number }>;
   // timed tells that SLA clocks run on the records: the list shows their deadline (UI34).
   timed?: boolean;
+  // may are the actions the session holds on the type somewhere (PL75): read, create, update,
+  // delete, purge. A right on part of the records counts; the server checks each record.
+  may?: ("read" | "create" | "update" | "delete" | "purge")[];
   // suggest offers the type's records while records of other types are written (SD18).
   suggest?: Suggest;
   // readers let persons read without a grant (SD16a), some also comment (SD18).
