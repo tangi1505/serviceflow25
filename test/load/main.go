@@ -16,6 +16,7 @@
 //	go run ./test/load run --stage=full --target=http://127.0.0.1:18080 --out=/tmp/full.json
 //	go run ./test/load gate --stage=full --result=/tmp/full.json
 //	go run ./test/load baseline --result=/tmp/quick.json --binary=/tmp/itsm --note="why"
+//	go run ./test/load run --stage=flood --rate=1000 --target=http://itsm:8080 --out=/tmp/flood.json
 //
 // The quick stage measures the new build and the approved baseline build alternately
 // (A B A B A B) on the same machine, so that load from elsewhere hits both alike (E69). The
@@ -201,7 +202,7 @@ func cmdGenerate(args []string, out io.Writer) error {
 
 func cmdRun(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
-	stageName := fs.String("stage", "quick", "quick or full")
+	stageName := fs.String("stage", "quick", "quick, full or flood (AP1: a fixed rate, not part of the CI)")
 	target := fs.String("target", "", "base URL of the new build, e.g. http://127.0.0.1:18080")
 	baseTarget := fs.String("baseline-target", "", "base URL of the baseline build (quick stage, A/B)")
 	baseSHA := fs.String("baseline-sha256", "", "SHA-256 of the baseline binary, recorded in the report")
@@ -213,13 +214,16 @@ func cmdRun(args []string, out io.Writer) error {
 	waitIdle := fs.Duration("wait-for-idle", 0, "wait up to this long for the load to drop below the limit before measuring")
 	dbURL := fs.String("database", "", "the database of the instance: with --data=prod the cleanup deletes with SQL at once instead of through the API")
 	watch := fs.String("watch-cpus", os.Getenv("ITSM_LOAD_WATCH_CPUS"), "judge only how busy these CPUs are (e.g. 0-5,8-13), not the load of the whole machine")
+	rate := fs.Float64("rate", 1000, "flood: requests per second of each case")
+	floodFor := fs.Duration("flood-duration", time.Minute, "flood: how long each case floods")
+	pause := fs.Duration("pause", 20*time.Second, "flood: rest between the cases")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	scenario.Database = *dbURL
 	st, ok := stages[*stageName]
-	if !ok || *target == "" {
-		return errors.New("run needs --stage=quick|full and --target=URL")
+	if (!ok && *stageName != "flood") || *target == "" {
+		return errors.New("run needs --stage=quick|full|flood and --target=URL")
 	}
 	if v := os.Getenv("ITSM_LOAD_INJECT_DELAY"); v != "" && *delay == 0 {
 		d, err := time.ParseDuration(v)
@@ -269,6 +273,17 @@ func cmdRun(args []string, out io.Writer) error {
 		newBase = proxied
 	}
 	oldBase := strings.TrimRight(*baseTarget, "/")
+	if *stageName == "flood" {
+		chosen := map[string]bool{}
+		for _, id := range strings.Split(*only, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				chosen[id] = true
+			}
+		}
+		return runFlood(context.Background(), out, newBase, floodOptions{
+			Rate: *rate, Duration: *floodFor, Pause: *pause, Quiet: 10 * time.Second, Only: chosen, Out: *file,
+		})
+	}
 
 	ctx := context.Background()
 	client := &http.Client{

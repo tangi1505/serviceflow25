@@ -184,6 +184,13 @@ go run ./test/load fill --size=prod --target=http://itsm:8080 --database=postgre
 go run ./test/load run --stage=full --data=prod --target=http://itsm:8080 --out=full.json
 ```
 
+Eine Flut messen (AP1): fünf Fälle mit fester Rate, daneben eine Person mit LZ1 und LZ4; nicht in
+der CI. Einzelne Fälle wählt `--only=F4,F5`.
+
+```bash
+go run ./test/load run --stage=flood --rate=1000 --flood-duration=1m --target=http://itsm:8080 --out=flood.json
+```
+
 ## Aufbau
 
 | Pfad | Inhalt |
