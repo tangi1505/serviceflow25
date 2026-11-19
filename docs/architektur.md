@@ -251,7 +251,9 @@ E34 und KF9:
   Sichtbarkeit nach Unterbaum ist eine Bedingung `org_path <@ $1`.
 - **Eine Rolle** besteht aus Berechtigungen. Jede Berechtigung hat fünf Teile:
   - **Typ;**
-  - **Aktion:** lesen, anlegen, ändern, löschen oder ein Sonderrecht des Pakets;
+  - **Aktion:** lesen, anlegen, ändern, löschen (in den Papierkorb und zurück), endgültig
+    löschen (`purge`, PL75) oder ein Sonderrecht des Pakets; die Typbeschreibung nennt in `may`,
+    welche der fünf die Person am Typ irgendwo hat (Kern-Plan E79);
   - **Reichweite:** eigene, Gruppe, beteiligt, Organisationseinheit, Unterbaum oder alle;
     eine Rolle darf für Typ und Aktion mehrere Reichweiten halten, sie gelten mit ODER
     (Kern-Plan E58);
