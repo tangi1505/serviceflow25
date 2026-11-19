@@ -53,6 +53,7 @@ import { Label } from "@/ui/label";
 
 import type { EditorProps } from "./Form";
 import { fieldLabel, isCalculated } from "./fields";
+import { Select } from "@/ui/select";
 
 // freeTypes are the types of a free question (the server allows the same).
 export const freeTypes = ["text", "number", "boolean", "date", "datetime", "choice"] as const;
@@ -382,19 +383,15 @@ function FixedValues({
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-field`}>{t("builder.fixedField")}</Label>
-          <select
+          <Select
             id={`${id}-field`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={pick}
-            onChange={(e) => setPick(e.target.value)}
-          >
-            <option value="">{t("builder.choose")}</option>
-            {free.map((f) => (
-              <option key={f.name} value={f.name}>
-                {fieldLabel(f, i18n.language)}
-              </option>
-            ))}
-          </select>
+            onChange={setPick}
+            options={[
+              { value: "", label: t("builder.choose") },
+              ...free.map((f) => ({ value: f.name, label: fieldLabel(f, i18n.language) })),
+            ]}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-value`}>{t("builder.fixedValue")}</Label>
@@ -651,39 +648,29 @@ function SectionBody({
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-pick`}>{t("builder.newQuestion")}</Label>
-          <select
+          <Select
             id={`${id}-pick`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={pick}
-            onChange={(e) => setPick(e.target.value)}
-          >
-            <option value="">{t("builder.choose")}</option>
-            {fields.length > 0 && (
-              <optgroup label={t("builder.fieldGroup")}>
-                {fields.map((f) => (
-                  <option key={f.name} value={`field:${f.name}`}>
-                    {fieldLabel(f, i18n.language)}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {roles.length > 0 && (
-              <optgroup label={t("builder.roleGroup")}>
-                {roles.map((a) => (
-                  <option key={a.name} value={`role:${a.name}`}>
-                    {labelOf(a.label, i18n.language, a.name)}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label={t("builder.freeGroup")}>
-              {freeTypes.map((ft) => (
-                <option key={ft} value={`free:${ft}`}>
-                  {t(`builder.type.${ft}`)}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+            onChange={setPick}
+            options={[
+              { value: "", label: t("builder.choose") },
+              ...fields.map((f) => ({
+                value: `field:${f.name}`,
+                label: fieldLabel(f, i18n.language),
+                group: t("builder.fieldGroup"),
+              })),
+              ...roles.map((a) => ({
+                value: `role:${a.name}`,
+                label: labelOf(a.label, i18n.language, a.name),
+                group: t("builder.roleGroup"),
+              })),
+              ...freeTypes.map((ft) => ({
+                value: `free:${ft}`,
+                label: t(`builder.type.${ft}`),
+                group: t("builder.freeGroup"),
+              })),
+            ]}
+          />
         </div>
         <Button variant="outline" onClick={add} disabled={!pick}>
           {t("builder.addQuestion")}
@@ -868,59 +855,45 @@ function Conditions({
               <div key={k} className="flex flex-wrap items-end gap-2">
                 <div className="flex flex-col gap-1">
                   <Label htmlFor={`${id}-${k}-q`}>{t("builder.cond.question")}</Label>
-                  <select
+                  <Select
                     id={`${id}-${k}-q`}
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={c.question}
-                    onChange={(e) => set(k, { ...c, question: e.target.value, value: undefined })}
-                  >
-                    {!target && <option value={c.question}>{c.question}</option>}
-                    {candidates.map((x) => (
-                      <option key={x.id} value={x.id}>
-                        {x.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => set(k, { ...c, question: v, value: undefined })}
+                    options={[
+                      ...(target ? [] : [{ value: c.question, label: c.question }]),
+                      ...candidates.map((x) => ({ value: x.id, label: x.name })),
+                    ]}
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <Label htmlFor={`${id}-${k}-op`}>{t("builder.cond.op")}</Label>
-                  <select
+                  <Select
                     id={`${id}-${k}-op`}
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={c.op}
-                    onChange={(e) => {
-                      const op = e.target.value as Condition["op"];
+                    onChange={(v) => {
+                      const op = v as Condition["op"];
                       set(k, {
                         ...c,
                         op,
                         value: op === "eq" || op === "ne" ? c.value : undefined,
                       });
                     }}
-                  >
-                    {(["eq", "ne", "answered", "empty"] as const).map((op) => (
-                      <option key={op} value={op}>
-                        {t(`builder.cond.ops.${op}`)}
-                      </option>
-                    ))}
-                  </select>
+                    options={(["eq", "ne", "answered", "empty"] as const).map((op) => ({
+                      value: op,
+                      label: t(`builder.cond.ops.${op}`),
+                    }))}
+                  />
                 </div>
                 {needsValue && (
                   <div className="flex flex-col gap-1">
                     <Label htmlFor={`${id}-${k}-v`}>{t("builder.cond.value")}</Label>
                     {target?.values ? (
-                      <select
+                      <Select
                         id={`${id}-${k}-v`}
-                        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                         value={c.value ?? ""}
-                        onChange={(e) => set(k, { ...c, value: e.target.value })}
-                      >
-                        <option value="">{t("builder.choose")}</option>
-                        {target.values.map((v) => (
-                          <option key={v.value} value={v.value}>
-                            {v.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => set(k, { ...c, value: v })}
+                        options={[{ value: "", label: t("builder.choose") }, ...target.values]}
+                      />
                     ) : (
                       <Input
                         id={`${id}-${k}-v`}

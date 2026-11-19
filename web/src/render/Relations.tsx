@@ -37,6 +37,7 @@ import { StatePill } from "@/ui/marks";
 import { formatValue, stateCategory } from "./fields";
 import { RefPicker, searchable } from "./RefPicker";
 import { titleOf } from "./RefName";
+import { Select } from "@/ui/select";
 
 const traitPrefix = "trait:";
 
@@ -248,21 +249,15 @@ export function Relations({ type, id }: { type: TypeDefinition; id: string }) {
         >
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${formId}-kind`}>{t("relations.kind")}</Label>
-            <select
+            <Select
               id={`${formId}-kind`}
-              className="h-9 rounded-sm border border-input bg-card px-2.5 text-sm"
               value={choice?.key ?? ""}
-              onChange={(e) => {
-                setChosen(e.target.value);
+              onChange={(v) => {
+                setChosen(v);
                 setOther([]);
               }}
-            >
-              {options.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+              options={options.map((c) => ({ value: c.key, label: c.label }))}
+            />
           </div>
           <div className="flex min-w-64 flex-1 flex-col gap-1">
             <Label htmlFor={`${formId}-record`}>{t("relations.record")}</Label>

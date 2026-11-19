@@ -10,6 +10,7 @@
 // findings of axe. The tile is deleted again, so the other tests see the start page as before.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { pick } from "./pick";
 
 async function axe(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
@@ -28,7 +29,7 @@ test("a tile with a symbol from the grid shows it in the portal", async ({ page 
   const name = `UI42 ${Date.now()}`;
   await page.goto("/types/core.portal_tile/new");
   await page.getByLabel(/^Titel/).fill(name);
-  await page.getByLabel(/^Führt zu/).selectOption("link");
+  await pick(page.getByLabel(/^Führt zu/), "link");
   await page.getByLabel(/^Adresse/).fill("https://intranet.example/telefon");
   const grid = page.getByRole("group", { name: "Symbol" });
   await expect(grid.getByRole("radio", { name: "Ohne" })).toBeChecked();

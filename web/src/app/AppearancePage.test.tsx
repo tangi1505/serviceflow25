@@ -19,6 +19,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -64,12 +65,13 @@ describe("Erscheinungsbild", () => {
     const preview = screen.getByRole("img", {
       name: "Vorschau: Wie das System, Zeilenhöhe Normal, Leiste Breit",
     });
-    await user.selectOptions(screen.getByRole("combobox", { name: "Modus" }), "dark");
-    await user.selectOptions(
+    await selectOption(user, screen.getByRole("combobox", { name: "Modus" }), "dark");
+    await selectOption(
+      user,
       screen.getByRole("combobox", { name: "Zeilenhöhe der Listen" }),
       "compact",
     );
-    await user.selectOptions(screen.getByRole("combobox", { name: "Breite der Leiste" }), "narrow");
+    await selectOption(user, screen.getByRole("combobox", { name: "Breite der Leiste" }), "narrow");
     expect(preview).toHaveAccessibleName("Vorschau: Dunkel, Zeilenhöhe Kompakt, Leiste Schmal");
     expect(preview).toHaveAttribute("data-color-scheme", "dark");
 

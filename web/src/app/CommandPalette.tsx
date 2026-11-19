@@ -255,6 +255,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           {t("command.title")}
         </h2>
         <div className="flex h-12 flex-none items-center gap-2 border-b px-3.5">
+          {/* The search line of the palette is its head, without a frame of its own. */}
+          {/* eslint-disable-next-line no-restricted-syntax */}
           <input
             ref={input}
             role="combobox"

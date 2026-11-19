@@ -63,9 +63,9 @@ import { fieldLabel, formatValue } from "@/render/fields";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
+import { Select } from "@/ui/select";
+import { Input } from "@/ui/input";
 
-const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
-const inputClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
 const kinds = ["number", "pie", "bar", "line", "list", "text"] as const;
 const measures = ["count", "sum", "avg", "min", "max"] as const;
 const periods = ["all", "today", "days_7", "days_30", "year", "own"] as const;
@@ -317,20 +317,18 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
           <>
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${formId}-from`}>{t("dashboard.from")}</Label>
-              <input
+              <Input
                 id={`${formId}-from`}
                 type="date"
-                className={inputClass}
                 value={own.from}
                 onChange={(e) => setOwn({ ...own, from: e.target.value })}
               />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${formId}-to`}>{t("dashboard.to")}</Label>
-              <input
+              <Input
                 id={`${formId}-to`}
                 type="date"
-                className={inputClass}
                 value={own.to}
                 onChange={(e) => setOwn({ ...own, to: e.target.value })}
               />
@@ -339,19 +337,18 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
         )}
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${formId}-unit`}>{t("dashboard.unit")}</Label>
-          <select
+          <Select
             id={`${formId}-unit`}
-            className={selectClass}
             value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          >
-            <option value="">{t("dashboard.allUnits")}</option>
-            {(nodes.data ?? []).map((n) => (
-              <option key={n.path} value={n.path}>
-                {t("dashboard.unitBelow", { name: labelOf(n.label, i18n.language, n.path) })}
-              </option>
-            ))}
-          </select>
+            onChange={setUnit}
+            options={[
+              { value: "", label: t("dashboard.allUnits") },
+              ...(nodes.data ?? []).map((n) => ({
+                value: n.path,
+                label: t("dashboard.unitBelow", { name: labelOf(n.label, i18n.language, n.path) }),
+              })),
+            ]}
+          />
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
@@ -791,38 +788,26 @@ function DashboardEditor({
         </h2>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${formId}-name`}>{t("dashboard.name")}</Label>
-          <input
-            id={`${formId}-name`}
-            className={inputClass}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <Input id={`${formId}-name`} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${formId}-desc`}>{t("dashboard.description")}</Label>
-          <input
+          <Input
             id={`${formId}-desc`}
-            className={inputClass}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${formId}-open`}>{t("dashboard.openWith")}</Label>
-          <select
+          <Select
             id={`${formId}-open`}
-            className={selectClass}
             value={openWith}
-            onChange={(e) => setOpenWith(e.target.value)}
-          >
-            {periods
+            onChange={setOpenWith}
+            options={periods
               .filter((p) => p !== "own")
-              .map((p) => (
-                <option key={p} value={p}>
-                  {t(`dashboard.periods.${p}`)}
-                </option>
-              ))}
-          </select>
+              .map((p) => ({ value: p, label: t(`dashboard.periods.${p}`) }))}
+          />
         </div>
         <p className="text-sm text-muted-foreground">{t("dashboard.shareHint")}</p>
       </section>
@@ -972,21 +957,14 @@ function WidgetForm({
   ];
   const numbers = fields.filter((f) => f.type === "number");
   const select = (f: string, options: { value: string; label: string }[], empty?: string) => (
-    <select
+    <Select
       id={`${id}-${f}`}
-      className={selectClass}
       value={String(widget[f] ?? "")}
-      aria-invalid={errors[f] ? true : undefined}
-      aria-describedby={described(f)}
-      onChange={(e) => onChange({ [f]: e.target.value })}
-    >
-      {empty !== undefined && <option value="">{empty}</option>}
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+      invalid={Boolean(errors[f])}
+      describedBy={described(f)}
+      onChange={(v) => onChange({ [f]: v })}
+      options={empty !== undefined ? [{ value: "", label: empty }, ...options] : options}
+    />
   );
   const field = (f: string, label: string, control: ReactNode) => (
     <div className="flex min-w-0 flex-col gap-1">
@@ -1004,9 +982,8 @@ function WidgetForm({
         {field(
           "title",
           t("dashboard.title"),
-          <input
+          <Input
             id={`${id}-title`}
-            className={inputClass}
             value={String(widget["title"] ?? "")}
             onChange={(e) => onChange({ title: e.target.value })}
           />,
@@ -1023,34 +1000,28 @@ function WidgetForm({
           {field(
             "w",
             t("dashboard.width"),
-            <select
+            <Select
               id={`${id}-w`}
-              className={selectClass}
-              value={num(widget, "w", 1)}
-              onChange={(e) => onChange({ w: Number(e.target.value) })}
-            >
-              {[1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {t("dashboard.columns", { count: n })}
-                </option>
-              ))}
-            </select>,
+              value={String(num(widget, "w", 1))}
+              onChange={(v) => onChange({ w: Number(v) })}
+              options={[1, 2, 3, 4].map((n) => ({
+                value: String(n),
+                label: t("dashboard.columns", { count: n }),
+              }))}
+            />,
           )}
           {field(
             "h",
             t("dashboard.height"),
-            <select
+            <Select
               id={`${id}-h`}
-              className={selectClass}
-              value={num(widget, "h", 1)}
-              onChange={(e) => onChange({ h: Number(e.target.value) })}
-            >
-              {[1, 2, 3].map((n) => (
-                <option key={n} value={n}>
-                  {t("dashboard.rows", { count: n })}
-                </option>
-              ))}
-            </select>,
+              value={String(num(widget, "h", 1))}
+              onChange={(v) => onChange({ h: Number(v) })}
+              options={[1, 2, 3].map((n) => ({
+                value: String(n),
+                label: t("dashboard.rows", { count: n }),
+              }))}
+            />,
           )}
         </div>
       </div>
@@ -1109,28 +1080,27 @@ function WidgetForm({
                 {field(
                   "target_type",
                   t("dashboard.type"),
-                  <select
+                  <Select
                     id={`${id}-target_type`}
-                    className={selectClass}
                     value={typeName}
-                    aria-describedby={described("target_type")}
-                    onChange={(e) => {
+                    describedBy={described("target_type")}
+                    onChange={(v) => {
                       setConditions([]);
                       onChange({
-                        target_type: e.target.value,
+                        target_type: v,
                         query: "",
                         group_by: "",
                         measure_field: "",
                       });
                     }}
-                  >
-                    <option value="">{t("dashboard.choose")}</option>
-                    {(types.data ?? []).map((ty) => (
-                      <option key={qualifiedName(ty)} value={qualifiedName(ty)}>
-                        {labelOf(ty.label, i18n.language, qualifiedName(ty))}
-                      </option>
-                    ))}
-                  </select>,
+                    options={[
+                      { value: "", label: t("dashboard.choose") },
+                      ...(types.data ?? []).map((ty) => ({
+                        value: qualifiedName(ty),
+                        label: labelOf(ty.label, i18n.language, qualifiedName(ty)),
+                      })),
+                    ]}
+                  />,
                 )}
                 {(rawMode || parsed === null) && (
                   <div className="flex flex-col gap-1">
@@ -1227,9 +1197,8 @@ function WidgetForm({
                 {field(
                   "columns",
                   t("dashboard.columnsList"),
-                  <input
+                  <Input
                     id={`${id}-columns`}
-                    className={inputClass}
                     value={String(widget["columns"] ?? "")}
                     aria-describedby={described("columns")}
                     onChange={(e) => onChange({ columns: e.target.value })}
@@ -1238,9 +1207,8 @@ function WidgetForm({
                 {field(
                   "sort",
                   t("dashboard.sort"),
-                  <input
+                  <Input
                     id={`${id}-sort`}
-                    className={inputClass}
                     value={String(widget["sort"] ?? "")}
                     aria-describedby={described("sort")}
                     onChange={(e) => onChange({ sort: e.target.value })}
@@ -1249,12 +1217,11 @@ function WidgetForm({
                 {field(
                   "size",
                   t("dashboard.size"),
-                  <input
+                  <Input
                     id={`${id}-size`}
                     type="number"
                     min={1}
                     max={50}
-                    className={inputClass}
                     value={num(widget, "size", 10)}
                     onChange={(e) => onChange({ size: Number(e.target.value) })}
                   />,

@@ -18,6 +18,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 const D = "01a15a3c-8545-7691-b780-d00000000001";
 const W = (n: number) => `01a15a3c-8545-7691-b780-e0000000000${n}`;
@@ -184,7 +185,7 @@ describe("Dashboards", () => {
 
     // The editor sets the period the dashboard opens with.
     await user.click(screen.getByRole("button", { name: "Bearbeiten" }));
-    await user.selectOptions(screen.getByLabelText("Zeitraum beim Öffnen"), "days_30");
+    await selectOption(user, screen.getByLabelText("Zeitraum beim Öffnen"), "days_30");
     const bar = screen.getByRole("region", { name: "Speichern" });
     await user.click(within(bar).getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(state.dashboards![0]!.dashboard["period"]).toBe("days_30"));
@@ -248,7 +249,7 @@ describe("Dashboards", () => {
       const last = state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`).at(-1);
       expect(JSON.parse(String(last!.body)) as Record<string, unknown>).toHaveProperty("from");
     });
-    await user.selectOptions(screen.getByLabelText("Einheit"), "root.it");
+    await selectOption(user, screen.getByLabelText("Einheit"), "root.it");
     await waitFor(() => {
       const last = state.calls.filter((c) => c.path === `/api/v1/dashboards/${D}/data`).at(-1);
       expect((JSON.parse(String(last!.body)) as Record<string, unknown>)["unit"]).toBe("root.it");
@@ -280,10 +281,10 @@ describe("Dashboards", () => {
     const form = screen.getByRole("region", { name: "Widget „Neues Widget“" });
     await user.clear(within(form).getByLabelText("Titel"));
     await user.type(within(form).getByLabelText("Titel"), "Je Art");
-    await user.selectOptions(within(form).getByLabelText("Art"), "bar");
-    await user.selectOptions(within(form).getByLabelText("Typ"), "probe.probe");
-    await user.selectOptions(within(form).getByLabelText("Gruppieren nach"), "kind");
-    await user.selectOptions(within(form).getByLabelText("Breite"), "2");
+    await selectOption(user, within(form).getByLabelText("Art"), "bar");
+    await selectOption(user, within(form).getByLabelText("Typ"), "probe.probe");
+    await selectOption(user, within(form).getByLabelText("Gruppieren nach"), "kind");
+    await selectOption(user, within(form).getByLabelText("Breite"), "2");
     expect(within(bar).getByRole("status")).toHaveTextContent("Änderungen nicht gespeichert");
     await expectAccessible(container);
 
@@ -334,10 +335,12 @@ describe("Dashboards", () => {
     // Since UI38 the start page is in the tab Darstellung and kept at once.
     await user.click(await screen.findByRole("tab", { name: "Darstellung" }));
     const start = await screen.findByLabelText("Startseite");
+    // The options show when the field is open (UI58).
+    await user.click(start);
     expect(
-      await within(start).findByRole("option", { name: "Service Desk Überblick" }),
+      await screen.findByRole("option", { name: "Service Desk Überblick" }),
     ).toBeInTheDocument();
-    await user.selectOptions(start, "none");
+    await selectOption(user, start, "none");
     await waitFor(() => expect(state.settings).toMatchObject({ start_dashboard: "none" }));
   });
 
@@ -371,7 +374,8 @@ describe("Dashboards", () => {
     renderAt(`/dashboards/${D}`);
     await user.click(await screen.findByRole("button", { name: "Bearbeiten" }));
     const form = screen.getByRole("region", { name: "Widget „Offene“" });
-    await user.selectOptions(
+    await selectOption(
+      user,
       within(form).getByLabelText("Auch in der Seitenleiste von"),
       "probe.probe",
     );
@@ -412,10 +416,12 @@ describe("Dashboards", () => {
     await user.click(await screen.findByRole("button", { name: "Bearbeiten" }));
     await user.click(screen.getByRole("button", { name: "Widget hinzufügen" }));
     const form = screen.getByRole("region", { name: "Widget „Neues Widget“" });
-    await user.selectOptions(within(form).getByLabelText("Art"), "bar");
-    await user.selectOptions(within(form).getByLabelText("Typ"), "probe.probe");
+    await selectOption(user, within(form).getByLabelText("Art"), "bar");
+    await selectOption(user, within(form).getByLabelText("Typ"), "probe.probe");
     const group = within(form).getByLabelText("Gruppieren nach");
-    expect(within(group).getByRole("option", { name: "Rolle: Anforderer" })).toHaveValue(
+    await user.click(group);
+    expect(screen.getByRole("option", { name: "Rolle: Anforderer" })).toHaveAttribute(
+      "data-value",
       "actors.requester",
     );
   });

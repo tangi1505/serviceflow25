@@ -40,6 +40,7 @@ import { LinkButton } from "@/ui/page-header";
 import { Changes, useCustomizer, type Apply } from "./CustomizePage";
 import { DensityTable } from "./TableTools";
 import { WorkflowGraph } from "./WorkflowGraph";
+import { Select } from "@/ui/select";
 
 const prefix = "k_";
 const own = (name: string) => name.startsWith(prefix);
@@ -508,19 +509,15 @@ function TransitionFields({
       </fieldset>
       <div className="flex flex-col gap-1">
         <Label htmlFor={`${id}-to`}>{t("workflow.col.to")}</Label>
-        <select
+        <Select
           id={`${id}-to`}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
           value={to}
-          onChange={(e) => onChange({ to: e.target.value })}
-        >
-          <option value="">{t("builder.choose")}</option>
-          {states.map((s) => (
-            <option key={s.name} value={s.name}>
-              {stateName(s)}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onChange({ to: v })}
+          options={[
+            { value: "", label: t("builder.choose") },
+            ...states.map((s) => ({ value: s.name, label: stateName(s) })),
+          ]}
+        />
       </div>
       <div className="flex flex-col gap-1 sm:col-span-2">
         <Label htmlFor={`${id}-when`}>{t("workflow.col.when")}</Label>

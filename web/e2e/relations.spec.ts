@@ -10,6 +10,7 @@
 // instance has no service desk packages, so two probes stand in for incident and element.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { pick } from "./pick";
 
 const headers = { "X-Requested-With": "itsm" };
 
@@ -37,7 +38,7 @@ test("links two records in the relations tab and shows it on both", async ({ pag
   await expect(tabs.getByRole("tab").first()).toHaveAccessibleName("Bezüge");
   const panel = page.getByRole("tabpanel", { name: "Bezüge" });
   await expect(panel.getByText("Noch keine Bezüge.")).toBeVisible();
-  await panel.getByLabel("Art").selectOption({ label: "verknüpft mit" });
+  await pick(panel.getByLabel("Art"), "verknüpft mit");
   await panel.getByRole("combobox", { name: "Datensatz" }).fill(`Server ${stamp}`);
   await page.getByRole("option", { name: new RegExp(`SD4 Server ${stamp}`) }).click();
   await panel.getByRole("button", { name: "Verknüpfen" }).click();

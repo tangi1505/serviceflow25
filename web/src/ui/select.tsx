@@ -18,6 +18,7 @@
 // a search field on top that takes the focus; the arrows and Enter work in it as well.
 import { Check, ChevronDown } from "lucide-react";
 import {
+  Fragment,
   useEffect,
   useId,
   useMemo,
@@ -35,6 +36,8 @@ export type SelectOption = {
   value: string;
   label: string;
   disabled?: boolean;
+  // group puts the option under a heading; options of a group follow each other.
+  group?: string;
 };
 
 export type ControlSize = "bar" | "form";
@@ -74,6 +77,7 @@ export function Select({
   icon,
   className,
   listWidth,
+  wrapClassName,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -95,6 +99,8 @@ export function Select({
   className?: string;
   // listWidth is the width of the open list when it should be wider than the field.
   listWidth?: string;
+  // wrapClassName sets the width of the whole field, such as w-full or max-w-md.
+  wrapClassName?: string;
 }) {
   const { t } = useTranslation();
   const own = useId();
@@ -299,12 +305,22 @@ export function Select({
   }, [open]);
 
   return (
-    <div ref={root} className={cn("relative", size === "form" ? "w-full" : "flex-none")}>
+    <div
+      ref={root}
+      className={cn(
+        "relative",
+        // In a form as wide as its content, at least 10 rem; wrapClassName makes it wider.
+        size === "form" ? "inline-block max-w-full min-w-40 align-middle" : "flex-none",
+        wrapClassName,
+      )}
+    >
       <button
         ref={button}
         id={id}
         type="button"
         role="combobox"
+        // The value for tests and the browser tests (UI58): the button shows only the label.
+        data-value={value}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -377,30 +393,42 @@ export function Select({
           >
             {shown.map((o, i) => {
               const selected = o.value === value;
+              // A group starts with its name, as <optgroup> did (the form builder).
+              const heading = o.group && o.group !== shown[i - 1]?.group;
               return (
-                // The options take clicks; the keyboard stays on the button or the search field.
-                // eslint-disable-next-line jsx-a11y/click-events-have-key-events
-                <li
-                  key={o.value}
-                  id={optionId(i)}
-                  role="option"
-                  aria-selected={selected}
-                  aria-disabled={o.disabled || undefined}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseMove={() => !o.disabled && i !== active && setActive(i)}
-                  onClick={() => take(i)}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground",
-                    i === active && "bg-surface-active",
-                    o.disabled && "cursor-default opacity-50",
+                <Fragment key={o.value}>
+                  {heading && (
+                    <li
+                      role="presentation"
+                      className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground"
+                    >
+                      {o.group}
+                    </li>
                   )}
-                >
-                  <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                  <Check
-                    aria-hidden="true"
-                    className={cn("size-4 flex-none text-accent", !selected && "invisible")}
-                  />
-                </li>
+                  {/* The options take clicks; the keyboard stays on the button or the search field. */}
+                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
+                  <li
+                    id={optionId(i)}
+                    role="option"
+                    data-value={o.value}
+                    aria-selected={selected}
+                    aria-disabled={o.disabled || undefined}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseMove={() => !o.disabled && i !== active && setActive(i)}
+                    onClick={() => take(i)}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground",
+                      i === active && "bg-surface-active",
+                      o.disabled && "cursor-default opacity-50",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                    <Check
+                      aria-hidden="true"
+                      className={cn("size-4 flex-none text-accent", !selected && "invisible")}
+                    />
+                  </li>
+                </Fragment>
               );
             })}
             {shown.length === 0 && (

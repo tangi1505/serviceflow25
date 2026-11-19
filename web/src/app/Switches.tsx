@@ -16,9 +16,7 @@ import { useTranslation } from "react-i18next";
 import { api, mySettingsQuery, type SettingsChange } from "@/api/client";
 import { languages, type Language } from "@/i18n";
 import { Label } from "@/ui/label";
-
-const selectClass =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+import { Select } from "@/ui/select";
 
 // usePersist keeps a change in the settings of the person when persist is set.
 export function usePersist(persist: boolean) {
@@ -46,18 +44,12 @@ export function LanguageSwitch({ persist = false }: { persist?: boolean }) {
   return (
     <div className="flex items-center gap-2">
       <Label htmlFor={id}>{t("nav.language")}</Label>
-      <select
+      <Select
         id={id}
-        className={selectClass}
         value={i18n.language}
-        onChange={(e) => change(e.target.value as Language)}
-      >
-        {Object.keys(languages).map((lng) => (
-          <option key={lng} value={lng}>
-            {t(`language.${lng}`)}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => change(v as Language)}
+        options={Object.keys(languages).map((lng) => ({ value: lng, label: t(`language.${lng}`) }))}
+      />
     </div>
   );
 }

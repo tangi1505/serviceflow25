@@ -18,6 +18,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -194,7 +195,7 @@ describe("Portal", () => {
     const anliegen = screen.getByRole("group", { name: "Anliegen" });
     const ort = screen.getByRole("group", { name: "Ort" });
     await user.type(within(anliegen).getByLabelText(/Worum geht es\?/), "Drucker im Flur");
-    await user.selectOptions(within(ort).getByLabelText("Etage"), "og1");
+    await selectOption(user, within(ort).getByLabelText("Etage"), "og1");
     expect(screen.queryByRole("group", { name: "Rollen am Datensatz" })).toBeNull();
     await expectAccessible(container);
 

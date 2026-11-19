@@ -19,6 +19,7 @@ import { fakeApi, newState, probeType, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
 
 import { schemaFor, toInput, toRecord } from "./fields";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -129,14 +130,14 @@ describe("Form", () => {
     expect(screen.getByLabelText("Aktiv")).toBeChecked();
     expect(screen.getByLabelText("Fällig am")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Gesehen")).toHaveAttribute("type", "datetime-local");
-    expect(screen.getByLabelText("Art")).toHaveValue("question");
+    expect(screen.getByLabelText("Art")).toHaveAttribute("data-value", "question");
     await expectAccessible(container);
 
     await user.click(screen.getByRole("button", { name: "Anlegen" }));
     expect(await screen.findByText("Bitte ausfüllen.")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/Titel/), "Drucker streikt");
-    await user.selectOptions(screen.getByLabelText("Art"), "fault");
+    await selectOption(user, screen.getByLabelText("Art"), "fault");
     await user.click(screen.getByRole("button", { name: "Anlegen" }));
     await waitFor(() =>
       expect(router.state.location.pathname).toMatch(/^\/types\/probe\.probe\/01a15a3c/),
@@ -221,7 +222,7 @@ describe("Form", () => {
     expect(node).toHaveValue("");
     await expectAccessible(container);
     await user.type(screen.getByLabelText(/Titel/), "Wo");
-    await user.selectOptions(node, "root.sued");
+    await selectOption(user, node, "root.sued");
     await user.click(screen.getByRole("button", { name: "Anlegen" }));
     await waitFor(() => expect(state.records).toHaveLength(3));
     expect(state.records[2]).toMatchObject({ org_path: "root.sued" });

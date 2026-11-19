@@ -42,6 +42,7 @@ import { DensityTable } from "./TableTools";
 import { ChangeValue } from "./Timeline";
 import { plain, Words } from "./Versions";
 import { wordDiff } from "./wordDiff";
+import { Select } from "@/ui/select";
 
 export const approvalsKey = (typeName: string, id: string) => [
   "records",
@@ -541,20 +542,16 @@ function RequestForm({
       {(templates.data?.length ?? 0) > 0 && (
         <div className="flex max-w-md flex-col gap-1">
           <Label htmlFor={`${base}-tpl`}>{t("approvals.template")}</Label>
-          <select
+          <Select
             id={`${base}-tpl`}
             value={template?.template ?? ""}
-            onChange={(e) => pick(e.target.value)}
-            aria-describedby={`${base}-tpl-hint`}
-            className="h-9 rounded-md border border-input bg-card px-2.5 text-sm"
-          >
-            <option value="">{t("approvals.noTemplate")}</option>
-            {templates.data!.map((d) => (
-              <option key={d.template} value={d.template}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+            onChange={pick}
+            describedBy={`${base}-tpl-hint`}
+            options={[
+              { value: "", label: t("approvals.noTemplate") },
+              ...templates.data!.map((d) => ({ value: d.template, label: d.name })),
+            ]}
+          />
           <span id={`${base}-tpl-hint`} className="text-[12.5px] text-muted-foreground">
             {t("approvals.templateHint")}
           </span>
@@ -579,19 +576,18 @@ function RequestForm({
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${base}-need-${i}`}>{t("approvals.needLabel")}</Label>
-              <select
+              <Select
                 id={`${base}-need-${i}`}
-                value={s.need}
-                onChange={(e) => set(i, { need: Number(e.target.value) })}
-                className="h-9 rounded-md border border-input bg-card px-2.5 text-sm"
-              >
-                <option value={0}>{t("approvals.all")}</option>
-                {s.approvers.slice(0, -1).map((_, n) => (
-                  <option key={n} value={n + 1}>
-                    {t("approvals.atLeast", { count: n + 1 })}
-                  </option>
-                ))}
-              </select>
+                value={String(s.need)}
+                onChange={(v) => set(i, { need: Number(v) })}
+                options={[
+                  { value: "0", label: t("approvals.all") },
+                  ...s.approvers.slice(0, -1).map((_, n) => ({
+                    value: String(n + 1),
+                    label: t("approvals.atLeast", { count: n + 1 }),
+                  })),
+                ]}
+              />
             </div>
             {stages.length > 1 && (
               <Button

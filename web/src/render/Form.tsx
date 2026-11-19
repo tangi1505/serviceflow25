@@ -50,6 +50,7 @@ import { FormBuilder } from "./FormBuilder";
 import { IconPicker } from "./IconPicker";
 import { RefPicker } from "./RefPicker";
 import { RichEditor, RichText } from "./RichEditor";
+import { Select } from "@/ui/select";
 
 type Conflict = { theirs: RecordData; mine: RecordData; fields: Field[] };
 
@@ -458,18 +459,27 @@ export function Form({
         );
       case "choice":
         return (
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            {...common}
-            {...register(f.name)}
-          >
-            {!f.required && <option value="">{t("form.none")}</option>}
-            {(f.options ?? []).map((o) => (
-              <option key={o.value} value={o.value}>
-                {optionLabel(f, o.value, i18n.language)}
-              </option>
-            ))}
-          </select>
+          <Controller
+            name={f.name}
+            control={formControl}
+            render={({ field }) => (
+              <Select
+                id={common.id}
+                invalid={common["aria-invalid"]}
+                describedBy={common["aria-describedby"]}
+                required={f.required}
+                value={String(field.value ?? "")}
+                onChange={field.onChange}
+                options={[
+                  ...(f.required ? [] : [{ value: "", label: t("form.none") }]),
+                  ...(f.options ?? []).map((o) => ({
+                    value: o.value,
+                    label: optionLabel(f, o.value, i18n.language),
+                  })),
+                ]}
+              />
+            )}
+          />
         );
       default:
         return <Input maxLength={f.max_length || undefined} {...common} {...register(f.name)} />;
@@ -540,21 +550,18 @@ export function Form({
             {t("form.node")}
             <span aria-hidden="true"> *</span>
           </Label>
-          <select
+          <Select
             id={`${id}-org_path`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={node}
-            onChange={(e) => setNode(e.target.value)}
-            aria-required="true"
-            aria-invalid={errors["org_path"] ? true : undefined}
-          >
-            {node === "" && <option value="">{t("form.none")}</option>}
-            {nodes.map((n) => (
-              <option key={n.path} value={n.path}>
-                {labelOf(n.label, i18n.language, n.path)}
-              </option>
-            ))}
-          </select>
+            onChange={setNode}
+            required
+            invalid={Boolean(errors["org_path"])}
+            placeholder={t("form.none")}
+            options={nodes.map((n) => ({
+              value: n.path,
+              label: labelOf(n.label, i18n.language, n.path),
+            }))}
+          />
           {errorText("org_path")}
         </div>
       )}

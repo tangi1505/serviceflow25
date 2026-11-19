@@ -20,6 +20,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -57,10 +58,10 @@ describe("Settings", () => {
     expect(screen.queryByLabelText("Theme")).not.toBeInTheDocument();
     await expectAccessible(first.container);
     // Every change applies at once (E49).
-    await user.selectOptions(screen.getByLabelText("Sprache"), "en");
+    await selectOption(user, screen.getByLabelText("Sprache"), "en");
     expect(await screen.findByRole("heading", { name: "My settings" })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("en");
-    await user.selectOptions(screen.getByLabelText("Time zone"), "Europe/London");
+    await selectOption(user, screen.getByLabelText("Time zone"), "Europe/London");
     await waitFor(() =>
       expect(state.settings).toMatchObject({ language: "en", time_zone: "Europe/London" }),
     );
@@ -124,10 +125,10 @@ describe("Settings", () => {
     await screen.findByRole("heading", { name: "Meine Einstellungen" });
     await user.click(screen.getByRole("tab", { name: "Vorbelegung" }));
     const presets = screen.getByRole("region", { name: "Vorbelegung beim Anlegen" });
-    await user.selectOptions(within(presets).getByLabelText("Typ"), "probe.probe");
+    await selectOption(user, within(presets).getByLabelText("Typ"), "probe.probe");
     await user.click(within(presets).getByRole("button", { name: "Feld hinzufügen" }));
     const row = within(presets).getByRole("listitem", { name: "Vorbelegung 1" });
-    await user.selectOptions(within(row).getByRole("combobox", { name: "Feld" }), "kind");
+    await selectOption(user, within(row).getByRole("combobox", { name: "Feld" }), "kind");
     // The value is the select field of the kit (UI57, UI61).
     await user.click(within(row).getByRole("combobox", { name: "Neuer Wert" }));
     await user.click(await screen.findByRole("option", { name: "Störung" }));
@@ -140,7 +141,7 @@ describe("Settings", () => {
 
     renderAt("/types/probe.probe/new");
     await screen.findByRole("heading", { name: "Neuer Datensatz" });
-    expect(screen.getByLabelText("Art")).toHaveValue("fault");
+    expect(screen.getByLabelText("Art")).toHaveAttribute("data-value", "fault");
   });
 
   // SD20: the page shows the declared settings by group and saves all changes at once in the
@@ -150,8 +151,9 @@ describe("Settings", () => {
     const user = userEvent.setup();
     const { container } = renderAt("/settings/global");
     await screen.findByRole("heading", { name: "Globale Einstellungen · Gesamt" });
+    await user.click(screen.getByLabelText("Einheit"));
     await screen.findByRole("option", { name: "IT (root.it)" });
-    await user.selectOptions(screen.getByLabelText("Einheit"), "root.it");
+    await selectOption(user, screen.getByLabelText("Einheit"), "root.it");
     await screen.findByRole("heading", { name: "Globale Einstellungen · IT" });
     expect(screen.getByRole("heading", { name: "Oberfläche Kern" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Störung Paket incident" })).toBeInTheDocument();
@@ -161,10 +163,11 @@ describe("Settings", () => {
 
     const zone = screen.getByRole("group", { name: "Zeitzone" });
     expect(within(zone).getByText("Vorgabe des Kerns")).toBeInTheDocument();
-    await user.selectOptions(within(zone).getByLabelText("Zeitzone"), "Europe/London");
+    await selectOption(user, within(zone).getByLabelText("Zeitzone"), "Europe/London");
     expect(within(zone).getByText("Geändert, noch nicht gespeichert")).toBeInTheDocument();
     const matrix = screen.getByRole("group", { name: "Prioritätsmatrix" });
-    await user.selectOptions(
+    await selectOption(
+      user,
       within(matrix).getByLabelText("Auswirkung Hoch, Dringlichkeit Niedrig"),
       "1",
     );
@@ -210,8 +213,9 @@ describe("Settings", () => {
     };
     const user = userEvent.setup();
     renderAt("/settings/global");
+    await user.click(await screen.findByLabelText("Einheit"));
     await screen.findByRole("option", { name: "IT (root.it)" });
-    await user.selectOptions(screen.getByLabelText("Einheit"), "root.it");
+    await selectOption(user, screen.getByLabelText("Einheit"), "root.it");
     const zone = await screen.findByRole("group", { name: "Zeitzone" });
     expect(await within(zone).findByText("Eigene Einstellung dieser Einheit")).toBeInTheDocument();
     const size = screen.getByRole("group", { name: "Höchstgröße einer Datei" });

@@ -25,9 +25,9 @@ import { timeZones } from "@/app/SettingsPage";
 import { RefPicker } from "@/render/RefPicker";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
+import { Select } from "@/ui/select";
+import { Input } from "@/ui/input";
 
-const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
-const inputClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
 const mib = 1024 * 1024;
 
 type Current = Record<string, { value: unknown; source: string }>;
@@ -164,18 +164,15 @@ export function GlobalSettingsPage() {
       <p className="text-sm text-muted-foreground">{t("settings.globalHint")}</p>
       <div className="flex max-w-md flex-col gap-1">
         <Label htmlFor={`${id}-node`}>{t("settings.node")}</Label>
-        <select
+        <Select
           id={`${id}-node`}
-          className={selectClass}
           value={path}
-          onChange={(e) => pickNode(e.target.value)}
-        >
-          {(nodes.data ?? [{ path: "root", name: "root", label: {} }]).map((n) => (
-            <option key={n.path} value={n.path}>
-              {labelOf(n.label, lang, n.path)} ({n.path})
-            </option>
-          ))}
-        </select>
+          onChange={pickNode}
+          options={(nodes.data ?? [{ path: "root", name: "root", label: {} }]).map((n) => ({
+            value: n.path,
+            label: `${labelOf(n.label, lang, n.path)} (${n.path})`,
+          }))}
+        />
       </div>
       {message && (
         <p className="rounded-md border bg-muted p-3 text-sm" role="alert">
@@ -336,12 +333,12 @@ function Field({ def, id, value, disabled, invalid, describedBy, label, onChange
   };
   const numeric = (scale: number, suffix: string) => (
     <div className="flex flex-wrap items-center gap-2">
-      <input
+      <Input
         {...common}
         type="number"
         inputMode="decimal"
         step="any"
-        className={`${inputClass} w-32`}
+        className="w-32"
         value={numberText(value, scale)}
         onChange={(e) => {
           const n = Number(e.target.value);
@@ -355,39 +352,38 @@ function Field({ def, id, value, disabled, invalid, describedBy, label, onChange
   switch (def.kind) {
     case "choice":
       return (
-        <select
-          {...common}
-          className={`${selectClass} max-w-md`}
+        <Select
+          id={id}
+          disabled={disabled}
+          invalid={invalid}
+          describedBy={describedBy}
+          wrapClassName="max-w-md"
           value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {(def.options ?? []).map((o) => (
-            <option key={String(o.value)} value={String(o.value)}>
-              {labelOf(o.label, lang, String(o.value))}
-            </option>
-          ))}
-        </select>
+          onChange={onChange}
+          options={(def.options ?? []).map((o) => ({
+            value: String(o.value),
+            label: labelOf(o.label, lang, String(o.value)),
+          }))}
+        />
       );
     case "time_zone":
       return (
-        <select
-          {...common}
-          className={`${selectClass} max-w-md`}
+        <Select
+          id={id}
+          disabled={disabled}
+          invalid={invalid}
+          describedBy={describedBy}
+          wrapClassName="max-w-md"
           value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {timeZones().map((z) => (
-            <option key={z} value={z}>
-              {z}
-            </option>
-          ))}
-        </select>
+          onChange={onChange}
+          options={timeZones().map((z) => ({ value: z, label: z }))}
+        />
       );
     case "text":
       return (
-        <input
+        <Input
           {...common}
-          className={`${inputClass} max-w-md`}
+          className="max-w-md"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -496,9 +492,9 @@ function ListField({
           </button>
         </span>
       ))}
-      <input
+      <Input
         id={id}
-        className={`${inputClass} w-44`}
+        className="w-44"
         disabled={disabled}
         aria-label={t("settings.addEntryTo", { name: label })}
         aria-describedby={describedBy}
@@ -579,9 +575,9 @@ function MatrixField({
                   const differs = String(cell) !== String(fallback[rk]?.[ck]);
                   return (
                     <td key={ck} className="border px-2 py-1 text-center">
-                      <select
-                        className={`h-9 rounded-md border bg-background px-2 text-sm ${differs ? "border-accent ring-1 ring-accent" : "border-input"}`}
-                        aria-label={t("settings.matrixCell", {
+                      <Select
+                        className={differs ? "border-accent ring-1 ring-accent" : undefined}
+                        label={t("settings.matrixCell", {
                           row: rowName,
                           rowValue: rl,
                           column: colName,
@@ -589,14 +585,12 @@ function MatrixField({
                         })}
                         disabled={disabled}
                         value={String(cell ?? "")}
-                        onChange={(e) => set(rk, ck, e.target.value)}
-                      >
-                        {options.map((o) => (
-                          <option key={String(o.value)} value={String(o.value)}>
-                            {labelOf(o.label, lang, String(o.value))}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => set(rk, ck, v)}
+                        options={options.map((o) => ({
+                          value: String(o.value),
+                          label: labelOf(o.label, lang, String(o.value)),
+                        }))}
+                      />
                     </td>
                   );
                 })}

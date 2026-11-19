@@ -46,6 +46,7 @@ import { fieldLabel } from "./fields";
 import { RefName } from "./RefName";
 import { RefPicker } from "./RefPicker";
 import { DensityTable, matches, TableSearch, useDensity } from "./TableTools";
+import { Select } from "@/ui/select";
 
 const any = "*";
 const actions = ["read", "create", "update", "delete"] as const;
@@ -425,28 +426,25 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
                   return (
                     <Td key={a}>
                       <div className="flex items-center gap-1">
-                        <select
-                          aria-label={where(c)}
-                          className={[
-                            "h-9 rounded-md border border-input bg-background px-2 text-sm",
-                            have.length === 0 ? "text-muted-foreground" : "",
-                          ].join(" ")}
+                        <Select
+                          label={where(c)}
+                          className={have.length === 0 ? "text-muted-foreground" : undefined}
                           value={have.length > 1 ? "many" : (have[0]?.scope ?? "")}
                           disabled={busy || have.length > 1}
-                          onChange={(e) => choose(c, e.target.value)}
-                        >
-                          <option value="">{t("roles.none")}</option>
-                          {scopes.map((s) => (
-                            <option key={s} value={s}>
-                              {scopeLabel(s)}
-                            </option>
-                          ))}
-                          {have.length > 1 && (
-                            <option value="many">
-                              {have.map((p) => scopeLabel(p.scope)).join(" + ")}
-                            </option>
-                          )}
-                        </select>
+                          onChange={(v) => choose(c, v)}
+                          options={[
+                            { value: "", label: t("roles.none") },
+                            ...scopes.map((s) => ({ value: s, label: scopeLabel(s) })),
+                            ...(have.length > 1
+                              ? [
+                                  {
+                                    value: "many",
+                                    label: have.map((p) => scopeLabel(p.scope)).join(" + "),
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
@@ -622,18 +620,12 @@ function LineEditor({
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-scope`}>{t("roles.col.scope")}</Label>
-          <select
+          <Select
             id={`${id}-scope`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={scope}
-            onChange={(e) => setScope(e.target.value as Scope)}
-          >
-            {options.map((s) => (
-              <option key={s} value={s}>
-                {scopeLabel(s)}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setScope(v as Scope)}
+            options={options.map((s) => ({ value: s, label: scopeLabel(s) }))}
+          />
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
           <Label htmlFor={`${id}-when`}>{t("roles.condition")}</Label>
@@ -839,20 +831,19 @@ function Others({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
       >
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-type`}>{t("roles.col.type")}</Label>
-          <select
+          <Select
             id={`${id}-type`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={typeName}
-            onChange={(e) => setTypeName(e.target.value)}
-          >
-            <option value="">{t("builder.choose")}</option>
-            <option value={any}>{t("roles.anyType")}</option>
-            {(types.data ?? []).map((ty) => (
-              <option key={qualifiedName(ty)} value={qualifiedName(ty)}>
-                {typeLabel(qualifiedName(ty))}
-              </option>
-            ))}
-          </select>
+            onChange={setTypeName}
+            options={[
+              { value: "", label: t("builder.choose") },
+              { value: any, label: t("roles.anyType") },
+              ...(types.data ?? []).map((ty) => ({
+                value: qualifiedName(ty),
+                label: typeLabel(qualifiedName(ty)),
+              })),
+            ]}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-action`}>{t("roles.col.action")}</Label>
@@ -860,18 +851,12 @@ function Others({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-scope`}>{t("roles.col.scope")}</Label>
-          <select
+          <Select
             id={`${id}-scope`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={scope}
-            onChange={(e) => setScope(e.target.value as Scope)}
-          >
-            {scopes.map((s) => (
-              <option key={s} value={s}>
-                {scopeLabel(s)}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setScope(v as Scope)}
+            options={scopes.map((s) => ({ value: s, label: scopeLabel(s) }))}
+          />
         </div>
         <Button type="submit" variant="outline" disabled={busy || !ready}>
           {t("roles.addOther")}
@@ -973,18 +958,15 @@ function Assignments({ role, busy, run }: { role: Role; busy: boolean; run: Run 
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-node`}>{t("roles.col.node")}</Label>
-          <select
+          <Select
             id={`${id}-node`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={node}
-            onChange={(e) => setNode(e.target.value)}
-          >
-            {(nodes.data ?? [{ path: "root", name: "root", label: {} }]).map((n) => (
-              <option key={n.path} value={n.path}>
-                {nodeLabel(n.path)}
-              </option>
-            ))}
-          </select>
+            onChange={setNode}
+            options={(nodes.data ?? [{ path: "root", name: "root", label: {} }]).map((n) => ({
+              value: n.path,
+              label: nodeLabel(n.path),
+            }))}
+          />
         </div>
         <Button type="submit" variant="outline" disabled={busy || who.length === 0}>
           {t("roles.assign")}

@@ -10,6 +10,7 @@
 // of its own and gives it its German back at the end.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { pick } from "./pick";
 
 const who = { user: "einsteller", password: "Eigene-Wahl9!" };
 
@@ -31,7 +32,7 @@ test("English in my settings holds after signing in again", async ({ page }) => 
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Meine Einstellungen" })).toBeVisible();
   // Every change applies at once (UI38, E49).
-  await page.locator("main").getByLabel("Sprache", { exact: true }).selectOption("en");
+  await pick(page.locator("main").getByLabel("Sprache", { exact: true }), "en");
   await expect(page.getByRole("heading", { name: "My settings" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Types" })).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();

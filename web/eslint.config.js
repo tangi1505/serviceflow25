@@ -30,20 +30,20 @@ export default defineConfig([
   },
   {
     // Every control once in src/ui/ (UI57, UI-Plan E59): a page builds no select and no text
-    // field of its own but takes Select and Input. Boxes, radios, file and hidden fields are no
-    // such control. A warning until UI58 has moved all pages, then an error.
+    // field of its own but takes Select and Input. Boxes, radios, colour, file and hidden fields
+    // are no such control. An error since UI58 has moved all pages.
     files: ["src/**/*.tsx"],
     ignores: ["src/ui/**", "src/**/*.test.tsx"],
     rules: {
       "no-restricted-syntax": [
-        "warn",
+        "error",
         {
           selector: "JSXOpeningElement[name.name='select']",
           message: "Select aus @/ui/select statt <select> (UI57).",
         },
         {
           selector:
-            "JSXOpeningElement[name.name='input']:not(:has(JSXAttribute[name.name='type'][value.value=/^(checkbox|radio|file|hidden)$/]))",
+            "JSXOpeningElement[name.name='input']:not(:has(JSXAttribute[name.name='type'][value.value=/^(checkbox|radio|color|file|hidden)$/]))",
           message: "Input aus @/ui/input statt <input> (UI57).",
         },
       ],

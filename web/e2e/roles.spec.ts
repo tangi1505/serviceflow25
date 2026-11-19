@@ -12,6 +12,7 @@
 // pruefer the role e2e_rollen (probe read all, workplace).
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { pick } from "./pick";
 
 const headers = { "X-Requested-With": "itsm" };
 
@@ -64,12 +65,12 @@ test("narrowing a role in the matrix shows the person fewer records at once", as
     results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
   ).toEqual([]);
 
-  await read.selectOption("own");
+  await pick(read, "own");
   await expect(admin.getByText("Probe: lesen: eigene.")).toBeVisible();
   expect(await count(holder)).toBe(0);
 
   // Back to all: the records are there again.
-  await admin.getByRole("combobox", { name: "Probe: lesen" }).selectOption("all");
+  await pick(admin.getByRole("combobox", { name: "Probe: lesen" }), "all");
   await expect(admin.getByText("Probe: lesen: alle.")).toBeVisible();
   expect(await count(holder)).toBe(before);
 });

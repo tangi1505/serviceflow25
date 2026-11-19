@@ -15,6 +15,7 @@
 // "Anordnen" arranges anew. The test takes its changes back at the end.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { pick } from "./pick";
 
 const headers = { "X-Requested-With": "itsm" };
 
@@ -78,7 +79,7 @@ test("a state and a transition made by keyboard work over the API at once", asyn
   await page.keyboard.press("Space");
   await form.getByRole("checkbox", { name: "In Arbeit" }).focus();
   await page.keyboard.press("Space");
-  await form.getByLabel("Nach").selectOption(stateName);
+  await pick(form.getByLabel("Nach"), stateName);
   await form.getByLabel("Bedingung").focus();
   await page.keyboard.type("record.priority <");
   await expect(form.getByText(/Bedingung ungültig/)).toBeVisible();

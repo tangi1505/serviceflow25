@@ -21,6 +21,7 @@ import { fakeApi, newState, probeType, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
 
 import { relates } from "./Relations";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -93,7 +94,7 @@ describe("Relations", () => {
     expect(table).toHaveTextContent("hat Duplikat");
 
     // Linked to Anna as "verknüpft mit", found by name.
-    await user.selectOptions(within(panel).getByLabelText("Art"), "verknüpft mit");
+    await selectOption(user, within(panel).getByLabelText("Art"), "verknüpft mit");
     await user.type(within(panel).getByRole("combobox", { name: "Datensatz" }), "ber");
     await user.click(await screen.findByRole("option", { name: "Berg" }));
     await expectAccessible(view.container);

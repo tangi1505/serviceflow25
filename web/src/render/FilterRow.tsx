@@ -515,6 +515,9 @@ export function FilterRow({
           ))}
         </span>
       )}
+      {/* The filter row is the control (32 px, UI57); its field is a part of it, without a
+          frame of its own. */}
+      {/* eslint-disable-next-line no-restricted-syntax */}
       <input
         ref={input}
         data-filter-input=""

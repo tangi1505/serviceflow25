@@ -12,6 +12,7 @@
 // newest first, a private one marked. UI28: a role chosen by name with the picker.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { pick } from "./pick";
 
 const user = process.env["ITSM_E2E_USER"] ?? "load";
 const password = process.env["ITSM_E2E_PASSWORD"] ?? "Messlauf-Pw7!";
@@ -63,7 +64,7 @@ test("list, create, edit and resolve a conflict", async ({ page, context }) => {
   await expectNoViolations(page);
   await page.getByLabel(/Titel/).fill(title);
   // Exact: "Wartegrund" (WF11) contains "art" too.
-  await page.getByLabel("Art", { exact: true }).selectOption("fault");
+  await pick(page.getByLabel("Art", { exact: true }), "fault");
   await page.getByLabel("Priorität", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Anlegen" }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();

@@ -21,8 +21,8 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { Select } from "@/ui/select";
 
-const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
 const hexRe = /^#[0-9a-fA-F]{6}$/;
 const variants = ["light", "dark"] as const;
 type Variant = (typeof variants)[number];
@@ -393,48 +393,39 @@ export function AppearancePage() {
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${id}-scheme`}>{t("settings.mode")}</Label>
-              <select
+              <Select
                 id={`${id}-scheme`}
-                className={selectClass}
                 value={form.scheme}
-                onChange={(e) => set({ scheme: e.target.value })}
-              >
-                {(["system", "light", "dark"] as const).map((v) => (
-                  <option key={v} value={v}>
-                    {t(`colorScheme.${v}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set({ scheme: v })}
+                options={(["system", "light", "dark"] as const).map((v) => ({
+                  value: v,
+                  label: t(`colorScheme.${v}`),
+                }))}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${id}-density`}>{t("settings.density")}</Label>
-              <select
+              <Select
                 id={`${id}-density`}
-                className={selectClass}
                 value={form.density}
-                onChange={(e) => set({ density: e.target.value })}
-              >
-                {(["normal", "compact"] as const).map((v) => (
-                  <option key={v} value={v}>
-                    {t(`list.densities.${v}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set({ density: v })}
+                options={(["normal", "compact"] as const).map((v) => ({
+                  value: v,
+                  label: t(`list.densities.${v}`),
+                }))}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${id}-nav`}>{t("settings.navWidth")}</Label>
-              <select
+              <Select
                 id={`${id}-nav`}
-                className={selectClass}
                 value={form.nav}
-                onChange={(e) => set({ nav: e.target.value })}
-              >
-                {(["wide", "narrow"] as const).map((v) => (
-                  <option key={v} value={v}>
-                    {t(`settings.navWidths.${v}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set({ nav: v })}
+                options={(["wide", "narrow"] as const).map((v) => ({
+                  value: v,
+                  label: t(`settings.navWidths.${v}`),
+                }))}
+              />
             </div>
           </div>
           <LookPreview

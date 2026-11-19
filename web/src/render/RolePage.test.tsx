@@ -20,6 +20,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -121,17 +122,23 @@ describe("Role editor", () => {
     const view = renderAt("/roles/agent");
     await screen.findByRole("heading", { name: "Rolle: Bearbeiter" });
     const read = screen.getByRole("combobox", { name: "Probe: lesen" });
-    expect(read).toHaveValue("all");
-    expect(screen.getByRole("combobox", { name: "Probe: ändern" })).toHaveValue("");
+    expect(read).toHaveAttribute("data-value", "all");
+    expect(screen.getByRole("combobox", { name: "Probe: ändern" })).toHaveAttribute(
+      "data-value",
+      "",
+    );
     await expectAccessible(view.container);
 
     // Narrowing read from all to own: the new line, then the old one goes.
-    await user.selectOptions(read, "own");
+    await selectOption(user, read, "own");
     expect(await screen.findByText("Probe: lesen: eigene.")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Probe: lesen" })).toHaveValue("own");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Probe: ändern" }), "group");
+    expect(screen.getByRole("combobox", { name: "Probe: lesen" })).toHaveAttribute(
+      "data-value",
+      "own",
+    );
+    await selectOption(user, screen.getByRole("combobox", { name: "Probe: ändern" }), "group");
     expect(await screen.findByText("Probe: ändern: Gruppe.")).toBeInTheDocument();
-    await user.selectOptions(screen.getByRole("combobox", { name: "Probe: lesen" }), "");
+    await selectOption(user, screen.getByRole("combobox", { name: "Probe: lesen" }), "");
     expect(await screen.findByText("Probe: lesen: kein Recht mehr.")).toBeInTheDocument();
 
     expect(calls(state)).toEqual([
@@ -179,7 +186,7 @@ describe("Role editor", () => {
     // A further scope for the same cell.
     await user.click(within(details).getByRole("button", { name: "Weitere Reichweite" }));
     const extra = within(details).getByRole("form", { name: "Probe: lesen, eigene" });
-    await user.selectOptions(within(extra).getByLabelText("Reichweite"), "involved");
+    await selectOption(user, within(extra).getByLabelText("Reichweite"), "involved");
     await user.click(within(extra).getByRole("button", { name: "Anlegen" }));
     expect(await screen.findByText("Probe: lesen, beteiligt gespeichert.")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Probe: lesen" })).toBeDisabled();
@@ -213,7 +220,7 @@ describe("Role editor", () => {
     const form = screen.getByRole("form", { name: "Neue Zuweisung" });
     await user.type(within(form).getByRole("combobox", { name: "Person oder Gruppe" }), "ber");
     await user.click(await screen.findByRole("option", { name: /^Berg/ }));
-    await user.selectOptions(within(form).getByLabelText("Knoten"), "root.it");
+    await selectOption(user, within(form).getByLabelText("Knoten"), "root.it");
     await user.click(within(form).getByRole("button", { name: "Zuweisen" }));
     expect(await screen.findByText("Rolle an IT (root.it) zugewiesen.")).toBeInTheDocument();
     const table = screen.getByRole("region", { name: "Zuweisungen" });

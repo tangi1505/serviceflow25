@@ -27,10 +27,12 @@ async function typeInto(field: Locator, text: string) {
   await field.pressSequentially(text);
 }
 
-// pick chooses an option of a closed select by typing its label (type-ahead).
+// pick chooses an option of a closed select by typing its label (type-ahead) and Enter: the
+// letters open the select field of the kit on the option, Enter takes it (UI57).
 async function pick(select: Locator, label: string) {
   await select.focus();
   await select.pressSequentially(label);
+  await select.press("Enter");
 }
 
 async function press(button: Locator, key = "Enter") {
@@ -126,10 +128,7 @@ test("a form built by keyboard is filled in in the portal", async ({ page }) => 
     .getByLabel(/Worum geht es\?/)
     .fill(title);
   await page.getByRole("group", { name: "Ort" }).getByLabel(/Raum/).fill("2.14");
-  await page
-    .getByRole("group", { name: "Etage" })
-    .getByLabel("Welche Etage?")
-    .selectOption({ label: "1. OG" });
+  await pick(page.getByRole("group", { name: "Etage" }).getByLabel("Welche Etage?"), "1. OG");
   const filled = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(filled.violations.map((v) => v.id)).toEqual([]);
   await page.getByRole("button", { name: "Absenden" }).click();

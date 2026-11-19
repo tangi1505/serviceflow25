@@ -62,6 +62,7 @@ import { Table, Td, Th, THead, Tr } from "@/ui/table";
 import { Handle, optionValue } from "./FormBuilder";
 import { DensityTable, matches, TableSearch, useDensity } from "./TableTools";
 import { fieldLabel, formatMoment, isCalculated } from "./fields";
+import { Select } from "@/ui/select";
 
 // prefix marks the fields of the customer layer (Kern-Plan PL43).
 const prefix = "k_";
@@ -594,26 +595,23 @@ function FieldEditor({
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${id}-def`}>{t("customize.default")}</Label>
             {field.type === "choice" || field.type === "boolean" ? (
-              <select
+              <Select
                 id={`${id}-def`}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 value={def}
-                onChange={(e) => setDef(e.target.value)}
-              >
-                <option value="">{t("customize.noDefault")}</option>
-                {field.type === "boolean" ? (
-                  <>
-                    <option value="true">{t("builder.yes")}</option>
-                    <option value="false">{t("builder.no")}</option>
-                  </>
-                ) : (
-                  (field.options ?? []).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {labelOf(o.label, i18n.language, o.value)}
-                    </option>
-                  ))
-                )}
-              </select>
+                onChange={setDef}
+                options={[
+                  { value: "", label: t("customize.noDefault") },
+                  ...(field.type === "boolean"
+                    ? [
+                        { value: "true", label: t("builder.yes") },
+                        { value: "false", label: t("builder.no") },
+                      ]
+                    : (field.options ?? []).map((o) => ({
+                        value: o.value,
+                        label: labelOf(o.label, i18n.language, o.value),
+                      }))),
+                ]}
+              />
             ) : (
               <Input
                 id={`${id}-def`}
@@ -765,18 +763,12 @@ function NewField({ type, busy, apply }: { type: TypeDefinition; busy: boolean; 
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor={`${id}-kind`}>{t("customize.kindLabel")}</Label>
-            <select
+            <Select
               id={`${id}-kind`}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               value={kind}
-              onChange={(e) => setKind(e.target.value as Kind)}
-            >
-              {kinds.map((k) => (
-                <option key={k} value={k}>
-                  {t(`customize.kind.${k}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setKind(v as Kind)}
+              options={kinds.map((k) => ({ value: k, label: t(`customize.kind.${k}`) }))}
+            />
           </div>
           {kind === "text" && (
             <div className="flex flex-col gap-1">
@@ -793,19 +785,18 @@ function NewField({ type, busy, apply }: { type: TypeDefinition; busy: boolean; 
           {kind === "reference" && (
             <div className="flex flex-col gap-1">
               <Label htmlFor={`${id}-to`}>{t("customize.to")}</Label>
-              <select
+              <Select
                 id={`${id}-to`}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
-              >
-                <option value="">{t("builder.choose")}</option>
-                {(types.data ?? []).map((c) => (
-                  <option key={qualifiedName(c)} value={qualifiedName(c)}>
-                    {labelOf(c.label, i18n.language, qualifiedName(c))}
-                  </option>
-                ))}
-              </select>
+                onChange={setTo}
+                options={[
+                  { value: "", label: t("builder.choose") },
+                  ...(types.data ?? []).map((c) => ({
+                    value: qualifiedName(c),
+                    label: labelOf(c.label, i18n.language, qualifiedName(c)),
+                  })),
+                ]}
+              />
             </div>
           )}
         </div>

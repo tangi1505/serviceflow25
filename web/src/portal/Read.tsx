@@ -37,6 +37,7 @@ import { Alert } from "@/ui/alert";
 
 import { Comments, mayComment, RatingBox } from "./Feedback";
 import { FormFill } from "./FormFill";
+import { Input } from "@/ui/input";
 
 // creates tells a type users create in the portal (UI10), as against one they only read.
 export function creates(type: TypeDefinition): boolean {
@@ -298,13 +299,7 @@ function ReadArea({
           <label htmlFor="read-q" className="text-sm text-muted-foreground">
             {t("portal.readSearch", { area })}
           </label>
-          <input
-            id="read-q"
-            type="search"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          />
+          <Input id="read-q" type="search" value={text} onChange={(e) => setText(e.target.value)} />
         </form>
         {loaded && rows.length === 0 && (
           <div className="flex flex-col gap-2 text-sm">

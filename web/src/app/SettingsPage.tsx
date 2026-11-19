@@ -40,8 +40,7 @@ import { accentColors, accents } from "@/ui/accent";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Label } from "@/ui/label";
-
-const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
+import { Select } from "@/ui/select";
 
 // timeZones are the zones the browser knows; Europe/Berlin first.
 export function timeZones(): string[] {
@@ -147,19 +146,12 @@ function Choice({
   return (
     <div className="flex flex-col gap-1">
       <Label htmlFor={id}>{t(`settings.${name}`)}</Label>
-      <select
+      <Select
         id={id}
-        className={selectClass}
         value={own}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">{t("settings.inherit")}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={[{ value: "", label: t("settings.inherit") }, ...options]}
+      />
       <InForce settings={settings} name={name} show={show} />
     </div>
   );
@@ -608,19 +600,18 @@ function Presets({ settings }: { settings: MySettings }) {
     <Section title={t("settings.presets")} hint={t("settings.presetsHint")}>
       <div className="flex flex-col gap-1">
         <Label htmlFor={`${id}-type`}>{t("settings.type")}</Label>
-        <select
+        <Select
           id={`${id}-type`}
-          className={selectClass}
           value={typeName}
-          onChange={(e) => pick(e.target.value)}
-        >
-          <option value="">{t("form.none")}</option>
-          {(types.data ?? []).map((x) => (
-            <option key={qualifiedName(x)} value={qualifiedName(x)}>
-              {labelOf(x.label, i18n.language, qualifiedName(x))}
-            </option>
-          ))}
-        </select>
+          onChange={pick}
+          options={[
+            { value: "", label: t("form.none") },
+            ...(types.data ?? []).map((x) => ({
+              value: qualifiedName(x),
+              label: labelOf(x.label, i18n.language, qualifiedName(x)),
+            })),
+          ]}
+        />
       </div>
       {type && (
         <>
@@ -633,20 +624,17 @@ function Presets({ settings }: { settings: MySettings }) {
                   className="flex flex-wrap items-start gap-2"
                   aria-label={t("settings.preset", { n: i + 1 })}
                 >
-                  <select
-                    aria-label={t("batch.field")}
-                    className={selectClass}
+                  <Select
+                    label={t("batch.field")}
                     value={r.field}
-                    onChange={(e) =>
-                      edit(rows.map((x, j) => (j === i ? { field: e.target.value, value: "" } : x)))
+                    onChange={(v) =>
+                      edit(rows.map((x, j) => (j === i ? { field: v, value: "" } : x)))
                     }
-                  >
-                    {fields.map((x) => (
-                      <option key={x.name} value={x.name}>
-                        {fieldLabel(x, i18n.language)}
-                      </option>
-                    ))}
-                  </select>
+                    options={fields.map((x) => ({
+                      value: x.name,
+                      label: fieldLabel(x, i18n.language),
+                    }))}
+                  />
                   {f && (
                     <FieldValue
                       key={r.field}

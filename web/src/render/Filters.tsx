@@ -19,6 +19,7 @@ import { Input } from "@/ui/input";
 
 import { fieldLabel, optionLabel } from "./fields";
 import { RefPicker } from "./RefPicker";
+import { Select } from "@/ui/select";
 
 export type Op =
   "eq" | "neq" | "contains" | "starts" | "gte" | "lte" | "null" | "breached" | "close" | "in";
@@ -351,20 +352,13 @@ function ValueInput({
     return null;
   }
   const select = (options: { value: string; label: string }[]) => (
-    <select
+    <Select
       id={id}
-      aria-label={label}
-      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+      label={label}
       value={String(value ?? "")}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">{t("form.none")}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      options={[{ value: "", label: t("form.none") }, ...options]}
+    />
   );
   if (subject.kind === "role" || (subject.kind === "field" && subject.field.type === "reference")) {
     const targets = subject.kind === "role" ? subject.to : [subject.field.to ?? ""];
@@ -419,17 +413,17 @@ function ValueInput({
       );
     case "boolean":
       return (
-        <select
+        <Select
           id={id}
-          aria-label={label}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          label={label}
           value={value === true ? "true" : value === false ? "false" : ""}
-          onChange={(e) => onChange(e.target.value === "" ? "" : e.target.value === "true")}
-        >
-          <option value="">{t("form.none")}</option>
-          <option value="true">{t("filter.yes")}</option>
-          <option value="false">{t("filter.no")}</option>
-        </select>
+          onChange={(v) => onChange(v === "" ? "" : v === "true")}
+          options={[
+            { value: "", label: t("form.none") },
+            { value: "true", label: t("filter.yes") },
+            { value: "false", label: t("filter.no") },
+          ]}
+        />
       );
     case "number":
       return (
@@ -514,37 +508,29 @@ export function Filters({
               className="flex flex-wrap items-start gap-2"
               aria-label={t("filter.condition", { n: i + 1 })}
             >
-              <select
-                aria-label={t("filter.field")}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              <Select
+                label={t("filter.field")}
                 value={c.field}
-                onChange={(e) => {
-                  const s = all.find((x) => x.name === e.target.value)!;
+                onChange={(v) => {
+                  const s = all.find((x) => x.name === v)!;
                   set(i, { field: s.name, op: opsFor(s).find((o) => o !== "in")!, value: "" });
                 }}
-              >
-                {all.map((s) => (
-                  <option key={s.name} value={s.name}>
-                    {subjectLabel(s)}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label={t("filter.op")}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                options={all.map((s) => ({ value: s.name, label: subjectLabel(s) }))}
+              />
+              <Select
+                label={t("filter.op")}
                 value={c.op}
-                onChange={(e) => set(i, { ...c, op: e.target.value as Op })}
-              >
-                {opsFor(subject)
+                onChange={(v) => set(i, { ...c, op: v as Op })}
+                options={opsFor(subject)
                   .filter((op) => op !== "in")
-                  .map((op) => (
-                    <option key={op} value={op}>
-                      {subject.kind === "deadline" && op === "lte"
+                  .map((op) => ({
+                    value: op,
+                    label:
+                      subject.kind === "deadline" && op === "lte"
                         ? t("filter.ops.dueBy")
-                        : t(`filter.ops.${op}`)}
-                    </option>
-                  ))}
-              </select>
+                        : t(`filter.ops.${op}`),
+                  }))}
+              />
               <ValueInput
                 id={id}
                 subject={subject}

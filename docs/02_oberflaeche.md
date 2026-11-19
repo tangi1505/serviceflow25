@@ -78,7 +78,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI55** | Vorschau der Darstellung (E58): ein kleines Abbild der Oberfläche (Kopfzeile mit Marke, Seitenleiste breit oder schmal, Liste in der gewählten Zeilenhöhe, hell oder dunkel, in der Akzentfarbe) rechts neben den Vorgaben im Erscheinungsbild und neben „Darstellung“ in Meine Einstellungen; es ändert sich sofort mit der Auswahl. Dabei behoben: die Farbvorschau zeigte „Gewählte Zeile“ im dunklen Modus als weißen Kasten | 🟢 | 0,75 d | Erscheinungsbild öffnen, bei den Vorgaben Modus auf „Dunkel“, Zeilenhöhe auf „Kompakt“, Leiste auf „Schmal“ → das Abbild rechts wird dunkel, die Zeilen niedriger, die Leiste schmal, ohne zu speichern; dasselbe in Meine Einstellungen › Darstellung; im dunklen Modus ist „Gewählte Zeile“ in der Farbvorschau lesbar; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI56** | Name ServiceFlow25 in der Oberfläche (E58, Hauptplan V1): ohne Logo zeigt die Marke „sf“ statt „it“; der voreingestellte Name ist „ServiceFlow25“ (Titel des Browsers, Anmeldeseite, Kopfzeile, Portal; Kern 0.16.1). Interne Namen (Verzeichnis, Programm, Datenbank, Pakete) bleiben `itsm` | 🟢 | 0,25 d | Auf einer Installation ohne eigenen Namen und ohne Logo: Anmeldeseite und Kopfzeile zeigen „sf“ und „ServiceFlow25“, der Reiter des Browsers heißt „ServiceFlow25“; mit eigenem Namen bleibt dieser; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI57** | Bedienelemente an einer Stelle (E59, §2.6): Bausteine in `web/src/ui/` für Auswahlfeld (neu `ui/select.tsx`: ein Knopf in der Optik von „Ansicht“ mit Pfeil, die Liste wie ein Menü, Tastatur nach WAI-ARIA „Combobox nur zum Auswählen“: Pfeiltasten, Pos1, Ende, Anfangsbuchstabe, Enter, Esc; ab zehn Einträgen mit Suchfeld oben), Eingabefeld und Knopf, jeweils in zwei Größen: 32 px in Seitenkopf, Leiste und Tabellenkopf, 36 px im Formular; die zwei Höhen stehen einmal als Token. Die Filterzeile wird 32 px hoch wie alles in der Leiste. Eine Lint-Regel meldet `<select>` und `<input>` (außer Kästchen und Datei) außerhalb von `web/src/ui/`, vorerst als Warnung | 🟢 | 1,5 d | Liste „Anfrage“ öffnen, in den Entwicklerwerkzeugen messen: „Alle Datensätze“, Filterzeile, „Ansicht“, „Exportieren“, „Anpassen“ und „Neu“ sind alle 32 px hoch; im Test der Bausteine ein Auswahlfeld nur mit der Tastatur bedienen (Tab, Pfeil nach unten, „H“, Enter → „Hoch“ gewählt, Esc gibt den Fokus zurück); ein `<select>` in eine Seite unter `render/` setzen → `npm run lint` warnt; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI58** | Alle Seiten auf die Bausteine (E59, §2.6): die 45 nativen Auswahlfelder in 14 Dateien und die rund 40 eigenen Eingabefelder auf die Bausteine aus UI57 umstellen, auch im Formular und in den Editoren; danach wird die Lint-Regel aus UI57 ein Fehler | ⬜ | 1,5 d | `grep -rn "<select" web/src --include=*.tsx \| grep -v web/src/ui/` → keine Zeile; Meine Einstellungen, Erscheinungsbild, eine Rolle, Workflow, Dashboard bearbeiten und ein Formular mit Auswahlfeld öffnen, hell und dunkel → jedes Auswahlfeld sieht aus wie „Ansicht“, die geöffnete Liste folgt dem Modus; `docker compose run --rm tools scripts/ci.sh` grün (Lint mit der Regel als Fehler) |
+| **UI58** | Alle Seiten auf die Bausteine (E59, §2.6): die 45 nativen Auswahlfelder in 14 Dateien und die rund 40 eigenen Eingabefelder auf die Bausteine aus UI57 umstellen, auch im Formular und in den Editoren; danach wird die Lint-Regel aus UI57 ein Fehler | 🟢 | 1,5 d | `grep -rn "<select" web/src --include=*.tsx \| grep -v web/src/ui/` → keine Zeile; Meine Einstellungen, Erscheinungsbild, eine Rolle, Workflow, Dashboard bearbeiten und ein Formular mit Auswahlfeld öffnen, hell und dunkel → jedes Auswahlfeld sieht aus wie „Ansicht“, die geöffnete Liste folgt dem Modus; `docker compose run --rm tools scripts/ci.sh` grün (Lint mit der Regel als Fehler) |
 | **UI59** | Meldungen unten rechts (E60, §2.6): Baustein `ui/toast.tsx` mit einer Stelle zum Aufrufen (`toast.success`, `.info`, `.warning`, `.error` mit Titel und Text); vier Arten in Grün, Akzentfarbe, Gelb und Rot, je mit Streifen links, getöntem Grund, Symbol und Schließen; die neueste unten in der Ecke, höchstens drei zugleich; Erfolg und Info verschwinden nach 5 s, angehalten, solange Maus oder Fokus darauf liegt; Warnung und Fehler bleiben bis zum Schließen; Bildschirmleser hören Erfolg und Info als `status`, Warnung und Fehler als `alert`. Eine Meldung kann einen Knopf tragen, etwa „Rückgängig“ (E61); mit Knopf bleibt sie 10 s. Neue Token für den Grund von Erfolg und Info, im Kontrast geprüft wie die übrigen (E28) | 🟢 | 1 d | Im Test des Bausteins je eine Meldung jeder Art auslösen → sie stehen unten rechts übereinander, die neueste unten; Erfolg ist nach 5 s weg, unter der Maus bleibt er; Fehler bleibt, bis „Schließen“ gedrückt ist; hell und dunkel: Kontrast von Text und Symbol mindestens 4,5:1 (`axe`); `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI60** | Rückmeldungen als Meldung (E60, §2.6): was heute nach einer Handlung als Text unter dem Inhalt erscheint (16 Stellen mit `role="status"`, etwa Export, Meine Einstellungen, Erscheinungsbild, Dashboard, Workflow, Vorgang speichern), kommt als Meldung aus UI59. Am Platz bleiben Fehler an einem Feld, Fehler, ohne die eine Seite nicht geht, und Zustände, die stehen bleiben müssen (wer gerade mitliest, „nichts gefunden“) | ⬜ | 0,75 d | In Meine Einstellungen die Sprache ändern → unten rechts grün „Gespeichert“, die Seite verschiebt sich nicht; einen Export starten → Info unten rechts; einen Vorgang mit leerem Pflichtfeld speichern → der Fehler steht am Feld, nicht unten rechts; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI61** | Mehrfachaktion in einer Zeile (E59, E60, §2.6): solange Zeilen ausgewählt sind, steht statt der Spaltenköpfe eine Zeile „4 ausgewählt“, Aktion, Feld und Wert als Auswahlfelder (UI57), der Knopf „Anwenden“ ohne Zahl und rechts „Auswahl aufheben“; das Kästchen „alle“ bleibt an seinem Platz. Der Kasten über der Tabelle entfällt. Das Ergebnis kommt als Meldung (UI59): alle geändert grün („4 geändert“), teils gelb mit den abgelehnten und ihrem Grund, keiner rot. „In den Papierkorb“ fragt nicht mehr nach, die Meldung bietet „Rückgängig“ für alle (E61) | 🟢 | 0,75 d | In der Liste „Anfrage“ vier Zeilen auswählen → der Tabellenkopf wird zur Zeile mit „4 ausgewählt“, die Zeilen der Tabelle bleiben, wo sie waren; „Feld setzen“, „Auswirkung“, „Hoch“, „Anwenden“ → unten rechts grün „4 geändert“, nichts verschiebt sich; die Zahl steht nur einmal; mit einer Zeile ohne Recht → gelbe Meldung nennt sie; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -573,6 +573,41 @@ nicht am Original nachgesehen.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI58 — Alle Seiten auf die Bausteine, 2026-11-19
+
+- **Grundlage:** E59, §2.6; Hauptplan E203.
+- **Gebaut:**
+  - 39 native Auswahlfelder in 13 Dateien sind das Auswahlfeld aus UI57: Anmeldung (Sprache),
+    Meine Einstellungen, Erscheinungsbild, Globale Einstellungen (auch die Zellen der Matrix),
+    Dashboard und sein Editor, Typen anpassen, Filter, das Formular eines Datensatzes (Auswahl
+    und Einheit), Formular-Editor, Bezüge, Workflow, Genehmigungen, Rollen. Das Formular
+    bindet das Feld über `Controller` an `react-hook-form` wie schon die Datensatz-Auswahl.
+  - 13 eigene Eingabefelder sind `Input` (Dashboard, Globale Einstellungen, Suchfeld der
+    Tabellen mit `size="bar"`, Suche im Portal); ihre Klassen `inputClass` und `selectClass`
+    sind weg.
+  - Ausnahmen, je mit Begründung im Code: das Feld in der Filterzeile und die Suchzeile der
+    Befehlspalette sind Teil ihres Bedienelements und haben keinen eigenen Rahmen; der
+    Farbwähler im Erscheinungsbild ist kein Textfeld (die Regel nimmt `type="color"` aus,
+    von mir ergänzt).
+  - Dazu im Baustein: Gruppen von Einträgen (`group`, statt `<optgroup>` im Formular-Editor);
+    im Formular ist das Feld so breit wie sein Inhalt, mindestens 10 rem
+    (`wrapClassName` macht es breiter); der Wert steht als `data-value` am Knopf und an den
+    Einträgen, für die Tests.
+  - Die Lint-Regel ist jetzt ein Fehler: `pnpm lint` bricht bei einem `<select>` oder einem
+    eigenen `<input>` außerhalb von `web/src/ui/` ab.
+- **Tests:** eine Hilfe für die Tests der Bausteine (`web/src/test/select.ts`,
+  `selectOption`) und eine für die Browser-Tests (`web/e2e/pick.ts`, `pick`) wählen, wie ein
+  Mensch: öffnen, Eintrag anklicken. 10 Testdateien und 6 Browser-Tests (7 Stellen) sind
+  darauf umgestellt; wo ein Test den Wert eines Felds prüfte, prüft er `data-value`. Der Browser-Test
+  des Formulars wählt weiter nur mit der Tastatur (Buchstaben, dann Enter).
+- **Belegt:** lokal tsc, ESLint ohne Befund, Vitest 172; CI auf `ki-lab` siehe unten.
+- **Nicht geprüft:** jede Seite hell und dunkel im Browser angesehen; nur die in den
+  Browser-Tests (mit `axe`).
+- **Prüfweg:** `grep -rn "<select" web/src --include=*.tsx | grep -v web/src/ui/` → keine
+  Zeile; Meine Einstellungen, Erscheinungsbild, eine Rolle, Workflow, Dashboard bearbeiten und
+  ein Formular mit Auswahlfeld öffnen, hell und dunkel → jedes Auswahlfeld sieht aus wie
+  „Ansicht“, die geöffnete Liste folgt dem Modus.
 
 ### UI61 — Mehrfachaktion in einer Zeile, 2026-11-19
 

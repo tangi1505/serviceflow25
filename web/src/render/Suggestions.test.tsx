@@ -140,7 +140,7 @@ describe("Tab of suggestions", () => {
       within(panel).getByRole("button", { name: "Als Titel übernehmen: VPN verbindet nicht" }),
     );
     await waitFor(() => expect(screen.getByLabelText(/^Titel/)).toHaveValue("VPN verbindet nicht"));
-    expect(screen.getByLabelText(/^Art/)).toHaveValue("fault");
+    expect(screen.getByLabelText(/^Art/)).toHaveAttribute("data-value", "fault");
     expect(panel).toHaveTextContent("im Formular noch nicht gespeichert");
     expect(state.relations).toHaveLength(1);
     expect(state.calls.some((c) => c.method === "PATCH")).toBe(false);

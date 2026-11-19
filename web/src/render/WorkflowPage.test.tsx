@@ -22,6 +22,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -148,7 +149,7 @@ describe("Workflow editor", { timeout: 15_000 }, () => {
     await user.type(within(form).getByLabelText("Beschriftung"), "Prüfen");
     await user.click(within(form).getByRole("checkbox", { name: "Neu" }));
     await user.click(within(form).getByRole("checkbox", { name: "In Arbeit" }));
-    await user.selectOptions(within(form).getByLabelText("Nach"), "k_pruefung");
+    await selectOption(user, within(form).getByLabelText("Nach"), "k_pruefung");
     const when = within(form).getByLabelText("Bedingung");
     await user.type(when, "record.priority <");
     expect(await within(form).findByText(/Bedingung ungültig: Syntax error/)).toBeInTheDocument();

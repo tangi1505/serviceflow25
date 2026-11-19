@@ -20,6 +20,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { approverPerson, fakeApi, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -314,7 +315,8 @@ describe("Approvals", () => {
     await user.click(await screen.findByRole("tab", { name: "Genehmigung" }));
     const panel = screen.getByRole("tabpanel");
     await user.click(await within(panel).findByRole("button", { name: "Genehmigung anfordern" }));
-    await user.selectOptions(
+    await selectOption(
+      user,
       await within(panel).findByLabelText("Vorlage"),
       "Software mit Lizenzkosten",
     );

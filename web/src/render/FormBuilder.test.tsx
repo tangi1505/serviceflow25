@@ -18,6 +18,7 @@ import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router"
 import { initI18n } from "@/i18n";
 import { fakeApi, formTypeDef, newState, type FakeState } from "@/test/fakeApi";
 import { expectAccessible } from "@/test/setup";
+import { selectOption } from "@/test/select";
 
 function renderAt(path: string) {
   const queryClient = createQueryClient();
@@ -58,11 +59,13 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
     const first = within(builder).getByRole("region", { name: "Abschnitt 1" });
     await user.type(within(first).getByLabelText("Titel des Abschnitts"), "Anliegen");
     const s1 = within(builder).getByRole("region", { name: "Anliegen" });
-    await user.selectOptions(within(s1).getByLabelText("Neue Frage"), "field:title");
+    await selectOption(user, within(s1).getByLabelText("Neue Frage"), "field:title");
     await user.click(within(s1).getByRole("button", { name: "Frage hinzufügen" }));
     expect(within(s1).getByText("Feld: Titel")).toBeInTheDocument();
     // A bound field is not offered twice.
-    expect(within(s1).queryByRole("option", { name: "Titel" })).toBeNull();
+    await user.click(within(s1).getByLabelText("Neue Frage"));
+    expect(screen.queryByRole("option", { name: "Titel" })).toBeNull();
+    await user.keyboard("{Escape}");
 
     // Section 2: a free text question, required.
     await user.click(within(builder).getByRole("button", { name: "Abschnitt hinzufügen" }));
@@ -73,7 +76,7 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
       "Ort",
     );
     const s2 = within(builder).getByRole("region", { name: "Ort" });
-    await user.selectOptions(within(s2).getByLabelText("Neue Frage"), "free:text");
+    await selectOption(user, within(s2).getByLabelText("Neue Frage"), "free:text");
     await user.click(within(s2).getByRole("button", { name: "Frage hinzufügen" }));
     await user.type(within(s2).getByLabelText("Frage"), "Raum");
     await user.click(within(s2).getByLabelText("Pflicht"));
@@ -87,7 +90,7 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
       "Etage",
     );
     const s3 = within(builder).getByRole("region", { name: "Etage" });
-    await user.selectOptions(within(s3).getByLabelText("Neue Frage"), "free:choice");
+    await selectOption(user, within(s3).getByLabelText("Neue Frage"), "free:choice");
     await user.click(within(s3).getByRole("button", { name: "Frage hinzufügen" }));
     await user.type(within(s3).getByLabelText("Frage"), "Welche Etage?");
     await user.type(
@@ -148,7 +151,7 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
     const builder = screen.getByRole("group", { name: "Aufbau" });
     const s1 = within(builder).getByRole("region", { name: "Abschnitt 1" });
     for (const pick of ["field:title", "field:kind", "free:boolean"]) {
-      await user.selectOptions(within(s1).getByLabelText("Neue Frage"), pick);
+      await selectOption(user, within(s1).getByLabelText("Neue Frage"), pick);
       await user.click(within(s1).getByRole("button", { name: "Frage hinzufügen" }));
     }
     const names = () =>
@@ -161,7 +164,8 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
     await user.click(within(s1).getByRole("button", { name: "„Titel“ entfernen" }));
     expect(names()).toEqual(["Art", "q3"]);
     // The removed field can be asked again.
-    expect(within(s1).getByRole("option", { name: "Titel" })).toBeInTheDocument();
+    await user.click(within(s1).getByLabelText("Neue Frage"));
+    expect(screen.getByRole("option", { name: "Titel" })).toBeInTheDocument();
   });
 
   it("sets a condition on an earlier question and the English texts (UI12)", async () => {
@@ -182,7 +186,7 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
       ["free:boolean", "Ersatzgerät nötig?"],
       ["free:text", "Welches Gerät?"],
     ] as const) {
-      await user.selectOptions(within(s1).getByLabelText("Neue Frage"), pick);
+      await selectOption(user, within(s1).getByLabelText("Neue Frage"), pick);
       await user.click(within(s1).getByRole("button", { name: "Frage hinzufügen" }));
       if (label) {
         const rows = within(s1).getAllByRole("listitem");
@@ -194,9 +198,9 @@ describe("FormBuilder", { timeout: 15_000 }, () => {
     expect(within(title).getByRole("button", { name: "Bedingung hinzufügen" })).toBeDisabled();
     const which = within(s1).getByRole("listitem", { name: "Welches Gerät?" });
     await user.click(within(which).getByRole("button", { name: "Bedingung hinzufügen" }));
-    await user.selectOptions(within(which).getByLabelText("Bezug auf Frage"), "q2");
-    await user.selectOptions(within(which).getByLabelText("Bedingung"), "eq");
-    await user.selectOptions(within(which).getByLabelText("Wert"), "true");
+    await selectOption(user, within(which).getByLabelText("Bezug auf Frage"), "q2");
+    await selectOption(user, within(which).getByLabelText("Bedingung"), "eq");
+    await selectOption(user, within(which).getByLabelText("Wert"), "true");
     expect(within(which).getByRole("group", { name: "Nur zeigen, wenn" })).toBeInTheDocument();
 
     // English: the same inputs now edit the English texts.

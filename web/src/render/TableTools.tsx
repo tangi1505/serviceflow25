@@ -13,6 +13,7 @@ import { useId, type ComponentProps } from "react";
 
 import { mySettingsQuery } from "@/api/client";
 import { Table, type Density } from "@/ui/table";
+import { Input } from "@/ui/input";
 
 // useDensity is the row height the person chose for lists, normal without a choice.
 export function useDensity(): Density {
@@ -53,13 +54,14 @@ export function TableSearch({
         aria-hidden="true"
         className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-foreground-2"
       />
-      <input
+      <Input
         id={id}
+        size="bar"
         type="search"
         value={value}
         placeholder={label}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-full rounded-md border border-input bg-background pr-2 pl-8 text-sm placeholder:text-foreground-2"
+        className="pr-2 pl-8 placeholder:text-foreground-2"
       />
     </div>
   );
