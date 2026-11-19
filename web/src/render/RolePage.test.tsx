@@ -159,10 +159,11 @@ describe("Role editor", () => {
       },
       { call: "DELETE /api/v1/roles/agent/permissions/probe.probe/read", body: undefined },
     ]);
-    // Only types with rights.
-    await user.click(screen.getByRole("checkbox", { name: "Nur Typen mit Rechten" }));
+    // By package (UI67): at first only types with rights, "Alle Typen zeigen" shows the rest.
     expect(screen.getByRole("rowheader", { name: "Probe" })).toBeInTheDocument();
     expect(screen.queryByRole("rowheader", { name: "Person" })).toBeNull();
+    await user.click(screen.getByRole("checkbox", { name: "Alle Typen zeigen" }));
+    expect(screen.getByRole("rowheader", { name: "Person" })).toBeInTheDocument();
   });
 
   it("narrows a cell by condition and fields and adds a further scope", async () => {
@@ -220,6 +221,8 @@ describe("Role editor", () => {
     await user.click(screen.getByRole("checkbox", { name: "Typen und Workflows anpassen" }));
     expect(await screen.findByText("„Typen und Workflows anpassen“ entzogen.")).toBeInTheDocument();
 
+    // The assignments are a tab of their own (UI67).
+    await user.click(screen.getByRole("tab", { name: /^Zuweisungen/ }));
     const form = screen.getByRole("form", { name: "Neue Zuweisung" });
     await user.type(within(form).getByRole("combobox", { name: "Person oder Gruppe" }), "ber");
     await user.click(await screen.findByRole("option", { name: /^Berg/ }));

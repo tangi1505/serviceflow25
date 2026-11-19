@@ -58,6 +58,7 @@ test("a user with a one-time password, a role and blocked", async ({ page, brows
   await noFindings(page);
   const back = page.url();
   await page.goto("/roles/e2e_rollen");
+  await page.getByRole("tab", { name: /^Zuweisungen/ }).click();
   await expect(page.getByText(lastName, { exact: false }).first()).toBeVisible();
 
   // The first sign-in asks for a new password.

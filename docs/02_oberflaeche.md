@@ -87,7 +87,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI64** | Rückfrage beim Löschen von Konfiguration (E61): was nicht in den Papierkorb kommt (Rolle, Zuweisung, Vertretung, Beziehung, Anpassung an einem Typ, Organisationseinheit), fragt vor dem Löschen in einem gemeinsamen Dialog `ui/confirm.tsx`: was gelöscht wird, mit Namen, und dass es nicht rückgängig geht; Knopf rot „Löschen“, Esc und „Abbrechen“ brechen ab. Wo es schon eine eigene Rückfrage gibt, nimmt sie den Baustein. Danach eine Meldung (UI59) | 🟢 | 0,5 d | Eine Rolle ohne Zuweisungen löschen → Dialog nennt die Rolle; Esc → nichts gelöscht; erneut, „Löschen“ → grüne Meldung, die Rolle fehlt; dasselbe für eine Vertretung und eine Beziehung; `grep -rn "window.confirm" web/src` → keine Zeile; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI65** | Nacharbeit nach deiner Prüfung von UI62 bis UI64 (E62): „Aktionen“ der Detailseite auf der Höhe von „← Zurück“; „Löschen“ überall rot (Knopf und Menüeintrag); vor jedem Löschen die Rückfrage aus UI64, auch wenn es in den Papierkorb geht (Detailseite, Vorschau, Dashboard, gespeicherte Suche, Mehrfachaktion); in der Rückfrage ist der rote Knopf vorgewählt, Enter bestätigt, Esc bricht ab; „Rollen und Rechte“, eine Rolle und „Typen anpassen“ nutzen die volle Breite wie die anderen Tabellen | 🟢 | 0,5 d | Eine Störung öffnen: „Aktionen“ steht rechts neben „← Störung“; Aktionen › „Löschen“ (rot) → Rückfrage nennt die Störung, Enter → in den Papierkorb mit „Rückgängig“; auf einem Dashboard „Löschen“ rot, Rückfrage, Esc → nichts gelöscht; in der Liste zwei wählen, „In den Papierkorb“ → Rückfrage mit der Zahl; „Rollen und Rechte“ und „Typen anpassen“ reichen über die ganze Breite; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI66** | Seite „Benutzer“ (E63, Kern-Plan PL77): unter Verwaltung eine Tabelle über die volle Breite mit Name, Benutzername, Herkunft (lokal, Keycloak, LDAP), aktiv, letzte Anmeldung und Rollen; Suche, Filter Herkunft und Rolle. „Neuer Benutzer“ legt Person und lokales Konto in einem Schritt an, wahlweise mit Einmal-Kennwort (beim ersten Anmelden zu ändern) oder Einladung per Mail. Die Seite eines Benutzers zeigt Konto und Person und einen Bereich „Rollen“ (Rolle und Einheit wählen, hinzufügen, entfernen mit Rückfrage); sperren und entsperren, Kennwort neu setzen oder neu einladen | 🟢 | 1,5 d | Verwaltung › „Benutzer“ → Tabelle mit „Lasttest“; „Neuer Benutzer“ mit Einmal-Kennwort → Anmeldung verlangt ein neues Kennwort; ein zweiter mit Einladung → Mail im Testpostfach, der Link setzt das Kennwort; am Benutzer Rolle „Servicedesk“ an „IT“ hinzufügen → die Rolle zeigt die Zuweisung auch; sperren → Anmeldung abgelehnt; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI67** | Seite einer Rolle mit Reitern (E63): oben Name und Beschreibung, darunter „Rechte“ und „Zuweisungen (n)“. „Rechte“: die Matrix über die volle Breite, nach Paketen gruppiert und aufklappbar, anfangs nur Pakete und Typen mit Rechten, „Alle Typen zeigen“ schaltet um; Sonderrechte im selben Reiter. „Zuweisungen“: Tabelle mit Person oder Gruppe und Einheit, hinzufügen und entfernen wie heute | ⬜ | 1 d | „Rollen und Rechte“ › eine Rolle → Reiter „Rechte“ zeigt nur Pakete mit Rechten, „Alle Typen zeigen“ zeigt alle; Reiter „Zuweisungen (2)“ zeigt zwei Zeilen; ein Recht ändern und eine Zuweisung hinzufügen wie bisher; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI67** | Seite einer Rolle mit Reitern (E63): oben Name und Beschreibung, darunter „Rechte“ und „Zuweisungen (n)“. „Rechte“: die Matrix über die volle Breite, nach Paketen gruppiert und aufklappbar, anfangs nur Pakete und Typen mit Rechten, „Alle Typen zeigen“ schaltet um; Sonderrechte im selben Reiter. „Zuweisungen“: Tabelle mit Person oder Gruppe und Einheit, hinzufügen und entfernen wie heute | 🟢 | 1 d | „Rollen und Rechte“ › eine Rolle → Reiter „Rechte“ zeigt nur Pakete mit Rechten, „Alle Typen zeigen“ zeigt alle; Reiter „Zuweisungen (2)“ zeigt zwei Zeilen; ein Recht ändern und eine Zuweisung hinzufügen wie bisher; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -579,6 +579,27 @@ Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
 
+### UI67 — Seite einer Rolle mit Reitern, 2026-11-19
+
+- **Grundlage:** E63; Hauptplan E206.
+- **Gebaut:** `web/src/ui/tabs.tsx` (Reiter nach dem Muster der WAI-ARIA, Pfeile, Pos1, Ende).
+  Seite einer Rolle: „← Alle Rollen“ oben links wie auf der Detailseite, darunter Name und
+  Beschreibung, dann die Reiter „Rechte“ und „Zuweisungen (n)“. „Rechte“: die Matrix über die
+  volle Breite, nach Paketen gruppiert; jede Gruppe hat eine Kopfzeile zum Auf- und Zuklappen
+  mit „n mit Rechten“ oder „keine Rechte“; anfangs offen sind nur Pakete mit Rechten und darin
+  nur Typen mit Rechten; eine von Hand geöffnete Gruppe zeigt alle ihre Typen; „Alle Typen
+  zeigen“ (statt „Nur Typen mit Rechten“) zeigt alles. Sonderrechte und weitere Rechte im selben
+  Reiter. „Zuweisungen“: die Tabelle und das Formular wie bisher.
+- **Tests:** `RolePage.test.tsx` angepasst (anfangs nur Typen mit Rechten, „Alle Typen
+  zeigen“; Zuweisungen über den Reiter); `e2e/users.spec.ts` öffnet den Reiter. Der erste
+  CI-Lauf fand mit axe zu wenig Kontrast der grauen Zahl in der Kopfzeile eines Pakets (jetzt
+  die zweite Textfarbe, etwa 7:1 hell und dunkel).
+- **Belegt:** volle CI auf ki-lab grün am 2026-11-19 (alle 19 Schritte, 34 Browser-Tests in 2,2 min; LZ2 −3 %, LZ13 8760 Zeilen/s, LZ16 +5 % gegen die Basislinie im selben Lauf).
+- **Prüfweg:** „Rollen und Rechte“ › eine Rolle → Reiter „Rechte“ zeigt nur Pakete mit Rechten,
+  die anderen zugeklappt mit „keine Rechte“; eine aufklappen zeigt ihre Typen; „Alle Typen
+  zeigen“ zeigt alle; Reiter „Zuweisungen (2)“ zeigt zwei Zeilen; ein Recht ändern und eine
+  Zuweisung hinzufügen wie bisher.
+
 ### UI66 — Seite „Benutzer“, 2026-11-19
 
 - **Grundlage:** E63; Kern-Plan PL77; Hauptplan E206.
@@ -613,6 +634,10 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Einmal-Kennwort als Weg (mit Mailserver: Mail, Link, Kennwort setzen); am Benutzer Rolle und
   Einheit hinzufügen → die Rolle zeigt die Zuweisung auch; „Aktionen › Sperren“ → Rückfrage,
   Enter → Anmeldung abgelehnt.
+- **Nachtrag** (Prüfung auf 8092): ohne Mailserver kam die Antwort des Servers englisch; jetzt
+  sagt die Meldung „Auf diesem Server ist kein Mailserver eingerichtet, deshalb geht keine
+  Einladung. Wählen Sie „Einmal-Kennwort“.“ (beim Anlegen und bei „Neu einladen“); ein Test in
+  `UsersPage.test.tsx` belegt, dass dabei kein Konto entsteht.
 
 ### UI65 — Nacharbeit nach deiner Prüfung, 2026-11-19
 

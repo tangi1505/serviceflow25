@@ -13,7 +13,7 @@
 // permissions are those of the API (PL8, PL9): a line is a type, an action and a scope.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -22,6 +22,7 @@ import {
   assignmentsQuery,
   labelOf,
   orgNodesQuery,
+  packagesQuery,
   qualifiedName,
   rolesQuery,
   typesQuery,
@@ -39,7 +40,8 @@ import { confirm } from "@/ui/confirm";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { primaryBarButton } from "@/ui/menu";
-import { LinkButton, PageHeader } from "@/ui/page-header";
+import { BackButton, PageHeader } from "@/ui/page-header";
+import { Tabs } from "@/ui/tabs";
 import { Table, Td, Th, THead, Tr } from "@/ui/table";
 
 import { useProblemText } from "./CustomizePage";
@@ -298,6 +300,8 @@ export function RolePage() {
   const { t, i18n } = useTranslation();
   const { name } = useParams({ from: "/shell/roles/$name" });
   const roles = useQuery(rolesQuery);
+  const assignments = useQuery(assignmentsQuery);
+  const [tab, setTab] = useState("rights");
   const { run, busy, failure, done } = useRun();
   if (roles.isPending) {
     return <p>{t("list.loading")}</p>;
@@ -307,26 +311,40 @@ export function RolePage() {
     return <Alert variant="destructive">{t("roles.unknown")}</Alert>;
   }
   const label = labelOf(role.label, i18n.language, role.name);
+  const held = (assignments.data ?? []).filter((a) => a.role === role.name).length;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("roles.roleTitle", { name: label })}</h1>
-        <LinkButton
-          to="/roles"
-          icon={<ArrowLeft aria-hidden="true" className="size-4 text-foreground-2" />}
-        >
-          {t("roles.toAll")}
-        </LinkButton>
+      <div>
+        <BackButton to="/roles" label={t("roles.toAll")} />
       </div>
-      <p className="text-sm text-muted-foreground">
-        {role.name} · {t("roles.intro")}
-      </p>
+      <div>
+        <h1 className="text-2xl font-semibold">{t("roles.roleTitle", { name: label })}</h1>
+        <p className="text-sm text-muted-foreground">
+          {role.name} · {t("roles.intro")}
+        </p>
+      </div>
       {failure && <Alert variant="destructive">{failure}</Alert>}
       {done && <Alert variant="success">{done}</Alert>}
-      <Matrix role={role} busy={busy} run={run} />
-      <Specials role={role} busy={busy} run={run} />
-      <Others role={role} busy={busy} run={run} />
-      <Assignments role={role} busy={busy} run={run} />
+      {/* Two tabs (UI67, UI-Plan E63): the rights, and who holds the role. */}
+      <Tabs
+        label={t("roles.tabs")}
+        current={tab}
+        onChange={setTab}
+        tabs={[
+          { key: "rights", label: t("roles.tabRights") },
+          { key: "assignments", label: t("roles.tabAssignments", { count: held }) },
+        ]}
+      >
+        {tab === "rights" ? (
+          <div className="flex flex-col gap-6">
+            <Matrix role={role} busy={busy} run={run} />
+            <Specials role={role} busy={busy} run={run} />
+            <Others role={role} busy={busy} run={run} />
+          </div>
+        ) : (
+          <Assignments role={role} busy={busy} run={run} />
+        )}
+      </Tabs>
     </div>
   );
 }
@@ -337,17 +355,41 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
   const { t } = useTranslation();
   const id = useId();
   const { typeLabel, actionLabel, scopeLabel, types } = useLabels();
-  const [onlyGranted, setOnlyGranted] = useState(false);
+  const packages = useQuery(packagesQuery);
+  const { i18n } = useTranslation();
+  // By package (UI67): at first only the packages and types with rights; "Alle Typen zeigen"
+  // shows every type, and a package opened by hand shows all of its types.
+  const [showAll, setShowAll] = useState(false);
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<Cell | null>(null);
   const lines = role.permissions.filter(inMatrix);
   const linesOf = (c: Cell) => lines.filter((p) => p.type_name === c.type && p.action === c.action);
-  const names = [
-    ...(lines.some((p) => p.type_name === any) ? [any] : []),
-    ...(types.data ?? [])
-      .map(qualifiedName)
-      .sort((a, b) => typeLabel(a).localeCompare(typeLabel(b))),
+  const granted = (n: string) => lines.some((p) => p.type_name === n);
+  const pkgOf = (ty: TypeDefinition) => ty.package ?? qualifiedName(ty).split(".")[0] ?? "";
+  const pkgLabel = (pkg: string) =>
+    labelOf(packages.data?.find((p) => p.name === pkg)?.label, i18n.language, pkg);
+  const groups = new Map<string, string[]>();
+  for (const ty of types.data ?? []) {
+    const list = groups.get(pkgOf(ty)) ?? [];
+    list.push(qualifiedName(ty));
+    groups.set(pkgOf(ty), list);
+  }
+  type Group = { pkg: string; label: string; names: string[]; count: number };
+  const ordered: Group[] = [...groups.entries()]
+    .map(([pkg, names]) => ({
+      pkg,
+      label: pkgLabel(pkg),
+      names: names.sort((a, b) => typeLabel(a).localeCompare(typeLabel(b))),
+      count: names.filter(granted).length,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const isOpen = (g: Group) => opened[g.pkg] ?? (showAll || g.count > 0);
+  const rowsOf = (g: Group) =>
+    !isOpen(g) ? [] : showAll || opened[g.pkg] || g.count === 0 ? g.names : g.names.filter(granted);
+  const all: Group[] = [
+    ...(granted(any) ? [{ pkg: "", label: "", names: [any], count: 1 }] : []),
+    ...ordered,
   ];
-  const shown = onlyGranted ? names.filter((n) => lines.some((p) => p.type_name === n)) : names;
   const where = (c: Cell) => `${typeLabel(c.type)}: ${actionLabel(c.action)}`;
 
   const choose = (c: Cell, value: string) => {
@@ -386,10 +428,13 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            checked={onlyGranted}
-            onChange={(e) => setOnlyGranted(e.target.checked)}
+            checked={showAll}
+            onChange={(e) => {
+              setShowAll(e.target.checked);
+              setOpened({});
+            }}
           />
-          {t("roles.onlyGranted")}
+          {t("roles.showAll")}
         </label>
       </div>
       <p className="text-sm text-muted-foreground">{t("roles.matrixHelp")}</p>
@@ -404,56 +449,88 @@ function Matrix({ role, busy, run }: { role: Role; busy: boolean; run: Run }) {
             </tr>
           </THead>
           <tbody>
-            {shown.map((typeName) => (
-              <Tr key={typeName} className="align-top">
-                <th scope="row" className="px-3 py-1.5 text-left font-medium">
-                  {typeLabel(typeName)}
-                </th>
-                {actions.map((a) => {
-                  const c = { type: typeName, action: a };
-                  const have = linesOf(c);
-                  const isOpen = open?.type === typeName && open.action === a;
-                  const extra = have.some((p) => p.condition || p.fields);
-                  return (
-                    <Td key={a}>
-                      <div className="flex items-center gap-1">
-                        <Select
-                          label={where(c)}
-                          className={have.length === 0 ? "text-muted-foreground" : undefined}
-                          value={have.length > 1 ? "many" : (have[0]?.scope ?? "")}
-                          disabled={busy || have.length > 1}
-                          onChange={(v) => choose(c, v)}
-                          options={[
-                            { value: "", label: t("roles.none") },
-                            ...scopes.map((s) => ({ value: s, label: scopeLabel(s) })),
-                            ...(have.length > 1
-                              ? [
-                                  {
-                                    value: "many",
-                                    label: have.map((p) => scopeLabel(p.scope)).join(" + "),
-                                  },
-                                ]
-                              : []),
-                          ]}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-expanded={isOpen}
-                          aria-label={t("roles.details", { where: where(c) })}
-                          onClick={() => setOpen(isOpen ? null : c)}
+            {all.flatMap((g) => [
+              ...(g.pkg === ""
+                ? []
+                : [
+                    <tr key={`pkg:${g.pkg}`} className="border-t bg-muted">
+                      <th
+                        scope="colgroup"
+                        colSpan={actions.length + 1}
+                        className="px-3 py-1.5 text-left"
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={isOpen(g)}
+                          onClick={() => setOpened((o) => ({ ...o, [g.pkg]: !isOpen(g) }))}
+                          className="flex items-center gap-2 text-sm font-semibold"
                         >
-                          …
-                        </Button>
-                      </div>
-                      {extra && (
-                        <div className="text-xs text-muted-foreground">{t("roles.narrowed")}</div>
-                      )}
-                    </Td>
-                  );
-                })}
-              </Tr>
-            ))}
+                          {isOpen(g) ? (
+                            <ChevronDown aria-hidden="true" className="size-4" />
+                          ) : (
+                            <ChevronRight aria-hidden="true" className="size-4" />
+                          )}
+                          {g.label}
+                          <span className="font-normal text-foreground-2">
+                            {g.count > 0
+                              ? t("roles.withRights", { count: g.count })
+                              : t("roles.noRights")}
+                          </span>
+                        </button>
+                      </th>
+                    </tr>,
+                  ]),
+              ...rowsOf(g).map((typeName) => (
+                <Tr key={typeName} className="align-top">
+                  <th scope="row" className="px-3 py-1.5 text-left font-medium">
+                    {typeLabel(typeName)}
+                  </th>
+                  {actions.map((a) => {
+                    const c = { type: typeName, action: a };
+                    const have = linesOf(c);
+                    const isOpen = open?.type === typeName && open.action === a;
+                    const extra = have.some((p) => p.condition || p.fields);
+                    return (
+                      <Td key={a}>
+                        <div className="flex items-center gap-1">
+                          <Select
+                            label={where(c)}
+                            className={have.length === 0 ? "text-muted-foreground" : undefined}
+                            value={have.length > 1 ? "many" : (have[0]?.scope ?? "")}
+                            disabled={busy || have.length > 1}
+                            onChange={(v) => choose(c, v)}
+                            options={[
+                              { value: "", label: t("roles.none") },
+                              ...scopes.map((s) => ({ value: s, label: scopeLabel(s) })),
+                              ...(have.length > 1
+                                ? [
+                                    {
+                                      value: "many",
+                                      label: have.map((p) => scopeLabel(p.scope)).join(" + "),
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={isOpen}
+                            aria-label={t("roles.details", { where: where(c) })}
+                            onClick={() => setOpen(isOpen ? null : c)}
+                          >
+                            …
+                          </Button>
+                        </div>
+                        {extra && (
+                          <div className="text-xs text-muted-foreground">{t("roles.narrowed")}</div>
+                        )}
+                      </Td>
+                    );
+                  })}
+                </Tr>
+              )),
+            ])}
           </tbody>
         </DensityTable>
       </div>

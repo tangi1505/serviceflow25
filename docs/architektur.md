@@ -715,6 +715,8 @@ web/src/
   mit Einladung oder Einmal-Kennwort, `/users/<id>` mit Sperren und den Rollen der Person;
   `/invite?key=…` setzt ohne Anmeldung das Kennwort einer Einladung. Rollen am Benutzer und
   Zuweisungen an der Rolle sind dieselben Daten.
+  Die Seite einer Rolle (UI67) trennt beides in die Reiter „Rechte“ und „Zuweisungen“
+  (`ui/tabs.tsx`); die Matrix ist nach Paketen gruppiert und zeigt anfangs nur Typen mit Rechten.
 - **Lange Listen** laufen mit TanStack Table und Virtual. Die Daten kommen seitenweise per
   Schlüssel, und Spalten werden nur gerendert, wenn sie sichtbar sind.
 - **Liste, Filter und Tastatur** (UI47 bis UI53, UI-Plan E54 bis E57): Seitenkopf mit
