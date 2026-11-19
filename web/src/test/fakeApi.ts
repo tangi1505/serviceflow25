@@ -964,6 +964,15 @@ export function fakeApi(state: FakeState) {
       } else if (act[2] === "password") {
         acc.password_expired = true;
         delete acc.invited_until;
+      } else if (state.noMail) {
+        return problem(503, "unavailable");
+      } else if (!acc.invited_email) {
+        return json(422, {
+          type: "/problems/validation",
+          title: "validation",
+          status: 422,
+          errors: [{ field: "email", code: "required", message: "the person has no address" }],
+        });
       } else {
         acc.invited_until = "2026-11-22T10:00:00Z";
       }

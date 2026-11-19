@@ -1449,6 +1449,7 @@
     "more": "Weitere anzeigen"
   },
   "users": {
+    "noEmail": "Die Person hat keine E-Mail-Adresse. Tragen Sie sie bei der Person ein oder setzen Sie ein Einmal-Kennwort.",
     "noMail": "Auf diesem Server ist kein Mailserver eingerichtet, deshalb geht keine Einladung. Wählen Sie „Einmal-Kennwort“.",
     "title": "Benutzer",
     "count_one": "{{count}} Benutzer",

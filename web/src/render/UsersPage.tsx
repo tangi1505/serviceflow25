@@ -213,6 +213,9 @@ export function UsersPage() {
 // reason says why an action failed; without a mail server (503) it names the way out.
 function reason(err: unknown, t: (key: string) => string): string {
   if (err instanceof ApiError && err.status === 503) return t("users.noMail");
+  if (err instanceof ApiError && err.fieldErrors.some((f) => f.field === "email")) {
+    return t("users.noEmail");
+  }
   return err instanceof Error ? err.message : String(err);
 }
 

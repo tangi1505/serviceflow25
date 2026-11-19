@@ -146,6 +146,23 @@ describe("UsersPage", () => {
     expect(state.accounts!.some((a) => a.username === "o_mail")).toBe(false);
   });
 
+  it("says why a new invitation cannot go out", async () => {
+    const user = userEvent.setup();
+    renderAt("/users/acc-anna");
+    await screen.findByRole("heading", { name: "Anna Berg" }, loaded);
+    const again = async () => {
+      await user.click(screen.getByRole("button", { name: "Aktionen" }));
+      await user.click(screen.getByRole("menuitem", { name: "Neu einladen" }));
+      await screen.findByRole("alertdialog");
+      await user.keyboard("{Enter}");
+    };
+    await again();
+    expect(await screen.findByText(/keine E-Mail-Adresse/)).toBeInTheDocument();
+    state.noMail = true;
+    await again();
+    expect(await screen.findByText(/kein Mailserver eingerichtet/)).toBeInTheDocument();
+  });
+
   it("adds and removes a role at a user and blocks after the question", async () => {
     const user = userEvent.setup();
     renderAt("/users/acc-anna");

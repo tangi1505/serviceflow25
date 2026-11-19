@@ -323,6 +323,10 @@ func (s *server) InviteAccount(w http.ResponseWriter, r *http.Request, id gen.Id
 	if !decode(w, r, &body) {
 		return
 	}
+	// The mail server first: without one, no address helps.
+	if !s.mailReady(w, r) {
+		return
+	}
 	email := ""
 	if body.Email != nil {
 		email = strings.TrimSpace(*body.Email)
@@ -336,7 +340,7 @@ func (s *server) InviteAccount(w http.ResponseWriter, r *http.Request, id gen.Id
 		writeProblem(w, r, http.StatusUnprocessableEntity, "validation", "", []records.Problem{{Field: "email", Code: "required", Message: "the person has no address; give one"}})
 		return
 	}
-	if !s.mailReady(w, r) || !s.sendInvitation(w, r, acc, email) {
+	if !s.sendInvitation(w, r, acc, email) {
 		return
 	}
 	s.secRecord(r, seclog.Event{Category: seclog.Change, Kind: "account.invite", Outcome: seclog.Success, Target: acc.Username})

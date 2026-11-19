@@ -637,7 +637,9 @@ Die Fragen an die Fachseite stehen im Hauptplan.
 - **Nachtrag** (Prüfung auf 8092): ohne Mailserver kam die Antwort des Servers englisch; jetzt
   sagt die Meldung „Auf diesem Server ist kein Mailserver eingerichtet, deshalb geht keine
   Einladung. Wählen Sie „Einmal-Kennwort“.“ (beim Anlegen und bei „Neu einladen“); ein Test in
-  `UsersPage.test.tsx` belegt, dass dabei kein Konto entsteht.
+  `UsersPage.test.tsx` belegt, dass dabei kein Konto entsteht. „Neu einladen“ ohne Adresse sagte
+  nur „Eingabe ungültig“; jetzt prüft der Server zuerst den Mailserver, und die Seite sagt „Die
+  Person hat keine E-Mail-Adresse …“ mit dem Einmal-Kennwort als Weg (Test für beide Fälle).
 
 ### UI65 — Nacharbeit nach deiner Prüfung, 2026-11-19
 

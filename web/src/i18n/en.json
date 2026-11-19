@@ -1449,6 +1449,7 @@
     "more": "Show more"
   },
   "users": {
+    "noEmail": "The person has no e-mail address. Enter it at the person or set a one-time password.",
     "noMail": "This server has no mail server, so no invitation can go out. Choose “One-time password”.",
     "title": "Users",
     "count_one": "{{count}} user",
