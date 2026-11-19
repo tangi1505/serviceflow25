@@ -20,6 +20,8 @@ import (
 
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/db/queries"
+	"group24.de/itsm/internal/meta"
+	"group24.de/itsm/internal/schema"
 )
 
 // TrashEntry is one record in the trash (PL74, Kern-Plan E78).
@@ -111,6 +113,10 @@ func (s *Service) ListTrash(ctx context.Context, o TrashOptions) (TrashPage, err
 			return TrashPage{}, err
 		}
 	}
+	tables, err := s.withTables(ctx, types)
+	if err != nil {
+		return TrashPage{}, err
+	}
 	a := authz.From(ctx)
 	var parts []string
 	var args []any
@@ -120,7 +126,7 @@ func (s *Service) ListTrash(ctx context.Context, o TrashOptions) (TrashPage, err
 	}
 	for _, t := range types {
 		name := t.QualifiedName()
-		if (o.Type != "" && name != o.Type) || !a.Allowed(name, authz.ActionRead) {
+		if (o.Type != "" && name != o.Type) || !tables[name] || !a.Allowed(name, authz.ActionRead) {
 			continue
 		}
 		title := "id::text"
@@ -178,6 +184,33 @@ func (s *Service) ListTrash(ctx context.Context, o TrashOptions) (TrashPage, err
 		page.Next = trashCursor{at: last.DeletedAt, typ: last.Type, id: last.ID}.String()
 	}
 	return page, s.trashNames(ctx, page.Items)
+}
+
+// withTables names the types whose table exists in the database of the session. A type
+// without one (a package whose install stopped halfway; the tests register types without
+// tables) would fail a statement over all types (found by the browser test of UI63).
+func (s *Service) withTables(ctx context.Context, types []meta.Type) (map[string]bool, error) {
+	names := make([]string, len(types))
+	for i, t := range types {
+		names[i] = schema.TableName(t)
+	}
+	rows, err := s.db.Tenant(ctx).Query(ctx, `SELECT n FROM unnest($1::text[]) n WHERE to_regclass(quote_ident(n)) IS NOT NULL`, names)
+	if err != nil {
+		return nil, fmt.Errorf("records: tables of the types: %w", err)
+	}
+	have, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("records: tables of the types: %w", err)
+	}
+	set := make(map[string]bool, len(have))
+	for _, n := range have {
+		set[n] = true
+	}
+	out := make(map[string]bool, len(types))
+	for i, t := range types {
+		out[t.QualifiedName()] = set[names[i]]
+	}
+	return out, nil
 }
 
 // trashNames fills in the names of the accounts that moved the records to the trash.

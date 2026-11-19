@@ -456,13 +456,21 @@ web_e2e() {
     printf 'Portal-Sprache12!' | /tmp/itsm user passwd englisch >/dev/null 2>&1 || true
   /tmp/itsm user grant englisch e2e_portal >/dev/null 2>&1 || true
   cd web
+  rc=0
   # shellcheck disable=SC2086
   if [ "$specs" = ALL ]; then
-    ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e
+    ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e || rc=$?
   else
     echo "-- browser tests of this part run: $specs"
-    ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e $specs
+    ITSM_E2E_URL=http://127.0.0.1:18082 pnpm e2e $specs || rc=$?
   fi
+  # A red run shows what the server logged as an error (UI63: a 500 whose log went with the
+  # container).
+  if [ "$rc" != 0 ]; then
+    echo "-- errors in the log of the server"
+    grep -E '"level":"(ERROR|WARN)"|level=(ERROR|WARN)' /tmp/itsm-e2e.log | tail -20 || true
+  fi
+  return "$rc"
 }
 
 echo "ci: scope $scope"

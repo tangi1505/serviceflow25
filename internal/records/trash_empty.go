@@ -88,6 +88,10 @@ func (s *Service) EmptyTrash(ctx context.Context, now time.Time) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	tables, err := s.withTables(ctx, types)
+	if err != nil {
+		return 0, err
+	}
 	keep := map[string]int{}
 	keepOf := func(path string) (int, error) {
 		if d, ok := keep[path]; ok {
@@ -102,6 +106,9 @@ func (s *Service) EmptyTrash(ctx context.Context, now time.Time) (int, error) {
 	}
 	purged := 0
 	for _, t := range types {
+		if !tables[t.QualifiedName()] {
+			continue
+		}
 		// Nothing leaves the trash before a day: 1 is the shortest period but 0 (never).
 		before := now.Add(-24 * time.Hour)
 		var after *trashCursor

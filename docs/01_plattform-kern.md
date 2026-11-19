@@ -1761,6 +1761,10 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Leserecht auf Dashboards → zwei; nach Wiederherstellen fehlt der Eintrag. (Statt Störungen
   Proben: Der Test braucht kein Paket des Service Desk.)
 - **Belegt:** lokal die Go-Tests von `httpapi`, `schema`, Vitest. CI auf `ki-lab` im dritten Lauf grün (LZ2 +0 %, LZ16 +9 %, Grundlast beim Start 7 %). Lauf 1 und 2 fanden: die Schema-Tests zählen den neuen Index (angepasst); `MyRecords.test.tsx` braucht unter Last mehr als 1 s bis zur Anzeige (Wartezeit 5 s); **Befund:** der Bulk-Job lief unter der Standardgrenze von River (1 min je Job) und brach auf dem geteilten `ki-lab` den Test mit 100.000 Zeilen bei 95.000 ab, lokal 7,5 s mit und 7,3 s ohne den neuen Index. Ein Strom bis `bulk.max_size` hält Millionen Zeilen; der Job hat jetzt eine Stunde (`internal/bulk/async.go`, `Timeout`).
+- **Nachtrag 2026-11-19 (gefunden mit UI63):** Ein Typ ohne Tabelle (in der CI der Testtyp
+  `metatest.alpha`; im Betrieb nach einer abgebrochenen Paketinstallation denkbar) ließ die
+  ganze Liste mit 500 scheitern. Liste und Job (PL76) prüfen die Tabellen jetzt in einer
+  Abfrage (`to_regclass`) und überspringen solche Typen.
 - **Nicht geprüft:** der Endpunkt selbst auf H14 (dort läuft der Stand vor PL74); gemessen ist
   die Abfrage eines Teils, die der Endpunkt je Typ stellt.
 - **Prüfweg:** auf 8092 zwei Störungen und ein Dashboard löschen, dann
