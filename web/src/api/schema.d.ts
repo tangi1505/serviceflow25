@@ -296,6 +296,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The trash over all types, newest first (PL74): only records the session may read, with type, title, when and by whom they went to the trash; paged by a cursor */
+        get: operations["listTrash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records/{typeName}/{id}:order": {
         parameters: {
             query?: never;
@@ -3102,6 +3119,28 @@ export interface components {
                 reason: string;
             }[];
         };
+        TrashEntry: {
+            /** @description the qualified type of the record */
+            type: string;
+            /** Format: uuid */
+            id: string;
+            /** @description the title field, or the id when the type has none or the session may not read it */
+            title: string;
+            /** Format: date-time */
+            deleted_at: string;
+            /**
+             * Format: uuid
+             * @description the account that moved the record to the trash
+             */
+            deleted_by?: string;
+            /** @description its display name */
+            deleted_by_name?: string;
+        };
+        TrashPage: {
+            items: components["schemas"]["TrashEntry"][];
+            /** @description the cursor of the next page; absent on the last */
+            next?: string;
+        };
         Page: {
             items: components["schemas"]["Record"][];
             /** @description pass as "after" to get the next page; absent on the last page */
@@ -4835,6 +4874,36 @@ export interface operations {
             };
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
+        };
+    };
+    listTrash: {
+        parameters: {
+            query?: {
+                /** @description only this type */
+                type?: string;
+                /** @description a part of the title, upper and lower case alike */
+                q?: string;
+                limit?: number;
+                /** @description the cursor next of the page before */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description a page of the trash */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrashPage"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
         };
     };
     orderRecord: {

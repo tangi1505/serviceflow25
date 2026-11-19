@@ -84,9 +84,9 @@ func TestCreateTableAddColumnUniqueIndexAndLog(t *testing.T) {
 	}
 	// create table + 4 system indexes (the deadline since UI34) + the tenant trigger (PL46) +
 	// the thresholds of autovacuum (PL73) + 7 columns + 1 unique index + the index on
-	// created_at (PL54)
-	if len(changes) != 16 {
-		t.Fatalf("got %d changes, want 16: %+v", len(changes), changes)
+	// created_at (PL54) + the partial index of the trash (PL74)
+	if len(changes) != 17 {
+		t.Fatalf("got %d changes, want 17: %+v", len(changes), changes)
 	}
 	// The table is cleaned by autovacuum from 0.2 % dead rows, not from a fifth (PL73).
 	var opts []string
@@ -207,9 +207,9 @@ func TestParallelApplyEndsWithOneTable(t *testing.T) {
 	}
 	// Exactly one creation: create table + 4 indexes (the deadline since UI34) + the tenant
 	// trigger (PL46) + the thresholds of autovacuum (PL73) + 1 column + 1 unique index + the
-	// index on created_at (PL54).
-	if len(log) != 10 {
-		t.Fatalf("schema log has %d rows, want 10 (one creation only)", len(log))
+	// index on created_at (PL54) + the partial index of the trash (PL74).
+	if len(log) != 11 {
+		t.Fatalf("schema log has %d rows, want 11 (one creation only)", len(log))
 	}
 }
 

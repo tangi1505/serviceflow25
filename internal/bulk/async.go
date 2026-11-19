@@ -17,6 +17,7 @@ import (
 	"io"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -177,6 +178,11 @@ type applyWorker struct {
 	river.WorkerDefaults[ApplyArgs]
 	a *Async
 }
+
+// Timeout lets a run take up to an hour: a stream of up to bulk.max_size holds millions of
+// rows, River's default of one minute cut a run of 100,000 on a shared ki-lab at 95,000 (PL74
+// CI, 2026-11-19).
+func (w *applyWorker) Timeout(*river.Job[ApplyArgs]) time.Duration { return time.Hour }
 
 func (w *applyWorker) Work(ctx context.Context, job *river.Job[ApplyArgs]) error {
 	report, err := w.a.apply(ctx, job.Args, func(r Report) {

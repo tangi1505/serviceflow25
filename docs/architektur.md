@@ -522,6 +522,9 @@ E40:
   Abfrage rechnet sie beim Abfragen aus, die Anfänge in der Zeitzone der Person. Eine
   gespeicherte Suche hält das Wort, ihr Zeitraum wandert mit.
 - **Der Abfragebau** fügt immer die Rechtebedingung (§5) und den Ausschluss des Papierkorbs an.
+  Den Papierkorb selbst liest nur `GET /api/v1/trash` (PL74): über alle Typen, die die Person
+  lesen darf, in einer Abfrage mit `UNION ALL`, je Typ über einen Teilindex auf `deleted_at`;
+  „gelöscht von“ ist `updated_by`, weil ein Datensatz im Papierkorb nicht geschrieben wird.
   Er wählt Indexe nicht selbst; dafür sorgen Indexe, die das Paket je Typ deklariert.
 
 ### 6.4 Bulk

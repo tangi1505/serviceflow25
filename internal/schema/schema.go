@@ -266,6 +266,13 @@ func applyType(ctx context.Context, tx pgx.Tx, q *queries.Queries, t meta.Type) 
 		fmt.Sprintf("CREATE INDEX %s ON %s (created_at)", pgx.Identifier{table + "_created_at_idx"}.Sanitize(), pgx.Identifier{table}.Sanitize()), run); err != nil {
 		return nil, err
 	}
+	// The trash of every type (PL74): the list of the trash over all types reads only the
+	// records in it, newest first; a partial index holds only those few rows and costs nothing
+	// for the records outside the trash.
+	if err := ensureIndex(ctx, tx, table, table+"_trash_idx",
+		fmt.Sprintf("CREATE INDEX %s ON %s (deleted_at DESC, id DESC) WHERE deleted_at IS NOT NULL", pgx.Identifier{table + "_trash_idx"}.Sanitize(), pgx.Identifier{table}.Sanitize()), run); err != nil {
+		return nil, err
+	}
 	// The moment of the resolution of a type with the trait resolution (PL66, Hauptplan E195):
 	// the numbers of "Statistik" count what was resolved in a period. Only resolved records
 	// are in it, the open ones of a queue are not.

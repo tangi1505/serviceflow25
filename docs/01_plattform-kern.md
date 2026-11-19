@@ -104,7 +104,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL71** | Feste Kerne und Speichergrenze auf `ki-lab` (Hauptplan E198): H14 und die CI laufen auf eigenen Kernen (`cpuset`) mit einer Speichergrenze nach der Zielgröße Prod (8 Kerne, 32 GB), die Einstellungen von PostgreSQL passend dazu; danach H14 und die Basislinie neu gemessen | 🟢 | 1 d | `docker inspect` auf `ki-lab` zeigt Kerne und Grenze je Container; die volle Stufe von H14 und die ganze CI laufen mit den Grenzen, die Werte stehen im Umsetzungsstand |
 | **PL72** | Zeitwörter in der JSON-Abfrage (E76, Hauptplan E199; Bedarf aus UI51, UI-Plan E57): als Wert einer Bedingung auf eine Systemzeit, ein Zeitpunkt- oder ein Datumsfeld gelten `@now`, `@today`, `@week`, `@month` und `@year`, je mit Versatz wie `@now-5m`, `@today-1d`, `@month-1mo` (Einheiten `m`, `h`, `d`, `w`, `mo`, `y`, auch mit `+`). Gerechnet wird beim Abfragen; Tages-, Wochen-, Monats- und Jahresanfang gelten in der Zeitzone der Person, die Woche beginnt am Montag. Gilt überall, wo ein `where` steht: `:query`, gespeicherte Suchen, Export, Widgets. Ein unbekanntes Wort ist ein Fehler der Eingabe. Wie der gespeicherte Stand und die Tageswerte der Dashboards (PL68, PL69) mit einem Zeitwort umgehen, klärt die Aufgabe | 🟢 | 1 d | `curl` auf `:query` mit `{"field":"created_at","gte":"@now-5m"}` → nur Datensätze der letzten fünf Minuten; Tests mit fester Uhr: `@today` um 00:30 Uhr in `Europe/Berlin` beginnt um 00:00 Uhr Berliner Zeit, `@month-1mo` am 2026-03-31 ist der 2026-02-01, `@week` an einem Sonntag ist der Montag davor; `@heute` → 400 mit dem Feld; eine gespeicherte Suche mit `@now-5d` liefert am nächsten Tag ein anderes Fenster; Lastwerkzeug: LZ2 und LZ16 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL73** | Listen ohne JIT und Hilfsprozesse, tote Zeilen (E77, Hauptplan E201; Befund aus PL71): das `SELECT` einer Liste läuft in einer eigenen Transaktion mit `jit = off` und ohne parallele Hilfsprozesse, Zählungen, Auswertungen und Dashboards behalten die Voreinstellung; die Typtabellen bekommen eigene Schwellen für das automatische Aufräumen; das Lastwerkzeug räumt nach dem Löschen per SQL auf; die Planung der Liste (17 ms) ansehen | 🟢 | 1 d | volle Stufe von H14 auf den festen Kernen: LZ2 und LZ21b p95 ≤ 150 ms, alle anderen Ziele weiter erfüllt; `reloptions` der Tabelle der Störungen zeigen die Schwellen; ein Test zeigt `jit = off` in der Liste und die Voreinstellung danach; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL74** | Papierkorb lesen (E78, Hauptplan E204; Bedarf aus UI63): `GET /api/v1/trash` listet Datensätze im Papierkorb über alle Typen, neueste zuerst, mit Typ, Titel, gelöscht am und gelöscht von, nur was die Person lesen darf, seitenweise mit Cursor; Filter `type` und `q` (Titel). „Gelöscht von“ kommt aus einer neuen Systemspalte `deleted_by` (Wiederherstellen leert sie) oder aus dem Verlauf; was schneller ist, klärt die Aufgabe mit einer Messung auf dem Lastbestand | ⬜ | 1 d | Zwei Störungen und ein Dashboard in den Papierkorb, `curl` auf `GET /api/v1/trash` → drei Einträge mit Typ, Titel, Zeit und Person; `?type=core.dashboard` → einer; als Person ohne Leserecht auf das Dashboard → zwei; nach Wiederherstellen fehlt der Eintrag; Lastwerkzeug: LZ2 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL74** | Papierkorb lesen (E78, Hauptplan E204; Bedarf aus UI63): `GET /api/v1/trash` listet Datensätze im Papierkorb über alle Typen, neueste zuerst, mit Typ, Titel, gelöscht am und gelöscht von, nur was die Person lesen darf, seitenweise mit Cursor; Filter `type` und `q` (Titel). „gelöscht von“ ist `updated_by`, ein Teilindex je Typ hält nur den Papierkorb (gemessen auf H14, §4) | 🟢 | 1 d | Zwei Störungen und ein Dashboard in den Papierkorb, `curl` auf `GET /api/v1/trash` → drei Einträge mit Typ, Titel, Zeit und Person; `?type=core.dashboard` → einer; als Person ohne Leserecht auf das Dashboard → zwei; nach Wiederherstellen fehlt der Eintrag; Lastwerkzeug: LZ2 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL75** | Recht „endgültig löschen“ (E78): neue Aktion `purge` für jeden Typ neben `read`, `create`, `update`, `delete`; endgültig löschen verlangt sie statt `delete`; die Rolle der Verwaltung im Kernpaket bekommt sie, im Rollen-Editor (UI27) erscheint sie als Spalte; die Typbeschreibung nennt die Aktionen der Person (`may`, E79) | 🟢 | 0,5 d | Als Person mit `delete`, aber ohne `purge`: `POST …/{id}:purge` → 403, Wiederherstellen geht; mit `purge` → 204; Rollen-Editor zeigt die Spalte „Endgültig löschen“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL76** | Papierkorb leert sich selbst (E78, Hauptplan V43): Einstellung `trash.keep_days` am Organisationsbaum (Vorgabe 30, 0 heißt nie); ein Job einmal am Tag löscht endgültig, was länger im Papierkorb liegt, in Stapeln, mit Audit und Ereignis wie beim Löschen von Hand (Konto des Systems); Anhänge gehen mit wie beim endgültigen Löschen | ⬜ | 0,75 d | Test mit fester Uhr: ein Datensatz 31 Tage im Papierkorb ist nach dem Lauf weg, einer nach 29 Tagen bleibt; am Knoten einer Einheit 7 Tage eingestellt → dort nach 8 Tagen weg; 0 → nichts wird gelöscht; das Audit nennt das System; `docker compose run --rm tools scripts/ci.sh` grün |
 
@@ -1694,6 +1694,48 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL74 — Papierkorb lesen, 2026-11-19
+
+- **Grundlage:** E78; Hauptplan E204; UI-Plan E61 (Bedarf aus UI63).
+- **Messung auf `ki-lab` gegen H14** (18,25 Mio. Störungen, 1.000 davon für die Messung in den
+  Papierkorb gelegt, mit je einer Zeile im Verlauf wie vom Server; danach alles zurück, Skript
+  `~/itsm-h14/pl74.sh`). Je fünf Läufe der ersten Seite (51 Zeilen, neueste zuerst):
+
+  | Abfrage | ohne Index | mit Teilindex |
+  | --- | --- | --- |
+  | „gelöscht von“ aus der Spalte `updated_by` | 1.777–1.788 ms | 0,32–0,43 ms |
+  | „gelöscht von“ aus dem Verlauf (`audit`, je Zeile) | 1.785–1.861 ms | 1,04–1,26 ms |
+
+  Ohne Index liest PostgreSQL die ganze Tabelle; der Teilindex `(deleted_at DESC, id DESC)
+  WHERE deleted_at IS NOT NULL` hält nur den Papierkorb (56 kB für 1.000 Zeilen, gebaut in
+  4,6 s neben dem Betrieb). Die Spalte ist dreimal schneller als der Verlauf und braucht keine
+  neue Systemspalte: Ein Datensatz im Papierkorb wird bis zum Wiederherstellen nicht
+  geschrieben (Änderungen und Massenänderungen lesen nur außerhalb des Papierkorbs), also ist
+  `updated_by` die Person, die ihn hineingelegt hat. Die Last der LLM auf `ki-lab` lag dabei
+  an; die Abstände sind so groß, dass sie das Urteil nicht ändert.
+- **Gebaut:**
+  - `GET /api/v1/trash` mit `type`, `q` (Teil des Titels), `limit` (50, höchstens 200) und
+    `after` (Cursor aus `next`); Einträge mit `type`, `id`, `title`, `deleted_at`,
+    `deleted_by`, `deleted_by_name` (`internal/httpapi/trash.go`,
+    `internal/records/trash.go`).
+  - Eine Abfrage mit `UNION ALL`: je Typ, den die Person lesen darf, ein Teil mit ihrem
+    Rechtefilter, eigener Sortierung und Grenze; außen sortiert und begrenzt. Der Titel ist das
+    Titelfeld, wenn die Person es lesen darf, sonst die ID.
+  - Teilindex `<tabelle>_trash_idx` je Typ (`internal/schema/schema.go`); er entsteht beim
+    nächsten Start, auf einer Tabelle mit Millionen Zeilen sperrt das Anlegen Schreibzugriffe
+    für einige Sekunden (wie der Index auf `created_at`, PL54).
+- **Tests:** `internal/httpapi/trash_test.go`: zwei Proben und ein Dashboard im Papierkorb →
+  drei Einträge, das Dashboard zuerst, alle mit Zeit und Person; `type=core.dashboard` → eins;
+  zwei Seiten mit `limit=2`; falscher Cursor → 422, unbekannter Typ → 404; eine Person ohne
+  Leserecht auf Dashboards → zwei; nach Wiederherstellen fehlt der Eintrag. (Statt Störungen
+  Proben: Der Test braucht kein Paket des Service Desk.)
+- **Belegt:** lokal die Go-Tests von `httpapi`, `schema`, Vitest. CI auf `ki-lab` im dritten Lauf grün (LZ2 +0 %, LZ16 +9 %, Grundlast beim Start 7 %). Lauf 1 und 2 fanden: die Schema-Tests zählen den neuen Index (angepasst); `MyRecords.test.tsx` braucht unter Last mehr als 1 s bis zur Anzeige (Wartezeit 5 s); **Befund:** der Bulk-Job lief unter der Standardgrenze von River (1 min je Job) und brach auf dem geteilten `ki-lab` den Test mit 100.000 Zeilen bei 95.000 ab, lokal 7,5 s mit und 7,3 s ohne den neuen Index. Ein Strom bis `bulk.max_size` hält Millionen Zeilen; der Job hat jetzt eine Stunde (`internal/bulk/async.go`, `Timeout`).
+- **Nicht geprüft:** der Endpunkt selbst auf H14 (dort läuft der Stand vor PL74); gemessen ist
+  die Abfrage eines Teils, die der Endpunkt je Typ stellt.
+- **Prüfweg:** auf 8092 zwei Störungen und ein Dashboard löschen, dann
+  `curl -b cookies.txt http://localhost:8092/api/v1/trash` → drei Einträge mit Typ, Titel,
+  Zeit und Person; `?type=core.dashboard` → einer; eine Störung wiederherstellen → zwei.
 
 ### PL75 — Recht „endgültig löschen“, 2026-11-19
 

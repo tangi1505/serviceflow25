@@ -423,6 +423,35 @@ paths:
         "204": { description: restored }
         "404": { $ref: "#/components/responses/Problem" }
         "409": { $ref: "#/components/responses/Problem" }
+  /api/v1/trash:
+    get:
+      operationId: listTrash
+      summary: "The trash over all types, newest first (PL74): only records the session may read, with type, title, when and by whom they went to the trash; paged by a cursor"
+      tags: [records]
+      parameters:
+        - name: type
+          in: query
+          description: only this type
+          schema: { type: string }
+        - name: q
+          in: query
+          description: a part of the title, upper and lower case alike
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: after
+          in: query
+          description: the cursor next of the page before
+          schema: { type: string }
+      responses:
+        "200":
+          description: a page of the trash
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrashPage" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/v1/records/{typeName}/{id}:order:
     post:
       operationId: orderRecord
@@ -4059,6 +4088,24 @@ components:
             properties:
               tenant: { type: string }
               reason: { type: string, description: "unknown (not a tenant the administrator may work in) or no_read (no right to read the type there)" }
+    TrashEntry:
+      type: object
+      required: [type, id, title, deleted_at]
+      properties:
+        type: { type: string, description: the qualified type of the record }
+        id: { type: string, format: uuid }
+        title: { type: string, description: "the title field, or the id when the type has none or the session may not read it" }
+        deleted_at: { type: string, format: date-time }
+        deleted_by: { type: string, format: uuid, description: the account that moved the record to the trash }
+        deleted_by_name: { type: string, description: its display name }
+    TrashPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TrashEntry" }
+        next: { type: string, description: the cursor of the next page; absent on the last }
     Page:
       type: object
       required: [items]

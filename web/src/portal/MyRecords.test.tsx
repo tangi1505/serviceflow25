@@ -82,6 +82,10 @@ function renderAt(path: string) {
   );
 }
 
+// The list asks for the person, the types and then each type twice (count and page): about a
+// second in jsdom, more on a shared ki-lab (PL74 CI, 2026-11-19); the default of 1 s is too tight.
+const loaded = { timeout: 5000 };
+
 describe("Meine Vorgänge", () => {
   let state: FakeState;
   beforeEach(() => {
@@ -135,7 +139,7 @@ describe("Meine Vorgänge", () => {
     };
     const { container } = renderAt("/portal");
     const list = await screen.findByRole("region", { name: "Meine Vorgänge" });
-    expect(await within(list).findByText("3 offen")).toBeInTheDocument();
+    expect(await within(list).findByText("3 offen", {}, loaded)).toBeInTheDocument();
     const rows = await within(list).findAllByRole("listitem");
     expect(rows.map((r) => within(r).getByRole("link").textContent)).toEqual([
       "Neuer Monitor",
@@ -178,7 +182,7 @@ describe("Meine Vorgänge", () => {
     };
     renderAt("/portal");
     const list = await screen.findByRole("region", { name: "Meine Vorgänge" });
-    expect(await within(list).findByText("25 offen")).toBeInTheDocument();
+    expect(await within(list).findByText("25 offen", {}, loaded)).toBeInTheDocument();
     expect(await within(list).findAllByRole("listitem")).toHaveLength(20);
     await user.click(within(list).getByRole("button", { name: "Weitere anzeigen" }));
     expect(await within(list).findByRole("link", { name: "Anfrage 24" })).toBeInTheDocument();
@@ -189,7 +193,7 @@ describe("Meine Vorgänge", () => {
   it("says when nothing is open", async () => {
     renderAt("/portal");
     const list = await screen.findByRole("region", { name: "Meine Vorgänge" });
-    expect(await within(list).findByText("Nichts offen.")).toBeInTheDocument();
+    expect(await within(list).findByText("Nichts offen.", {}, loaded)).toBeInTheDocument();
     expect(within(list).getByText("0 offen")).toBeInTheDocument();
   });
 });
