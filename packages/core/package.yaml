@@ -8,7 +8,7 @@
 # organisation tree the core reads (SD20): the page "Globale Einstellungen" shows them, and
 # the server takes only declared keys.
 name: core
-version: 0.16.1
+version: 0.17.0
 # The symbol of the area in the navigation (UI36), from the fixed list of the core.
 icon: database
 # The area of the navigation is called so (UI plan E48).
@@ -130,6 +130,18 @@ settings:
     min: 0
     max: 60
     default: 2
+  # The trash (PL76, Kern-Plan E78): how long a record stays in it before the nightly job
+  # purges it; the node of the record counts.
+  - key: trash.keep_days
+    kind: number
+    group: {de: Papierkorb, en: Trash}
+    label: {de: Endgültig löschen nach, en: Purge after}
+    description: {de: "So lange bleibt ein Datensatz im Papierkorb, danach löscht ihn ein Job in der Nacht endgültig. 0 heißt: nie von selbst.", en: "How long a record stays in the trash before a nightly job purges it. 0 means never by itself."}
+    unit: {de: Tagen, en: days}
+    integer: true
+    min: 0
+    max: 3650
+    default: 30
   # The inbox (WF19): how long its entries stay, read or not.
   - key: notify.inbox_days
     kind: number

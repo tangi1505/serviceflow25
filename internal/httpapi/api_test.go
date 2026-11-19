@@ -95,6 +95,8 @@ type testAPI struct {
 	person uuid.UUID
 	// dashboards computes the widgets; tests give it a store of their own (PL68).
 	dashboards *dashboard.Service
+	// records is the service behind the API; tests run its jobs with their own time (PL76).
+	records *records.Service
 }
 
 const testPassword = "Api-Test1!"
@@ -347,7 +349,7 @@ func apiServerWith(t *testing.T, tenantURLs map[string]string) *testAPI {
 	an.SetPublicURL(srv.URL)
 	api := &testAPI{Server: srv, auth: a, authz: az, pool: pool, rt: rt, kv: kv, events: ev, idp: idp, authn: an, hooks: hooks, export: exp,
 		rules: ruleEngine, ruleEvents: ruleEvents, sla: slaSvc, settings: settingsSvc, recur: recur, notify: notifySvc, notifyEvents: notifyEvents,
-		smtp: mailbox, person: pid, dashboards: dashboards}
+		smtp: mailbox, person: pid, dashboards: dashboards, records: recs}
 	r := call(t, api, http.MethodPost, "/api/v1/auth/login", `{"username": "apitest", "password": "`+testPassword+`"}`, nil)
 	if r.code != 200 {
 		t.Fatalf("login: %d %s", r.code, r.raw)

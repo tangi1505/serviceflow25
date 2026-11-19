@@ -1127,6 +1127,11 @@ func (s *Service) purge(ctx context.Context, typeName string, id uuid.UUID, acto
 		if _, err := tx.Exec(ctx, `DELETE FROM approval WHERE type_name = $1 AND record_id = $2`, t.QualifiedName(), id); err != nil {
 			return fmt.Errorf("records: purge approvals: %w", err)
 		}
+		// And the links to its attachments (PL76); a file no record links any more is removed by
+		// the cleanup of orphans (PL36).
+		if _, err := tx.Exec(ctx, `DELETE FROM attachment WHERE type_name = $1 AND record_id = $2`, t.QualifiedName(), id); err != nil {
+			return fmt.Errorf("records: purge attachments: %w", err)
+		}
 		if hasActors(t) {
 			// The roles go with the record (WF3); the history keeps them.
 			if err := q.DeleteActorsOfRecord(ctx, queries.DeleteActorsOfRecordParams{TypeName: t.QualifiedName(), RecordID: id}); err != nil {

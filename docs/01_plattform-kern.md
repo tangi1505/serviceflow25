@@ -106,7 +106,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL73** | Listen ohne JIT und Hilfsprozesse, tote Zeilen (E77, Hauptplan E201; Befund aus PL71): das `SELECT` einer Liste läuft in einer eigenen Transaktion mit `jit = off` und ohne parallele Hilfsprozesse, Zählungen, Auswertungen und Dashboards behalten die Voreinstellung; die Typtabellen bekommen eigene Schwellen für das automatische Aufräumen; das Lastwerkzeug räumt nach dem Löschen per SQL auf; die Planung der Liste (17 ms) ansehen | 🟢 | 1 d | volle Stufe von H14 auf den festen Kernen: LZ2 und LZ21b p95 ≤ 150 ms, alle anderen Ziele weiter erfüllt; `reloptions` der Tabelle der Störungen zeigen die Schwellen; ein Test zeigt `jit = off` in der Liste und die Voreinstellung danach; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL74** | Papierkorb lesen (E78, Hauptplan E204; Bedarf aus UI63): `GET /api/v1/trash` listet Datensätze im Papierkorb über alle Typen, neueste zuerst, mit Typ, Titel, gelöscht am und gelöscht von, nur was die Person lesen darf, seitenweise mit Cursor; Filter `type` und `q` (Titel). „gelöscht von“ ist `updated_by`, ein Teilindex je Typ hält nur den Papierkorb (gemessen auf H14, §4) | 🟢 | 1 d | Zwei Störungen und ein Dashboard in den Papierkorb, `curl` auf `GET /api/v1/trash` → drei Einträge mit Typ, Titel, Zeit und Person; `?type=core.dashboard` → einer; als Person ohne Leserecht auf das Dashboard → zwei; nach Wiederherstellen fehlt der Eintrag; Lastwerkzeug: LZ2 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL75** | Recht „endgültig löschen“ (E78): neue Aktion `purge` für jeden Typ neben `read`, `create`, `update`, `delete`; endgültig löschen verlangt sie statt `delete`; die Rolle der Verwaltung im Kernpaket bekommt sie, im Rollen-Editor (UI27) erscheint sie als Spalte; die Typbeschreibung nennt die Aktionen der Person (`may`, E79) | 🟢 | 0,5 d | Als Person mit `delete`, aber ohne `purge`: `POST …/{id}:purge` → 403, Wiederherstellen geht; mit `purge` → 204; Rollen-Editor zeigt die Spalte „Endgültig löschen“; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL76** | Papierkorb leert sich selbst (E78, Hauptplan V43): Einstellung `trash.keep_days` am Organisationsbaum (Vorgabe 30, 0 heißt nie); ein Job einmal am Tag löscht endgültig, was länger im Papierkorb liegt, in Stapeln, mit Audit und Ereignis wie beim Löschen von Hand (Konto des Systems); Anhänge gehen mit wie beim endgültigen Löschen | ⬜ | 0,75 d | Test mit fester Uhr: ein Datensatz 31 Tage im Papierkorb ist nach dem Lauf weg, einer nach 29 Tagen bleibt; am Knoten einer Einheit 7 Tage eingestellt → dort nach 8 Tagen weg; 0 → nichts wird gelöscht; das Audit nennt das System; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL76** | Papierkorb leert sich selbst (E78, Hauptplan V43): Einstellung `trash.keep_days` am Organisationsbaum (Vorgabe 30, 0 heißt nie); ein Job einmal am Tag löscht endgültig, was länger im Papierkorb liegt, in Stapeln, mit Audit und Ereignis wie beim Löschen von Hand (Konto des Systems); die Verknüpfungen zu Anhängen gehen mit, beim Löschen von Hand jetzt ebenso (die Dateien räumt PL36) | 🟢 | 0,75 d | Test mit fester Uhr: ein Datensatz 31 Tage im Papierkorb ist nach dem Lauf weg, einer nach 29 Tagen bleibt; am Knoten einer Einheit 7 Tage eingestellt → dort nach 8 Tagen weg; 0 → nichts wird gelöscht; das Audit nennt das System; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -1694,6 +1694,36 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL76 — Papierkorb leert sich selbst, 2026-11-19
+
+- **Grundlage:** E78; Hauptplan E204, V43 (30 Tage, bis die Fachseite eine Frist nennt).
+- **Gebaut:**
+  - Einstellung `trash.keep_days` im Paket `core` (0.17.0): Zahl in Tagen, 0 bis 3650,
+    Vorgabe 30, an jedem Knoten des Organisationsbaums; 0 heißt „nie von selbst“.
+  - Job `trash.empty` jede Nacht um 2:45 (`internal/records/trash_empty.go`): je Typ die
+    Datensätze, die seit mindestens einem Tag im Papierkorb liegen, älteste zuerst in Seiten
+    zu 200 über den Teilindex aus PL74; je Datensatz die Frist seines Knotens (je Knoten einmal
+    nachgeschlagen); was älter ist, löscht er endgültig über denselben Weg wie von Hand
+    (`Purge`, je Datensatz eine Transaktion) als System: Verlauf ohne Person, Ereignis
+    `purge`, Uhren, Zeitleiste, Rollen, Kosten, Genehmigungen. Hat jemand den Datensatz
+    inzwischen wiederhergestellt oder schon gelöscht, überspringt er ihn.
+  - **Befund:** Das endgültige Löschen von Hand ließ die Verknüpfungen zu Anhängen
+    (`attachment`) stehen. Es löscht sie jetzt mit (`internal/records/records.go`, `purge`);
+    die Datei selbst bleibt, bis PL36 verwaiste Dateien aufräumt.
+  - Eine geänderte Frist gilt für den Job nach höchstens der Frist des Zwischenspeichers der
+    Einstellungen (SD20); für einen Lauf in der Nacht ohne Bedeutung.
+- **Tests:** `internal/httpapi/trash_empty_test.go` mit fester Uhr (`EmptyTrash` mit eigener
+  Zeit): drei Proben im Papierkorb, an `root` (Vorgabe 30), an einer Einheit mit 7 und an
+  einer mit 0. Nach 6 Tagen alle drei da; nach 8 Tagen fehlt die der Einheit mit 7; nach 29
+  Tagen ist die an `root` noch da, nach 31 weg; die mit 0 bleibt auch nach 4.000 Tagen. Der
+  Verlauf des Löschens hat keine Person (das System), das Ereignis `purge` steht einmal da.
+- **Belegt:** lokal die Go-Tests von `httpapi` (`TestTrashEmptiesItself`, `TestTrashOverAllTypes`, `TestPurgeNeedsItsOwnRight`, `TestFilesOverHTTP`). CI auf `ki-lab`: alle Tests grün, LZ2 −2 %; das Lasttor rot mit LZ13 −23 % (ein Ausreißer der Basislinie: deren Läufe 4.671–6.954, die neuen 4.775–5.353) und LZ16 +13 %. **Befund LZ16:** seit UI46, also vor diesem Block, liegt LZ16 in jedem Lauf 4–13 % über der Basislinie (vorher +4 bis +8 % bei 2,2 ms, seit dem 2026-11-19 mittags auf beiden Seiten 3,2–4,2 ms bei 5–7 % Grundlast durch die LLM). PL74 bis PL76 ändern den Weg der Liste nicht; die Basislinie zu erneuern ist deine Entscheidung.
+- **Prüfweg:** auf 8092 Konto-Menü › Einstellungen › Organisation (`/settings/global`),
+  Knoten „Gesamt“: Gruppe „Papierkorb“, „Endgültig löschen nach“ zeigt 30 Tage;
+  `curl -b cookies.txt http://localhost:8092/api/v1/jobs/schedules` nennt `trash.empty`
+  („Papierkorb nach der Frist leeren“, `45 2 * * *`). Die Wirkung selbst prüft der Test mit
+  fester Uhr; auf 8092 würde sie erst nach 30 Tagen sichtbar.
 
 ### PL74 — Papierkorb lesen, 2026-11-19
 

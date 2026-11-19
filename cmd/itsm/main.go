@@ -267,6 +267,10 @@ func serve(args []string, getenv func(string) string, stdout io.Writer) error {
 	if err := records.RegisterRemindJob(js, rec, logger); err != nil {
 		return err
 	}
+	// The trash empties itself after trash.keep_days (PL76).
+	if err := records.RegisterEmptyTrashJob(js, rec, logger); err != nil {
+		return err
+	}
 	slaSvc := sla.New(rt, rec, calendars, js, kv, logger)
 	slaSvc.Register(js)
 	slaSvc.Settings, slaSvc.Declared = settingsSvc.Value, settingsSvc.Definition
