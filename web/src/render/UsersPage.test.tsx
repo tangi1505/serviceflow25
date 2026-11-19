@@ -133,6 +133,19 @@ describe("UsersPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("says without a mail server that an invitation cannot go out", async () => {
+    const user = userEvent.setup();
+    state.noMail = true;
+    renderAt("/users/new");
+    await screen.findByRole("heading", { name: "Neuer Benutzer" }, loaded);
+    await user.type(screen.getByLabelText(/^Nachname/), "Ohne");
+    await user.type(screen.getByLabelText(/^Benutzername/), "o_mail");
+    await user.type(screen.getByLabelText(/^E-Mail/), "ohne@example.test");
+    await user.click(screen.getByRole("button", { name: "Anlegen und einladen" }));
+    expect(await screen.findByText(/kein Mailserver eingerichtet/)).toBeInTheDocument();
+    expect(state.accounts!.some((a) => a.username === "o_mail")).toBe(false);
+  });
+
   it("adds and removes a role at a user and blocks after the question", async () => {
     const user = userEvent.setup();
     renderAt("/users/acc-anna");

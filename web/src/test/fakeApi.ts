@@ -432,6 +432,8 @@ export type FakeState = {
   // accounts are the users (PL77, UI66); invitations the keys that still hold, by key.
   accounts?: AccountInfo[];
   invitations?: Record<string, string>;
+  // noMail answers an invitation with 503, as a server without a mail server does.
+  noMail?: boolean;
   // suggest are the groups of suggestions (SD18), answered for any type when the request has
   // values or a text, with linked from relations; ratings are the sums by record id.
   suggest?: SuggestGroup[];
@@ -928,6 +930,9 @@ export function fakeApi(state: FakeState) {
           };
           if (state.accounts.some((a) => a.username === body.username)) {
             return problem(409, "conflict");
+          }
+          if (!body.password && state.noMail) {
+            return problem(503, "unavailable");
           }
           const a: AccountInfo = {
             id: `acc-${state.accounts.length + 1}`,

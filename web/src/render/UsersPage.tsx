@@ -210,6 +210,12 @@ export function UsersPage() {
   );
 }
 
+// reason says why an action failed; without a mail server (503) it names the way out.
+function reason(err: unknown, t: (key: string) => string): string {
+  if (err instanceof ApiError && err.status === 503) return t("users.noMail");
+  return err instanceof Error ? err.message : String(err);
+}
+
 // fieldError shows the problem of the server at a field.
 function fieldErrors(err: unknown): Record<string, string> {
   if (!(err instanceof ApiError)) return {};
@@ -255,7 +261,7 @@ export function NewUserPage() {
       if (err instanceof ApiError && err.status === 409) {
         setErrors({ username: t("users.taken") });
       } else if (Object.keys(f).length === 0) {
-        toast.error(t("users.createFailed"), err instanceof Error ? err.message : String(err));
+        toast.error(t("users.createFailed"), reason(err, t));
       }
     },
   });
@@ -434,8 +440,7 @@ export function UserPage() {
     void queryClient.invalidateQueries({ queryKey: ["accounts"] });
     void queryClient.invalidateQueries({ queryKey: ["assignments"] });
   };
-  const failed = (err: unknown) =>
-    toast.error(t("users.failed"), err instanceof Error ? err.message : String(err));
+  const failed = (err: unknown) => toast.error(t("users.failed"), reason(err, t));
   const run = async (work: () => Promise<unknown>, done: string) => {
     try {
       await work();

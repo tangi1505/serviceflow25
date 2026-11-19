@@ -1449,6 +1449,7 @@
     "more": "Show more"
   },
   "users": {
+    "noMail": "This server has no mail server, so no invitation can go out. Choose “One-time password”.",
     "title": "Users",
     "count_one": "{{count}} user",
     "count_other": "{{count}} users",

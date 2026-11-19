@@ -1449,6 +1449,7 @@
     "more": "Weitere anzeigen"
   },
   "users": {
+    "noMail": "Auf diesem Server ist kein Mailserver eingerichtet, deshalb geht keine Einladung. Wählen Sie „Einmal-Kennwort“.",
     "title": "Benutzer",
     "count_one": "{{count}} Benutzer",
     "count_other": "{{count}} Benutzer",
