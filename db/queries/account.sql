@@ -36,3 +36,30 @@ VALUES (sqlc.arg(id), sqlc.arg(username), sqlc.arg(display_name), '', sqlc.narg(
 ON CONFLICT (id) DO UPDATE
     SET display_name = EXCLUDED.display_name, disabled_at = EXCLUDED.disabled_at,
         person_id = EXCLUDED.person_id, updated_at = now();
+
+-- name: SetAccountLastLogin :exec
+-- The moment of a successful local sign-in (PL77).
+UPDATE account SET last_login_at = now() WHERE id = $1;
+
+-- name: AccountIdentities :many
+-- The identity providers an account signs in with and when it last did (PL77).
+SELECT account_id, issuer, last_login_at FROM identity;
+
+-- name: UpsertInvitation :exec
+-- A new invitation replaces the one before (PL77).
+INSERT INTO account_invitation (account_id, token_hash, email, expires_at, created_by)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (account_id) DO UPDATE
+    SET token_hash = EXCLUDED.token_hash, email = EXCLUDED.email, expires_at = EXCLUDED.expires_at,
+        created_at = now(), created_by = EXCLUDED.created_by;
+
+-- name: GetInvitationByHash :one
+SELECT i.account_id, i.expires_at, a.username
+FROM account_invitation i JOIN account a ON a.id = i.account_id
+WHERE i.token_hash = $1;
+
+-- name: DeleteInvitation :exec
+DELETE FROM account_invitation WHERE account_id = $1;
+
+-- name: ListInvitations :many
+SELECT account_id, email, expires_at FROM account_invitation;

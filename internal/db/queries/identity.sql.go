@@ -108,7 +108,7 @@ func (q *Queries) GetLoginRule(ctx context.Context, id uuid.UUID) (GetLoginRuleR
 const insertExternalAccount = `-- name: InsertExternalAccount :one
 INSERT INTO account (id, username, display_name, password_hash)
 VALUES ($1, $2, $3, '')
-RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant
+RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at
 `
 
 type InsertExternalAccountParams struct {
@@ -132,6 +132,7 @@ func (q *Queries) InsertExternalAccount(ctx context.Context, arg InsertExternalA
 		&i.UpdatedAt,
 		&i.PersonID,
 		&i.Tenant,
+		&i.LastLoginAt,
 	)
 	return i, err
 }

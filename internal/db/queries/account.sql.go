@@ -12,12 +12,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const accountIdentities = `-- name: AccountIdentities :many
+SELECT account_id, issuer, last_login_at FROM identity
+`
+
+type AccountIdentitiesRow struct {
+	AccountID   uuid.UUID
+	Issuer      string
+	LastLoginAt pgtype.Timestamptz
+}
+
+// The identity providers an account signs in with and when it last did (PL77).
+func (q *Queries) AccountIdentities(ctx context.Context) ([]AccountIdentitiesRow, error) {
+	rows, err := q.db.Query(ctx, accountIdentities)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountIdentitiesRow
+	for rows.Next() {
+		var i AccountIdentitiesRow
+		if err := rows.Scan(&i.AccountID, &i.Issuer, &i.LastLoginAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createAccount = `-- name: CreateAccount :one
 
 INSERT INTO account (id, username, display_name, password_hash, password_expires_at, tenant)
 VALUES ($1, $2, $3, $4,
         $5, $6::ltree)
-RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant
+RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at
 `
 
 type CreateAccountParams struct {
@@ -53,12 +84,22 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		&i.UpdatedAt,
 		&i.PersonID,
 		&i.Tenant,
+		&i.LastLoginAt,
 	)
 	return i, err
 }
 
+const deleteInvitation = `-- name: DeleteInvitation :exec
+DELETE FROM account_invitation WHERE account_id = $1
+`
+
+func (q *Queries) DeleteInvitation(ctx context.Context, accountID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteInvitation, accountID)
+	return err
+}
+
 const getAccount = `-- name: GetAccount :one
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant FROM account WHERE id = $1
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account WHERE id = $1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -76,12 +117,13 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 		&i.UpdatedAt,
 		&i.PersonID,
 		&i.Tenant,
+		&i.LastLoginAt,
 	)
 	return i, err
 }
 
 const getAccountByUsername = `-- name: GetAccountByUsername :one
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant FROM account WHERE username = $1
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account WHERE username = $1
 `
 
 func (q *Queries) GetAccountByUsername(ctx context.Context, username string) (Account, error) {
@@ -99,12 +141,32 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, username string) (Ac
 		&i.UpdatedAt,
 		&i.PersonID,
 		&i.Tenant,
+		&i.LastLoginAt,
 	)
 	return i, err
 }
 
+const getInvitationByHash = `-- name: GetInvitationByHash :one
+SELECT i.account_id, i.expires_at, a.username
+FROM account_invitation i JOIN account a ON a.id = i.account_id
+WHERE i.token_hash = $1
+`
+
+type GetInvitationByHashRow struct {
+	AccountID uuid.UUID
+	ExpiresAt pgtype.Timestamptz
+	Username  string
+}
+
+func (q *Queries) GetInvitationByHash(ctx context.Context, tokenHash []byte) (GetInvitationByHashRow, error) {
+	row := q.db.QueryRow(ctx, getInvitationByHash, tokenHash)
+	var i GetInvitationByHashRow
+	err := row.Scan(&i.AccountID, &i.ExpiresAt, &i.Username)
+	return i, err
+}
+
 const listAccounts = `-- name: ListAccounts :many
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant FROM account ORDER BY username
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account ORDER BY username
 `
 
 func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
@@ -128,7 +190,38 @@ func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
 			&i.UpdatedAt,
 			&i.PersonID,
 			&i.Tenant,
+			&i.LastLoginAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInvitations = `-- name: ListInvitations :many
+SELECT account_id, email, expires_at FROM account_invitation
+`
+
+type ListInvitationsRow struct {
+	AccountID uuid.UUID
+	Email     string
+	ExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListInvitations(ctx context.Context) ([]ListInvitationsRow, error) {
+	rows, err := q.db.Query(ctx, listInvitations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInvitationsRow
+	for rows.Next() {
+		var i ListInvitationsRow
+		if err := rows.Scan(&i.AccountID, &i.Email, &i.ExpiresAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -150,6 +243,16 @@ type SetAccountDisabledParams struct {
 
 func (q *Queries) SetAccountDisabled(ctx context.Context, arg SetAccountDisabledParams) error {
 	_, err := q.db.Exec(ctx, setAccountDisabled, arg.ID, arg.DisabledAt)
+	return err
+}
+
+const setAccountLastLogin = `-- name: SetAccountLastLogin :exec
+UPDATE account SET last_login_at = now() WHERE id = $1
+`
+
+// The moment of a successful local sign-in (PL77).
+func (q *Queries) SetAccountLastLogin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setAccountLastLogin, id)
 	return err
 }
 
@@ -182,6 +285,34 @@ type SetAccountTenantParams struct {
 // Binds an account to a tenant (PL44); NULL makes it an account of the installation.
 func (q *Queries) SetAccountTenant(ctx context.Context, arg SetAccountTenantParams) error {
 	_, err := q.db.Exec(ctx, setAccountTenant, arg.Tenant, arg.ID)
+	return err
+}
+
+const upsertInvitation = `-- name: UpsertInvitation :exec
+INSERT INTO account_invitation (account_id, token_hash, email, expires_at, created_by)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (account_id) DO UPDATE
+    SET token_hash = EXCLUDED.token_hash, email = EXCLUDED.email, expires_at = EXCLUDED.expires_at,
+        created_at = now(), created_by = EXCLUDED.created_by
+`
+
+type UpsertInvitationParams struct {
+	AccountID uuid.UUID
+	TokenHash []byte
+	Email     string
+	ExpiresAt pgtype.Timestamptz
+	CreatedBy uuid.NullUUID
+}
+
+// A new invitation replaces the one before (PL77).
+func (q *Queries) UpsertInvitation(ctx context.Context, arg UpsertInvitationParams) error {
+	_, err := q.db.Exec(ctx, upsertInvitation,
+		arg.AccountID,
+		arg.TokenHash,
+		arg.Email,
+		arg.ExpiresAt,
+		arg.CreatedBy,
+	)
 	return err
 }
 

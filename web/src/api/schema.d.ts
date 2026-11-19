@@ -2301,6 +2301,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The accounts with origin, last sign-in, person and an open invitation (PL77); needs manage_rights on core.role */
+        get: operations["listAccounts"];
+        put?: never;
+        /** A person and a local account in one step (PL77): with a one-time password the person changes at the first sign-in, or with an invitation by mail whose link sets the password (72 hours); needs manage_rights on core.role */
+        post: operations["createAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{id}:disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Block the sign-in of an account (PL77) */
+        post: operations["disableAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{id}:enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allow the sign-in of a blocked account again (PL77) */
+        post: operations["enableAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{id}:password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A new one-time password; the person changes it at the next sign-in, an open invitation ends (PL77) */
+        post: operations["setAccountPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{id}:invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A new invitation by mail for a local account; the one before ends (PL77) */
+        post: operations["inviteAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations:accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set the password of an invited account with the key from the mail (PL77); no session needed, the key holds once and 72 hours */
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clients": {
         parameters: {
             query?: never;
@@ -2791,6 +2894,60 @@ export interface components {
             /** @description also the username of the client's account: a lowercase letter, then lowercase letters, digits or _ */
             client_id: string;
         } & components["schemas"]["ClientInput"];
+        AccountInfo: {
+            /** Format: uuid */
+            id: string;
+            username: string;
+            display_name: string;
+            /**
+             * @description local: a password of its own; oidc: signs in through the identity provider
+             * @enum {string}
+             */
+            origin: "local" | "oidc";
+            /** @description the identity provider of an account of origin oidc */
+            issuer?: string;
+            /** @description the tenant of the account; absent for the installation */
+            tenant?: string;
+            /** Format: uuid */
+            person_id?: string;
+            /** @description false while the account is blocked */
+            active: boolean;
+            /** @description the password must be changed at the next sign-in (a one-time password) */
+            password_expired: boolean;
+            /** Format: date-time */
+            last_login_at?: string;
+            /**
+             * Format: date-time
+             * @description while an invitation waits to be used
+             */
+            invited_until?: string;
+            invited_email?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AccountCreate: {
+            /** @description snake_case: a letter, then letters, digits or _ */
+            username: string;
+            first_name?: string;
+            last_name: string;
+            /** @description needed for an invitation */
+            email?: string;
+            /** @description the unit of the person; default root */
+            org_path?: string;
+            /** @description a one-time password; without it the account is invited by mail */
+            password?: string;
+        };
+        OneTimePassword: {
+            password: string;
+        };
+        Invitation: {
+            /** @description the address; default the one of the person */
+            email?: string;
+        };
+        InvitationAccept: {
+            key: string;
+            password: string;
+        };
         Client: {
             client_id: string;
             /** Format: uuid */
@@ -8694,6 +8851,182 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    listAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the accounts, by username */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountInfo"][];
+                };
+            };
+            403: components["responses"]["Problem"];
+        };
+    };
+    createAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountCreate"];
+            };
+        };
+        responses: {
+            /** @description the new account */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountInfo"];
+                };
+            };
+            403: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+            503: components["responses"]["Problem"];
+        };
+    };
+    disableAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description done */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    enableAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description done */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    setAccountPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OneTimePassword"];
+            };
+        };
+        responses: {
+            /** @description done */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    inviteAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Invitation"];
+            };
+        };
+        responses: {
+            /** @description done */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    acceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationAccept"];
+            };
+        };
+        responses: {
+            /** @description the password is set; the username to sign in with */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        username: string;
+                    };
+                };
+            };
+            422: components["responses"]["Problem"];
         };
     };
     listClients: {

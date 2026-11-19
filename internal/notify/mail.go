@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"mime"
 	"mime/quotedprintable"
@@ -157,3 +158,18 @@ func (m *Mailer) build(msg Message) ([]byte, error) {
 	}
 	return b.Bytes(), nil
 }
+
+// ErrNoMail says the instance has no mail server (ITSM_SMTP_HOST is not set).
+var ErrNoMail = errors.New("notify: no mail server is set up")
+
+// MailNow sends one mail at once, outside the notifications (PL77: the invitation of an
+// account); without a mail server it is ErrNoMail.
+func (s *Service) MailNow(ctx context.Context, to, subject, body string) error {
+	if !s.mail.Enabled() {
+		return ErrNoMail
+	}
+	return s.mail.Send(ctx, Message{To: to, Subject: subject, Body: body, Date: time.Now()})
+}
+
+// MailEnabled tells whether the instance can send mail.
+func (s *Service) MailEnabled() bool { return s.mail.Enabled() }

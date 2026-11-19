@@ -76,6 +76,10 @@ type Account struct {
 	CreatedAt         time.Time
 	// Tenant is the tenant the account belongs to (PL44); empty for the installation.
 	Tenant string
+	// PersonID is the person of the account (E82), if linked.
+	PersonID *uuid.UUID
+	// LastLoginAt is the last local sign-in (PL77).
+	LastLoginAt *time.Time
 }
 
 // PasswordExpired reports whether the password must be changed before anything else (E77).
@@ -392,6 +396,9 @@ func (s *Service) login(ctx context.Context, p Policy, username, password string
 	if err != nil {
 		return Session{}, err
 	}
+	if err := q.SetAccountLastLogin(ctx, row.ID); err != nil {
+		s.logger.Warn("last login not kept", "username", username, "error", err.Error())
+	}
 	s.logger.Info("login", "username", username, "password_expired", sess.PasswordExpired)
 	return sess, nil
 }
@@ -413,6 +420,14 @@ func fromRow(r queries.Account) Account {
 		a.DisabledAt = &t
 	}
 	a.Tenant = r.Tenant.String
+	if r.PersonID.Valid {
+		p := r.PersonID.UUID
+		a.PersonID = &p
+	}
+	if r.LastLoginAt.Valid {
+		t := r.LastLoginAt.Time
+		a.LastLoginAt = &t
+	}
 	return a
 }
 

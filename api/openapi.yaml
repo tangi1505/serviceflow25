@@ -3117,6 +3117,119 @@ paths:
         "403": { description: "access_denied, the address is outside the client's ranges" }
         "429": { description: "slow_down: the client or the address is locked after refused requests, as sign-ins are (AP6); Retry-After gives the seconds left" }
         "503": { description: "temporarily_unavailable: too many secret checks at once in this instance (AP6); Retry-After 1" }
+  /api/v1/accounts:
+    get:
+      operationId: listAccounts
+      summary: "The accounts with origin, last sign-in, person and an open invitation (PL77); needs manage_rights on core.role"
+      tags: [accounts]
+      responses:
+        "200":
+          description: the accounts, by username
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AccountInfo" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createAccount
+      summary: "A person and a local account in one step (PL77): with a one-time password the person changes at the first sign-in, or with an invitation by mail whose link sets the password (72 hours); needs manage_rights on core.role"
+      tags: [accounts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountCreate" }
+      responses:
+        "201":
+          description: the new account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountInfo" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+  /api/v1/accounts/{id}:disable:
+    post:
+      operationId: disableAccount
+      summary: "Block the sign-in of an account (PL77)"
+      tags: [accounts]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: done }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/accounts/{id}:enable:
+    post:
+      operationId: enableAccount
+      summary: "Allow the sign-in of a blocked account again (PL77)"
+      tags: [accounts]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204": { description: done }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/accounts/{id}:password:
+    post:
+      operationId: setAccountPassword
+      summary: "A new one-time password; the person changes it at the next sign-in, an open invitation ends (PL77)"
+      tags: [accounts]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OneTimePassword" }
+      responses:
+        "204": { description: done }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/accounts/{id}:invite:
+    post:
+      operationId: inviteAccount
+      summary: "A new invitation by mail for a local account; the one before ends (PL77)"
+      tags: [accounts]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Invitation" }
+      responses:
+        "204": { description: done }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/invitations:accept:
+    post:
+      operationId: acceptInvitation
+      summary: "Set the password of an invited account with the key from the mail (PL77); no session needed, the key holds once and 72 hours"
+      tags: [accounts]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationAccept" }
+      responses:
+        "200":
+          description: the password is set; the username to sign in with
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [username]
+                properties:
+                  username: { type: string }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/v1/clients:
     get:
       operationId: listClients
@@ -3762,6 +3875,48 @@ components:
           properties:
             client_id: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$", description: "also the username of the client's account: a lowercase letter, then lowercase letters, digits or _" }
         - $ref: "#/components/schemas/ClientInput"
+    AccountInfo:
+      type: object
+      required: [id, username, display_name, origin, active, password_expired, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+        origin: { type: string, enum: [local, oidc], description: "local: a password of its own; oidc: signs in through the identity provider" }
+        issuer: { type: string, description: the identity provider of an account of origin oidc }
+        tenant: { type: string, description: the tenant of the account; absent for the installation }
+        person_id: { type: string, format: uuid }
+        active: { type: boolean, description: false while the account is blocked }
+        password_expired: { type: boolean, description: the password must be changed at the next sign-in (a one-time password) }
+        last_login_at: { type: string, format: date-time }
+        invited_until: { type: string, format: date-time, description: while an invitation waits to be used }
+        invited_email: { type: string }
+        created_at: { type: string, format: date-time }
+    AccountCreate:
+      type: object
+      required: [username, last_name]
+      properties:
+        username: { type: string, description: "snake_case: a letter, then letters, digits or _" }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, description: needed for an invitation }
+        org_path: { type: string, description: the unit of the person; default root }
+        password: { type: string, description: a one-time password; without it the account is invited by mail }
+    OneTimePassword:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string }
+    Invitation:
+      type: object
+      properties:
+        email: { type: string, description: the address; default the one of the person }
+    InvitationAccept:
+      type: object
+      required: [key, password]
+      properties:
+        key: { type: string }
+        password: { type: string }
     Client:
       type: object
       required: [client_id, account_id, name, ip_ranges, enabled, created_at, updated_at]

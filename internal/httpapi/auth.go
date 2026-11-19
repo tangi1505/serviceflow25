@@ -46,6 +46,8 @@ var public = map[string]bool{
 	"/api/v1/branding":            true,
 	"/api/v1/branding/logo/light": true,
 	"/api/v1/branding/logo/dark":  true,
+	// Setting the password with the key of an invitation (PL77): the key is the credential.
+	"/api/v1/invitations:accept": true,
 }
 
 // whileExpired lists the paths that stay allowed while the password is expired (E77).

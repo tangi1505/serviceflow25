@@ -23,6 +23,7 @@ type Account struct {
 	UpdatedAt         pgtype.Timestamptz
 	PersonID          uuid.NullUUID
 	Tenant            pgtype.Text
+	LastLoginAt       pgtype.Timestamptz
 }
 
 type AccountHome struct {
@@ -30,6 +31,15 @@ type AccountHome struct {
 	Username  string
 	Tenant    pgtype.Text
 	CreatedAt pgtype.Timestamptz
+}
+
+type AccountInvitation struct {
+	AccountID uuid.UUID
+	TokenHash []byte
+	Email     string
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+	CreatedBy uuid.NullUUID
 }
 
 type AccountSetting struct {

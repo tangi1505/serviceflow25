@@ -13,7 +13,7 @@ import (
 )
 
 const accountsOfPerson = `-- name: AccountsOfPerson :many
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant FROM account WHERE person_id = $1
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account WHERE person_id = $1
 `
 
 func (q *Queries) AccountsOfPerson(ctx context.Context, personID uuid.NullUUID) ([]Account, error) {
@@ -37,6 +37,7 @@ func (q *Queries) AccountsOfPerson(ctx context.Context, personID uuid.NullUUID) 
 			&i.UpdatedAt,
 			&i.PersonID,
 			&i.Tenant,
+			&i.LastLoginAt,
 		); err != nil {
 			return nil, err
 		}

@@ -107,7 +107,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **PL74** | Papierkorb lesen (E78, Hauptplan E204; Bedarf aus UI63): `GET /api/v1/trash` listet Datensätze im Papierkorb über alle Typen, neueste zuerst, mit Typ, Titel, gelöscht am und gelöscht von, nur was die Person lesen darf, seitenweise mit Cursor; Filter `type` und `q` (Titel). „gelöscht von“ ist `updated_by`, ein Teilindex je Typ hält nur den Papierkorb (gemessen auf H14, §4) | 🟢 | 1 d | Zwei Störungen und ein Dashboard in den Papierkorb, `curl` auf `GET /api/v1/trash` → drei Einträge mit Typ, Titel, Zeit und Person; `?type=core.dashboard` → einer; als Person ohne Leserecht auf das Dashboard → zwei; nach Wiederherstellen fehlt der Eintrag; Lastwerkzeug: LZ2 unverändert; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL75** | Recht „endgültig löschen“ (E78): neue Aktion `purge` für jeden Typ neben `read`, `create`, `update`, `delete`; endgültig löschen verlangt sie statt `delete`; die Rolle der Verwaltung im Kernpaket bekommt sie, im Rollen-Editor (UI27) erscheint sie als Spalte; die Typbeschreibung nennt die Aktionen der Person (`may`, E79) | 🟢 | 0,5 d | Als Person mit `delete`, aber ohne `purge`: `POST …/{id}:purge` → 403, Wiederherstellen geht; mit `purge` → 204; Rollen-Editor zeigt die Spalte „Endgültig löschen“; `docker compose run --rm tools scripts/ci.sh` grün |
 | **PL76** | Papierkorb leert sich selbst (E78, Hauptplan V43): Einstellung `trash.keep_days` am Organisationsbaum (Vorgabe 30, 0 heißt nie); ein Job einmal am Tag löscht endgültig, was länger im Papierkorb liegt, in Stapeln, mit Audit und Ereignis wie beim Löschen von Hand (Konto des Systems); die Verknüpfungen zu Anhängen gehen mit, beim Löschen von Hand jetzt ebenso (die Dateien räumt PL36) | 🟢 | 0,75 d | Test mit fester Uhr: ein Datensatz 31 Tage im Papierkorb ist nach dem Lauf weg, einer nach 29 Tagen bleibt; am Knoten einer Einheit 7 Tage eingestellt → dort nach 8 Tagen weg; 0 → nichts wird gelöscht; das Audit nennt das System; `docker compose run --rm tools scripts/ci.sh` grün |
-| **PL77** | Konten über die API (UI-Plan E63, Bedarf aus UI66): `GET /api/v1/accounts` (Name, Benutzername, Herkunft lokal, OIDC oder LDAP, aktiv, letzte Anmeldung, Person, Rollen der Person); `POST /api/v1/accounts` legt Person und lokales Konto in einem Schritt an, entweder mit Einmal-Kennwort (Kennwortregeln aus PL28, beim ersten Anmelden zu ändern) oder mit Einladung per Mail (Link mit Einmal-Schlüssel, gültig 72 Stunden, setzt das Kennwort; Seite `/invite`); sperren, entsperren, Kennwort neu setzen, neu einladen; Zuweisungen je Person lesen. Alles nur mit dem Recht `manage_rights`, jede Änderung im Sicherheitsprotokoll | ⬜ | 1,5 d | Mit `curl` ein Konto mit Einmal-Kennwort anlegen → Anmeldung gibt „Kennwort ändern“, danach geht es; eines mit Einladung → Mail im Testpostfach, der Link setzt das Kennwort, ein zweites Mal nicht; nach 72 Stunden (feste Uhr) abgelehnt; gesperrt → Anmeldung 401; ohne `manage_rights` 403; Sicherheitsprotokoll nennt jede Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
+| **PL77** | Konten über die API (UI-Plan E63, Bedarf aus UI66): `GET /api/v1/accounts` (Name, Benutzername, Herkunft lokal, OIDC oder LDAP, aktiv, letzte Anmeldung, Person, Rollen der Person); `POST /api/v1/accounts` legt Person und lokales Konto in einem Schritt an, entweder mit Einmal-Kennwort (Kennwortregeln aus PL28, beim ersten Anmelden zu ändern) oder mit Einladung per Mail (Link mit Einmal-Schlüssel, gültig 72 Stunden, setzt das Kennwort; Seite `/invite`); sperren, entsperren, Kennwort neu setzen, neu einladen; Zuweisungen je Person lesen. Alles nur mit dem Recht `manage_rights`, jede Änderung im Sicherheitsprotokoll | 🟢 | 1,5 d | Mit `curl` ein Konto mit Einmal-Kennwort anlegen → Anmeldung gibt „Kennwort ändern“, danach geht es; eines mit Einladung → Mail im Testpostfach, der Link setzt das Kennwort, ein zweites Mal nicht; nach 72 Stunden (feste Uhr) abgelehnt; gesperrt → Anmeldung 401; ohne `manage_rights` 403; Sicherheitsprotokoll nennt jede Änderung; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -1695,6 +1695,48 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   - Gebaut: `local rc=0` in `go_test` und `httpapi_test` (`scripts/ci.sh`).
   - Belegt: ganze CI mit dem noch roten Test am 2026-11-04: „go: test“ steht auf failed, die
     Zusammenfassung „1 of 19 steps failed“. Der Test selbst ist mit SD16b nachgezogen.
+
+### PL77 — Konten über die API, 2026-11-19
+
+- **Grundlage:** UI-Plan E63; Hauptplan E206, E82 (Konten gehören zu Personen).
+- **Gebaut:**
+  - `GET /api/v1/accounts`: Benutzername, Anzeigename, Herkunft (`local` oder `oidc` mit dem
+    Anbieter), Mandant, Person, aktiv, Kennwort abgelaufen, letzte Anmeldung (lokal neu in
+    `account.last_login_at`, beim Anbieter aus `identity`), offene Einladung mit Adresse und
+    Ende. Die Rollen liest die Oberfläche aus `GET /api/v1/assignments` über die Person.
+  - `POST /api/v1/accounts` legt Person (`core.person` mit Vor-, Nachname, Adresse, Einheit) und
+    lokales Konto in einem Schritt an und verknüpft sie. Mit `password` ist es ein
+    Einmal-Kennwort (sofort abgelaufen, die Sperre aus E77 verlangt das Ändern); ohne geht eine
+    Einladung an `email`.
+  - Einladung (`internal/auth/accounts.go`, Tabelle `account_invitation`, Migration 00052):
+    ein Schlüssel aus 32 Zufallsbytes, gespeichert nur als SHA-256, 72 Stunden gültig, je Konto
+    eine, eine neue ersetzt sie. Das Konto hat bis dahin ein zufälliges, abgelaufenes Kennwort,
+    das niemand kennt. Die Mail nennt Benutzername, Ende und den Link `/invite?key=…`;
+    `POST /api/v1/invitations:accept` (ohne Sitzung) setzt das Kennwort nach den Regeln aus
+    PL28 und verbraucht die Einladung. Ohne Mailserver antwortet das Anlegen mit Einladung 503
+    und nennt das Einmal-Kennwort als Ausweg.
+  - `:disable`, `:enable` (das eigene Konto lässt sich nicht sperren), `:password` (neues
+    Einmal-Kennwort, beendet eine offene Einladung), `:invite` (neue Einladung, Adresse der
+    Person als Vorgabe).
+  - Alles mit `manage_rights` an `core.role`; ein Konto eines anderen Mandanten ist 404; jede
+    Änderung steht im Sicherheitsprotokoll (`account.create`, `account.invite`,
+    `account.invitation_used` auch bei falschem Schlüssel, `account.disable`, `account.enable`,
+    `account.password_reset`).
+- **Tests:** `internal/httpapi/accounts_test.go`: Einmal-Kennwort → Anmeldung, gesperrt bis zum
+  Ändern, danach frei; Name doppelt 409; Einladung → das Konto meldet sich nicht an, Mail im
+  Testpostfach, schwaches Kennwort 422, Link setzt das Kennwort, ein zweites Mal 422,
+  Anmeldung geht; neue Einladung, Ende in die Vergangenheit gesetzt → 422; sperren → 401,
+  entsperren, neues Einmal-Kennwort; Liste mit aktiv, abgelaufen, letzter Anmeldung; ohne
+  `manage_rights` 403; das Sicherheitsprotokoll hat alle sechs Arten.
+- **Belegt:** lokal die Go-Tests von `httpapi` (`TestAccountsOverHTTP`, die Anmeldung). CI auf `ki-lab`: alle Tests grün (33 Browser-Tests), LZ1 ±0 %, LZ2 −2 %, LZ16 ±0 %; das Lasttor rot mit LZ13 −20 % — ein Ausreißer der Basislinie (deren Läufe 4.702–6.617, die neuen 4.848–5.316), PL77 ändert den Massenimport nicht.
+- **Nicht gebaut:** die Seite `/invite` der Oberfläche kommt mit UI66; bis dahin führt der Link
+  der Mail ins Leere. Herkunft „LDAP“ hat ein Konto nicht: der LDAP-Abgleich legt Personen an,
+  angemeldet wird über den Anbieter (`oidc`).
+- **Prüfweg:** auf 8092 mit `curl -b cookies.txt -H 'X-Requested-With: itsm' -H
+  'Content-Type: application/json'`: `POST /api/v1/accounts` mit `{"username": "probe_einmal",
+  "last_name": "Einmal", "password": "Einmal-Pw7!x"}` → 201 mit `password_expired: true`;
+  Anmeldung als `probe_einmal` → nur Kennwort ändern geht; `GET /api/v1/accounts` listet es;
+  `POST /api/v1/accounts/<id>:disable` → Anmeldung abgelehnt.
 
 ### PL76 — Papierkorb leert sich selbst, 2026-11-19
 
