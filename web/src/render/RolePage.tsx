@@ -35,6 +35,7 @@ import {
 } from "@/api/client";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { primaryBarButton } from "@/ui/menu";
@@ -131,7 +132,6 @@ export function RolesOverview() {
   const [name, setName] = useState("");
   const [labelDe, setLabelDe] = useState("");
   const [labelEn, setLabelEn] = useState("");
-  const [removing, setRemoving] = useState<string | null>(null);
   // The overview of roles in the look of the list (UI54): the number under the title, "Neue
   // Rolle" on the right opens the form, a field narrows the rows, a row opens its role.
   const [creating, setCreating] = useState(false);
@@ -256,39 +256,29 @@ export function RolesOverview() {
                     <Td>{r.permissions.length}</Td>
                     <Td>{held}</Td>
                     <Td className="text-right">
-                      {r.name !== "admin" &&
-                        (removing === r.name ? (
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <span className="text-sm">
-                              {t("roles.confirmRemove", { name: label })}
-                            </span>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              disabled={busy}
-                              onClick={() => {
-                                setRemoving(null);
+                      {r.name !== "admin" && (
+                        // The common question before it goes (UI64).
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() =>
+                            void confirm({
+                              title: t("roles.confirmRemove", { name: label }),
+                              action: t("roles.removeYes"),
+                            }).then(
+                              (yes) =>
+                                yes &&
                                 run(t("roles.done.removed", { name: label }), () =>
                                   api.deleteRole(r.name),
-                                );
-                              }}
-                            >
-                              {t("roles.removeYes")}
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => setRemoving(null)}>
-                              {t("form.cancel")}
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setRemoving(r.name)}
-                            aria-label={t("customize.remove", { name: label })}
-                          >
-                            {t("customize.removeShort")}
-                          </Button>
-                        ))}
+                                ),
+                            )
+                          }
+                          aria-label={t("customize.remove", { name: label })}
+                        >
+                          {t("customize.removeShort")}
+                        </Button>
+                      )}
                     </Td>
                   </Tr>
                 );
@@ -928,8 +918,15 @@ function Assignments({ role, busy, run }: { role: Role; busy: boolean; run: Run 
                       disabled={busy}
                       aria-label={t("roles.unassign", { node: nodeLabel(a.org_path) })}
                       onClick={() =>
-                        run(t("roles.done.unassigned", { node: nodeLabel(a.org_path) }), () =>
-                          api.deleteAssignment(a.id),
+                        void confirm({
+                          title: t("roles.confirmUnassign", { node: nodeLabel(a.org_path) }),
+                          action: t("customize.removeShort"),
+                        }).then(
+                          (yes) =>
+                            yes &&
+                            run(t("roles.done.unassigned", { node: nodeLabel(a.org_path) }), () =>
+                              api.deleteAssignment(a.id),
+                            ),
                         )
                       }
                     >

@@ -21,6 +21,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
+import { answer } from "@/test/confirm";
 import { expectAccessible } from "@/test/setup";
 import { selectOption } from "@/test/select";
 
@@ -217,6 +218,7 @@ describe("Workflow editor", { timeout: 15_000 }, () => {
         name: "Zurücknehmen: Übergang „Erledigen“ stillgelegt",
       }),
     );
+    await answer(user, "Zurücknehmen");
     expect(
       await screen.findByText("Zurückgenommen: Übergang „Erledigen“ stillgelegt."),
     ).toBeInTheDocument();

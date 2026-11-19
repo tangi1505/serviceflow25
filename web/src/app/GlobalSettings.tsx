@@ -24,6 +24,7 @@ import {
 import { timeZones } from "@/app/SettingsPage";
 import { RefPicker } from "@/render/RefPicker";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Label } from "@/ui/label";
 import { Select } from "@/ui/select";
 import { Input } from "@/ui/input";
@@ -106,8 +107,18 @@ export function GlobalSettingsPage() {
       },
     );
   };
-  const pickNode = (next: string) => {
-    if (dirty && !window.confirm(t("settings.discardAsk"))) return;
+  const pickNode = async (next: string) => {
+    // Unsaved values go only after the common question (UI64).
+    if (
+      dirty &&
+      !(await confirm({
+        title: t("settings.discardAsk"),
+        text: t("settings.discardText"),
+        action: t("settings.discard"),
+      }))
+    ) {
+      return;
+    }
     setPath(next);
     setDraft({});
     setErrors({});
@@ -167,7 +178,7 @@ export function GlobalSettingsPage() {
         <Select
           id={`${id}-node`}
           value={path}
-          onChange={pickNode}
+          onChange={(v) => void pickNode(v)}
           options={(nodes.data ?? [{ path: "root", name: "root", label: {} }]).map((n) => ({
             value: n.path,
             label: `${labelOf(n.label, lang, n.path)} (${n.path})`,

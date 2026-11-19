@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
+import { answer } from "@/test/confirm";
 import { expectAccessible } from "@/test/setup";
 
 function renderAt(path: string) {
@@ -146,6 +147,7 @@ describe("Type editor", () => {
     await user.click(
       within(changes).getByRole("button", { name: "Zurücknehmen: „Aktiv“ ausgeblendet" }),
     );
+    await answer(user, "Zurücknehmen");
     expect(await screen.findByText("Zurückgenommen: „Aktiv“ ausgeblendet.")).toBeInTheDocument();
     expect(state.calls.some((c) => c.method === "DELETE" && c.query.get("version") === "2")).toBe(
       true,

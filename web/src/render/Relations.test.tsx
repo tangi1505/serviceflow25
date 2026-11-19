@@ -18,6 +18,7 @@ import type { TypeDefinition } from "@/api/client";
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, probeType, type FakeState } from "@/test/fakeApi";
+import { answer } from "@/test/confirm";
 import { expectAccessible } from "@/test/setup";
 
 import { relates } from "./Relations";
@@ -111,10 +112,10 @@ describe("Relations", () => {
     const remove = () =>
       within(panel).getByRole("button", { name: "Bezug „verknüpft mit“ zu Anna Berg lösen" });
     await user.click(remove());
-    await user.click(within(panel).getByRole("button", { name: "Abbrechen" }));
+    await answer(user, "Abbrechen");
     expect(state.relations).toHaveLength(2);
     await user.click(remove());
-    await user.click(within(panel).getByRole("button", { name: "Lösen" }));
+    await answer(user, "Lösen");
     await waitFor(() => expect(state.relations).toHaveLength(1));
     await waitFor(() =>
       expect(within(panel).queryByRole("link", { name: "Anna Berg" })).toBeNull(),

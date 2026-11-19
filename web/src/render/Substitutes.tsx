@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { api, ApiError, type ActorRef } from "@/api/client";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { Table, Td, Th, THead, Tr } from "@/ui/table";
@@ -117,7 +118,19 @@ export function Substitutes({ personId }: { personId: string }) {
                     variant="ghost"
                     size="sm"
                     disabled={remove.isPending}
-                    onClick={() => remove.mutate(x.id)}
+                    onClick={() =>
+                      // The common question before it goes (UI64).
+                      void confirm({
+                        title: t("substitutes.confirmRemove"),
+                        text: (
+                          <>
+                            <RefName refTo={{ type: "core.person", id: x.substitute }} />
+                            {" – "}
+                            {t("confirm.final")}
+                          </>
+                        ),
+                      }).then((yes) => yes && remove.mutate(x.id))
+                    }
                   >
                     {t("substitutes.remove")}
                   </Button>

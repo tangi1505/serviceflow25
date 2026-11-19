@@ -26,6 +26,7 @@ import {
 } from "@/api/client";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { toast } from "@/ui/toast";
@@ -219,7 +220,13 @@ export function SuggestionTab({
                       variant="outline"
                       disabled={unlink.isPending}
                       aria-label={t("suggest.unlinkOne", { title: hit.title ?? hit.id })}
-                      onClick={() => unlink.mutate(hit.linked!)}
+                      onClick={() =>
+                        // The common question before the relation goes (UI64).
+                        void confirm({
+                          title: t("suggest.confirmUnlink", { title: hit.title ?? hit.id }),
+                          action: t("relations.remove"),
+                        }).then((yes) => yes && unlink.mutate(hit.linked!))
+                      }
                     >
                       {t("relations.remove")}
                     </Button>

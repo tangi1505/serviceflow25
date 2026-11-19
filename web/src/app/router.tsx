@@ -44,6 +44,7 @@ import { RolePage, RolesOverview } from "@/render/RolePage";
 import { SearchPage } from "@/render/SearchPage";
 import { WorkflowPage } from "@/render/WorkflowPage";
 import { TypePage } from "@/render/TypePage";
+import { Confirmer } from "@/ui/confirm";
 import { Toaster } from "@/ui/toast";
 import { WorkplaceFormPage } from "@/render/FormPage";
 
@@ -56,6 +57,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
     <>
       <Outlet />
       <Toaster />
+      <Confirmer />
     </>
   ),
 });

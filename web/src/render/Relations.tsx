@@ -31,6 +31,7 @@ import {
 } from "@/api/client";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Label } from "@/ui/label";
 import { StatePill } from "@/ui/marks";
 
@@ -87,25 +88,19 @@ function targets(choice: Choice | undefined, types: TypeDefinition[]): string[] 
 }
 
 // Row is one relation: kind, type, the other record with number and state, and removing it
-// after asking.
+// after the common question (UI64).
 function Row({
   end,
   label,
   types,
-  asking,
   removing,
-  onAsk,
   onRemove,
-  onCancel,
 }: {
   end: ActorRef;
   label: string;
   types: TypeDefinition[];
-  asking: boolean;
   removing: boolean;
-  onAsk: () => void;
   onRemove: () => void;
-  onCancel: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const rec = useQuery({ ...readQuery(end.type, end.id), retry: false });
@@ -139,35 +134,30 @@ function Row({
         )}
       </td>
       <td className="p-2 text-right">
-        {asking ? (
-          <span className="inline-flex gap-2">
-            <Button size="sm" variant="destructive" disabled={removing} onClick={onRemove}>
-              {t("relations.remove")}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onCancel}>
-              {t("form.cancel")}
-            </Button>
-          </span>
-        ) : (
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label={t("relations.removeOne", { kind: label, name: shown })}
-            onClick={onAsk}
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={removing}
+          aria-label={t("relations.removeOne", { kind: label, name: shown })}
+          onClick={() =>
+            void confirm({
+              title: t("relations.confirm", { kind: label, name: shown }),
+              action: t("relations.remove"),
+            }).then((yes) => yes && onRemove())
+          }
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            aria-hidden="true"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              aria-hidden="true"
-            >
-              <path d="M3 3l8 8M11 3l-8 8" />
-            </svg>
-          </Button>
-        )}
+            <path d="M3 3l8 8M11 3l-8 8" />
+          </svg>
+        </Button>
       </td>
     </tr>
   );
@@ -185,7 +175,6 @@ export function Relations({ type, id }: { type: TypeDefinition; id: string }) {
   const [chosen, setChosen] = useState("");
   const choice = options.find((c) => c.key === chosen) ?? options[0];
   const [other, setOther] = useState<ActorRef[]>([]);
-  const [asking, setAsking] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const me = { type: typeName, id };
   const refresh = (end?: ActorRef) => {
@@ -218,7 +207,6 @@ export function Relations({ type, id }: { type: TypeDefinition; id: string }) {
     mutationFn: (r: Relation) => api.unrelate(r.id),
     onMutate: () => setFailure(null),
     onSuccess: (_, r) => {
-      setAsking(null);
       refresh(r.from.id === id ? r.to : r.from);
     },
     onError: failed,
@@ -301,11 +289,8 @@ export function Relations({ type, id }: { type: TypeDefinition; id: string }) {
                   end={end}
                   label={label}
                   types={types.data ?? []}
-                  asking={asking === r.id}
                   removing={unrelate.isPending}
-                  onAsk={() => setAsking(r.id)}
                   onRemove={() => unrelate.mutate(r)}
-                  onCancel={() => setAsking(null)}
                 />
               ))}
             </tbody>

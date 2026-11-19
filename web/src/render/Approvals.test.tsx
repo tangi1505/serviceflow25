@@ -19,6 +19,7 @@ import type { Approval, TypeDefinition } from "@/api/client";
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { approverPerson, fakeApi, newState, type FakeState } from "@/test/fakeApi";
+import { answer } from "@/test/confirm";
 import { expectAccessible } from "@/test/setup";
 import { selectOption } from "@/test/select";
 
@@ -457,6 +458,7 @@ describe("Approvals", () => {
     expect(panel).toHaveTextContent("unbefristet");
     await expectAccessible(container);
     await user.click(within(panel).getAllByRole("button", { name: "Entfernen" })[0]!);
+    await answer(user, "Löschen");
     await waitFor(() => expect(state.substitutes).toHaveLength(1));
   });
 });

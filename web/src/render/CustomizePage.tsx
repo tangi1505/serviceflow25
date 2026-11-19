@@ -53,6 +53,7 @@ import {
 } from "@/api/client";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { barButton } from "@/ui/menu";
@@ -944,7 +945,15 @@ export function Changes({
                       size="sm"
                       disabled={busy || !c.id}
                       onClick={() =>
-                        onTakeBack(c.id!, t("customize.done.takenBack", { change: text }))
+                        // The common question before it goes (UI64).
+                        void confirm({
+                          title: t("customize.confirmTakeBack", { change: text }),
+                          action: t("customize.takeBackShort"),
+                        }).then(
+                          (yes) =>
+                            yes &&
+                            onTakeBack(c.id!, t("customize.done.takenBack", { change: text })),
+                        )
                       }
                       aria-label={t("customize.takeBack", { change: text })}
                     >

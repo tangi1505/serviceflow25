@@ -79,6 +79,8 @@ test("a field added in the editor is in list, form and export at once", async ({
   await changes
     .getByRole("button", { name: `Zurücknehmen: Feld „${label}“ (${field}) angelegt` })
     .click();
+  // The common question first (UI64).
+  await page.getByRole("alertdialog").getByRole("button", { name: "Zurücknehmen" }).click();
   await expect(
     page.getByText(`Zurückgenommen: Feld „${label}“ (${field}) angelegt.`),
   ).toBeVisible();

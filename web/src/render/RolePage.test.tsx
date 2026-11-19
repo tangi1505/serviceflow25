@@ -19,6 +19,7 @@ import type { TypeDefinition } from "@/api/client";
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { fakeApi, newState, type FakeState } from "@/test/fakeApi";
+import { answer } from "@/test/confirm";
 import { expectAccessible } from "@/test/setup";
 import { selectOption } from "@/test/select";
 
@@ -231,6 +232,7 @@ describe("Role editor", () => {
     await user.click(
       within(table).getByRole("button", { name: "Zuweisung an IT (root.it) entfernen" }),
     );
+    await answer(user, "Entfernen");
     expect(await screen.findByText("Niemand hat diese Rolle.")).toBeInTheDocument();
 
     expect(calls(state)).toEqual([
