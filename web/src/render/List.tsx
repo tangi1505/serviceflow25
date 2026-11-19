@@ -649,7 +649,10 @@ export function List({
                   key={row.id}
                   data-index={virtualRow.index}
                   className={cn(
-                    "absolute left-0 flex w-full cursor-pointer items-center border-t hover:bg-surface-active focus-visible:bg-surface-active",
+                    // The border lies inside the height of the row, the cells have no padding of
+                    // their own above and below and are cut at the row: nothing reaches past the
+                    // last row, so a scaled screen shows no vertical bar for rows that fit (UI46).
+                    "absolute left-0 flex w-full cursor-pointer items-center overflow-hidden border-t hover:bg-surface-active focus-visible:bg-surface-active",
                     picked === row.id && "bg-accent-soft hover:bg-accent-soft",
                   )}
                   style={{ transform: `translateY(${virtualRow.start}px)`, height: rowHeight }}
@@ -685,7 +688,7 @@ export function List({
                     <td
                       key={cell.id}
                       className={cn(
-                        "truncate px-3 py-2",
+                        "truncate px-3",
                         cell.column.id === "select" ? "w-10 flex-none" : "flex-1",
                       )}
                     >
