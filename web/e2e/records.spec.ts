@@ -285,11 +285,15 @@ test("set a field on 500 chosen records in one call", async ({ page }) => {
     }
   });
   await page.getByRole("checkbox", { name: "Alle geladenen auswählen" }).check();
-  const bar = page.getByRole("region", { name: "500 ausgewählt" });
-  await bar.getByRole("combobox", { name: "Feld" }).selectOption({ label: "Priorität" });
+  // The row of the mass action in place of the column heads, the result as a message (UI61).
+  const bar = page.getByRole("group", { name: "500 ausgewählt" });
+  await bar.getByRole("combobox", { name: "Feld" }).click();
+  await page.getByRole("option", { name: "Priorität" }).click();
   await bar.getByRole("spinbutton", { name: "Neuer Wert" }).fill("5");
   await expectNoViolations(page);
-  await bar.getByRole("button", { name: "Auf 500 anwenden" }).click();
-  await expect(bar.getByText("500 geändert")).toBeVisible({ timeout: 60_000 });
+  await bar.getByRole("button", { name: "Anwenden" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "500 geändert" })).toBeVisible({
+    timeout: 60_000,
+  });
   expect(batches).toHaveLength(1);
 });

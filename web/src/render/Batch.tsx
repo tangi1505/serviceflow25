@@ -7,9 +7,14 @@
 
 // Mass actions on the chosen records of a list (UI6, Hauptplan E126): set a field, run a
 // transition, set a role or move to the trash, in one call to :batch with the version each
-// row had when the list loaded it. The result says per row what happened; rows changed
-// meanwhile are conflicts and stay as they are. The choice stays after the run: the list
-// loads again, so the chosen rows carry their new versions.
+// row had when the list loaded it. Rows changed meanwhile are conflicts and stay as they are.
+// The choice stays after the run: the list loads again, so the chosen rows carry their new
+// versions.
+//
+// UI61 (UI-Plan E59, E60): the action is one row in place of the column heads, so the table does
+// not move: "4 ausgewählt", action, field and value, "Anwenden" without a number and "Auswahl
+// aufheben". The result comes as a message: all changed green, some yellow with the refused
+// rows and their reason, none red. The trash asks no more; its message offers "Rückgängig".
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,9 +28,10 @@ import {
   type RecordData,
   type TypeDefinition,
 } from "@/api/client";
-import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
+import { Select, type ControlSize } from "@/ui/select";
+import { toast } from "@/ui/toast";
 
 import { fieldLabel, isCalculated, optionLabel } from "./fields";
 import { RefPicker } from "./RefPicker";
@@ -56,29 +62,26 @@ export function FieldValue({
   field,
   value,
   onChange,
+  size = "form",
 }: {
   id: string;
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
+  size?: ControlSize;
 }) {
   const { t, i18n } = useTranslation();
   const label = t("batch.value");
   const select = (options: { value: string; label: string }[]) => (
-    <select
+    <Select
       id={id}
-      aria-label={label}
-      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+      label={label}
+      size={size}
+      className={size === "bar" ? "min-w-32" : undefined}
       value={String(value ?? "")}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">{t("batch.empty")}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      options={[{ value: "", label: t("batch.empty") }, ...options]}
+    />
   );
   switch (field.type) {
     case "choice":
@@ -99,6 +102,7 @@ export function FieldValue({
         <div className="min-w-60">
           <RefPicker
             id={id}
+            size={size}
             targets={[field.to ?? ""]}
             single
             value={v ? [{ type: field.to ?? "", id: v }] : []}
@@ -111,6 +115,7 @@ export function FieldValue({
       return (
         <Input
           id={id}
+          size={size}
           aria-label={label}
           type="number"
           step="any"
@@ -122,6 +127,7 @@ export function FieldValue({
       return (
         <Input
           id={id}
+          size={size}
           aria-label={label}
           type="date"
           value={String(value ?? "")}
@@ -132,6 +138,7 @@ export function FieldValue({
       return (
         <Input
           id={id}
+          size={size}
           aria-label={label}
           type="datetime-local"
           value={String(value ?? "")}
@@ -142,6 +149,7 @@ export function FieldValue({
       return (
         <Input
           id={id}
+          size={size}
           aria-label={label}
           maxLength={field.max_length || undefined}
           value={String(value ?? "")}
@@ -151,7 +159,15 @@ export function FieldValue({
   }
 }
 
-export function BatchBar({ type, rows }: { type: TypeDefinition; rows: RecordData[] }) {
+export function BatchRow({
+  type,
+  rows,
+  onClear,
+}: {
+  type: TypeDefinition;
+  rows: RecordData[];
+  onClear: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const id = useId();
   const queryClient = useQueryClient();
@@ -171,18 +187,13 @@ export function BatchBar({ type, rows }: { type: TypeDefinition; rows: RecordDat
   const [transition, setTransition] = useState(transitions[0]?.name ?? "");
   const [role, setRole] = useState(roles[0]?.name ?? "");
   const [holders, setHolders] = useState<ActorRef[]>([]);
-  const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState<Result[] | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
-  const titles = new Map(rows.map((r) => [String(r["id"]), titleOf(type, r)]));
+  const chosenField = fields.find((f) => f.name === field);
 
   const change = (): Record<string, unknown> => {
     switch (action) {
-      case "field": {
-        const f = fields.find((x) => x.name === field)!;
-        return { set: { [field]: valueFor(f, value) } };
-      }
+      case "field":
+        return { set: { [field]: valueFor(chosenField!, value) } };
       case "transition":
         return { transition };
       case "role":
@@ -192,10 +203,63 @@ export function BatchBar({ type, rows }: { type: TypeDefinition; rows: RecordDat
     }
   };
 
+  const reload = () => void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
+
+  // undo takes the rows just moved to the trash out of it again.
+  const undo = async (ids: string[]) => {
+    try {
+      await Promise.all(ids.map((rid) => api.restore(typeName, rid)));
+      toast.success(t("batch.restored", { count: ids.length }));
+    } catch (err) {
+      toast.error(
+        t("batch.restoreFailed", { detail: err instanceof Error ? err.message : String(err) }),
+      );
+    } finally {
+      reload();
+    }
+  };
+
+  const report = (results: Result[]) => {
+    const titles = new Map(rows.map((r) => [String(r["id"]), titleOf(type, r)]));
+    const done = results.filter((r) => r.status === "ok").map((r) => r.id);
+    const refused = results.filter((r) => r.status !== "ok");
+    const undoable =
+      action === "trash" && done.length > 0
+        ? { action: { label: t("batch.undo"), onClick: () => void undo(done) } }
+        : undefined;
+    const detail =
+      refused.length > 0 ? (
+        <ul className="list-disc pl-4">
+          {refused.map((r) => (
+            <li key={r.id}>
+              {titles.get(r.id) ?? r.id}: {t(`batch.reason.${r.status}`)}
+              {r.message && ` – ${r.message}`}
+            </li>
+          ))}
+        </ul>
+      ) : undefined;
+    if (refused.length === 0) {
+      toast.success(
+        t(action === "trash" ? "batch.trashed" : "batch.done", { count: done.length }),
+        undefined,
+        undoable,
+      );
+    } else if (done.length > 0) {
+      toast.warning(
+        t(action === "trash" ? "batch.partlyTrashed" : "batch.partly", {
+          ok: done.length,
+          count: results.length,
+        }),
+        detail,
+        undoable,
+      );
+    } else {
+      toast.error(t("batch.none"), detail);
+    }
+  };
+
   const run = async () => {
     setBusy(true);
-    setFailure(null);
-    setResults(null);
     try {
       const out = await api.batch(typeName, {
         rows: rows.map((r) => ({
@@ -204,151 +268,107 @@ export function BatchBar({ type, rows }: { type: TypeDefinition; rows: RecordDat
           ...change(),
         })),
       });
-      setResults(out.results);
-      void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
+      report(out.results);
+      reload();
     } catch (err) {
-      setFailure(t("batch.error", { detail: err instanceof Error ? err.message : String(err) }));
+      toast.error(t("batch.error", { detail: err instanceof Error ? err.message : String(err) }));
     } finally {
       setBusy(false);
-      setConfirm(false);
     }
   };
 
-  const counts = new Map<string, number>();
-  for (const r of results ?? []) {
-    counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
-  }
-  const selectClass = "h-10 rounded-md border border-input bg-background px-3 text-sm";
   return (
-    <section
-      aria-labelledby={`${id}-title`}
-      className="flex flex-col gap-2 rounded-md border bg-card p-3"
+    <div
+      role="group"
+      aria-labelledby={`${id}-count`}
+      className="flex min-w-max items-center gap-2 font-normal"
     >
-      <h2 id={`${id}-title`} className="text-sm font-semibold">
+      <span id={`${id}-count`} className="font-medium whitespace-nowrap">
         {t("batch.title", { count: rows.length })}
-      </h2>
-      <div className="flex flex-wrap items-start gap-2">
-        <select
-          aria-label={t("batch.action")}
-          className={selectClass}
-          value={action}
-          onChange={(e) => {
-            setAction(e.target.value as Action);
-            setConfirm(false);
-          }}
-        >
-          {actions.map((a) => (
-            <option key={a} value={a}>
-              {t(`batch.actions.${a}`)}
-            </option>
-          ))}
-        </select>
-        {action === "field" && (
-          <>
-            <select
-              aria-label={t("batch.field")}
-              className={selectClass}
-              value={field}
-              onChange={(e) => {
-                setField(e.target.value);
-                setValue("");
-              }}
-            >
-              {fields.map((f) => (
-                <option key={f.name} value={f.name}>
-                  {fieldLabel(f, i18n.language)}
-                </option>
-              ))}
-            </select>
-            {fields.find((f) => f.name === field) && (
-              <FieldValue
-                key={field}
-                id={`${id}-value`}
-                field={fields.find((f) => f.name === field)!}
-                value={value}
-                onChange={setValue}
-              />
-            )}
-          </>
-        )}
-        {action === "transition" && (
-          <select
-            aria-label={t("batch.transition")}
-            className={selectClass}
-            value={transition}
-            onChange={(e) => setTransition(e.target.value)}
-          >
-            {transitions.map((tr) => (
-              <option key={tr.name} value={tr.name}>
-                {labelOf(tr.label, i18n.language, tr.name)}
-              </option>
-            ))}
-          </select>
-        )}
-        {action === "role" && (
-          <>
-            <select
-              aria-label={t("batch.role")}
-              className={selectClass}
-              value={role}
-              onChange={(e) => {
-                setRole(e.target.value);
-                setHolders([]);
-              }}
-            >
-              {roles.map((r) => (
-                <option key={r.name} value={r.name}>
-                  {labelOf(r.label, i18n.language, r.name)}
-                </option>
-              ))}
-            </select>
-            <div className="min-w-60">
-              <RefPicker
-                key={role}
-                id={`${id}-holders`}
-                targets={roles.find((r) => r.name === role)?.to ?? []}
-                single={roles.find((r) => r.name === role)?.single}
-                value={holders}
-                onChange={setHolders}
-              />
-            </div>
-          </>
-        )}
-        {action === "trash" && confirm ? (
-          <Button variant="destructive" disabled={busy} onClick={() => void run()}>
-            {t("batch.confirmTrash", { count: rows.length })}
-          </Button>
-        ) : (
-          <Button
-            disabled={busy}
-            onClick={() => (action === "trash" ? setConfirm(true) : void run())}
-          >
-            {t("batch.run", { count: rows.length })}
-          </Button>
-        )}
-      </div>
-      {failure && <Alert variant="destructive">{failure}</Alert>}
-      {results && (
-        <div role="status" className="text-sm">
-          <p>
-            {[...counts.entries()]
-              .map(([status, n]) => t(`batch.status.${status}`, { count: n }))
-              .join(" · ")}
-          </p>
-          {results.some((r) => r.status !== "ok") && (
-            <ul className="mt-1 list-disc pl-5">
-              {results
-                .filter((r) => r.status !== "ok")
-                .map((r) => (
-                  <li key={r.id}>
-                    {titles.get(r.id) ?? r.id}: {t(`batch.status.${r.status}`, { count: 1 })}
-                    {r.message && <span className="text-muted-foreground"> – {r.message}</span>}
-                  </li>
-                ))}
-            </ul>
+      </span>
+      <Select
+        size="bar"
+        label={t("batch.action")}
+        value={action}
+        onChange={(a) => setAction(a as Action)}
+        options={actions.map((a) => ({ value: a, label: t(`batch.actions.${a}`) }))}
+      />
+      {action === "field" && (
+        <>
+          <Select
+            size="bar"
+            label={t("batch.field")}
+            value={field}
+            onChange={(f) => {
+              setField(f);
+              setValue("");
+            }}
+            options={fields.map((f) => ({ value: f.name, label: fieldLabel(f, i18n.language) }))}
+          />
+          {chosenField && (
+            <FieldValue
+              key={field}
+              id={`${id}-value`}
+              size="bar"
+              field={chosenField}
+              value={value}
+              onChange={setValue}
+            />
           )}
-        </div>
+        </>
       )}
-    </section>
+      {action === "transition" && (
+        <Select
+          size="bar"
+          label={t("batch.transition")}
+          value={transition}
+          onChange={setTransition}
+          options={transitions.map((tr) => ({
+            value: tr.name,
+            label: labelOf(tr.label, i18n.language, tr.name),
+          }))}
+        />
+      )}
+      {action === "role" && (
+        <>
+          <Select
+            size="bar"
+            label={t("batch.role")}
+            value={role}
+            onChange={(r) => {
+              setRole(r);
+              setHolders([]);
+            }}
+            options={roles.map((r) => ({
+              value: r.name,
+              label: labelOf(r.label, i18n.language, r.name),
+            }))}
+          />
+          <div className="min-w-60">
+            <RefPicker
+              key={role}
+              id={`${id}-holders`}
+              size="bar"
+              targets={roles.find((r) => r.name === role)?.to ?? []}
+              single={roles.find((r) => r.name === role)?.single}
+              value={holders}
+              onChange={setHolders}
+            />
+          </div>
+        </>
+      )}
+      <Button
+        size="bar"
+        variant={action === "trash" ? "destructive" : "default"}
+        disabled={busy}
+        onClick={() => void run()}
+      >
+        {t("batch.apply")}
+      </Button>
+      <span className="flex-1" />
+      <Button size="bar" variant="ghost" onClick={onClear}>
+        {t("batch.clear")}
+      </Button>
+    </div>
   );
 }

@@ -81,7 +81,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI58** | Alle Seiten auf die Bausteine (E59, §2.6): die 45 nativen Auswahlfelder in 14 Dateien und die rund 40 eigenen Eingabefelder auf die Bausteine aus UI57 umstellen, auch im Formular und in den Editoren; danach wird die Lint-Regel aus UI57 ein Fehler | ⬜ | 1,5 d | `grep -rn "<select" web/src --include=*.tsx \| grep -v web/src/ui/` → keine Zeile; Meine Einstellungen, Erscheinungsbild, eine Rolle, Workflow, Dashboard bearbeiten und ein Formular mit Auswahlfeld öffnen, hell und dunkel → jedes Auswahlfeld sieht aus wie „Ansicht“, die geöffnete Liste folgt dem Modus; `docker compose run --rm tools scripts/ci.sh` grün (Lint mit der Regel als Fehler) |
 | **UI59** | Meldungen unten rechts (E60, §2.6): Baustein `ui/toast.tsx` mit einer Stelle zum Aufrufen (`toast.success`, `.info`, `.warning`, `.error` mit Titel und Text); vier Arten in Grün, Akzentfarbe, Gelb und Rot, je mit Streifen links, getöntem Grund, Symbol und Schließen; die neueste unten in der Ecke, höchstens drei zugleich; Erfolg und Info verschwinden nach 5 s, angehalten, solange Maus oder Fokus darauf liegt; Warnung und Fehler bleiben bis zum Schließen; Bildschirmleser hören Erfolg und Info als `status`, Warnung und Fehler als `alert`. Eine Meldung kann einen Knopf tragen, etwa „Rückgängig“ (E61); mit Knopf bleibt sie 10 s. Neue Token für den Grund von Erfolg und Info, im Kontrast geprüft wie die übrigen (E28) | 🟢 | 1 d | Im Test des Bausteins je eine Meldung jeder Art auslösen → sie stehen unten rechts übereinander, die neueste unten; Erfolg ist nach 5 s weg, unter der Maus bleibt er; Fehler bleibt, bis „Schließen“ gedrückt ist; hell und dunkel: Kontrast von Text und Symbol mindestens 4,5:1 (`axe`); `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI60** | Rückmeldungen als Meldung (E60, §2.6): was heute nach einer Handlung als Text unter dem Inhalt erscheint (16 Stellen mit `role="status"`, etwa Export, Meine Einstellungen, Erscheinungsbild, Dashboard, Workflow, Vorgang speichern), kommt als Meldung aus UI59. Am Platz bleiben Fehler an einem Feld, Fehler, ohne die eine Seite nicht geht, und Zustände, die stehen bleiben müssen (wer gerade mitliest, „nichts gefunden“) | ⬜ | 0,75 d | In Meine Einstellungen die Sprache ändern → unten rechts grün „Gespeichert“, die Seite verschiebt sich nicht; einen Export starten → Info unten rechts; einen Vorgang mit leerem Pflichtfeld speichern → der Fehler steht am Feld, nicht unten rechts; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI61** | Mehrfachaktion in einer Zeile (E59, E60, §2.6): solange Zeilen ausgewählt sind, steht statt der Spaltenköpfe eine Zeile „4 ausgewählt“, Aktion, Feld und Wert als Auswahlfelder (UI57), der Knopf „Anwenden“ ohne Zahl und rechts „Auswahl aufheben“; das Kästchen „alle“ bleibt an seinem Platz. Der Kasten über der Tabelle entfällt. Das Ergebnis kommt als Meldung (UI59): alle geändert grün („4 geändert“), teils gelb mit den abgelehnten und ihrem Grund, keiner rot. „In den Papierkorb“ fragt nicht mehr nach, die Meldung bietet „Rückgängig“ für alle (E61) | ⬜ | 0,75 d | In der Liste „Anfrage“ vier Zeilen auswählen → der Tabellenkopf wird zur Zeile mit „4 ausgewählt“, die Zeilen der Tabelle bleiben, wo sie waren; „Feld setzen“, „Auswirkung“, „Hoch“, „Anwenden“ → unten rechts grün „4 geändert“, nichts verschiebt sich; die Zahl steht nur einmal; mit einer Zeile ohne Recht → gelbe Meldung nennt sie; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI61** | Mehrfachaktion in einer Zeile (E59, E60, §2.6): solange Zeilen ausgewählt sind, steht statt der Spaltenköpfe eine Zeile „4 ausgewählt“, Aktion, Feld und Wert als Auswahlfelder (UI57), der Knopf „Anwenden“ ohne Zahl und rechts „Auswahl aufheben“; das Kästchen „alle“ bleibt an seinem Platz. Der Kasten über der Tabelle entfällt. Das Ergebnis kommt als Meldung (UI59): alle geändert grün („4 geändert“), teils gelb mit den abgelehnten und ihrem Grund, keiner rot. „In den Papierkorb“ fragt nicht mehr nach, die Meldung bietet „Rückgängig“ für alle (E61) | 🟢 | 0,75 d | In der Liste „Anfrage“ vier Zeilen auswählen → der Tabellenkopf wird zur Zeile mit „4 ausgewählt“, die Zeilen der Tabelle bleiben, wo sie waren; „Feld setzen“, „Auswirkung“, „Hoch“, „Anwenden“ → unten rechts grün „4 geändert“, nichts verschiebt sich; die Zahl steht nur einmal; mit einer Zeile ohne Recht → gelbe Meldung nennt sie; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI62** | Löschen am Datensatz (E61): „Löschen“ im Menü der Aktionen auf der Detailseite, in der Vorschau der Liste, auf der Seite eines Dashboards und an einer gespeicherten Suche im Menü der Suchen, jeweils nur mit dem Recht `delete`. Gelöscht wird ohne Rückfrage in den Papierkorb; danach kommt eine Meldung (UI59) „In den Papierkorb gelegt“ mit dem Knopf „Rückgängig“, die Detailseite führt zurück zur Liste. Fällt „Rückgängig“ auf einen Konflikt (eindeutiger Wert inzwischen vergeben, Kern-Plan E9), nennt eine rote Meldung das Feld | ⬜ | 1 d | Eine Störung öffnen, Aktionen › „Löschen“ → zurück in der Liste, die Störung fehlt, unten rechts „In den Papierkorb gelegt“ mit „Rückgängig“; „Rückgängig“ → die Störung ist wieder in der Liste; ein Dashboard und eine gespeicherte Suche ebenso löschen und zurückholen; ohne Recht `delete` gibt es den Eintrag nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI63** | Seite „Papierkorb“ (E61): unter Verwaltung, für alle, die irgendwo löschen dürfen; eine Tabelle (Baustein aus UI54) über alle Typen mit Typ, Titel, gelöscht am und gelöscht von, neueste zuerst, nur was die Person lesen darf (Kern-Plan PL74); oben Auswahlfeld „Typ“ (UI57) und Suchfeld; Zeilen auswählen, dann „Wiederherstellen“ (Recht `delete`) oder „Endgültig löschen“ (Recht `purge`, Kern-Plan PL75, mit Rückfrage, die die Zahl nennt und sagt, dass es nicht rückgängig geht). Ein Hinweis nennt die Frist, nach der der Papierkorb sich selbst leert (Kern-Plan PL76). Ergebnisse als Meldung (UI59), wiederhergestellte mit „Öffnen“ | ⬜ | 1,5 d | Zwei Störungen und ein Dashboard löschen, Verwaltung › „Papierkorb“ → drei Zeilen mit Typ, Titel, Zeit und deinem Namen; Typ „Dashboard“ wählen → eine Zeile; eine Störung wiederherstellen → grüne Meldung mit „Öffnen“, die Störung ist in der Liste; die andere endgültig löschen → Rückfrage, danach ist sie weg und `GET` auf sie gibt 404; als Person ohne `purge` fehlt „Endgültig löschen“; als Person ohne Leserecht auf das Dashboard fehlt seine Zeile; der Hinweis nennt „30 Tage“; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI64** | Rückfrage beim Löschen von Konfiguration (E61): was nicht in den Papierkorb kommt (Rolle, Zuweisung, Vertretung, Beziehung, Anpassung an einem Typ, Organisationseinheit), fragt vor dem Löschen in einem gemeinsamen Dialog `ui/confirm.tsx`: was gelöscht wird, mit Namen, und dass es nicht rückgängig geht; Knopf rot „Löschen“, Esc und „Abbrechen“ brechen ab. Wo es schon eine eigene Rückfrage gibt, nimmt sie den Baustein. Danach eine Meldung (UI59) | ⬜ | 0,5 d | Eine Rolle ohne Zuweisungen löschen → Dialog nennt die Rolle; Esc → nichts gelöscht; erneut, „Löschen“ → grüne Meldung, die Rolle fehlt; dasselbe für eine Vertretung und eine Beziehung; `grep -rn "window.confirm" web/src` → keine Zeile; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -573,6 +573,45 @@ nicht am Original nachgesehen.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI61 — Mehrfachaktion in einer Zeile, 2026-11-19
+
+- **Grundlage:** E59, E60, E61, §2.6; Hauptplan E203.
+- **Gebaut:**
+  - Solange Zeilen ausgewählt sind, steht im Kopf der Tabelle statt der Spaltenköpfe eine
+    Zeile (`BatchRow` in `web/src/render/Batch.tsx`, eingesetzt in
+    `web/src/render/List.tsx`): das Kästchen „alle“ an seinem Platz, „4 ausgewählt“, Aktion,
+    Feld und Wert als Auswahlfelder aus UI57 (32 px), „Anwenden“ ohne Zahl und rechts
+    „Auswahl aufheben“. Der Kopf bleibt 36 px hoch, die Zeilen der Tabelle bleiben, wo sie
+    waren. Der Kasten über der Tabelle ist weg. Passt die Zeile nicht in die Breite (etwa neben
+    der Vorschau), rollt sie mit der Tabelle waagerecht.
+  - Wert und Personen: Eingabefelder mit `size="bar"`, die Auswahl eines Datensatzes
+    (`RefPicker`) neu mit `size="bar"` in einer Zeile; ihre Liste steht fest unter dem Feld
+    wie beim Auswahlfeld, damit der Kopf der Tabelle sie nicht abschneidet.
+  - Ergebnis als Meldung (UI59): alle geändert grün („4 geändert“); teils gelb („3 von 4
+    geändert“) mit den abgelehnten Zeilen und ihrem Grund („Probe 000003: inzwischen
+    geändert“); keiner rot („Nichts geändert“) mit den Gründen; ein Fehler des Aufrufs rot.
+  - „In den Papierkorb“ fragt nicht mehr nach; der Knopf „Anwenden“ ist dann rot. Die Meldung
+    „4 in den Papierkorb gelegt“ hat „Rückgängig“ (10 s): das holt jede dieser Zeilen über
+    `POST /api/v1/records/{typ}/{id}:restore` zurück (`api.restore`, neu im Client) und meldet
+    „4 aus dem Papierkorb zurückgeholt“. Bei teils abgelehnten gilt „Rückgängig“ für die
+    gelöschten.
+  - Die Gründe stehen in eigenen Texten (`batch.reason.*`); die alten Texte für die Zählung
+    unter dem Kasten, „Auf 4 anwenden“ und „Wirklich 4 in den Papierkorb“ sind entfernt.
+- **Tests:** `web/src/render/Batch.test.tsx`: alle Zeilen wählen → die Zeile mit
+  „6 ausgewählt“ steht im Kopf, die Zahl nur einmal, die erste Zeile der Tabelle an derselben
+  Stelle; Feld setzen mit einem inzwischen geänderten Datensatz → gelbe Meldung mit Grund;
+  „Auswahl aufheben“; Übergang für einen von zwei → gelb; Papierkorb ohne Rückfrage,
+  „Rückgängig“ holt beide zurück. Das Testgerüst (`fakeApi`) kennt dafür den Papierkorb und
+  `:restore`.
+- **Nicht geprüft:** die Zeile mit einer Rolle und mehreren gewählten Personen in schmalen
+  Fenstern; „Rückgängig“ gegen den echten Server (der Endpunkt ist alt und getestet, der
+  Knopf nur gegen das Testgerüst).
+- **Prüfweg:** Liste „Anfrage“, vier Zeilen auswählen → statt der Spaltenköpfe „4
+  ausgewählt“ mit Aktion, Feld, Wert, „Anwenden“ und „Auswahl aufheben“, die Zeilen der
+  Tabelle bleiben stehen; „Feld setzen“, „Auswirkung“, „Hoch“, „Anwenden“ → unten rechts grün
+  „4 geändert“; Aktion „In den Papierkorb“, „Anwenden“ → keine Rückfrage, Meldung mit
+  „Rückgängig“ → die vier sind wieder in der Liste.
 
 ### UI59 — Meldungen unten rechts, 2026-11-19
 

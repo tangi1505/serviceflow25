@@ -128,7 +128,9 @@ describe("Settings", () => {
     await user.click(within(presets).getByRole("button", { name: "Feld hinzufügen" }));
     const row = within(presets).getByRole("listitem", { name: "Vorbelegung 1" });
     await user.selectOptions(within(row).getByRole("combobox", { name: "Feld" }), "kind");
-    await user.selectOptions(within(row).getByRole("combobox", { name: "Neuer Wert" }), "fault");
+    // The value is the select field of the kit (UI57, UI61).
+    await user.click(within(row).getByRole("combobox", { name: "Neuer Wert" }));
+    await user.click(await screen.findByRole("option", { name: "Störung" }));
     // Kept a moment after the last change, without a button (E49).
     expect(
       await within(presets).findByText("Gespeichert.", {}, { timeout: 3000 }),

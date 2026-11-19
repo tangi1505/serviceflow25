@@ -424,8 +424,6 @@
     "empty": "– clear –",
     "transition": "Transition",
     "role": "Role",
-    "run": "Apply to {{count}}",
-    "confirmTrash": "Really move {{count}} to the trash",
     "error": "Could not run: {{detail}}",
     "actions": {
       "field": "Set field",
@@ -433,14 +431,23 @@
       "role": "Set role",
       "trash": "Move to the trash"
     },
-    "status": {
-      "ok": "{{count}} changed",
-      "conflict": "{{count}} changed meanwhile (conflict)",
-      "refused": "{{count}} refused (transition does not apply)",
-      "forbidden": "{{count}} without the right",
-      "not_found": "{{count}} not found",
-      "invalid": "{{count}} invalid",
-      "error": "{{count}} with an error"
+    "apply": "Apply",
+    "clear": "Clear selection",
+    "done": "{{count}} changed",
+    "trashed": "{{count}} moved to the trash",
+    "partly": "{{ok}} of {{count}} changed",
+    "partlyTrashed": "{{ok}} of {{count}} moved to the trash",
+    "none": "Nothing changed",
+    "undo": "Undo",
+    "restored": "{{count}} taken out of the trash",
+    "restoreFailed": "Could not take them back: {{detail}}",
+    "reason": {
+      "conflict": "changed meanwhile",
+      "refused": "transition does not apply",
+      "forbidden": "no right",
+      "not_found": "not found",
+      "invalid": "invalid",
+      "error": "error"
     }
   },
   "editor": {

@@ -10,7 +10,7 @@
 // without (small select types) show their first 100, filtered in the browser. The chosen
 // records stand above the input, each with a button to remove it; single holds at most one.
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -21,7 +21,9 @@ import {
   type ActorRef,
   type TypeDefinition,
 } from "@/api/client";
+import { useAnchored } from "@/ui/anchor";
 import { Input } from "@/ui/input";
+import type { ControlSize } from "@/ui/select";
 
 import { RefName, titleOf } from "./RefName";
 
@@ -103,6 +105,9 @@ export type RefPickerProps = {
   invalid?: boolean;
   describedBy?: string;
   disabled?: boolean;
+  // size "bar" puts the picker in one row of 32 px, as in the mass action of a list (UI61); its
+  // list stands in fixed position so the head of the table does not cut it off.
+  size?: ControlSize;
 };
 
 export function RefPicker({
@@ -115,9 +120,12 @@ export function RefPicker({
   invalid,
   describedBy,
   disabled,
+  size = "form",
 }: RefPickerProps) {
   const { t, i18n } = useTranslation();
   const listId = useId();
+  const field = useRef<HTMLDivElement>(null);
+  const bar = size === "bar";
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -162,8 +170,9 @@ export function RefPicker({
   };
 
   const expanded = open && !disabled;
+  const place = useAnchored(field, bar && expanded);
   return (
-    <div className="flex flex-col gap-1">
+    <div className={bar ? "flex flex-wrap items-center gap-1" : "flex flex-col gap-1"}>
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-1" aria-label={t("picker.chosen")}>
           {value.map((v) => (
@@ -187,9 +196,10 @@ export function RefPicker({
         </ul>
       )}
       {!disabled && (
-        <div className="relative">
+        <div ref={field} className={bar ? "relative min-w-48 flex-1" : "relative"}>
           <Input
             id={id}
+            size={size}
             role="combobox"
             autoComplete="off"
             aria-autocomplete="list"
@@ -215,7 +225,12 @@ export function RefPicker({
             role="listbox"
             aria-label={t("picker.options")}
             hidden={!expanded}
-            className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-card py-1 text-sm shadow-md"
+            style={place}
+            className={
+              place
+                ? "z-50 max-h-64 overflow-auto rounded-md border bg-card py-1 text-sm shadow-md"
+                : "absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-card py-1 text-sm shadow-md"
+            }
           >
             {shown.map((o, i) => (
               // The keyboard works in the input (aria-activedescendant), as the combobox

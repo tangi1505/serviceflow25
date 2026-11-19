@@ -52,7 +52,7 @@ import { PriorityMark, StatePill } from "@/ui/marks";
 import { Menu, MenuCheck, MenuLabel, MenuLink, primaryBarButton } from "@/ui/menu";
 import { cn } from "@/ui/utils";
 
-import { BatchBar } from "./Batch";
+import { BatchRow } from "./Batch";
 import { DeadlineCell } from "./DeadlineCell";
 import { ExportButton } from "./Export";
 import { workplaceFormsQuery } from "./FormPage";
@@ -594,7 +594,6 @@ export function List({
           </Button>
         </div>
       )}
-      {chosen.length > 0 && <BatchBar type={type} rows={chosen} />}
       <div
         ref={parentRef}
         className="relative overflow-auto rounded-md border"
@@ -605,38 +604,55 @@ export function List({
       >
         <table className="w-full border-collapse text-sm" role="grid" aria-rowcount={rows.length}>
           <thead className="sticky top-0 z-[1] block bg-muted">
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="flex w-full">
-                {hg.headers.map((header) => {
-                  const sortable = sortableColumns.includes(header.column.id);
-                  const active = sort.column === header.column.id;
-                  return (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className={cn(
-                        "truncate px-3 py-2 text-left font-medium",
-                        header.column.id === "select" ? "w-10 flex-none" : "flex-1",
-                      )}
-                      aria-sort={active ? (sort.desc ? "descending" : "ascending") : undefined}
-                    >
-                      {sortable ? (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1"
-                          onClick={() => toggleSort(header.column.id)}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          <span aria-hidden="true">{active ? (sort.desc ? "▼" : "▲") : ""}</span>
-                        </button>
-                      ) : (
-                        flexRender(header.column.columnDef.header, header.getContext())
-                      )}
+            {/* While rows are chosen, the mass action stands in place of the column heads, so the
+                rows stay where they are; the box for all keeps its place (UI61). */}
+            {chosen.length > 0 &&
+              table.getHeaderGroups().map((hg) => {
+                const all = hg.headers.find((h) => h.column.id === "select");
+                return (
+                  <tr key={hg.id} className="flex w-full">
+                    <th scope="col" className="w-10 flex-none px-3 py-2 text-left font-medium">
+                      {all && flexRender(all.column.columnDef.header, all.getContext())}
                     </th>
-                  );
-                })}
-              </tr>
-            ))}
+                    <th scope="col" className="min-w-0 flex-1 px-3 py-0.5 text-left">
+                      <BatchRow type={type} rows={chosen} onClear={() => setSelection({})} />
+                    </th>
+                  </tr>
+                );
+              })}
+            {chosen.length === 0 &&
+              table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="flex w-full">
+                  {hg.headers.map((header) => {
+                    const sortable = sortableColumns.includes(header.column.id);
+                    const active = sort.column === header.column.id;
+                    return (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        className={cn(
+                          "truncate px-3 py-2 text-left font-medium",
+                          header.column.id === "select" ? "w-10 flex-none" : "flex-1",
+                        )}
+                        aria-sort={active ? (sort.desc ? "descending" : "ascending") : undefined}
+                      >
+                        {sortable ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1"
+                            onClick={() => toggleSort(header.column.id)}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            <span aria-hidden="true">{active ? (sort.desc ? "▼" : "▲") : ""}</span>
+                          </button>
+                        ) : (
+                          flexRender(header.column.columnDef.header, header.getContext())
+                        )}
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
           </thead>
           <tbody style={{ height: virtualizer.getTotalSize() }} className="relative block">
             {virtualRows.map((virtualRow) => {

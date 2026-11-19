@@ -357,6 +357,8 @@ export type FakeState = {
   // timed marks the probe type as one with SLA clocks (UI34).
   timed?: boolean;
   records: RecordData[];
+  // trash holds what the mass action moved to the trash, for "Rückgängig" (UI61).
+  trash?: RecordData[];
   // newStates are the field states of a new record (WF2); a record in state "closed" is locked.
   newStates?: Partial<FieldStates>;
   // timeline, clocks and persons of the record page (UI3), by record id; privateRefused makes
@@ -1074,6 +1076,16 @@ export function fakeApi(state: FakeState) {
         created_at: new Date().toISOString(),
       });
     }
+    const restore = /^\/api\/v1\/records\/probe\.probe\/([^/]+):restore$/.exec(url.pathname);
+    if (restore && method === "POST") {
+      const rec = state.trash?.find((r) => r["id"] === restore[1]);
+      if (!rec) {
+        return json(404, { title: "not found" });
+      }
+      state.trash = state.trash!.filter((r) => r !== rec);
+      state.records = [...state.records, rec];
+      return new Response(null, { status: 204 });
+    }
     if (url.pathname === "/api/v1/records/probe.probe:batch" && method === "POST") {
       // Each row on its own, as the server does (UI6): the version must match.
       const body = JSON.parse(bodyText) as {
@@ -1095,6 +1107,7 @@ export function fakeApi(state: FakeState) {
         }
         if (row.trash) {
           state.records = state.records.filter((r) => r !== rec);
+          state.trash = [...(state.trash ?? []), rec];
           return { id: row.id, status: "ok", version: row.version + 1 };
         }
         if (row.transition) {

@@ -80,7 +80,7 @@ describe("Keyboard of list and record", () => {
     // Space chooses the row: the bar of mass actions comes.
     third.focus();
     await user.keyboard(" ");
-    expect(await screen.findByRole("region", { name: "1 ausgewählt" })).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: "1 ausgewählt" })).toBeInTheDocument();
     await user.keyboard("{ArrowUp}");
     expect(rows()[1]).toHaveFocus();
 

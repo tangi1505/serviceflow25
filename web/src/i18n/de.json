@@ -424,8 +424,6 @@
     "empty": "– leeren –",
     "transition": "Übergang",
     "role": "Rolle",
-    "run": "Auf {{count}} anwenden",
-    "confirmTrash": "Wirklich {{count}} in den Papierkorb",
     "error": "Ausführen nicht möglich: {{detail}}",
     "actions": {
       "field": "Feld setzen",
@@ -433,14 +431,23 @@
       "role": "Rolle setzen",
       "trash": "In den Papierkorb"
     },
-    "status": {
-      "ok": "{{count}} geändert",
-      "conflict": "{{count}} inzwischen geändert (Konflikt)",
-      "refused": "{{count}} abgelehnt (Übergang gilt nicht)",
-      "forbidden": "{{count}} ohne Recht",
-      "not_found": "{{count}} nicht gefunden",
-      "invalid": "{{count}} ungültig",
-      "error": "{{count}} mit Fehler"
+    "apply": "Anwenden",
+    "clear": "Auswahl aufheben",
+    "done": "{{count}} geändert",
+    "trashed": "{{count}} in den Papierkorb gelegt",
+    "partly": "{{ok}} von {{count}} geändert",
+    "partlyTrashed": "{{ok}} von {{count}} in den Papierkorb gelegt",
+    "none": "Nichts geändert",
+    "undo": "Rückgängig",
+    "restored": "{{count}} aus dem Papierkorb zurückgeholt",
+    "restoreFailed": "Zurückholen nicht möglich: {{detail}}",
+    "reason": {
+      "conflict": "inzwischen geändert",
+      "refused": "Übergang gilt hier nicht",
+      "forbidden": "ohne Recht",
+      "not_found": "nicht gefunden",
+      "invalid": "ungültig",
+      "error": "Fehler"
     }
   },
   "editor": {

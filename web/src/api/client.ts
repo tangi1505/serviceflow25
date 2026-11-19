@@ -507,6 +507,14 @@ export const api = {
       }),
     );
   },
+  // restore takes a record out of the trash ("Rückgängig" after the mass action, UI61).
+  restore: async (typeName: string, id: string) => {
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}:restore", {
+        params: { path: { typeName, id } },
+      }),
+    );
+  },
   // batch changes chosen records by id and version (UI6); a result per row.
   batch: async (typeName: string, body: components["schemas"]["BatchRequest"]) =>
     unwrap(
