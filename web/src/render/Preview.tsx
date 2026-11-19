@@ -20,6 +20,7 @@ import { fieldLabel, formatValue, isCalculated } from "./fields";
 import { titleOf } from "./RefName";
 import { SlaClocks } from "./Sidebar";
 import { Transitions } from "./Transitions";
+import { mayDelete, useTrash } from "./trash";
 
 // The fields of the preview: what one reads first, without long text.
 const shown = 6;
@@ -36,6 +37,7 @@ export function Preview({
   const { t, i18n } = useTranslation();
   const typeName = qualifiedName(type);
   const record = useQuery(readQuery(typeName, id));
+  const trash = useTrash();
   const title = record.data ? titleOf(type, record.data) : "";
   const titleField = type.title_field ?? type.fields[0]?.name;
   const fields = type.fields
@@ -75,12 +77,18 @@ export function Preview({
               );
             })}
           </dl>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link to="/types/$typeName/$id" params={{ typeName, id }}>
                 {t("preview.open")}
               </Link>
             </Button>
+            {mayDelete(type) && (
+              // Into the trash from the preview (UI62); the preview closes.
+              <Button variant="outline" onClick={() => void trash(typeName, id, title, onClose)}>
+                {t("trash.delete")}
+              </Button>
+            )}
           </div>
         </>
       )}

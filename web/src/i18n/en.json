@@ -60,7 +60,8 @@
     "appearance": "Appearance",
     "open": "Open the navigation",
     "close": "Close the navigation",
-    "back": "Back"
+    "back": "Back",
+    "trash": "Trash"
   },
   "header": {
     "tenant": "Tenant: {{name}}",
@@ -187,7 +188,8 @@
     "removeOne": "Remove relation \"{{kind}}\" to {{name}}",
     "add": "Link",
     "empty": "No relations yet.",
-    "error": "Relation not changed: {{detail}}"
+    "error": "Relation not changed: {{detail}}",
+    "confirm": "Remove the relation “{{kind}}” to {{name}}?"
   },
   "suggest": {
     "fromFields": "Searched with {{fields}} of this record.",
@@ -214,7 +216,8 @@
     "notHelped": "Does not help",
     "doneTitle": "Good that it worked.",
     "doneText": "Nothing was created. Your feedback “helped” is counted for “{{title}}”.",
-    "doneUndo": "Report anyway"
+    "doneUndo": "Report anyway",
+    "confirmUnlink": "Remove the relation to “{{title}}”?"
   },
   "rating": {
     "question": "Did this help you?",
@@ -403,7 +406,8 @@
     "shareMore": "Share and manage …",
     "detailsMore": "About this search …",
     "button": "Saved search: {{name}}",
-    "buttonChanged": "Saved search: {{name}}, changed"
+    "buttonChanged": "Saved search: {{name}}, changed",
+    "delete": "Delete this search"
   },
   "export": {
     "format": "Format of the export",
@@ -588,7 +592,8 @@
     "shortcuts": "Shortcuts of single keys",
     "shortcutsHint": "/, ? and N only work outside of fields. Turned off, a voice input cannot set them off either. Shortcuts with Ctrl always work.",
     "on": "On",
-    "off": "Off"
+    "off": "Off",
+    "discardText": "The changes at this unit are not saved yet and will be lost."
   },
   "versions": {
     "title": "Versions",
@@ -834,7 +839,8 @@
     "typeCount_one": "{{count}} type",
     "typeCount_other": "{{count}} types",
     "search": "Search types",
-    "noMatch": "No type matches the search."
+    "noMatch": "No type matches the search.",
+    "confirmTakeBack": "Take back the change: {{change}}?"
   },
   "workflow": {
     "open": "Workflow",
@@ -1005,7 +1011,8 @@
     "count_one": "{{count}} role",
     "count_other": "{{count}} roles",
     "search": "Search roles",
-    "noMatch": "No role matches the search."
+    "noMatch": "No role matches the search.",
+    "confirmUnassign": "Remove the assignment at {{node}}?"
   },
   "colorScheme": {
     "system": "Like the system",
@@ -1162,7 +1169,8 @@
     "actions": "Actions",
     "remove": "Remove",
     "add": "Add",
-    "error": "That did not work: {{detail}}"
+    "error": "That did not work: {{detail}}",
+    "confirmRemove": "Remove this substitute?"
   },
   "dashboard": {
     "notFound": "This dashboard does not exist, or it is not shared with you.",
@@ -1378,5 +1386,53 @@
   "toast": {
     "region": "Messages",
     "close": "Close"
+  },
+  "trash": {
+    "actions": "Actions",
+    "delete": "Delete",
+    "done": "Moved to the trash",
+    "failed": "“{{title}}” not deleted",
+    "restored": "Taken out of the trash",
+    "restoreFailed": "“{{title}}” not taken out of the trash"
+  },
+  "confirm": {
+    "final": "This cannot be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "trashPage": {
+    "title": "Trash",
+    "keep_one": "Deleted records stay here for {{count}} day, then they are purged.",
+    "keep_other": "Deleted records stay here for {{count}} days, then they are purged.",
+    "keepNever": "Deleted records stay here until someone purges them.",
+    "type": "Type",
+    "allTypes": "All types",
+    "search": "Title contains",
+    "chosen_one": "{{count}} chosen",
+    "chosen_other": "{{count}} chosen",
+    "restore": "Restore",
+    "purge": "Delete for good",
+    "purgeAsk_one": "Delete {{count}} entry for good?",
+    "purgeAsk_other": "Delete {{count}} entries for good?",
+    "purgeText_one": "The entry is gone afterwards, with its roles, clocks and timeline. This cannot be undone.",
+    "purgeText_other": "The entries are gone afterwards, with their roles, clocks and timelines. This cannot be undone.",
+    "restored_one": "{{count}} restored",
+    "restored_other": "{{count}} restored",
+    "restoreFailed_one": "{{count}} not restored",
+    "restoreFailed_other": "{{count}} not restored",
+    "purged_one": "{{count}} deleted for good",
+    "purged_other": "{{count}} deleted for good",
+    "purgeFailed_one": "{{count}} not deleted",
+    "purgeFailed_other": "{{count}} not deleted",
+    "open": "Open",
+    "error": "The trash could not be loaded.",
+    "empty": "The trash is empty.",
+    "chooseAll": "Choose all",
+    "choose": "Choose “{{title}}”",
+    "colType": "Type",
+    "colTitle": "Title",
+    "colAt": "Deleted at",
+    "colBy": "Deleted by",
+    "more": "Show more"
   }
 }

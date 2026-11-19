@@ -47,6 +47,7 @@ import { fromWhere, toWhere, type Condition } from "./Filters";
 import { FilterRow } from "./FilterRow";
 import { List, NewMenu, type ListView } from "./List";
 import { Preview } from "./Preview";
+import { mayDelete, useTrash } from "./trash";
 
 const searchType = "core.saved_search";
 
@@ -93,6 +94,9 @@ function SearchMenu({
   const queryClient = useQueryClient();
   const me = useQuery(meQuery);
   const searches = useQuery(searchesQuery(typeName));
+  // Deleting the shown search (UI62) needs the right delete on saved searches.
+  const searchDef = useQuery(typesQuery).data?.find((c) => qualifiedName(c) === searchType);
+  const trash = useTrash();
   const formId = useId();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -199,6 +203,15 @@ function SearchMenu({
           <MenuLink to="/types/$typeName/$id" params={{ typeName: searchType, id: currentId }}>
             {mine ? t("search.shareMore") : t("search.detailsMore")}
           </MenuLink>
+        )}
+        {current && searchDef && mayDelete(searchDef) && (
+          <MenuItem
+            onSelect={() =>
+              void trash(searchType, currentId, String(current["name"]), () => open(undefined))
+            }
+          >
+            {t("search.delete")}
+          </MenuItem>
         )}
       </Menu>
       {naming && (

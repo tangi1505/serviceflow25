@@ -221,4 +221,31 @@ describe("RecordPage", () => {
     await user.click(within(timeline).getByRole("button", { name: "Eintragen" }));
     expect(await within(timeline).findByRole("alert")).toHaveTextContent("keine privaten Einträge");
   });
+
+  // UI62: Aktionen › Löschen moves the record to the trash without a question and goes back
+  // to the list; the message offers "Rückgängig", which takes it out again.
+  it("moves the record to the trash and takes it back", async () => {
+    const user = userEvent.setup();
+    state.may = ["read", "create", "update", "delete"];
+    const rec = state.records[0]!;
+    const id = String(rec["id"]);
+    const { router } = renderAt(`/types/probe.probe/${id}`);
+    await user.click(await screen.findByRole("button", { name: "Aktionen" }));
+    await user.click(screen.getByRole("menuitem", { name: "Löschen" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/types/probe.probe"));
+    expect(state.trash?.map((r) => r["id"])).toEqual([id]);
+    const note = await screen.findByText("In den Papierkorb gelegt");
+    const toastEl = note.closest("li") ?? note.parentElement!.parentElement!;
+    await user.click(within(toastEl as HTMLElement).getByRole("button", { name: "Rückgängig" }));
+    await screen.findByText("Aus dem Papierkorb zurückgeholt");
+    expect(state.records.some((r) => r["id"] === id)).toBe(true);
+    expect(state.trash).toEqual([]);
+  });
+
+  it("offers no Löschen without the right delete", async () => {
+    state.may = ["read", "update"];
+    renderAt(`/types/probe.probe/${String(state.records[0]!["id"])}`);
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("button", { name: "Aktionen" })).toBeNull();
+  });
 });

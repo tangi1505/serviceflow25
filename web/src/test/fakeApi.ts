@@ -359,6 +359,8 @@ export type FakeState = {
   records: RecordData[];
   // trash holds what the mass action moved to the trash, for "Rückgängig" (UI61).
   trash?: RecordData[];
+  // may is what the type says the session may do (Kern-Plan E79); unset, no may at all.
+  may?: TypeDefinition["may"];
   // newStates are the field states of a new record (WF2); a record in state "closed" is locked.
   newStates?: Partial<FieldStates>;
   // timeline, clocks and persons of the record page (UI3), by record id; privateRefused makes
@@ -604,6 +606,7 @@ export function fakeApi(state: FakeState) {
         {
           ...customized(probeType, state.customer?.["probe.probe"]),
           ...(state.timed ? { timed: true } : {}),
+          ...(state.may ? { may: state.may } : {}),
           ...(state.roleTransitions
             ? { transitions: [...probeType.transitions!, ...state.roleTransitions] }
             : {}),
@@ -1075,6 +1078,34 @@ export function fakeApi(state: FakeState) {
         state: "temporary",
         created_at: new Date().toISOString(),
       });
+    }
+    if (url.pathname === "/api/v1/trash" && method === "GET") {
+      // The trash over all types (PL74, UI63): here the probes in it, newest first.
+      const type = url.searchParams.get("type");
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const items = (state.trash ?? [])
+        .filter(() => !type || type === "probe.probe")
+        .filter((r) => String(r["title"]).toLowerCase().includes(q))
+        .map((r) => ({
+          type: "probe.probe",
+          id: String(r["id"]),
+          title: String(r["title"]),
+          deleted_at: String(r["deleted_at"] ?? "2026-11-19T10:00:00Z"),
+          deleted_by_name: "Kollegin",
+        }))
+        .reverse();
+      return json(200, { items });
+    }
+    const purge = /^\/api\/v1\/records\/probe\.probe\/([^/]+):purge$/.exec(url.pathname);
+    if (purge && method === "POST") {
+      if (!state.may?.includes("purge")) {
+        return problem(403, "forbidden");
+      }
+      const before = state.trash?.length ?? 0;
+      state.trash = (state.trash ?? []).filter((r) => r["id"] !== purge[1]);
+      return state.trash.length < before
+        ? new Response(null, { status: 204 })
+        : problem(404, "not_found");
     }
     const restore = /^\/api\/v1\/records\/probe\.probe\/([^/]+):restore$/.exec(url.pathname);
     if (restore && method === "POST") {
@@ -1786,6 +1817,12 @@ export function fakeApi(state: FakeState) {
       }
       if (method === "GET") {
         return json(200, rec, { ETag: `"${rec["version"]}"` });
+      }
+      if (method === "DELETE") {
+        // Into the trash (UI62); restore takes it back.
+        state.records = state.records.filter((r) => r !== rec);
+        state.trash = [...(state.trash ?? []), rec];
+        return new Response(null, { status: 204 });
       }
       if (method === "PATCH") {
         const ifMatch = req.headers.get("If-Match");

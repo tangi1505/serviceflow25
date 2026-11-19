@@ -20,6 +20,7 @@ export type ValidationProblem = components["schemas"]["ValidationProblem"];
 export type Me = components["schemas"]["Me"];
 export type RecordData = components["schemas"]["Record"];
 export type Page = components["schemas"]["Page"];
+export type TrashEntry = components["schemas"]["TrashEntry"];
 export type AuditEntry = components["schemas"]["AuditEntry"];
 export type TimelineItem = components["schemas"]["TimelineItem"];
 export type VersionInfo = components["schemas"]["VersionInfo"];
@@ -506,6 +507,25 @@ export const api = {
   leave: async (typeName: string, id: string) => {
     unwrap(
       await client.DELETE("/api/v1/records/{typeName}/{id}/presence", {
+        params: { path: { typeName, id } },
+      }),
+    );
+  },
+  // trash moves one record to the trash ("Löschen", UI62).
+  trash: async (typeName: string, id: string) => {
+    unwrap(
+      await client.DELETE("/api/v1/records/{typeName}/{id}", {
+        params: { path: { typeName, id } },
+      }),
+    );
+  },
+  // trashList is a page of the trash over all types (PL74, UI63).
+  trashList: async (query: { type?: string; q?: string; limit?: number; after?: string }) =>
+    unwrap(await client.GET("/api/v1/trash", { params: { query } })),
+  // purge deletes a record in the trash for good (PL75, UI63).
+  purge: async (typeName: string, id: string) => {
+    unwrap(
+      await client.POST("/api/v1/records/{typeName}/{id}:purge", {
         params: { path: { typeName, id } },
       }),
     );

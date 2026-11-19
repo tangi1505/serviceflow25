@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Trash2 } from "lucide-react";
 
 import {
   api,
@@ -29,6 +30,7 @@ import { useLive } from "@/app/live";
 import { remember } from "@/app/recent";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { Menu, MenuItem } from "@/ui/menu";
 import { BackButton } from "@/ui/page-header";
 
 import { approvalsKey } from "./Approvals";
@@ -39,6 +41,7 @@ import { titleOf } from "./RefName";
 import { Sidebar } from "./Sidebar";
 import { RecordTabs } from "./RecordTabs";
 import { Transitions } from "./Transitions";
+import { mayDelete, useTrash } from "./trash";
 import { toast } from "@/ui/toast";
 
 function useType(typeName: string): { type?: TypeDefinition; pending: boolean } {
@@ -116,6 +119,7 @@ export function RecordPage() {
   const { type, pending } = useType(typeName);
   const record = useQuery(recordQuery(typeName, id));
   const states = useQuery(fieldStatesQuery(typeName, id));
+  const trash = useTrash();
   // Live (UI8): unsaved changes in the form, who else is on the record, and who changed it
   // while the form held changes.
   const [dirty, setDirty] = useState(false);
@@ -184,7 +188,20 @@ export function RecordPage() {
           <p className="text-sm text-muted-foreground">{t("form.version", { version })}</p>
           <PresenceLine others={others} />
         </div>
-        <Transitions type={type} record={record.data} />
+        <div className="flex flex-wrap items-start gap-2">
+          <Transitions type={type} record={record.data} />
+          {mayDelete(type) && (
+            // The actions of the record beside its transitions (UI62): for now "Löschen".
+            <Menu label={t("trash.actions")} trigger={t("trash.actions")} width="w-48">
+              <MenuItem
+                icon={<Trash2 aria-hidden="true" className="size-4 text-foreground-2" />}
+                onSelect={() => void trash(typeName, id, title, back)}
+              >
+                {t("trash.delete")}
+              </MenuItem>
+            </Menu>
+          )}
+        </div>
       </header>
       {staleBy && (
         <Alert className="mb-4 flex flex-wrap items-center gap-3">

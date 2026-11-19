@@ -59,6 +59,7 @@ import { Chart } from "@/render/Chart";
 import { Filters, fromWhere, toWhere, type Condition } from "@/render/Filters";
 import { RichEditor } from "@/render/RichEditor";
 import { RichText } from "@/render/RichText";
+import { mayDelete, useTrash } from "@/render/trash";
 import { fieldLabel, formatValue } from "@/render/fields";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
@@ -171,6 +172,12 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
   const [unit, setUnit] = useState("");
   const [editing, setEditing] = useState(false);
   const [loadedAt, setLoadedAt] = useState(() => new Date());
+  // Löschen on the page of a dashboard (UI62): with the right delete on dashboards, into the
+  // trash and back to the start page.
+  const types = useQuery(typesQuery);
+  const dashboardType = types.data?.find((c) => qualifiedName(c) === "core.dashboard");
+  const trash = useTrash();
+  const goHome = useNavigate();
   const filters = useMemo(
     () => ({ ...range(period, own), ...(unit ? { unit } : {}) }),
     [period, own, unit],
@@ -278,6 +285,20 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
               <Button variant="outline" className="h-10" onClick={() => setEditing(true)}>
                 {t("dashboard.edit")}
               </Button>
+              {!embedded && dashboardType && mayDelete(dashboardType) && (
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() =>
+                    void trash("core.dashboard", id, String(d["name"]), () => {
+                      void queryClient.invalidateQueries({ queryKey: ["dashboard", id] });
+                      void goHome({ to: "/" });
+                    })
+                  }
+                >
+                  {t("trash.delete")}
+                </Button>
+              )}
             </>
           )}
         </div>

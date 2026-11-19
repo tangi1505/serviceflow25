@@ -60,7 +60,8 @@
     "appearance": "Erscheinungsbild",
     "open": "Navigation öffnen",
     "close": "Navigation schließen",
-    "back": "Zurück"
+    "back": "Zurück",
+    "trash": "Papierkorb"
   },
   "header": {
     "tenant": "Mandant: {{name}}",
@@ -187,7 +188,8 @@
     "removeOne": "Bezug „{{kind}}“ zu {{name}} lösen",
     "add": "Verknüpfen",
     "empty": "Noch keine Bezüge.",
-    "error": "Bezug nicht geändert: {{detail}}"
+    "error": "Bezug nicht geändert: {{detail}}",
+    "confirm": "Bezug „{{kind}}“ zu {{name}} lösen?"
   },
   "suggest": {
     "fromFields": "Gesucht mit {{fields}} dieses Datensatzes.",
@@ -214,7 +216,8 @@
     "notHelped": "Hilft nicht",
     "doneTitle": "Gut, dass es geklappt hat.",
     "doneText": "Es wurde nichts angelegt. Ihre Rückmeldung „hat geholfen“ ist bei „{{title}}“ gezählt.",
-    "doneUndo": "Doch melden"
+    "doneUndo": "Doch melden",
+    "confirmUnlink": "Bezug zu „{{title}}“ lösen?"
   },
   "rating": {
     "question": "Hat Ihnen das geholfen?",
@@ -403,7 +406,8 @@
     "shareMore": "Teilen und verwalten …",
     "detailsMore": "Über diese Suche …",
     "button": "Gespeicherte Suche: {{name}}",
-    "buttonChanged": "Gespeicherte Suche: {{name}}, geändert"
+    "buttonChanged": "Gespeicherte Suche: {{name}}, geändert",
+    "delete": "Diese Suche löschen"
   },
   "export": {
     "format": "Format des Exports",
@@ -588,7 +592,8 @@
     "shortcuts": "Tastenkürzel aus einzelnen Tasten",
     "shortcutsHint": "/, ? und N wirken nur außerhalb von Eingabefeldern. Ausgeschaltet lösen sie auch eine Spracheingabe nicht aus. Kürzel mit Strg gelten immer.",
     "on": "An",
-    "off": "Aus"
+    "off": "Aus",
+    "discardText": "Die Änderungen an dieser Einheit sind noch nicht gespeichert und gehen verloren."
   },
   "versions": {
     "title": "Fassungen",
@@ -834,7 +839,8 @@
     "typeCount_one": "{{count}} Typ",
     "typeCount_other": "{{count}} Typen",
     "search": "Typen durchsuchen",
-    "noMatch": "Kein Typ passt zur Suche."
+    "noMatch": "Kein Typ passt zur Suche.",
+    "confirmTakeBack": "Anpassung zurücknehmen: {{change}}?"
   },
   "workflow": {
     "open": "Workflow",
@@ -1005,7 +1011,8 @@
     "count_one": "{{count}} Rolle",
     "count_other": "{{count}} Rollen",
     "search": "Rollen durchsuchen",
-    "noMatch": "Keine Rolle passt zur Suche."
+    "noMatch": "Keine Rolle passt zur Suche.",
+    "confirmUnassign": "Zuweisung an {{node}} entfernen?"
   },
   "colorScheme": {
     "system": "Wie das System",
@@ -1162,7 +1169,8 @@
     "actions": "Aktionen",
     "remove": "Entfernen",
     "add": "Hinzufügen",
-    "error": "Nicht geklappt: {{detail}}"
+    "error": "Nicht geklappt: {{detail}}",
+    "confirmRemove": "Diese Vertretung entfernen?"
   },
   "dashboard": {
     "notFound": "Dieses Dashboard gibt es nicht, oder es ist nicht mit Ihnen geteilt.",
@@ -1378,5 +1386,53 @@
   "toast": {
     "region": "Meldungen",
     "close": "Schließen"
+  },
+  "trash": {
+    "actions": "Aktionen",
+    "delete": "Löschen",
+    "done": "In den Papierkorb gelegt",
+    "failed": "„{{title}}“ nicht gelöscht",
+    "restored": "Aus dem Papierkorb zurückgeholt",
+    "restoreFailed": "„{{title}}“ nicht zurückgeholt"
+  },
+  "confirm": {
+    "final": "Das lässt sich nicht rückgängig machen.",
+    "cancel": "Abbrechen",
+    "delete": "Löschen"
+  },
+  "trashPage": {
+    "title": "Papierkorb",
+    "keep_one": "Gelöschtes bleibt {{count}} Tag hier, danach wird es endgültig gelöscht.",
+    "keep_other": "Gelöschtes bleibt {{count}} Tage hier, danach wird es endgültig gelöscht.",
+    "keepNever": "Gelöschtes bleibt hier, bis es jemand endgültig löscht.",
+    "type": "Typ",
+    "allTypes": "Alle Typen",
+    "search": "Titel enthält",
+    "chosen_one": "{{count}} ausgewählt",
+    "chosen_other": "{{count}} ausgewählt",
+    "restore": "Wiederherstellen",
+    "purge": "Endgültig löschen",
+    "purgeAsk_one": "{{count}} Eintrag endgültig löschen?",
+    "purgeAsk_other": "{{count}} Einträge endgültig löschen?",
+    "purgeText_one": "Der Eintrag ist danach weg, mit seinem Verlauf an Rollen, Fristen und Zeitleiste. Das lässt sich nicht rückgängig machen.",
+    "purgeText_other": "Die Einträge sind danach weg, mit ihren Rollen, Fristen und Zeitleisten. Das lässt sich nicht rückgängig machen.",
+    "restored_one": "{{count}} wiederhergestellt",
+    "restored_other": "{{count}} wiederhergestellt",
+    "restoreFailed_one": "{{count}} nicht wiederhergestellt",
+    "restoreFailed_other": "{{count}} nicht wiederhergestellt",
+    "purged_one": "{{count}} endgültig gelöscht",
+    "purged_other": "{{count}} endgültig gelöscht",
+    "purgeFailed_one": "{{count}} nicht gelöscht",
+    "purgeFailed_other": "{{count}} nicht gelöscht",
+    "open": "Öffnen",
+    "error": "Der Papierkorb ließ sich nicht laden.",
+    "empty": "Der Papierkorb ist leer.",
+    "chooseAll": "Alle auswählen",
+    "choose": "„{{title}}“ auswählen",
+    "colType": "Typ",
+    "colTitle": "Titel",
+    "colAt": "Gelöscht am",
+    "colBy": "Gelöscht von",
+    "more": "Weitere anzeigen"
   }
 }
