@@ -443,8 +443,10 @@ export function FilterRow({
   const optionId = (s: Suggestion) => `${listId}-${s.id}`;
   const showList = open;
 
+  // 32 px like everything in the bar (UI57): the field is the height less the border, the chips
+  // (24 px) stand in it; with many conditions the row wraps.
   return (
-    <div className="relative flex min-h-8 min-w-60 flex-1 flex-wrap items-center gap-1 rounded-md border border-input bg-card px-2 py-0.5 focus-within:ring-2 focus-within:ring-ring">
+    <div className="relative flex min-h-[var(--control-bar)] min-w-60 flex-1 flex-wrap items-center gap-1 rounded-md border border-input bg-card px-2 focus-within:ring-2 focus-within:ring-ring">
       <Filter aria-hidden="true" className="mr-0.5 size-4 flex-none text-muted-foreground" />
       <ul aria-label={t("filter.title")} className="contents">
         {conditions.map((c, i) => {
@@ -534,7 +536,7 @@ export function FilterRow({
         onKeyDown={onKey}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        className="h-7 min-w-32 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        className="h-[calc(var(--control-bar)-2px)] min-w-32 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
       <kbd
         aria-hidden="true"

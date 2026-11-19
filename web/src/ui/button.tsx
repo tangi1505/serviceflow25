@@ -14,7 +14,8 @@ import type { ComponentProps } from "react";
 import { cn } from "@/ui/utils";
 
 export const buttonVariants = cva(
-  // Buttons of the kit (UI29, §2.1): 36 px, corner 8 px, weight 500; the focus ring is the
+  // Buttons of the kit (UI29, §2.1): 36 px in a form, 32 px in a bar (size "bar", the same as
+  // "sm"; both heights from the tokens, UI57), corner 8 px, weight 500; the focus ring is the
   // global one (2 px accent, 2 px away). Disabled: muted ground, muted text, a border.
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent text-sm font-medium transition-colors disabled:pointer-events-none disabled:border-border disabled:bg-muted disabled:text-foreground-2",
   {
@@ -28,8 +29,9 @@ export const buttonVariants = cva(
         destructive: "border-destructive bg-card text-destructive hover:bg-destructive-background",
       },
       size: {
-        default: "h-9 px-3.5",
-        sm: "h-8 px-2.5 text-[13px]",
+        default: "h-[var(--control-form)] px-3.5",
+        bar: "h-[var(--control-bar)] px-2.5 text-[13px]",
+        sm: "h-[var(--control-bar)] px-2.5 text-[13px]",
         lg: "h-11 px-6",
       },
     },

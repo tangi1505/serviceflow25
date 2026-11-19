@@ -77,7 +77,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI54** | Tabellen mit einer Optik (E58): ein Baustein `ui/table.tsx` mit Rahmen, grauer Kopfzeile, Zeilenhöhe der Person und Hervorhebung unter der Maus wie die Liste; Zeilen, die irgendwohin führen, sind als ganze Zeile anklickbar und mit Pfeiltasten, Pos1, Ende und Enter bedienbar. Gilt für Rollen und Rechte, Typen anpassen, Workflow, Änderungen, Genehmigungen und Vertretungen; die Übersichten „Rollen und Rechte“ und „Typen anpassen“ bekommen dazu den Seitenkopf der Liste (Zahl unter dem Titel, Aktion rechts) und ein Suchfeld zum Eingrenzen | 🟢 | 1 d | „Rollen und Rechte“ und „Typen anpassen“ öffnen: Rahmen, graue Kopfzeile und Zeilenhöhe wie an der Liste „Störung“, die Zahl steht unter dem Titel; „agent“ ins Suchfeld → nur passende Zeilen; mit Tab in die Tabelle, Pfeil nach unten, Enter → die Rolle öffnet sich; Zeilenhöhe in „Ansicht“ auf kompakt → auch diese Tabellen werden niedriger; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI55** | Vorschau der Darstellung (E58): ein kleines Abbild der Oberfläche (Kopfzeile mit Marke, Seitenleiste breit oder schmal, Liste in der gewählten Zeilenhöhe, hell oder dunkel, in der Akzentfarbe) rechts neben den Vorgaben im Erscheinungsbild und neben „Darstellung“ in Meine Einstellungen; es ändert sich sofort mit der Auswahl. Dabei behoben: die Farbvorschau zeigte „Gewählte Zeile“ im dunklen Modus als weißen Kasten | 🟢 | 0,75 d | Erscheinungsbild öffnen, bei den Vorgaben Modus auf „Dunkel“, Zeilenhöhe auf „Kompakt“, Leiste auf „Schmal“ → das Abbild rechts wird dunkel, die Zeilen niedriger, die Leiste schmal, ohne zu speichern; dasselbe in Meine Einstellungen › Darstellung; im dunklen Modus ist „Gewählte Zeile“ in der Farbvorschau lesbar; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI56** | Name ServiceFlow25 in der Oberfläche (E58, Hauptplan V1): ohne Logo zeigt die Marke „sf“ statt „it“; der voreingestellte Name ist „ServiceFlow25“ (Titel des Browsers, Anmeldeseite, Kopfzeile, Portal; Kern 0.16.1). Interne Namen (Verzeichnis, Programm, Datenbank, Pakete) bleiben `itsm` | 🟢 | 0,25 d | Auf einer Installation ohne eigenen Namen und ohne Logo: Anmeldeseite und Kopfzeile zeigen „sf“ und „ServiceFlow25“, der Reiter des Browsers heißt „ServiceFlow25“; mit eigenem Namen bleibt dieser; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI57** | Bedienelemente an einer Stelle (E59, §2.6): Bausteine in `web/src/ui/` für Auswahlfeld (neu `ui/select.tsx`: ein Knopf in der Optik von „Ansicht“ mit Pfeil, die Liste wie ein Menü, Tastatur nach WAI-ARIA „Combobox nur zum Auswählen“: Pfeiltasten, Pos1, Ende, Anfangsbuchstabe, Enter, Esc; ab zehn Einträgen mit Suchfeld oben), Eingabefeld und Knopf, jeweils in zwei Größen: 32 px in Seitenkopf, Leiste und Tabellenkopf, 36 px im Formular; die zwei Höhen stehen einmal als Token. Die Filterzeile wird 32 px hoch wie alles in der Leiste. Eine Lint-Regel meldet `<select>` und `<input>` (außer Kästchen und Datei) außerhalb von `web/src/ui/`, vorerst als Warnung | ⬜ | 1,5 d | Liste „Anfrage“ öffnen, in den Entwicklerwerkzeugen messen: „Alle Datensätze“, Filterzeile, „Ansicht“, „Exportieren“, „Anpassen“ und „Neu“ sind alle 32 px hoch; im Test der Bausteine ein Auswahlfeld nur mit der Tastatur bedienen (Tab, Pfeil nach unten, „H“, Enter → „Hoch“ gewählt, Esc gibt den Fokus zurück); ein `<select>` in eine Seite unter `render/` setzen → `npm run lint` warnt; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI57** | Bedienelemente an einer Stelle (E59, §2.6): Bausteine in `web/src/ui/` für Auswahlfeld (neu `ui/select.tsx`: ein Knopf in der Optik von „Ansicht“ mit Pfeil, die Liste wie ein Menü, Tastatur nach WAI-ARIA „Combobox nur zum Auswählen“: Pfeiltasten, Pos1, Ende, Anfangsbuchstabe, Enter, Esc; ab zehn Einträgen mit Suchfeld oben), Eingabefeld und Knopf, jeweils in zwei Größen: 32 px in Seitenkopf, Leiste und Tabellenkopf, 36 px im Formular; die zwei Höhen stehen einmal als Token. Die Filterzeile wird 32 px hoch wie alles in der Leiste. Eine Lint-Regel meldet `<select>` und `<input>` (außer Kästchen und Datei) außerhalb von `web/src/ui/`, vorerst als Warnung | 🟢 | 1,5 d | Liste „Anfrage“ öffnen, in den Entwicklerwerkzeugen messen: „Alle Datensätze“, Filterzeile, „Ansicht“, „Exportieren“, „Anpassen“ und „Neu“ sind alle 32 px hoch; im Test der Bausteine ein Auswahlfeld nur mit der Tastatur bedienen (Tab, Pfeil nach unten, „H“, Enter → „Hoch“ gewählt, Esc gibt den Fokus zurück); ein `<select>` in eine Seite unter `render/` setzen → `npm run lint` warnt; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI58** | Alle Seiten auf die Bausteine (E59, §2.6): die 45 nativen Auswahlfelder in 14 Dateien und die rund 40 eigenen Eingabefelder auf die Bausteine aus UI57 umstellen, auch im Formular und in den Editoren; danach wird die Lint-Regel aus UI57 ein Fehler | ⬜ | 1,5 d | `grep -rn "<select" web/src --include=*.tsx \| grep -v web/src/ui/` → keine Zeile; Meine Einstellungen, Erscheinungsbild, eine Rolle, Workflow, Dashboard bearbeiten und ein Formular mit Auswahlfeld öffnen, hell und dunkel → jedes Auswahlfeld sieht aus wie „Ansicht“, die geöffnete Liste folgt dem Modus; `docker compose run --rm tools scripts/ci.sh` grün (Lint mit der Regel als Fehler) |
 | **UI59** | Meldungen unten rechts (E60, §2.6): Baustein `ui/toast.tsx` mit einer Stelle zum Aufrufen (`toast.success`, `.info`, `.warning`, `.error` mit Titel und Text); vier Arten in Grün, Akzentfarbe, Gelb und Rot, je mit Streifen links, getöntem Grund, Symbol und Schließen; die neueste unten in der Ecke, höchstens drei zugleich; Erfolg und Info verschwinden nach 5 s, angehalten, solange Maus oder Fokus darauf liegt; Warnung und Fehler bleiben bis zum Schließen; Bildschirmleser hören Erfolg und Info als `status`, Warnung und Fehler als `alert`. Eine Meldung kann einen Knopf tragen, etwa „Rückgängig“ (E61); mit Knopf bleibt sie 10 s. Neue Token für den Grund von Erfolg und Info, im Kontrast geprüft wie die übrigen (E28) | ⬜ | 1 d | Im Test des Bausteins je eine Meldung jeder Art auslösen → sie stehen unten rechts übereinander, die neueste unten; Erfolg ist nach 5 s weg, unter der Maus bleibt er; Fehler bleibt, bis „Schließen“ gedrückt ist; hell und dunkel: Kontrast von Text und Symbol mindestens 4,5:1 (`axe`); `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI60** | Rückmeldungen als Meldung (E60, §2.6): was heute nach einer Handlung als Text unter dem Inhalt erscheint (16 Stellen mit `role="status"`, etwa Export, Meine Einstellungen, Erscheinungsbild, Dashboard, Workflow, Vorgang speichern), kommt als Meldung aus UI59. Am Platz bleiben Fehler an einem Feld, Fehler, ohne die eine Seite nicht geht, und Zustände, die stehen bleiben müssen (wer gerade mitliest, „nichts gefunden“) | ⬜ | 0,75 d | In Meine Einstellungen die Sprache ändern → unten rechts grün „Gespeichert“, die Seite verschiebt sich nicht; einen Export starten → Info unten rechts; einen Vorgang mit leerem Pflichtfeld speichern → der Fehler steht am Feld, nicht unten rechts; `docker compose run --rm tools scripts/ci.sh` grün |
@@ -573,6 +573,42 @@ nicht am Original nachgesehen.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI57 — Bedienelemente an einer Stelle, 2026-11-19
+
+- **Grundlage:** E59, §2.6; Hauptplan E203.
+- **Gebaut:**
+  - **Auswahlfeld** `web/src/ui/select.tsx`: ein Knopf in der Optik von „Ansicht“ mit Pfeil,
+    die Liste darunter wie ein Menü mit Haken an der gewählten Zeile. Tastatur nach WAI-ARIA
+    „Combobox nur zum Auswählen“: der Fokus bleibt auf dem Knopf; geschlossen öffnen Pfeile,
+    Enter und Leertaste, Pos1 und Ende öffnen auf dem ersten oder letzten Eintrag, ein Buchstabe
+    auf dem nächsten passenden; offen bewegen Pfeile, Pos1, Ende und Bild-Tasten, Buchstaben
+    springen, Enter, Leertaste und Tab übernehmen, Esc schließt ohne Änderung. Ab zehn Einträgen
+    steht oben ein Suchfeld, das den Fokus nimmt. Gesperrte Einträge werden übersprungen.
+  - Die offene Liste steht fest unter dem Feld (`web/src/ui/anchor.ts`), über ihm, wenn unten
+    weniger Platz ist. So schneidet ein Kasten mit Rollbalken sie nicht ab, etwa der Kopf einer
+    Tabelle (UI61).
+  - **Zwei Höhen als Token** in `web/src/ui/tokens.css`: `--control-bar` 32 px,
+    `--control-form` 36 px. `Select`, `Input` (neu mit `size="bar"`), `Button` (neu
+    `size="bar"`) und die Knöpfe der Leiste (`barButton`, `primaryBarButton`,
+    `iconBarButton`) nehmen sie daraus.
+  - Die **Filterzeile** ist 32 px hoch: das Feld darin ist die Höhe ohne den Rand, die Chips
+    (24 px) stehen darin (`web/src/render/FilterRow.tsx`); vorher 34 px.
+  - **Lint-Regel** in `web/eslint.config.js` (`no-restricted-syntax`): `<select>` und
+    `<input>` außerhalb von `web/src/ui/` sind eine Warnung. Ausgenommen von mir: Kästchen,
+    Optionsfelder, Datei und versteckte Felder, Tests. Stand nach UI57: 61 Warnungen.
+- **Tests:** `web/src/ui/select.test.tsx`: das Feld nur mit der Tastatur (Tab, Pfeil nach
+  unten, „h“, Enter → „Hoch“; Esc schließt ohne Änderung, der Fokus bleibt), Klick und Klick
+  daneben, Suchfeld ab zehn Einträgen, die zwei Höhen; `axe` ohne Befund.
+  `e2e/controls.spec.ts`: auf der Liste der Probe sind alle Bedienelemente der Leiste 32 px
+  hoch, die Filterzeile eingeschlossen (mindestens sechs).
+- **Belegt:** lokal tsc, ESLint, Vitest; CI auf `ki-lab` siehe unten.
+- **Nicht geprüft:** ein Bildschirmleser (NVDA, JAWS) mit dem neuen Feld; die Liste am rechten
+  Rand des Fensters, wenn sie breiter ist als der Platz.
+- **Prüfweg:** Liste „Anfrage“ öffnen, in den Entwicklerwerkzeugen „Alle Datensätze“,
+  Filterzeile, „Ansicht“, „Exportieren“, „Anpassen“ und „Neu“ messen → je 32 px;
+  `docker compose run --rm tools sh -c "cd web && pnpm lint"` → Warnungen „Select aus
+  @/ui/select statt <select> (UI57)“.
 
 ### UI54 bis UI56 — Tabellen, Vorschau der Darstellung und Name, 2026-11-18
 

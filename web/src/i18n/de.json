@@ -1362,5 +1362,9 @@
   },
   "look": {
     "label": "Vorschau: {{scheme}}, Zeilenhöhe {{density}}, Leiste {{nav}}"
+  },
+  "select": {
+    "search": "Suchen",
+    "none": "Nichts gefunden"
   }
 }

@@ -1362,5 +1362,9 @@
   },
   "look": {
     "label": "Preview: {{scheme}}, row height {{density}}, side bar {{nav}}"
+  },
+  "select": {
+    "search": "Search",
+    "none": "Nothing found"
   }
 }

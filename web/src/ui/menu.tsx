@@ -19,16 +19,16 @@ import { cn } from "@/ui/utils";
 
 // barButton is the look of a button in a page header or a bar: 32 px, card ground, a border.
 export const barButton =
-  "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-card px-2.5 text-[13px] font-medium text-foreground hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60";
+  "inline-flex h-[var(--control-bar)] items-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-card px-2.5 text-[13px] font-medium text-foreground hover:bg-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60";
 
 // iconBarButton is a button of the bar that shows only its symbol; its name is its label and
 // its tooltip.
 // primaryBarButton is the one main action of a page, such as "Neu" (32 px, like barButton).
 export const primaryBarButton =
-  "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary bg-primary px-2.5 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex h-[var(--control-bar)] items-center gap-1.5 whitespace-nowrap rounded-md border border-primary bg-primary px-2.5 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export const iconBarButton =
-  "inline-grid size-8 flex-none place-items-center rounded-md border border-input bg-card text-foreground-2 hover:bg-surface-active hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-grid size-[var(--control-bar)] flex-none place-items-center rounded-md border border-input bg-card text-foreground-2 hover:bg-surface-active hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const itemClass =
   "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm text-foreground hover:bg-surface-active focus-visible:bg-surface-active focus-visible:outline-none";

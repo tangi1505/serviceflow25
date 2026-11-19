@@ -127,6 +127,13 @@
   --accent-soft: var(--pick-accent-soft-dark, #303342);
 }
 
+/* The two heights of the controls (UI57, UI-Plan E59): 32 px in a page header, a bar and a table
+   head, 36 px in a form; select, input and button take them from here. */
+:root {
+  --control-bar: 2rem;
+  --control-form: 2.25rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
