@@ -68,7 +68,11 @@ test("favourites and the own order hold in a second browser", async ({ page, bro
     await up.click();
     await expect.poll(() => areas(page)).not.toEqual(before);
   }
-  await page.getByRole("checkbox", { name: "Probe anzeigen", exact: true }).uncheck();
+  // Click and wait: the box shows the saved state a moment after the click (the settings of the
+  // person redraw it), uncheck() checks at once and finds it still set (UI60, CI 2026-11-19).
+  const show = page.getByRole("checkbox", { name: "Probe anzeigen", exact: true });
+  await show.click();
+  await expect(show).not.toBeChecked();
   await expect.poll(() => areas(page)).not.toContain("Probe");
   await axe(page);
 

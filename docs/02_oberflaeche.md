@@ -605,6 +605,12 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   „nach oben“ und dann „anzeigen“ aus). Der Browser-Test der Navigation fand das in der CI.
   Jetzt ersetzt nur die Antwort auf die letzte laufende Änderung die Einstellungen
   (`useSave` in `web/src/app/SettingsPage.tsx`).
+- **Browser-Test der Navigation angepasst:** Das Kästchen „Probe anzeigen“ zeigt den neuen
+  Stand einen Augenblick nach dem Klick (der Spiegel der Einstellungen zeichnet die Seite neu);
+  bis UI60 zeichnete das Leeren der alten Statuszeile beim Speichern die Seite sofort neu.
+  `uncheck()` prüft sofort und fand das Kästchen noch gesetzt (CI 2026-11-19, zweimal; im
+  Mitschnitt ging die Speicherung mit dem Klick hinaus). Der Test klickt jetzt und wartet auf
+  den Stand.
 - **Nicht geprüft:** zwei schnelle Änderungen in Meine Einstellungen nacheinander: dann stehen
   zwei grüne Meldungen übereinander (höchstens drei). Ob dich das stört, siehst du beim Prüfen.
 - **Prüfweg:** in Meine Einstellungen die Sprache ändern → unten rechts grün „Gespeichert.“,
