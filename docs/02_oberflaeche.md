@@ -600,6 +600,11 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Texte werden auf der Seite gesucht, nicht mehr im Abschnitt. Die Browser-Tests suchen „Gespeichert.“ ohnehin auf der ganzen Seite und finden es
   in der Meldung.
 - **Belegt:** lokal tsc, ESLint, Vitest 172; CI auf `ki-lab` siehe unten.
+- **Dabei gefunden und behoben:** In Meine Einstellungen konnte die späte Antwort auf eine
+  frühere Änderung eine neuere, schon angezeigte zurücknehmen (zwei schnelle Klicks, etwa
+  „nach oben“ und dann „anzeigen“ aus). Der Browser-Test der Navigation fand das in der CI.
+  Jetzt ersetzt nur die Antwort auf die letzte laufende Änderung die Einstellungen
+  (`useSave` in `web/src/app/SettingsPage.tsx`).
 - **Nicht geprüft:** zwei schnelle Änderungen in Meine Einstellungen nacheinander: dann stehen
   zwei grüne Meldungen übereinander (höchstens drei). Ob dich das stört, siehst du beim Prüfen.
 - **Prüfweg:** in Meine Einstellungen die Sprache ändern → unten rechts grün „Gespeichert.“,

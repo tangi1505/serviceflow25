@@ -151,7 +151,7 @@ test("a state and a transition made by keyboard work over the API at once", asyn
   const back = page.getByRole("form", { name: "Neuer Übergang" });
   await expect(back.getByLabel("Beschriftung", { exact: true })).toBeFocused();
   await expect(back.getByRole("checkbox", { name: stateLabel })).toBeChecked();
-  await expect(back.getByLabel("Nach")).toHaveValue("new");
+  await expect(back.getByLabel("Nach")).toHaveAttribute("data-value", "new");
   await page.keyboard.type(backLabel);
   await expect(back.getByLabel("Technischer Name")).toHaveValue(backName);
   await back.getByRole("button", { name: "Übergang anlegen" }).click();

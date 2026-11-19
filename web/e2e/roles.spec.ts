@@ -59,7 +59,7 @@ test("narrowing a role in the matrix shows the person fewer records at once", as
   await admin.keyboard.press("Enter");
   await expect(admin.getByRole("heading", { name: "Rolle: Rollenprüfung (Test)" })).toBeVisible();
   const read = admin.getByRole("combobox", { name: "Probe: lesen" });
-  await expect(read).toHaveValue("all");
+  await expect(read).toHaveAttribute("data-value", "all");
   const results = await new AxeBuilder({ page: admin }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(
     results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),

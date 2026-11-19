@@ -70,6 +70,7 @@ function useSave() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const save = useMutation({
+    mutationKey: ["me", "settings", "save"],
     mutationFn: (change: SettingsChange) => api.setMySettings(change),
     onMutate: (change) => {
       // The lists of the navigation show at once (UI37), so that a second click builds on the
@@ -86,7 +87,11 @@ function useSave() {
       }
     },
     onSuccess: (saved) => {
-      queryClient.setQueryData(mySettingsQuery.queryKey, saved);
+      // Only the answer to the last change in flight replaces the settings: an earlier answer
+      // that comes late would take back a newer change shown already (two quick clicks).
+      if (queryClient.isMutating({ mutationKey: ["me", "settings", "save"] }) <= 1) {
+        queryClient.setQueryData(mySettingsQuery.queryKey, saved);
+      }
       toast.success(t("form.saved"));
     },
     onError: (err) => {
