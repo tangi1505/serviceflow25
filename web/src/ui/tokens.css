@@ -42,6 +42,9 @@
   --accent-soft: var(--pick-accent-soft-light, #e7f1f2);
   --ring: var(--accent);
   --success: #2e7d4f;
+  /* Grounds of the messages (UI59): success tinted green, info in the accent. */
+  --success-background: #f0f8f3;
+  --info-background: var(--accent-soft);
   --warning: #c77a00;
   --warning-foreground: #8a5200;
   --warning-background: #fff4de;
@@ -88,6 +91,8 @@
   --accent: var(--pick-accent-dark, #71abb5);
   --accent-soft: var(--pick-accent-soft-dark, #2a373b);
   --success: #5bc48a;
+  --success-background: #15301f;
+  --info-background: var(--accent-soft);
   --warning: #e0a030;
   --warning-foreground: #f2c36b;
   --warning-background: #3a2a10;
@@ -156,6 +161,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-background: var(--destructive-background);
   --color-success: var(--success);
+  --color-success-background: var(--success-background);
+  --color-info-background: var(--info-background);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-background: var(--warning-background);

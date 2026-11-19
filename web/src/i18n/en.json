@@ -1366,5 +1366,9 @@
   "select": {
     "search": "Search",
     "none": "Nothing found"
+  },
+  "toast": {
+    "region": "Messages",
+    "close": "Close"
   }
 }

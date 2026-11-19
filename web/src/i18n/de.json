@@ -1366,5 +1366,9 @@
   "select": {
     "search": "Suchen",
     "none": "Nichts gefunden"
+  },
+  "toast": {
+    "region": "Meldungen",
+    "close": "Schließen"
   }
 }

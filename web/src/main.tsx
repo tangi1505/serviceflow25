@@ -23,6 +23,7 @@ import { applyAccent, applyPrimary, currentAccent, currentPrimary } from "@/ui/a
 import { applyColorScheme, currentColorScheme } from "@/ui/colorScheme";
 import { applyTheme, currentTheme } from "@/ui/theme";
 import { createAppRouter, createQueryClient } from "@/app/router";
+import { Toaster } from "@/ui/toast";
 
 initI18n(navigator.language);
 applyTheme(currentTheme());
@@ -42,6 +43,8 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      {/* The messages at the bottom right, for the app and the portal (UI59). */}
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>,
 );
