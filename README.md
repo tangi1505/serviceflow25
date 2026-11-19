@@ -19,7 +19,7 @@ und selbst geprüft; abgenommen wird je Aufgabe, der Stand dazu steht im Hauptpl
 
 | Bereich | Gebaut |
 | --- | --- |
-| Plattform-Kern | Typen und Felder aus Paketen, vom Kunden erweiterbar; REST-API mit OpenAPI; Organisationsbaum und Mandanten; Rollen und Rechte; Anmeldung lokal, über OIDC und LDAP; API-Zugänge; JSON-Abfrage, Volltextsuche, Beziehungen, Dateien, Versionen; Jobs, Ereignisse, Webhooks; Bulk-API |
+| Plattform-Kern | Typen und Felder aus Paketen, vom Kunden erweiterbar; REST-API mit OpenAPI; Organisationsbaum und Mandanten; Rollen und Rechte; Benutzer anlegen mit Einladung oder Einmal-Kennwort; Anmeldung lokal, über OIDC und LDAP; API-Zugänge; JSON-Abfrage, Volltextsuche, Beziehungen, Dateien, Versionen; Jobs, Ereignisse, Webhooks; Bulk-API |
 | Workflow-Engine | Statusmodell, Feldzustände, Regeln; Kalender und SLA-Uhren mit Eskalation; Wartegründe, Aufgaben, wiederkehrende Vorgänge; Genehmigungen in Stufen; Benachrichtigungen per Mail und im Posteingang |
 | Oberfläche | Listen mit Filtern, gespeicherten Suchen, Export und Massenaktionen; Detailseite mit Zeitleiste, Bezügen und Fassungen; Editoren für Typen, Workflow und Rollen; Formular-Baukasten; Dashboards; Befehlszeile (Strg K); hell und dunkel; Erscheinungsbild der Organisation |
 | Portal | Startseite mit Kacheln und „Aktuell“, „Meine Vorgänge“, Genehmigungen, Servicekatalog, Wissen |

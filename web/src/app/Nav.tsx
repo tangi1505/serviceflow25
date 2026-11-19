@@ -204,6 +204,18 @@ export function useAreas(): Area[] {
       ),
     });
   }
+  // Users and their roles (UI66) with the same right as the roles.
+  if (me.data?.manage_rights === true) {
+    admin.push({
+      key: "users",
+      label: t("nav.users"),
+      link: (
+        <Link to="/users" className={itemClass} activeProps={{ className: activeClass }}>
+          {t("nav.users")}
+        </Link>
+      ),
+    });
+  }
   if (me.data?.customize === true) {
     admin.push({
       key: "customize",

@@ -13,6 +13,7 @@ import { vi } from "vitest";
 import { hiddenOf } from "@/portal/conditions";
 
 import type {
+  AccountInfo,
   Assignment,
   Clock,
   Comparison,
@@ -428,6 +429,9 @@ export type FakeState = {
   logos?: Record<string, string>;
   roles?: Role[];
   assignments?: Assignment[];
+  // accounts are the users (PL77, UI66); invitations the keys that still hold, by key.
+  accounts?: AccountInfo[];
+  invitations?: Record<string, string>;
   // suggest are the groups of suggestions (SD18), answered for any type when the request has
   // values or a text, with linked from relations; ratings are the sums by record id.
   suggest?: SuggestGroup[];
@@ -555,6 +559,23 @@ export function fakeApi(state: FakeState) {
         return problem(503, "busy");
       }
       return problem(401, "invalid_credentials");
+    }
+    // Without a session, like the sign-in (PL77).
+    if (url.pathname === "/api/v1/invitations:accept" && method === "POST") {
+      const body = JSON.parse(bodyText) as { key: string; password: string };
+      const username = state.invitations?.[body.key];
+      if (!username) {
+        return problem(422, "validation", {
+          errors: [{ field: "key", code: "invalid", message: "unknown" }],
+        });
+      }
+      if (body.password.length < 8) {
+        return problem(422, "validation", {
+          errors: [{ field: "password", code: "weak", message: "mindestens 8 Zeichen" }],
+        });
+      }
+      delete state.invitations![body.key];
+      return json(200, { username });
     }
     if (!state.signedIn) {
       return problem(401, "unauthorized");
@@ -888,6 +909,60 @@ export function fakeApi(state: FakeState) {
         defaults: state.settings["defaults"] ?? {},
         dashboard_periods: state.settings["dashboard_periods"] ?? {},
       });
+    }
+    // Accounts (PL77, UI66): list, create with a one-time password or an invitation, block,
+    // allow, a new one-time password, a new invitation; a key sets the password once.
+    if (url.pathname.startsWith("/api/v1/accounts")) {
+      if (!state.manageRights) {
+        return problem(403, "forbidden");
+      }
+      state.accounts ??= [];
+      if (url.pathname === "/api/v1/accounts") {
+        if (method === "POST") {
+          const body = JSON.parse(bodyText) as {
+            username: string;
+            first_name?: string;
+            last_name: string;
+            email?: string;
+            password?: string;
+          };
+          if (state.accounts.some((a) => a.username === body.username)) {
+            return problem(409, "conflict");
+          }
+          const a: AccountInfo = {
+            id: `acc-${state.accounts.length + 1}`,
+            username: body.username,
+            display_name: [body.first_name, body.last_name].filter(Boolean).join(" "),
+            origin: "local",
+            person_id: `person-${state.accounts.length + 1}`,
+            active: true,
+            password_expired: true,
+            created_at: "2026-11-19T10:00:00Z",
+            ...(body.password
+              ? {}
+              : { invited_until: "2026-11-22T10:00:00Z", invited_email: body.email }),
+          };
+          state.accounts.push(a);
+          return json(201, a);
+        }
+        return json(200, state.accounts);
+      }
+      const act = /^\/api\/v1\/accounts\/([^/:]+):(disable|enable|password|invite)$/.exec(
+        url.pathname,
+      );
+      const acc = act && state.accounts.find((a) => a.id === act[1]);
+      if (!act || !acc) {
+        return problem(404, "not_found");
+      }
+      if (act[2] === "disable" || act[2] === "enable") {
+        acc.active = act[2] === "enable";
+      } else if (act[2] === "password") {
+        acc.password_expired = true;
+        delete acc.invited_until;
+      } else {
+        acc.invited_until = "2026-11-22T10:00:00Z";
+      }
+      return new Response(null, { status: 204 });
     }
     // Roles and assignments (PL8) as the role editor uses them (UI27).
     if (

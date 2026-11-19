@@ -45,6 +45,8 @@ import { SearchPage } from "@/render/SearchPage";
 import { WorkflowPage } from "@/render/WorkflowPage";
 import { TypePage } from "@/render/TypePage";
 import { TrashPage } from "@/render/TrashPage";
+import { NewUserPage, UserPage, UsersPage } from "@/render/UsersPage";
+import { InvitePage } from "@/app/InvitePage";
 import { Confirmer } from "@/ui/confirm";
 import { Toaster } from "@/ui/toast";
 import { WorkplaceFormPage } from "@/render/FormPage";
@@ -61,6 +63,15 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
       <Confirmer />
     </>
   ),
+});
+
+// The link of an invitation (UI66, Kern-Plan PL77): set the password, without a session.
+const inviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invite",
+  validateSearch: (search: Record<string, unknown>): { key?: string } =>
+    typeof search.key === "string" ? { key: search.key } : {},
+  component: InvitePage,
 });
 
 const loginRoute = createRoute({
@@ -293,6 +304,23 @@ const settingsRoute = createRoute({
   component: MySettingsPage,
 });
 
+// Users and their roles (UI66).
+const usersRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/users",
+  component: UsersPage,
+});
+const newUserRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/users/new",
+  component: NewUserPage,
+});
+const userRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/users/$id",
+  component: UserPage,
+});
+
 // The trash over all types (UI63).
 const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -326,6 +354,7 @@ const routeTree = rootRoute.addChildren([
     portalApprovalRoute,
   ]),
   loginRoute,
+  inviteRoute,
   shellRoute.addChildren([
     indexRoute,
     formRoute,
@@ -343,6 +372,9 @@ const routeTree = rootRoute.addChildren([
     globalSettingsRoute,
     appearanceRoute,
     trashRoute,
+    usersRoute,
+    newUserRoute,
+    userRoute,
     approvalsRoute,
     dashboardRoute,
   ]),

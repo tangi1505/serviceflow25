@@ -71,6 +71,8 @@ export type Permission = components["schemas"]["Permission"];
 export type Scope = Permission["scope"];
 export type Assignment = components["schemas"]["Assignment"];
 export type AssignmentCreate = components["schemas"]["AssignmentCreate"];
+export type AccountInfo = components["schemas"]["AccountInfo"];
+export type AccountCreate = components["schemas"]["AccountCreate"];
 // FieldRights are the field rights of a permission (PL9); without, every field.
 export type FieldRights = { read?: string[]; write?: string[] };
 export type ListParams = NonNullable<
@@ -787,6 +789,32 @@ export const api = {
         params: { path: { name, typeName, action }, query: scope ? { scope } : {} },
       }),
     ),
+  // Accounts (PL77, UI66): list, create with a one-time password or an invitation, block,
+  // allow, a new one-time password, a new invitation; the key of an invitation sets the
+  // password without a session.
+  accounts: async () => unwrap(await client.GET("/api/v1/accounts")),
+  createAccount: async (body: AccountCreate) =>
+    unwrap(await client.POST("/api/v1/accounts", { body })),
+  disableAccount: async (id: string) =>
+    unwrap(await client.POST("/api/v1/accounts/{id}:disable", { params: { path: { id } } })),
+  enableAccount: async (id: string) =>
+    unwrap(await client.POST("/api/v1/accounts/{id}:enable", { params: { path: { id } } })),
+  setAccountPassword: async (id: string, password: string) =>
+    unwrap(
+      await client.POST("/api/v1/accounts/{id}:password", {
+        params: { path: { id } },
+        body: { password },
+      }),
+    ),
+  inviteAccount: async (id: string, email?: string) =>
+    unwrap(
+      await client.POST("/api/v1/accounts/{id}:invite", {
+        params: { path: { id } },
+        body: email ? { email } : {},
+      }),
+    ),
+  acceptInvitation: async (key: string, password: string) =>
+    unwrap(await client.POST("/api/v1/invitations:accept", { body: { key, password } })),
   assignments: async () => unwrap(await client.GET("/api/v1/assignments")),
   createAssignment: async (body: AssignmentCreate) =>
     unwrap(await client.POST("/api/v1/assignments", { body })),

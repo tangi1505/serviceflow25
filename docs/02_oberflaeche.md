@@ -86,7 +86,7 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI63** | Seite „Papierkorb“ (E61): unter Verwaltung, für alle, die irgendwo löschen dürfen; eine Tabelle (Baustein aus UI54) über alle Typen mit Typ, Titel, gelöscht am und gelöscht von, neueste zuerst, nur was die Person lesen darf (Kern-Plan PL74); oben Auswahlfeld „Typ“ (UI57) und Suchfeld; Zeilen auswählen, dann „Wiederherstellen“ (Recht `delete`) oder „Endgültig löschen“ (Recht `purge`, Kern-Plan PL75, mit Rückfrage, die die Zahl nennt und sagt, dass es nicht rückgängig geht). Ein Hinweis nennt die Frist, nach der der Papierkorb sich selbst leert (Kern-Plan PL76). Ergebnisse als Meldung (UI59), wiederhergestellte mit „Öffnen“ | 🟢 | 1,5 d | Zwei Störungen und ein Dashboard löschen, Verwaltung › „Papierkorb“ → drei Zeilen mit Typ, Titel, Zeit und deinem Namen; Typ „Dashboard“ wählen → eine Zeile; eine Störung wiederherstellen → grüne Meldung mit „Öffnen“, die Störung ist in der Liste; die andere endgültig löschen → Rückfrage, danach ist sie weg und `GET` auf sie gibt 404; als Person ohne `purge` fehlt „Endgültig löschen“; als Person ohne Leserecht auf das Dashboard fehlt seine Zeile; der Hinweis nennt „30 Tage“; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI64** | Rückfrage beim Löschen von Konfiguration (E61): was nicht in den Papierkorb kommt (Rolle, Zuweisung, Vertretung, Beziehung, Anpassung an einem Typ, Organisationseinheit), fragt vor dem Löschen in einem gemeinsamen Dialog `ui/confirm.tsx`: was gelöscht wird, mit Namen, und dass es nicht rückgängig geht; Knopf rot „Löschen“, Esc und „Abbrechen“ brechen ab. Wo es schon eine eigene Rückfrage gibt, nimmt sie den Baustein. Danach eine Meldung (UI59) | 🟢 | 0,5 d | Eine Rolle ohne Zuweisungen löschen → Dialog nennt die Rolle; Esc → nichts gelöscht; erneut, „Löschen“ → grüne Meldung, die Rolle fehlt; dasselbe für eine Vertretung und eine Beziehung; `grep -rn "window.confirm" web/src` → keine Zeile; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI65** | Nacharbeit nach deiner Prüfung von UI62 bis UI64 (E62): „Aktionen“ der Detailseite auf der Höhe von „← Zurück“; „Löschen“ überall rot (Knopf und Menüeintrag); vor jedem Löschen die Rückfrage aus UI64, auch wenn es in den Papierkorb geht (Detailseite, Vorschau, Dashboard, gespeicherte Suche, Mehrfachaktion); in der Rückfrage ist der rote Knopf vorgewählt, Enter bestätigt, Esc bricht ab; „Rollen und Rechte“, eine Rolle und „Typen anpassen“ nutzen die volle Breite wie die anderen Tabellen | 🟢 | 0,5 d | Eine Störung öffnen: „Aktionen“ steht rechts neben „← Störung“; Aktionen › „Löschen“ (rot) → Rückfrage nennt die Störung, Enter → in den Papierkorb mit „Rückgängig“; auf einem Dashboard „Löschen“ rot, Rückfrage, Esc → nichts gelöscht; in der Liste zwei wählen, „In den Papierkorb“ → Rückfrage mit der Zahl; „Rollen und Rechte“ und „Typen anpassen“ reichen über die ganze Breite; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI66** | Seite „Benutzer“ (E63, Kern-Plan PL77): unter Verwaltung eine Tabelle über die volle Breite mit Name, Benutzername, Herkunft (lokal, Keycloak, LDAP), aktiv, letzte Anmeldung und Rollen; Suche, Filter Herkunft und Rolle. „Neuer Benutzer“ legt Person und lokales Konto in einem Schritt an, wahlweise mit Einmal-Kennwort (beim ersten Anmelden zu ändern) oder Einladung per Mail. Die Seite eines Benutzers zeigt Konto und Person und einen Bereich „Rollen“ (Rolle und Einheit wählen, hinzufügen, entfernen mit Rückfrage); sperren und entsperren, Kennwort neu setzen oder neu einladen | ⬜ | 1,5 d | Verwaltung › „Benutzer“ → Tabelle mit „Lasttest“; „Neuer Benutzer“ mit Einmal-Kennwort → Anmeldung verlangt ein neues Kennwort; ein zweiter mit Einladung → Mail im Testpostfach, der Link setzt das Kennwort; am Benutzer Rolle „Servicedesk“ an „IT“ hinzufügen → die Rolle zeigt die Zuweisung auch; sperren → Anmeldung abgelehnt; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI66** | Seite „Benutzer“ (E63, Kern-Plan PL77): unter Verwaltung eine Tabelle über die volle Breite mit Name, Benutzername, Herkunft (lokal, Keycloak, LDAP), aktiv, letzte Anmeldung und Rollen; Suche, Filter Herkunft und Rolle. „Neuer Benutzer“ legt Person und lokales Konto in einem Schritt an, wahlweise mit Einmal-Kennwort (beim ersten Anmelden zu ändern) oder Einladung per Mail. Die Seite eines Benutzers zeigt Konto und Person und einen Bereich „Rollen“ (Rolle und Einheit wählen, hinzufügen, entfernen mit Rückfrage); sperren und entsperren, Kennwort neu setzen oder neu einladen | 🟢 | 1,5 d | Verwaltung › „Benutzer“ → Tabelle mit „Lasttest“; „Neuer Benutzer“ mit Einmal-Kennwort → Anmeldung verlangt ein neues Kennwort; ein zweiter mit Einladung → Mail im Testpostfach, der Link setzt das Kennwort; am Benutzer Rolle „Servicedesk“ an „IT“ hinzufügen → die Rolle zeigt die Zuweisung auch; sperren → Anmeldung abgelehnt; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI67** | Seite einer Rolle mit Reitern (E63): oben Name und Beschreibung, darunter „Rechte“ und „Zuweisungen (n)“. „Rechte“: die Matrix über die volle Breite, nach Paketen gruppiert und aufklappbar, anfangs nur Pakete und Typen mit Rechten, „Alle Typen zeigen“ schaltet um; Sonderrechte im selben Reiter. „Zuweisungen“: Tabelle mit Person oder Gruppe und Einheit, hinzufügen und entfernen wie heute | ⬜ | 1 d | „Rollen und Rechte“ › eine Rolle → Reiter „Rechte“ zeigt nur Pakete mit Rechten, „Alle Typen zeigen“ zeigt alle; Reiter „Zuweisungen (2)“ zeigt zwei Zeilen; ein Recht ändern und eine Zuweisung hinzufügen wie bisher; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
@@ -578,6 +578,41 @@ nicht am Original nachgesehen.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI66 — Seite „Benutzer“, 2026-11-19
+
+- **Grundlage:** E63; Kern-Plan PL77; Hauptplan E206.
+- **Gebaut** (`web/src/render/UsersPage.tsx`, `web/src/app/InvitePage.tsx`):
+  - Verwaltung › „Benutzer“ (mit dem Recht, Rollen zu verwalten): Tabelle über die volle Breite
+    mit Name, Benutzername, Herkunft (lokal oder Identitätsanbieter mit Name), Zustand (aktiv,
+    gesperrt in Rot, eingeladen bis …, Einmal-Kennwort noch nicht geändert), letzte Anmeldung
+    und Rollen mit Einheit; Suche in Name und Benutzername, Filter Herkunft und Rolle; eine Zeile
+    öffnet den Benutzer.
+  - „Neuer Benutzer“ (`/users/new`): Vorname, Nachname, Benutzername, E-Mail, Einheit der
+    Person; „Erstes Kennwort“ als Wahl zwischen „Einladung per Mail“ (Vorgabe) und
+    „Einmal-Kennwort“. Fehler des Servers stehen am Feld (Name vergeben, Kennwortregeln).
+  - Seite eines Benutzers (`/users/<id>`): „Aktionen“ auf der Höhe von „← Benutzer“ mit Sperren
+    (rot, mit Rückfrage) oder Entsperren, „Neues Einmal-Kennwort setzen“ und „Neu einladen“ (mit
+    Rückfrage) für lokale Konten; Bereich „Konto“; Bereich „Rollen“: Tabelle Rolle und Einheit,
+    entfernen nach der Rückfrage, darunter Rolle und Einheit wählen und hinzufügen. Was hier
+    zugewiesen wird, zeigt die Rolle bei ihren Zuweisungen und umgekehrt (dieselben Daten).
+  - `/invite?key=…` ohne Anmeldung: Kennwort zweimal, danach „Melden Sie sich als … an“ mit dem
+    Weg zur Anmeldung; ein verbrauchter oder abgelaufener Link sagt das.
+- **Tests:** `UsersPage.test.tsx` (Tabelle mit Herkunft, Zustand und Rollen, Filter und Suche,
+  axe; neuer Benutzer mit Einladung und mit Einmal-Kennwort, vergebener Name am Feld; Rolle
+  hinzufügen und nach Rückfrage entfernen, Sperren mit Enter; Einladung: ungleiche Kennwörter,
+  dann gesetzt, der Schlüssel ist verbraucht). Browser-Test `e2e/users.spec.ts`: über die
+  Navigation zu „Benutzer“, neuer Benutzer mit Einmal-Kennwort, Rolle am Benutzer, die Rolle
+  zeigt die Person, die erste Anmeldung führt zu „Kennwort ändern“, gesperrt → Anmeldung
+  abgelehnt, axe dreimal. Die Einladung prüft der Go-Test aus PL77 (die CI hat keinen
+  Mailserver für den Browser).
+- **Belegt:** volle CI auf ki-lab grün am 2026-11-19 (alle 19 Schritte, 34 Browser-Tests in 3,4 min; LZ2 −3 %, LZ13 5598 Zeilen/s, LZ16 +7 % gegen die Basislinie im selben Lauf, im bekannten Rauschen).
+- **Prüfweg:** Verwaltung › „Benutzer“ → Tabelle mit „Lasttest“; „Neuer Benutzer“ mit
+  Einmal-Kennwort → als dieser Benutzer anmelden, die Seite verlangt ein neues Kennwort; ein
+  zweiter mit Einladung → auf 8092 ohne Mailserver meldet die Seite das und nennt das
+  Einmal-Kennwort als Weg (mit Mailserver: Mail, Link, Kennwort setzen); am Benutzer Rolle und
+  Einheit hinzufügen → die Rolle zeigt die Zuweisung auch; „Aktionen › Sperren“ → Rückfrage,
+  Enter → Anmeldung abgelehnt.
 
 ### UI65 — Nacharbeit nach deiner Prüfung, 2026-11-19
 
