@@ -55,6 +55,9 @@ test("delete a record, a dashboard and a saved search, and take each back", asyn
     await page.goto(`/types/probe.probe/${rec}`);
     await page.getByRole("button", { name: "Aktionen" }).click();
     await page.getByRole("menuitem", { name: "Löschen" }).click();
+    // The question first (UI65); the red button is chosen, Enter goes on.
+    await expect(page.getByRole("alertdialog", { name: `„UI62 ${stamp}“ löschen?` })).toBeVisible();
+    await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/types\/probe\.probe$/);
     expect(
       (await page.request.get(`/api/v1/records/probe.probe/${rec}`, { headers })).status(),
@@ -65,6 +68,7 @@ test("delete a record, a dashboard and a saved search, and take each back", asyn
     ids.push(["core.dashboard", dash]);
     await page.goto(`/dashboards/${dash}`);
     await page.getByRole("button", { name: "Löschen" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Löschen" }).click();
     await expect(page).toHaveURL(/\/$/);
     await undo(page, `/api/v1/records/core.dashboard/${dash}`);
 
@@ -79,6 +83,7 @@ test("delete a record, a dashboard and a saved search, and take each back", asyn
     await page.goto(`/types/probe.probe?search=${search}`);
     await page.getByRole("button", { name: `Gespeicherte Suche: UI62 ${stamp}` }).click();
     await page.getByRole("menuitem", { name: "Diese Suche löschen" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Löschen" }).click();
     await expect(page).not.toHaveURL(/search=/);
     await undo(page, `/api/v1/records/core.saved_search/${search}`);
   } finally {

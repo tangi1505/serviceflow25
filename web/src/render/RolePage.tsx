@@ -170,7 +170,7 @@ export function RolesOverview() {
     matches(query, labelOf(r.label, i18n.language, r.name), r.name),
   );
   return (
-    <div className="flex max-w-5xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <PageHeader
         className="mb-0"
         title={t("roles.title")}
@@ -308,7 +308,7 @@ export function RolePage() {
   }
   const label = labelOf(role.label, i18n.language, role.name);
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t("roles.roleTitle", { name: label })}</h1>
         <LinkButton

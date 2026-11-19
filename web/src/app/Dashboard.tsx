@@ -287,7 +287,7 @@ export function DashboardScreen({ id, embedded = false }: { id: string; embedded
               </Button>
               {!embedded && dashboardType && mayDelete(dashboardType) && (
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   className="h-10"
                   onClick={() =>
                     void trash("core.dashboard", id, String(d["name"]), () => {

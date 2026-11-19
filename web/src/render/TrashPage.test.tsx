@@ -88,7 +88,7 @@ describe("TrashPage", () => {
     await user.click(screen.getByRole("button", { name: "Endgültig löschen" }));
     const ask = await screen.findByRole("alertdialog", { name: "1 Eintrag endgültig löschen?" });
     expect(ask).toHaveTextContent("nicht rückgängig");
-    expect(within(ask).getByRole("button", { name: "Abbrechen" })).toHaveFocus();
+    expect(within(ask).getByRole("button", { name: "Endgültig löschen" })).toHaveFocus();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(state.trash).toHaveLength(1);

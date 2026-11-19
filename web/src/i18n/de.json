@@ -452,7 +452,9 @@
       "not_found": "nicht gefunden",
       "invalid": "ungültig",
       "error": "Fehler"
-    }
+    },
+    "trashAsk_one": "{{count}} Datensatz in den Papierkorb legen?",
+    "trashAsk_other": "{{count}} Datensätze in den Papierkorb legen?"
   },
   "editor": {
     "toolbar": "Formatierung: {{label}}",
@@ -1393,7 +1395,9 @@
     "done": "In den Papierkorb gelegt",
     "failed": "„{{title}}“ nicht gelöscht",
     "restored": "Aus dem Papierkorb zurückgeholt",
-    "restoreFailed": "„{{title}}“ nicht zurückgeholt"
+    "restoreFailed": "„{{title}}“ nicht zurückgeholt",
+    "ask": "„{{title}}“ löschen?",
+    "askText": "Es geht in den Papierkorb und lässt sich dort wiederherstellen."
   },
   "confirm": {
     "final": "Das lässt sich nicht rückgängig machen.",

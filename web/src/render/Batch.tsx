@@ -14,7 +14,7 @@
 // UI61 (UI-Plan E59, E60): the action is one row in place of the column heads, so the table does
 // not move: "4 ausgewählt", action, field and value, "Anwenden" without a number and "Auswahl
 // aufheben". The result comes as a message: all changed green, some yellow with the refused
-// rows and their reason, none red. The trash asks no more; its message offers "Rückgängig".
+// rows and their reason, none red. The trash asks first (UI65); its message offers "Rückgängig".
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,7 @@ import {
   type TypeDefinition,
 } from "@/api/client";
 import { Button } from "@/ui/button";
+import { confirm } from "@/ui/confirm";
 import { Input } from "@/ui/input";
 import { Select, type ControlSize } from "@/ui/select";
 import { toast } from "@/ui/toast";
@@ -259,6 +260,17 @@ export function BatchRow({
   };
 
   const run = async () => {
+    // Into the trash only after the common question with the number (UI65, E62).
+    if (
+      action === "trash" &&
+      !(await confirm({
+        title: t("batch.trashAsk", { count: rows.length }),
+        text: t("trash.askText"),
+        action: t("batch.actions.trash"),
+      }))
+    ) {
+      return;
+    }
     setBusy(true);
     try {
       const out = await api.batch(typeName, {

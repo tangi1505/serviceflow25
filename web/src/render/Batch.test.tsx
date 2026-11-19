@@ -106,6 +106,11 @@ describe("Batch", () => {
 
     await choose(user, "Aktion", "In den Papierkorb");
     await user.click(within(bar).getByRole("button", { name: "Anwenden" }));
+    // The question names the number (UI65); Enter goes on.
+    expect(
+      await screen.findByRole("alertdialog", { name: "2 Datensätze in den Papierkorb legen?" }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Enter}");
     await waitFor(() => expect(state.records).toHaveLength(4));
     const done = (await screen.findByText("2 in den Papierkorb gelegt")).closest<HTMLElement>(
       '[role="status"]',

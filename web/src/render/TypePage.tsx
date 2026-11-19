@@ -206,6 +206,7 @@ function SearchMenu({
         )}
         {current && searchDef && mayDelete(searchDef) && (
           <MenuItem
+            className="text-destructive"
             onSelect={() =>
               void trash(searchType, currentId, String(current["name"]), () => open(undefined))
             }

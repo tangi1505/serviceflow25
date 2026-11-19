@@ -452,7 +452,9 @@
       "not_found": "not found",
       "invalid": "invalid",
       "error": "error"
-    }
+    },
+    "trashAsk_one": "Move {{count}} record to the trash?",
+    "trashAsk_other": "Move {{count}} records to the trash?"
   },
   "editor": {
     "toolbar": "Formatting: {{label}}",
@@ -1393,7 +1395,9 @@
     "done": "Moved to the trash",
     "failed": "“{{title}}” not deleted",
     "restored": "Taken out of the trash",
-    "restoreFailed": "“{{title}}” not taken out of the trash"
+    "restoreFailed": "“{{title}}” not taken out of the trash",
+    "ask": "Delete “{{title}}”?",
+    "askText": "It goes to the trash and can be restored there."
   },
   "confirm": {
     "final": "This cannot be undone.",

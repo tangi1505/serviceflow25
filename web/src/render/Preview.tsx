@@ -85,7 +85,10 @@ export function Preview({
             </Button>
             {mayDelete(type) && (
               // Into the trash from the preview (UI62); the preview closes.
-              <Button variant="outline" onClick={() => void trash(typeName, id, title, onClose)}>
+              <Button
+                variant="destructive"
+                onClick={() => void trash(typeName, id, title, onClose)}
+              >
                 {t("trash.delete")}
               </Button>
             )}

@@ -19,6 +19,7 @@ import type { Clock, TimelineItem } from "@/api/client";
 import { createAppRouter, createQueryClient, memoryHistory } from "@/app/router";
 import { initI18n } from "@/i18n";
 import { fakeApi, me, newState, type FakeState } from "@/test/fakeApi";
+import { answer } from "@/test/confirm";
 import { expectAccessible } from "@/test/setup";
 
 import { blocks } from "./Timeline";
@@ -232,6 +233,13 @@ describe("RecordPage", () => {
     const { router } = renderAt(`/types/probe.probe/${id}`);
     await user.click(await screen.findByRole("button", { name: "Aktionen" }));
     await user.click(screen.getByRole("menuitem", { name: "Löschen" }));
+    // The question first (UI65), Esc stops, then "Löschen".
+    await screen.findByRole("alertdialog", { name: `„${String(rec["title"])}“ löschen?` });
+    await user.keyboard("{Escape}");
+    expect(state.trash ?? []).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Aktionen" }));
+    await user.click(screen.getByRole("menuitem", { name: "Löschen" }));
+    await answer(user, "Löschen");
     await waitFor(() => expect(router.state.location.pathname).toBe("/types/probe.probe"));
     expect(state.trash?.map((r) => r["id"])).toEqual([id]);
     const note = await screen.findByText("In den Papierkorb gelegt");

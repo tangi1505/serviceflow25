@@ -8,7 +8,8 @@
 // The one question before something that cannot be undone (UI63, UI64, UI-Plan E61): what goes,
 // by name, and that it cannot be undone; a red button to go on, "Abbrechen" and Esc to stop.
 // confirm() asks and resolves to the answer; <Confirmer/> at the root of the app shows it. The
-// focus starts on "Abbrechen", stays inside the dialog and goes back where it was.
+// focus starts on the red button, so Enter goes on (UI65, E62); Esc stops. It stays inside the
+// dialog and goes back where it was.
 
 import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -72,10 +73,10 @@ function Dialog({ q }: { q: Open }) {
   const { t } = useTranslation();
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
-  const cancel = useRef<HTMLButtonElement>(null);
+  const go = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
-    cancel.current?.focus();
+    go.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -121,10 +122,10 @@ function Dialog({ q }: { q: Open }) {
           {q.text ?? t("confirm.final")}
         </div>
         <div className="mt-2 flex justify-end gap-2">
-          <Button ref={cancel} variant="outline" onClick={() => q.answer(false)}>
+          <Button variant="outline" onClick={() => q.answer(false)}>
             {t("confirm.cancel")}
           </Button>
-          <Button variant="destructive" onClick={() => q.answer(true)}>
+          <Button ref={go} variant="destructive" onClick={() => q.answer(true)}>
             {q.action ?? t("confirm.delete")}
           </Button>
         </div>

@@ -5,8 +5,9 @@
 // the GNU Affero General Public License as published by the Free Software Foundation, version 3.
 // It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 
-// Deleting one record (UI62, UI-Plan E61): it goes to the trash without a question; the message
-// at the bottom right says so and offers "Rückgängig", which takes it out again. A restore that
+// Deleting one record (UI62, UI-Plan E61, E62): after the common question (UI65) it goes to the
+// trash; the message at the bottom right says so and offers "Rückgängig", which takes it out
+// again. A restore that
 // meets a unique value taken in the meantime (Kern-Plan E9) gives a red message with the reason
 // of the server.
 
@@ -14,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { api, type TypeDefinition } from "@/api/client";
+import { confirm } from "@/ui/confirm";
 import { toast } from "@/ui/toast";
 
 // mayDelete tells whether the session may move records of the type to the trash somewhere
@@ -31,6 +33,14 @@ export function useTrash() {
   const reload = (typeName: string) =>
     void queryClient.invalidateQueries({ queryKey: ["records", typeName] });
   return async (typeName: string, id: string, title: string, after?: () => void) => {
+    const yes = await confirm({
+      title: t("trash.ask", { title }),
+      text: t("trash.askText"),
+      action: t("trash.delete"),
+    });
+    if (!yes) {
+      return false;
+    }
     try {
       await api.trash(typeName, id);
     } catch (err) {

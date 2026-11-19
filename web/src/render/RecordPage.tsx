@@ -10,7 +10,7 @@
 // them; a sidebar with roles, SLA clocks and related records. Saving stays on the page.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 
@@ -56,20 +56,23 @@ function Head({
   type,
   typeName,
   title,
+  actions,
 }: {
   type: TypeDefinition;
   typeName: string;
   title: string;
+  actions?: ReactNode;
 }) {
   const { i18n } = useTranslation();
   // Back to the list as a button (UI47, UI-Plan E56); the title stands in the head below.
   return (
-    <div className="mb-4" data-title={title}>
+    <div className="mb-4 flex items-start justify-between gap-2" data-title={title}>
       <BackButton
         to="/types/$typeName"
         params={{ typeName }}
         label={labelOf(type.label, i18n.language, typeName)}
       />
+      {actions}
     </div>
   );
 }
@@ -181,27 +184,32 @@ export function RecordPage() {
   const timeline = type.traits?.includes("timeline") || type.traits?.includes("history");
   return (
     <>
-      <Head type={type} typeName={typeName} title={title} />
+      <Head
+        type={type}
+        typeName={typeName}
+        title={title}
+        actions={
+          mayDelete(type) && (
+            // The actions of the record at the height of the way back (UI62, UI65).
+            <Menu label={t("trash.actions")} trigger={t("trash.actions")} width="w-48">
+              <MenuItem
+                className="text-destructive"
+                icon={<Trash2 aria-hidden="true" className="size-4" />}
+                onSelect={() => void trash(typeName, id, title, back)}
+              >
+                {t("trash.delete")}
+              </MenuItem>
+            </Menu>
+          )
+        }
+      />
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="mb-1 text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">{t("form.version", { version })}</p>
           <PresenceLine others={others} />
         </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <Transitions type={type} record={record.data} />
-          {mayDelete(type) && (
-            // The actions of the record beside its transitions (UI62): for now "Löschen".
-            <Menu label={t("trash.actions")} trigger={t("trash.actions")} width="w-48">
-              <MenuItem
-                icon={<Trash2 aria-hidden="true" className="size-4 text-foreground-2" />}
-                onSelect={() => void trash(typeName, id, title, back)}
-              >
-                {t("trash.delete")}
-              </MenuItem>
-            </Menu>
-          )}
-        </div>
+        <Transitions type={type} record={record.data} />
       </header>
       {staleBy && (
         <Alert className="mb-4 flex flex-wrap items-center gap-3">

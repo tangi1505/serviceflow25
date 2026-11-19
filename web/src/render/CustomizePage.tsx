@@ -237,7 +237,7 @@ export function CustomizePage() {
   }
   const typeLabel = labelOf(type.label, i18n.language, typeName);
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t("customize.title", { type: typeLabel })}</h1>
         <div className="flex flex-wrap gap-2">
@@ -1006,7 +1006,7 @@ export function CustomizeOverview() {
     return matches(query, labelOf(c.label, i18n.language, name), name);
   });
   return (
-    <div className="flex max-w-4xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <PageHeader
         className="mb-0"
         title={t("customize.overview")}
