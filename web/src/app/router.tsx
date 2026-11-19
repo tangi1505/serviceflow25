@@ -44,6 +44,7 @@ import { RolePage, RolesOverview } from "@/render/RolePage";
 import { SearchPage } from "@/render/SearchPage";
 import { WorkflowPage } from "@/render/WorkflowPage";
 import { TypePage } from "@/render/TypePage";
+import { TrashPage } from "@/render/TrashPage";
 import { Confirmer } from "@/ui/confirm";
 import { Toaster } from "@/ui/toast";
 import { WorkplaceFormPage } from "@/render/FormPage";
@@ -292,6 +293,13 @@ const settingsRoute = createRoute({
   component: MySettingsPage,
 });
 
+// The trash over all types (UI63).
+const trashRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/trash",
+  component: TrashPage,
+});
+
 // The appearance of the organisation (UI39).
 const appearanceRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -334,6 +342,7 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     globalSettingsRoute,
     appearanceRoute,
+    trashRoute,
     approvalsRoute,
     dashboardRoute,
   ]),

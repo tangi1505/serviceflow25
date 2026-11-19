@@ -48,6 +48,7 @@ import { packageIcon } from "@/app/icons";
 import { inEditor } from "@/app/shortcuts";
 import { usePersist } from "@/app/Switches";
 import { usePopover } from "@/ui/popover";
+import { mayTrash } from "@/render/TrashPage";
 
 // An entry of an area: a link with its route; id is the area and the key, as kept among the
 // favourites (UI37).
@@ -221,6 +222,18 @@ export function useAreas(): Area[] {
       link: (
         <Link to="/appearance" className={itemClass} activeProps={{ className: activeClass }}>
           {t("nav.appearance")}
+        </Link>
+      ),
+    });
+  }
+  // The trash (UI63) for everyone who may delete somewhere.
+  if (mayTrash(types.data)) {
+    admin.push({
+      key: "trash",
+      label: t("nav.trash"),
+      link: (
+        <Link to="/trash" className={itemClass} activeProps={{ className: activeClass }}>
+          {t("nav.trash")}
         </Link>
       ),
     });

@@ -82,9 +82,9 @@ die Kernfähigkeit, für die die Aufgabe die Verantwortung hat.
 | **UI59** | Meldungen unten rechts (E60, §2.6): Baustein `ui/toast.tsx` mit einer Stelle zum Aufrufen (`toast.success`, `.info`, `.warning`, `.error` mit Titel und Text); vier Arten in Grün, Akzentfarbe, Gelb und Rot, je mit Streifen links, getöntem Grund, Symbol und Schließen; die neueste unten in der Ecke, höchstens drei zugleich; Erfolg und Info verschwinden nach 5 s, angehalten, solange Maus oder Fokus darauf liegt; Warnung und Fehler bleiben bis zum Schließen; Bildschirmleser hören Erfolg und Info als `status`, Warnung und Fehler als `alert`. Eine Meldung kann einen Knopf tragen, etwa „Rückgängig“ (E61); mit Knopf bleibt sie 10 s. Neue Token für den Grund von Erfolg und Info, im Kontrast geprüft wie die übrigen (E28) | ✅ | 1 d | Im Test des Bausteins je eine Meldung jeder Art auslösen → sie stehen unten rechts übereinander, die neueste unten; Erfolg ist nach 5 s weg, unter der Maus bleibt er; Fehler bleibt, bis „Schließen“ gedrückt ist; hell und dunkel: Kontrast von Text und Symbol mindestens 4,5:1 (`axe`); `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI60** | Rückmeldungen als Meldung (E60, §2.6): was heute nach einer Handlung als Text unter dem Inhalt erscheint (16 Stellen mit `role="status"`, etwa Export, Meine Einstellungen, Erscheinungsbild, Dashboard, Workflow, Vorgang speichern), kommt als Meldung aus UI59. Am Platz bleiben Fehler an einem Feld, Fehler, ohne die eine Seite nicht geht, und Zustände, die stehen bleiben müssen (wer gerade mitliest, „nichts gefunden“) | ✅ | 0,75 d | In Meine Einstellungen die Sprache ändern → unten rechts grün „Gespeichert“, die Seite verschiebt sich nicht; einen Export starten → Info unten rechts; einen Vorgang mit leerem Pflichtfeld speichern → der Fehler steht am Feld, nicht unten rechts; `docker compose run --rm tools scripts/ci.sh` grün |
 | **UI61** | Mehrfachaktion in einer Zeile (E59, E60, §2.6): solange Zeilen ausgewählt sind, steht statt der Spaltenköpfe eine Zeile „4 ausgewählt“, Aktion, Feld und Wert als Auswahlfelder (UI57), der Knopf „Anwenden“ ohne Zahl und rechts „Auswahl aufheben“; das Kästchen „alle“ bleibt an seinem Platz. Der Kasten über der Tabelle entfällt. Das Ergebnis kommt als Meldung (UI59): alle geändert grün („4 geändert“), teils gelb mit den abgelehnten und ihrem Grund, keiner rot. „In den Papierkorb“ fragt nicht mehr nach, die Meldung bietet „Rückgängig“ für alle (E61) | ✅ | 0,75 d | In der Liste „Anfrage“ vier Zeilen auswählen → der Tabellenkopf wird zur Zeile mit „4 ausgewählt“, die Zeilen der Tabelle bleiben, wo sie waren; „Feld setzen“, „Auswirkung“, „Hoch“, „Anwenden“ → unten rechts grün „4 geändert“, nichts verschiebt sich; die Zahl steht nur einmal; mit einer Zeile ohne Recht → gelbe Meldung nennt sie; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI62** | Löschen am Datensatz (E61): „Löschen“ im Menü der Aktionen auf der Detailseite, in der Vorschau der Liste, auf der Seite eines Dashboards und an einer gespeicherten Suche im Menü der Suchen, jeweils nur mit dem Recht `delete`. Gelöscht wird ohne Rückfrage in den Papierkorb; danach kommt eine Meldung (UI59) „In den Papierkorb gelegt“ mit dem Knopf „Rückgängig“, die Detailseite führt zurück zur Liste. Fällt „Rückgängig“ auf einen Konflikt (eindeutiger Wert inzwischen vergeben, Kern-Plan E9), nennt eine rote Meldung das Feld | ⬜ | 1 d | Eine Störung öffnen, Aktionen › „Löschen“ → zurück in der Liste, die Störung fehlt, unten rechts „In den Papierkorb gelegt“ mit „Rückgängig“; „Rückgängig“ → die Störung ist wieder in der Liste; ein Dashboard und eine gespeicherte Suche ebenso löschen und zurückholen; ohne Recht `delete` gibt es den Eintrag nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI63** | Seite „Papierkorb“ (E61): unter Verwaltung, für alle, die irgendwo löschen dürfen; eine Tabelle (Baustein aus UI54) über alle Typen mit Typ, Titel, gelöscht am und gelöscht von, neueste zuerst, nur was die Person lesen darf (Kern-Plan PL74); oben Auswahlfeld „Typ“ (UI57) und Suchfeld; Zeilen auswählen, dann „Wiederherstellen“ (Recht `delete`) oder „Endgültig löschen“ (Recht `purge`, Kern-Plan PL75, mit Rückfrage, die die Zahl nennt und sagt, dass es nicht rückgängig geht). Ein Hinweis nennt die Frist, nach der der Papierkorb sich selbst leert (Kern-Plan PL76). Ergebnisse als Meldung (UI59), wiederhergestellte mit „Öffnen“ | ⬜ | 1,5 d | Zwei Störungen und ein Dashboard löschen, Verwaltung › „Papierkorb“ → drei Zeilen mit Typ, Titel, Zeit und deinem Namen; Typ „Dashboard“ wählen → eine Zeile; eine Störung wiederherstellen → grüne Meldung mit „Öffnen“, die Störung ist in der Liste; die andere endgültig löschen → Rückfrage, danach ist sie weg und `GET` auf sie gibt 404; als Person ohne `purge` fehlt „Endgültig löschen“; als Person ohne Leserecht auf das Dashboard fehlt seine Zeile; der Hinweis nennt „30 Tage“; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
-| **UI64** | Rückfrage beim Löschen von Konfiguration (E61): was nicht in den Papierkorb kommt (Rolle, Zuweisung, Vertretung, Beziehung, Anpassung an einem Typ, Organisationseinheit), fragt vor dem Löschen in einem gemeinsamen Dialog `ui/confirm.tsx`: was gelöscht wird, mit Namen, und dass es nicht rückgängig geht; Knopf rot „Löschen“, Esc und „Abbrechen“ brechen ab. Wo es schon eine eigene Rückfrage gibt, nimmt sie den Baustein. Danach eine Meldung (UI59) | ⬜ | 0,5 d | Eine Rolle ohne Zuweisungen löschen → Dialog nennt die Rolle; Esc → nichts gelöscht; erneut, „Löschen“ → grüne Meldung, die Rolle fehlt; dasselbe für eine Vertretung und eine Beziehung; `grep -rn "window.confirm" web/src` → keine Zeile; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI62** | Löschen am Datensatz (E61): „Löschen“ im Menü der Aktionen auf der Detailseite, in der Vorschau der Liste, auf der Seite eines Dashboards und an einer gespeicherten Suche im Menü der Suchen, jeweils nur mit dem Recht `delete`. Gelöscht wird ohne Rückfrage in den Papierkorb; danach kommt eine Meldung (UI59) „In den Papierkorb gelegt“ mit dem Knopf „Rückgängig“, die Detailseite führt zurück zur Liste. Fällt „Rückgängig“ auf einen Konflikt (eindeutiger Wert inzwischen vergeben, Kern-Plan E9), nennt eine rote Meldung das Feld | 🟢 | 1 d | Eine Störung öffnen, Aktionen › „Löschen“ → zurück in der Liste, die Störung fehlt, unten rechts „In den Papierkorb gelegt“ mit „Rückgängig“; „Rückgängig“ → die Störung ist wieder in der Liste; ein Dashboard und eine gespeicherte Suche ebenso löschen und zurückholen; ohne Recht `delete` gibt es den Eintrag nicht; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI63** | Seite „Papierkorb“ (E61): unter Verwaltung, für alle, die irgendwo löschen dürfen; eine Tabelle (Baustein aus UI54) über alle Typen mit Typ, Titel, gelöscht am und gelöscht von, neueste zuerst, nur was die Person lesen darf (Kern-Plan PL74); oben Auswahlfeld „Typ“ (UI57) und Suchfeld; Zeilen auswählen, dann „Wiederherstellen“ (Recht `delete`) oder „Endgültig löschen“ (Recht `purge`, Kern-Plan PL75, mit Rückfrage, die die Zahl nennt und sagt, dass es nicht rückgängig geht). Ein Hinweis nennt die Frist, nach der der Papierkorb sich selbst leert (Kern-Plan PL76). Ergebnisse als Meldung (UI59), wiederhergestellte mit „Öffnen“ | 🟢 | 1,5 d | Zwei Störungen und ein Dashboard löschen, Verwaltung › „Papierkorb“ → drei Zeilen mit Typ, Titel, Zeit und deinem Namen; Typ „Dashboard“ wählen → eine Zeile; eine Störung wiederherstellen → grüne Meldung mit „Öffnen“, die Störung ist in der Liste; die andere endgültig löschen → Rückfrage, danach ist sie weg und `GET` auf sie gibt 404; als Person ohne `purge` fehlt „Endgültig löschen“; als Person ohne Leserecht auf das Dashboard fehlt seine Zeile; der Hinweis nennt „30 Tage“; `axe` ohne Befund; `docker compose run --rm tools scripts/ci.sh` grün |
+| **UI64** | Rückfrage beim Löschen von Konfiguration (E61): was nicht in den Papierkorb kommt (Rolle, Zuweisung, Vertretung, Beziehung, Anpassung an einem Typ, Organisationseinheit), fragt vor dem Löschen in einem gemeinsamen Dialog `ui/confirm.tsx`: was gelöscht wird, mit Namen, und dass es nicht rückgängig geht; Knopf rot „Löschen“, Esc und „Abbrechen“ brechen ab. Wo es schon eine eigene Rückfrage gibt, nimmt sie den Baustein. Danach eine Meldung (UI59) | 🟢 | 0,5 d | Eine Rolle ohne Zuweisungen löschen → Dialog nennt die Rolle; Esc → nichts gelöscht; erneut, „Löschen“ → grüne Meldung, die Rolle fehlt; dasselbe für eine Vertretung und eine Beziehung; `grep -rn "window.confirm" web/src` → keine Zeile; `docker compose run --rm tools scripts/ci.sh` grün |
 
 ### C — Meilenstein 2
 
@@ -573,6 +573,62 @@ nicht am Original nachgesehen.
 Die Fragen an die Fachseite stehen im Hauptplan.
 
 ## 4. Umsetzungsstand
+
+### UI63 — Seite „Papierkorb“, 2026-11-19
+
+- **Grundlage:** E61; Kern-Plan PL74 bis PL76; Hauptplan E204.
+- **Gebaut:** `web/src/render/TrashPage.tsx`, Route `/trash`, Eintrag „Papierkorb“ unter
+  Verwaltung für alle, deren Typbeschreibung irgendwo `delete` nennt. Eine Tabelle (UI54) mit
+  Typ, Titel, gelöscht am, gelöscht von, neueste zuerst, „Weitere anzeigen“ über den Cursor;
+  darüber Auswahlfeld „Typ“ (UI57) und „Titel enthält“. Kästchen je Zeile und „Alle
+  auswählen“; dann „Wiederherstellen“ (nur Zeilen, deren Typ `delete` erlaubt) und
+  „Endgültig löschen“ (nur mit `purge`; ohne `purge` an keinem Typ fehlt der Knopf) nach der
+  Rückfrage aus UI64 mit der Zahl. Ergebnisse als Meldung (UI59); ein einzelner
+  wiederhergestellter Eintrag mit „Öffnen“. Die Zeile unter dem Titel nennt die Frist aus
+  `trash.keep_days` an der Wurzel (sonst die Vorgabe der Erklärung, sonst 30); bei 0 „bleibt,
+  bis es jemand endgültig löscht“. Einheiten mit eigener Frist nennt die Seite nicht.
+- **Tests:** `TrashPage.test.tsx` (Zeilen mit Typ und Person, neueste zuerst, axe;
+  Wiederherstellen mit „Öffnen“, das zum Datensatz führt; Rückfrage nennt „1 Eintrag“, Fokus
+  auf „Abbrechen“, Esc bricht ab, danach endgültig gelöscht und leer; ohne `purge` kein Knopf,
+  Frist 0; Suche im Titel). Browser-Test `e2e/trash.spec.ts` nach dem Prüfweg mit axe, auch
+  bei offener Rückfrage.
+- **Belegt:** lokal tsc, ESLint, Vitest 177 (51 Dateien). CI auf `ki-lab` im dritten Lauf grün (33 Browser-Tests, LZ2 −1 %, LZ16 +6 %, Grundlast 2 %). Lauf 1 fand den Browser-Test des Typ-Editors, der die neue Rückfrage nicht beantwortete (ergänzt), und einen 500 der Seite „Papierkorb“; Lauf 2 zeigte mit der neuen Ausgabe des Server-Protokolls (`scripts/ci.sh`) den Grund: der Typ `metatest.alpha` eines Go-Tests hat keine Tabelle, die Abfrage über alle Typen scheiterte daran. **Befund, behoben:** Papierkorb und der Job aus PL76 überspringen Typen ohne Tabelle (`records.withTables`); das kann auch nach einer abgebrochenen Paketinstallation vorkommen.
+
+### UI64 — Rückfrage beim Löschen von Konfiguration, 2026-11-19
+
+- **Grundlage:** E61; Hauptplan E204.
+- **Gebaut:** `web/src/ui/confirm.tsx`: `confirm({title, text, action})` gibt ein Promise mit
+  der Antwort, `<Confirmer/>` im Wurzelelement des Routers zeigt den Dialog
+  (`role="alertdialog"`): Titel mit dem Namen, Text „Das lässt sich nicht rückgängig machen.“,
+  roter Knopf, „Abbrechen“. Der Fokus beginnt auf „Abbrechen“, bleibt im Dialog und geht danach
+  zurück; Esc und ein Klick daneben brechen ab.
+- **Eingesetzt:** Rolle entfernen (die eigene Zeile „Ja, entfernen“ ist dafür weg), Zuweisung
+  entfernen, Vertretung entfernen (mit dem Namen der Vertretung), Beziehung lösen (die eigene
+  Rückfrage in der Zeile ist weg), Bezug aus Vorschlägen lösen, Anpassung am Typ oder Workflow
+  zurücknehmen; der Wechsel der Einheit mit ungespeicherten Einstellungen fragt jetzt im
+  Dialog statt mit `window.confirm`. Organisationseinheiten löscht die Oberfläche bisher
+  nicht; dort gibt es nichts einzusetzen.
+- **Tests:** `src/test/confirm.ts` (`answer`) beantwortet den Dialog; angepasst sind die Tests
+  von Rollen, Beziehungen, Vertretungen, Typ- und Workflow-Editor. `grep -rn "window.confirm"
+  web/src` findet nichts.
+- **Belegt:** wie UI63.
+
+### UI62 — Löschen am Datensatz, 2026-11-19
+
+- **Grundlage:** E61; Kern-Plan E79 (`may`); Hauptplan E204.
+- **Gebaut:** `web/src/render/trash.tsx` (`useTrash`, `mayDelete`): in den Papierkorb ohne
+  Rückfrage, danach grüne Meldung „In den Papierkorb gelegt“ mit dem Titel und „Rückgängig“;
+  „Rückgängig“ holt zurück („Aus dem Papierkorb zurückgeholt“), ein Konflikt (eindeutiger Wert
+  inzwischen vergeben) gibt eine rote Meldung mit dem Grund des Servers. Eingebaut:
+  - Detailseite: Menü „Aktionen“ neben den Übergängen mit „Löschen“, danach zurück zur Liste;
+  - Vorschau der Liste: Knopf „Löschen“ neben „Öffnen“, die Vorschau schließt;
+  - Seite eines Dashboards: „Löschen“ neben „Bearbeiten“, danach zur Startseite;
+  - Menü der gespeicherten Suchen: „Diese Suche löschen“, danach „Alle“.
+  Alles nur, wenn die Typbeschreibung `delete` nennt; der Server prüft den Datensatz.
+- **Tests:** `RecordPage.test.tsx` (Löschen, zurück zur Liste, „Rückgängig“; ohne `delete`
+  kein Menü). Browser-Test `e2e/trash.spec.ts`: Datensatz, Dashboard und gespeicherte Suche
+  löschen und zurückholen, axe bei offener Meldung.
+- **Belegt:** wie UI63.
 
 ### UI60 — Rückmeldungen als Meldung, 2026-11-19
 

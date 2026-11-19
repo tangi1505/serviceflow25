@@ -703,6 +703,10 @@ web/src/
   kommt als Meldung unten rechts (`ui/toast.tsx`, eine Stelle zum Aufrufen, im Wurzelelement
   des Routers); Zustände und Fehler an Feldern bleiben in der Seite. Die Mehrfachaktion einer
   Liste steht an der Stelle der Spaltenköpfe.
+- **Löschen und Papierkorb** (UI62 bis UI64, UI-Plan E61): Datensätze gehen ohne Rückfrage in
+  den Papierkorb, die Meldung bietet „Rückgängig“ (`render/trash.tsx`); die Seite `/trash`
+  liest `GET /api/v1/trash`. Was nicht in den Papierkorb kommt (Rollen, Zuweisungen,
+  Vertretungen, Beziehungen, Anpassungen), fragt vorher im einen Dialog `ui/confirm.tsx`.
 - **Lange Listen** laufen mit TanStack Table und Virtual. Die Daten kommen seitenweise per
   Schlüssel, und Spalten werden nur gerendert, wenn sie sichtbar sind.
 - **Liste, Filter und Tastatur** (UI47 bis UI53, UI-Plan E54 bis E57): Seitenkopf mit
