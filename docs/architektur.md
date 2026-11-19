@@ -691,6 +691,13 @@ web/src/
 - **Detailseite** (UI3, Hauptplan E122): Kopf mit Status und Übergängen, Felder mit der
   Zeitleiste darunter, Seitenleiste mit Rollen, SLA-Uhren und verweisenden Datensätzen samt
   Summen; alles aus der Definition (Merkmale, Rollen, Summenfelder).
+- **Bedienelemente und Meldungen** (UI57 bis UI61, UI-Plan E59, E60): jedes Bedienelement gibt
+  es einmal in `ui/` (Auswahlfeld `ui/select.tsx`, Eingabefeld, Knopf) in zwei Höhen aus den
+  Token (32 px in Leiste und Tabellenkopf, 36 px im Formular); eine Lint-Regel verbietet
+  `<select>` und eigene `<input>` außerhalb von `ui/`. Was eine Handlung als Ergebnis meldet,
+  kommt als Meldung unten rechts (`ui/toast.tsx`, eine Stelle zum Aufrufen, im Wurzelelement
+  des Routers); Zustände und Fehler an Feldern bleiben in der Seite. Die Mehrfachaktion einer
+  Liste steht an der Stelle der Spaltenköpfe.
 - **Lange Listen** laufen mit TanStack Table und Virtual. Die Daten kommen seitenweise per
   Schlüssel, und Spalten werden nur gerendert, wenn sie sichtbar sind.
 - **Liste, Filter und Tastatur** (UI47 bis UI53, UI-Plan E54 bis E57): Seitenkopf mit

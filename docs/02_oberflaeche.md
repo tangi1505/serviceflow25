@@ -599,7 +599,8 @@ Die Fragen an die Fachseite stehen im Hauptplan.
 - **Tests:** 3 Testdateien angepasst (Meine Einstellungen, Vorschläge, Mehrfachaktion); die
   Texte werden auf der Seite gesucht, nicht mehr im Abschnitt. Die Browser-Tests suchen „Gespeichert.“ ohnehin auf der ganzen Seite und finden es
   in der Meldung.
-- **Belegt:** lokal tsc, ESLint, Vitest 172; CI auf `ki-lab` siehe unten.
+- **Belegt:** lokal tsc, ESLint, Vitest 172; CI auf `ki-lab` am 2026-11-19 zusammen mit
+  UI58: zwei rote Läufe (Browser-Tests, siehe die beiden Punkte oben), der dritte grün.
 - **Dabei gefunden und behoben:** In Meine Einstellungen konnte die späte Antwort auf eine
   frühere Änderung eine neuere, schon angezeigte zurücknehmen (zwei schnelle Klicks, etwa
   „nach oben“ und dann „anzeigen“ aus). Der Browser-Test der Navigation fand das in der CI.
@@ -645,7 +646,8 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Mensch: öffnen, Eintrag anklicken. 10 Testdateien und 6 Browser-Tests (7 Stellen) sind
   darauf umgestellt; wo ein Test den Wert eines Felds prüfte, prüft er `data-value`. Der Browser-Test
   des Formulars wählt weiter nur mit der Tastatur (Buchstaben, dann Enter).
-- **Belegt:** lokal tsc, ESLint ohne Befund, Vitest 172; CI auf `ki-lab` siehe unten.
+- **Belegt:** lokal tsc, ESLint ohne Befund, Vitest 172; CI auf `ki-lab` zusammen mit UI60,
+  siehe dort.
 - **Nicht geprüft:** jede Seite hell und dunkel im Browser angesehen; nur die in den
   Browser-Tests (mit `axe`).
 - **Prüfweg:** `grep -rn "<select" web/src --include=*.tsx | grep -v web/src/ui/` → keine
@@ -683,6 +685,10 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   „Auswahl aufheben“; Übergang für einen von zwei → gelb; Papierkorb ohne Rückfrage,
   „Rückgängig“ holt beide zurück. Das Testgerüst (`fakeApi`) kennt dafür den Papierkorb und
   `:restore`.
+- **Belegt:** CI auf `ki-lab` am 2026-11-19 zusammen mit UI59 (UI61 baut darauf auf): der
+  erste Lauf rot nur in der Lastmessung (LZ16 +12 % bei unverändertem Server; LZ16 streute
+  schon zweimal so), der zweite grün; im Browser-Test setzt die Mehrfachaktion 500 Datensätze
+  in einem Aufruf.
 - **Nicht geprüft:** die Zeile mit einer Rolle und mehreren gewählten Personen in schmalen
   Fenstern; „Rückgängig“ gegen den echten Server (der Endpunkt ist alt und getestet, der
   Knopf nur gegen das Testgerüst).
@@ -719,6 +725,7 @@ Die Fragen an die Fachseite stehen im Hauptplan.
 - **Tests:** `web/src/ui/toast.test.tsx`: die Reihenfolge, höchstens drei, Erfolg nach 5 s weg
   und unter der Maus gehalten, Fehler bis zum Schließen, Knopf 10 s und „Rückgängig“ ruft seine
   Handlung; `axe` ohne Befund.
+- **Belegt:** CI auf `ki-lab` am 2026-11-19 zusammen mit UI61, siehe dort.
 - **Nicht geprüft:** der Kontrast im Browser mit `axe` (kommt mit UI60, wo die Meldungen in
   den Seiten erscheinen); ein Bildschirmleser.
 - **Prüfweg:** kommt mit UI60 (Sprache in Meine Einstellungen ändern → grüne Meldung unten
@@ -752,7 +759,8 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   daneben, Suchfeld ab zehn Einträgen, die zwei Höhen; `axe` ohne Befund.
   `e2e/controls.spec.ts`: auf der Liste der Probe sind alle Bedienelemente der Leiste 32 px
   hoch, die Filterzeile eingeschlossen (mindestens sechs).
-- **Belegt:** lokal tsc, ESLint, Vitest; CI auf `ki-lab` siehe unten.
+- **Belegt:** lokal tsc, ESLint, Vitest; CI auf `ki-lab` grün am 2026-11-19 (Playwright 31
+  Fälle, darunter der neue Test der Höhen).
 - **Nicht geprüft:** ein Bildschirmleser (NVDA, JAWS) mit dem neuen Feld; die Liste am rechten
   Rand des Fensters, wenn sie breiter ist als der Platz.
 - **Prüfweg:** Liste „Anfrage“ öffnen, in den Entwicklerwerkzeugen „Alle Datensätze“,
