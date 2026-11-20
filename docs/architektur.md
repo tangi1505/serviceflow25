@@ -795,7 +795,12 @@ Meilenstein. Werkzeug: `test/load` (E51).
   Minute läuft in der eigenen Warteschlange `days` (PL70, Kern-Plan E75).
 - **Feste Kerne** (PL71, Hauptplan E198): auf dem geteilten Server `ki-lab` laufen Server,
   PostgreSQL und Valkey der Messungen auf 8 Threads mit zusammen 32 GB, wie die Prod (eine VM
-  mit 8 virtuellen CPUs), das Lastwerkzeug auf eigenen Kernen.
+  mit 8 virtuellen CPUs), das Lastwerkzeug auf eigenen Kernen. Bauen und Testen der CI nehmen
+  seit 2026-11-20 die Kerne 0 bis 6.
+- **Durchgang Meilenstein 1** (SD21): eine eigene Instanz in der CI
+  (`scripts/sd21-instance.sh`, Datenbank `<ci>_sd21`, nur die Pakete des Service Desks) mit dem
+  nachgebauten OIDC-Anbieter `test/fakeidp`; alles Weitere richtet der Browser-Test über die API
+  ein. `scripts/check-core-packages.sh` hält Typen der Pakete aus dem Code des Kerns.
 - **Listen ohne JIT und Hilfsprozesse** (PL73, Kern-Plan E77): das `SELECT` einer Liste läuft
   in einer eigenen Transaktion mit `jit = off` und ohne parallele Hilfsprozesse; beides sind
   Voreinstellungen von PostgreSQL, die nach den geschätzten Kosten greifen und bei vielen

@@ -345,7 +345,7 @@ function StepRow({ step, language }: { step: ApprovalStep; language: string }) {
       <Td>
         <RefName refTo={step.approver as ActorRef} />
         {step.mine && (
-          <span className="ml-2 text-[12.5px] text-muted-foreground">{t("approvals.you")}</span>
+          <span className="ml-2 text-[12.5px] text-foreground-2">{t("approvals.you")}</span>
         )}
       </Td>
       <Td className={stateClass[step.state] ?? ""}>{t(`approvals.stepState.${step.state}`)}</Td>

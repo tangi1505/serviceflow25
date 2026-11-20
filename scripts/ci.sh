@@ -124,6 +124,7 @@ go_packages() {
 }
 
 go_type_tables() { sh scripts/check-type-tables.sh; }
+core_packages() { sh scripts/check-core-packages.sh; }
 
 ci_database() {
   # The CI has a server of its own (postgres-ci, E150), started fresh by ci-run.sh; the
@@ -455,6 +456,13 @@ web_e2e() {
   printf 'Portal-Sprache12!' | /tmp/itsm user create englisch --display-name "Englisch" >/dev/null 2>&1 ||
     printf 'Portal-Sprache12!' | /tmp/itsm user passwd englisch >/dev/null 2>&1 || true
   /tmp/itsm user grant englisch e2e_portal >/dev/null 2>&1 || true
+  # The walk-through of milestone 1 (SD21) on an instance of its own: its database, only the
+  # packages of the service desk, the rebuilt identity provider and a server on 18084.
+  go build -o /tmp/fakeidp ./test/fakeidp
+  sd21="$(pwd)/scripts/sd21-instance.sh"
+  sh "$sd21" start
+  trap 'kill "$e2e_server" 2>/dev/null || true; sh "$sd21" stop' EXIT
+  export ITSM_SD21_URL=http://127.0.0.1:18084 ITSM_SD21_IDP=http://127.0.0.1:18083
   cd web
   rc=0
   # shellcheck disable=SC2086
@@ -469,6 +477,8 @@ web_e2e() {
   if [ "$rc" != 0 ]; then
     echo "-- errors in the log of the server"
     grep -E '"level":"(ERROR|WARN)"|level=(ERROR|WARN)' /tmp/itsm-e2e.log | tail -20 || true
+    echo "-- errors in the log of the server of SD21"
+    grep -E '"level":"(ERROR|WARN)"|level=(ERROR|WARN)' /tmp/itsm-sd21.log | tail -20 || true
   fi
   return "$rc"
 }
@@ -486,6 +496,8 @@ nogo="no change to Go code, migrations, packages or the API since the last commi
 noweb="no change to the web since the last commit"
 
 run license_headers "license headers"
+# Quick and over server and interface alike, so in every run.
+run core_packages "core: no type of a package named in server or interface (SD21)"
 if part_go; then
   run go_format "go: format"
   run go_sqlc "go: sqlc code is up to date"

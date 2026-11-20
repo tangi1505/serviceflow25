@@ -41,7 +41,7 @@ export function RefName({ refTo, link = false }: { refTo: ActorRef; link?: boole
   if (!rec.data) {
     const typeLabel = labelOf(type?.label, i18n.language, refTo.type);
     return (
-      <span className="text-muted-foreground">
+      <span className="text-foreground-2">
         {typeLabel} {refTo.id.slice(-6)}
       </span>
     );

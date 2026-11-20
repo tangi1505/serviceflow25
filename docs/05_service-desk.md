@@ -68,7 +68,7 @@ unter http://localhost:8026 (`docker compose --profile mail up -d`).
 | --- | --- | --- | --- | --- |
 | **SD19** | Umfragen: Fragebogen mit dem Formular-Baukasten (Hauptplan E133), Versand nach dem Schließen mit Anteil und Verzögerung, Antwort über den Link in der Mail, Ergebnis am Vorgang und als Kennzahl (Inventar G47, G65; trägt KF15) | 🔒 Hauptplan V33 | 2 d | Anteil 100 %, Verzögerung 0 → nach dem Schließen eine Mail mit Link; die Antwort steht am Vorgang; der Durchschnitt ist über `:query` mit Aggregat abfragbar; `docker compose run --rm tools scripts/ci.sh` grün |
 | **SD20** | Einstellungen des Service Desks am Organisationsbaum: Matrix der Priorität, Anhänge (Größe, Arten), automatisches Schließen, Anteil der Umfragen (Inventar G173; Hauptplan E131, E180; den Anteil der Umfragen erklärt SD19, E17) | 🟢 | 2,5 d (vorher 1 d) | Matrix für die Dienststelle Nord ändern → dort die neue Priorität, sonst die alte; `docker compose run --rm tools scripts/ci.sh` grün |
-| **SD21** | Durchgang Meilenstein 1 als Browser-Test: Anmeldung per OIDC, Störung über das Portal, Bearbeitung mit Frist, Anfrage mit Genehmigung, Wissensartikel als Lösung; alles Konfiguration (E2; Hauptplan Etappe 2) | 🔒 SD1 bis SD18; UI47 bis UI53 (Hauptplan E199); UI57 bis UI64, PL74 bis PL76 (Hauptplan E203, E204) | 1,5 d | Der Browser-Test des Durchgangs in `docker compose run --rm tools scripts/ci.sh` ist grün; `git grep -n -e '"incident\.' -e '"request\.' -e '"catalog\.' -e '"knowledge\.' -e '"sd\.' -- internal web/src ':!*_test.go' ':!*.test.tsx'` gibt nichts aus |
+| **SD21** | Durchgang Meilenstein 1 als Browser-Test: Anmeldung per OIDC, Störung über das Portal, Bearbeitung mit Frist, Anfrage mit Genehmigung, Wissensartikel als Lösung; alles Konfiguration (E2; Hauptplan Etappe 2) | 🟢 | 1,5 d | Der Browser-Test des Durchgangs in `docker compose run --rm tools scripts/ci.sh` ist grün; `git grep -n -e '"incident\.' -e '"request\.' -e '"catalog\.' -e '"knowledge\.' -e '"sd\.' -- internal web/src ':!*_test.go' ':!*.test.tsx'` gibt nichts aus |
 
 **Summe:** 30 d, rund 6 Wochen, geschätzt vor dem Bau; dazu N1 aus §2.3 als PL49 im
 [Kern-Plan](01_plattform-kern.md) (1 d). N2 und N4 bauen SD15 und SD11 selbst. Das Helpdesk-Dashboard ist UI14 im
@@ -221,6 +221,67 @@ Die Fragen an die Fachseite zu diesem Plan stehen im Hauptplan §6.2: V29 (Mails
 Hauptplan H15).
 
 ## 4. Umsetzungsstand
+
+### SD21 — Durchgang Meilenstein 1 als Browser-Test, 2026-11-20
+
+- **Grundlage:** SD-Plan E2 (alles Konfiguration); Hauptplan Etappe 2; deine Entscheidung vom
+  2026-11-20: Anmeldung über den nachgebauten Anbieter der Tests, kein Keycloak in der CI.
+- **Gebaut:**
+  - `test/fakeidp`: der kleine OIDC-Anbieter der Go-Tests (`internal/authn/authntest`) als
+    eigener Prozess auf einer festen Adresse; `POST /next` legt fest, wer sich als Nächstes
+    anmeldet (Name, E-Mail, Gruppen). Nur für Tests, ohne Kennwort.
+  - `scripts/sd21-instance.sh`: eine eigene Datenbank neben der der anderen Browser-Tests,
+    frisch migriert, nur die Pakete `core`, `sd`, `incident`, `request`, `catalog` und
+    `knowledge`, ein Administrator, der Anbieter auf 18083 und ein Server auf 18084, der über
+    ihn anmeldet. Die CI startet sie vor den Browser-Tests (`scripts/ci.sh`); die anderen Tests
+    bleiben unberührt (der Knopf „Anmelden mit …“ hätte ihre Anmeldung gestört).
+  - `web/e2e/sd21.spec.ts`: Der Administrator richtet über die API ein, was ein Kunde
+    einrichtet: drei Personen, die Rollen „Mitarbeitende (Portal)“ und „Servicedesk“, zwei
+    Anmelderegeln nach Gruppen, eine Genehmigungsvorlage mit Gesa an „Neuer Arbeitsplatz“ und
+    einen Artikel für alle mit Bernd in der Redaktion. Dann im Browser, jede Person über den
+    Anbieter angemeldet: Bernd gibt den Artikel frei (Reiter „Genehmigung“, „Zustimmen“); Nora
+    meldet im Portal über „Störung melden“ eine Störung, der Artikel steht als Vorschlag
+    daneben; Bernd öffnet sie aus der Liste, setzt Auswirkung und Dringlichkeit hoch, sieht
+    „Störung P1 Reaktion – noch 15 min“, beginnt, übernimmt im Reiter „Wissen“ den Artikel als
+    Lösung, speichert und löst; Nora sieht die Lösung im Portal und bestätigt sie
+    (geschlossen); Nora bestellt im Katalog „Neuer Arbeitsplatz“, die Anfrage wartet auf
+    Genehmigung; Gesa stimmt im Portal zu; Bernd sieht die Anfrage „In Erfüllung“ mit den
+    Aufgaben „Gerät bereitstellen“ und „Zugänge einrichten“. axe auf jeder Seite ohne Befund.
+  - `scripts/check-core-packages.sh`, eigener Schritt jeder CI: kein Typ der Pakete steht im
+    Code von Server und Oberfläche (die Prüfung dieses Plans, ohne Kommentare, die erzeugte
+    API-Beschreibung und Tests). Ein Beispiel in einer Fehlermeldung der Formeln nannte
+    `incident.priority_matrix`, jetzt `trash.keep_days`.
+  - Behoben, weil axe es im Durchgang fand: grauer Text auf der hervorgehobenen eigenen Zeile
+    der Genehmigung und der Ersatzname einer nicht lesbaren Person hatten zu wenig Kontrast
+    (jetzt die zweite Textfarbe).
+  - Nebenbei: die CI baut und testet auf ki-lab auf 14 statt 12 Threads (Kerne 0 bis 6, deine
+    Angabe vom 2026-11-20: die anderen Projekte ruhen, llama.cpp läuft auf der GPU); die
+    Lastmessung bleibt auf ihren 8 festen Threads. Schneller wurde die CI dadurch kaum
+    (18 min), weil Lastmessung, Browser-Tests und die zeitabhängigen Go-Tests mit Absicht
+    nacheinander laufen. Ein Test der Einstellungen suchte das Feld nach der Wahl von Englisch
+    noch unter „Sprache“; er findet es jetzt unter beiden Namen.
+- **Befunde des Durchgangs** (nicht behoben, zu deiner Entscheidung):
+  - B1 Anmelderegel: Der Name muss eine Kurzform sein; die API meldet einen anderen Namen als
+    Datenbankfehler mit SQL-Text statt am Feld.
+  - B2 Artikel: Im Formular steht das Feld „Genehmigung“ als Textfeld mit dem Rohwert
+    „pending“.
+  - B3 Liste der Störungen: Die vorgegebenen Spalten beginnen mit Nummer, Priorität, Lösung,
+    Lösungsart, Wartegrund; Titel und Status fehlen vorn.
+  - B4 Seite der Störung: Titel und Beschreibung stehen unter den Feldern der Lösung; die
+    Seitenleiste zeigt „INCIDENT.TASK“ als Überschrift.
+  - B5 „Als Lösung übernehmen“ füllt nur das Formular; wer dann „Lösen“ drückt, bekommt
+    „Übergang fehlgeschlagen: Eingabe ungültig“ ohne Hinweis auf das ungespeicherte Formular
+    oder die fehlenden Felder.
+  - B6 Portal: Die Zeitleiste einer Anfrage zeigt der Anwenderin „approval (Regel
+    request_genehmigung_beim_anlegen)“.
+  - B7 Portal: Den Zustand „Wartet auf Genehmigung“ setzt eine Regel im Hintergrund; die
+    offene Seite zeigt ihn erst nach dem Neuladen.
+  - B8 Portal: Die Genehmigerin sieht sich in der Tabelle der Genehmigung als „Person“ mit einer Kurzkennung,
+    weil das Portal keine Personen lesen darf.
+- **Belegt:** CI auf ki-lab am 2026-11-20: alle 35 Browser-Tests grün, der Durchgang in 11,6 s, der neue Schritt der Pakete grün; das Lasttor im letzten Lauf rot mit LZ16 +21 %, im Lauf davor mit gleichem Code grün (−2 %): die Basislinie hat jeweils einen schnellen ersten Lauf (2,98 bis 3,34 ms), danach liegen beide bei 3,6 bis 3,9 ms; Rauschen auf der bekannten Drift von LZ16, SD21 ändert am Server nichts auf diesem Weg. Die Basislinie erneuern wir nach deinem Test.
+- **Prüfweg:** in der CI der Test „the walk-through of milestone 1“ unter den Browser-Tests und
+  der Schritt „core: no type of a package named“. Von Hand auf 8092: dieselbe Folge mit Konten
+  aus Keycloak oder lokalen Konten (die Rollen am Benutzer vergeben), wie im Test beschrieben.
 
 ### SD20 — Einstellungen am Organisationsbaum, 2026-11-13
 

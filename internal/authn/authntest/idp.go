@@ -7,15 +7,19 @@
 
 // Package authntest is a small OpenID Connect provider for tests: discovery, an
 // authorization endpoint that signs the chosen user in without asking, a token endpoint that
-// checks client secret and PKCE and signs ID tokens with RS256, and the key set.
+// checks client secret and PKCE and signs ID tokens with RS256, and the key set. As its own
+// process (test/fakeidp, for the browser test of the walk-through SD21) it listens on a fixed
+// address, and POST /next with a User as JSON chooses who signs in next.
 package authntest
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -28,13 +32,13 @@ import (
 
 // User is who the provider signs in next.
 type User struct {
-	Subject    string
-	Username   string
-	Name       string
-	GivenName  string
-	FamilyName string
-	Email      string
-	Groups     []string
+	Subject    string   `json:"subject"`
+	Username   string   `json:"username"`
+	Name       string   `json:"name"`
+	GivenName  string   `json:"given_name"`
+	FamilyName string   `json:"family_name"`
+	Email      string   `json:"email"`
+	Groups     []string `json:"groups"`
 }
 
 // IDP is the running fake provider.
@@ -59,11 +63,17 @@ type issued struct {
 	redirect  string
 }
 
-// New starts the provider; it stops with the test.
-func New(t interface {
+// T is what the provider needs of a test (or of the process test/fakeidp).
+type T interface {
 	Cleanup(func())
 	Fatal(...any)
-}) *IDP {
+}
+
+// New starts the provider on a free port; it stops with the test.
+func New(t T) *IDP { return NewAt(t, "") }
+
+// NewAt starts the provider on the address (host:port), or on a free port when it is empty.
+func NewAt(t T, addr string) *IDP {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
@@ -74,10 +84,31 @@ func New(t interface {
 	mux.HandleFunc("/auth", p.authorize)
 	mux.HandleFunc("/token", p.token)
 	mux.HandleFunc("/keys", p.keys)
-	p.Server = httptest.NewServer(mux)
+	mux.HandleFunc("POST /next", p.next)
+	p.Server = httptest.NewUnstartedServer(mux)
+	if addr != "" {
+		ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = p.Server.Listener.Close()
+		p.Server.Listener = ln
+	}
+	p.Server.Start()
 	p.Issuer = p.Server.URL
 	t.Cleanup(p.Server.Close)
 	return p
+}
+
+// next chooses who the next authorization signs in (POST /next with a User as JSON).
+func (p *IDP) next(w http.ResponseWriter, r *http.Request) {
+	var u User
+	if err := json.NewDecoder(r.Body).Decode(&u); err != nil || u.Subject == "" {
+		http.Error(w, "a user with a subject, as JSON", http.StatusBadRequest)
+		return
+	}
+	p.Login(u)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Login sets who the next authorization signs in.

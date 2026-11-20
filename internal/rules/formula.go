@@ -79,7 +79,7 @@ func settingMacro(keys map[string]bool) cel.Macro {
 				return eh.NewCall(operators.Index, eh.NewIdent(SettingsVar), eh.NewLiteral(key)), nil
 			}
 		}
-		return nil, eh.NewError(arg.ID(), "setting(…) takes the key as a text, like setting(\"incident.priority_matrix\")")
+		return nil, eh.NewError(arg.ID(), "setting(…) takes the key as a text, like setting(\"trash.keep_days\")")
 	})
 }
 
