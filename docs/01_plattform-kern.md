@@ -1737,6 +1737,19 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   "last_name": "Einmal", "password": "Einmal-Pw7!x"}` → 201 mit `password_expired: true`;
   Anmeldung als `probe_einmal` → nur Kennwort ändern geht; `GET /api/v1/accounts` listet es;
   `POST /api/v1/accounts/<id>:disable` → Anmeldung abgelehnt.
+- **Nachtrag 2026-11-20** (Befund auf 8092, Pascal: beheben): war ein Mailserver eingetragen,
+  aber nicht erreichbar, entstand das Konto, die Antwort war aber 500 und die Seite meldete
+  „Nicht angelegt“. Jetzt bleibt das Konto, die Einladung ohne Mail wird zurückgezogen
+  (`WithdrawInvitation`), das Anlegen antwortet 201 mit `invitation_failed: true`, und das
+  Sicherheitsprotokoll vermerkt es; `:invite` antwortet dann 502 und lässt ebenfalls keine
+  Einladung stehen. Die Seite „Benutzer“ meldet „Angelegt, aber die Einladung ging nicht raus“
+  mit „Neu einladen“ oder dem Einmal-Kennwort als Weg. Test: der Testmailserver kann eine
+  Adresse abweisen (`smtptest.Refuse`), `TestAccountsOverHTTP` und `UsersPage.test.tsx` prüfen
+  beide Fälle. Belegt: volle CI auf ki-lab grün am 2026-11-20 (alle 19 Schritte, 34 Browser-Tests; LZ2 +1 %, LZ13 5330 Zeilen/s, LZ16 −4 %).
+  Prüfweg: auf 8092 Mailpit anhalten (`docker compose stop mailpit`), „Neuer Benutzer“ mit
+  Einladung → Warnmeldung, der Benutzer steht ohne „eingeladen“ in der Liste; Mailpit wieder
+  starten (`docker compose --profile mail up -d mailpit`), „Aktionen › Neu einladen“ → Mail in
+  Mailpit (http://localhost:8026).
 
 ### PL76 — Papierkorb leert sich selbst, 2026-11-19
 

@@ -146,6 +146,22 @@ describe("UsersPage", () => {
     expect(state.accounts!.some((a) => a.username === "o_mail")).toBe(false);
   });
 
+  it("keeps the account when the mail server refuses the invitation and says so", async () => {
+    const user = userEvent.setup();
+    state.mailRefused = true;
+    const router = renderAt("/users/new");
+    await screen.findByRole("heading", { name: "Neuer Benutzer" }, loaded);
+    await user.type(screen.getByLabelText(/^Nachname/), "Abgewiesen");
+    await user.type(screen.getByLabelText(/^Benutzername/), "r_mail");
+    await user.type(screen.getByLabelText(/^E-Mail/), "r@example.test");
+    await user.click(screen.getByRole("button", { name: "Anlegen und einladen" }));
+    expect(
+      await screen.findByText("Angelegt, aber die Einladung ging nicht raus"),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/users\/acc-/));
+    expect(state.accounts!.find((a) => a.username === "r_mail")?.invited_until).toBeUndefined();
+  });
+
   it("says why a new invitation cannot go out", async () => {
     const user = userEvent.setup();
     renderAt("/users/acc-anna");
@@ -161,6 +177,11 @@ describe("UsersPage", () => {
     state.noMail = true;
     await again();
     expect(await screen.findByText(/kein Mailserver eingerichtet/)).toBeInTheDocument();
+    state.noMail = false;
+    state.mailRefused = true;
+    state.accounts![0]!.invited_email = "anna@example.test";
+    await again();
+    expect(await screen.findByText(/hat die Einladung nicht angenommen/)).toBeInTheDocument();
   });
 
   it("adds and removes a role at a user and blocks after the question", async () => {

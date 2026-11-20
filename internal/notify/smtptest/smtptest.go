@@ -38,6 +38,18 @@ type Server struct {
 	ln   net.Listener
 	mu   sync.Mutex
 	mail []Mail
+	// refused are the recipients answered with 550, as a mail server that will not take them.
+	refused map[string]bool
+}
+
+// Refuse makes the server answer RCPT for the address with 550 from now on.
+func (s *Server) Refuse(addr string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.refused == nil {
+		s.refused = map[string]bool{}
+	}
+	s.refused[strings.ToLower(addr)] = true
 }
 
 // Start runs a server until the test ends.
@@ -89,7 +101,15 @@ func (s *Server) serve(conn net.Conn) {
 			from = strings.Trim(strings.TrimSpace(line)[10:], "<> ")
 			reply("250 ok")
 		case strings.HasPrefix(cmd, "RCPT TO:"):
-			to = append(to, strings.Trim(strings.TrimSpace(line)[8:], "<> "))
+			rcpt := strings.Trim(strings.TrimSpace(line)[8:], "<> ")
+			s.mu.Lock()
+			no := s.refused[strings.ToLower(rcpt)]
+			s.mu.Unlock()
+			if no {
+				reply("550 refused")
+				continue
+			}
+			to = append(to, rcpt)
 			reply("250 ok")
 		case cmd == "DATA":
 			reply("354 go on")

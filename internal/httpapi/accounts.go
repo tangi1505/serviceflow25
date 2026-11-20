@@ -19,7 +19,6 @@ import (
 	"group24.de/itsm/internal/auth"
 	"group24.de/itsm/internal/authz"
 	"group24.de/itsm/internal/httpapi/gen"
-	"group24.de/itsm/internal/notify"
 	"group24.de/itsm/internal/records"
 	"group24.de/itsm/internal/seclog"
 )
@@ -41,6 +40,9 @@ type accountJSON struct {
 	InvitedUntil    *time.Time `json:"invited_until,omitempty"`
 	InvitedEmail    string     `json:"invited_email,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
+	// InvitationFailed is set only in the answer of creating: the account is there, but the
+	// mail of the invitation did not go out.
+	InvitationFailed bool `json:"invitation_failed,omitempty"`
 }
 
 func toAccountJSON(a auth.AccountInfo, now time.Time) accountJSON {
@@ -185,26 +187,37 @@ func (s *server) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	acc.PersonID = &pid
 	kind := "account.create"
+	details := map[string]any{"one_time_password": !invite}
+	failed := false
 	if invite {
-		if !s.sendInvitation(w, r, acc, email) {
-			return
-		}
 		kind = "account.invite"
+		if err := s.sendInvitation(r, acc, email); err != nil {
+			// The account stays (it has a person and maybe roles soon); the invitation without
+			// its mail goes, so the page shows no waiting invitation that nobody received.
+			s.o.Logger.Warn("invitation mail failed", "account", acc.Username, "err", err)
+			if err := s.o.Auth.WithdrawInvitation(ctx, acc); err != nil {
+				writeError(w, r, s.o.Logger, err)
+				return
+			}
+			kind, failed = "account.create", true
+			details["invitation_failed"] = true
+		}
 	}
 	s.secRecord(r, seclog.Event{Category: seclog.Change, Kind: kind, Outcome: seclog.Success, Target: acc.Username,
-		Details: map[string]any{"one_time_password": !invite}})
+		Details: details})
 	list, err := s.o.Auth.Accounts(ctx)
 	if err != nil {
 		writeError(w, r, s.o.Logger, err)
 		return
 	}
+	out := toAccountJSON(auth.AccountInfo{Account: acc, Origin: "local"}, time.Now())
 	for _, a := range list {
 		if a.ID == acc.ID {
-			writeJSON(w, http.StatusCreated, toAccountJSON(a, time.Now()))
-			return
+			out = toAccountJSON(a, time.Now())
 		}
 	}
-	writeJSON(w, http.StatusCreated, toAccountJSON(auth.AccountInfo{Account: acc, Origin: "local"}, time.Now()))
+	out.InvitationFailed = failed
+	writeJSON(w, http.StatusCreated, out)
 }
 
 // accountWritten answers the errors of creating an account or setting its password.
@@ -233,8 +246,12 @@ func (s *server) mailReady(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-// sendInvitation makes a new invitation and mails its link.
-func (s *server) sendInvitation(w http.ResponseWriter, r *http.Request, acc auth.Account, email string) bool {
+// errInvitationMail is a mail of an invitation that did not go out.
+var errInvitationMail = errors.New("the mail of the invitation did not go out")
+
+// sendInvitation makes a new invitation and mails its link; a mail that does not go out
+// answers errInvitationMail, the invitation itself stays (the caller decides).
+func (s *server) sendInvitation(r *http.Request, acc auth.Account, email string) error {
 	var by *uuid.UUID
 	if sess, ok := auth.SessionFrom(r.Context()); ok {
 		id := sess.AccountID
@@ -242,8 +259,7 @@ func (s *server) sendInvitation(w http.ResponseWriter, r *http.Request, acc auth
 	}
 	key, err := s.o.Auth.Invite(r.Context(), acc, email, by)
 	if err != nil {
-		writeError(w, r, s.o.Logger, err)
-		return false
+		return err
 	}
 	link := strings.TrimRight(s.o.Notify.PublicURL, "/") + "/invite?key=" + key
 	subject := "Einladung zu ServiceFlow25"
@@ -252,14 +268,9 @@ func (s *server) sendInvitation(w http.ResponseWriter, r *http.Request, acc auth
 		"Der Link gilt einmal. Haben Sie kein Konto erwartet, ignorieren Sie diese Mail.\n",
 		acc.DisplayName, acc.Username, time.Now().Add(auth.InvitationValid).In(berlin()).Format("02.01.2006 15:04"), link)
 	if err := s.o.Notify.MailNow(r.Context(), email, subject, text); err != nil {
-		if errors.Is(err, notify.ErrNoMail) {
-			s.mailReady(w, r)
-			return false
-		}
-		writeError(w, r, s.o.Logger, err)
-		return false
+		return fmt.Errorf("%w: %w", errInvitationMail, err)
 	}
-	return true
+	return nil
 }
 
 func berlin() *time.Location {
@@ -340,7 +351,18 @@ func (s *server) InviteAccount(w http.ResponseWriter, r *http.Request, id gen.Id
 		writeProblem(w, r, http.StatusUnprocessableEntity, "validation", "", []records.Problem{{Field: "email", Code: "required", Message: "the person has no address; give one"}})
 		return
 	}
-	if !s.sendInvitation(w, r, acc, email) {
+	if err := s.sendInvitation(r, acc, email); err != nil {
+		if !errors.Is(err, errInvitationMail) {
+			writeError(w, r, s.o.Logger, err)
+			return
+		}
+		// The new invitation replaced the old one; without its mail it goes too.
+		s.o.Logger.Warn("invitation mail failed", "account", acc.Username, "err", err)
+		if err := s.o.Auth.WithdrawInvitation(r.Context(), acc); err != nil {
+			writeError(w, r, s.o.Logger, err)
+			return
+		}
+		writeProblem(w, r, http.StatusBadGateway, "mail_failed", "the mail server did not take the invitation; try again later or give a one-time password", nil)
 		return
 	}
 	s.secRecord(r, seclog.Event{Category: seclog.Change, Kind: "account.invite", Outcome: seclog.Success, Target: acc.Username})

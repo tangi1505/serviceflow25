@@ -120,6 +120,22 @@ func TestAccountsOverHTTP(t *testing.T) {
 		t.Fatalf("an expired key: %d %s", r.code, r.raw)
 	}
 
+	// The mail server refuses the address: the account is there, without an invitation, and the
+	// answer says so; a new invitation to it answers 502 and leaves none either.
+	refused := "acc_refused_" + stamp
+	admin.smtp.Refuse(refused + "@example.test")
+	r = call(t, admin, http.MethodPost, "/api/v1/accounts", `{"username": "`+refused+`", "last_name": "Abgewiesen", "email": "`+refused+`@example.test"}`, nil)
+	if r.code != 201 || r.body["invitation_failed"] != true || r.body["invited_until"] != nil {
+		t.Fatalf("a refused invitation: %d %s", r.code, r.raw)
+	}
+	refusedID := r.body["id"].(string)
+	if r := call(t, admin, http.MethodPost, "/api/v1/accounts/"+refusedID+":invite", `{}`, nil); r.code != 502 {
+		t.Fatalf("invite again, refused: %d %s", r.code, r.raw)
+	}
+	if n := count(t, admin.pool, "SELECT count(*) FROM account_invitation WHERE account_id = $1", uuid.MustParse(refusedID)); n != 0 {
+		t.Fatalf("invitations left after refused mails: %d", n)
+	}
+
 	// Blocked, then allowed again; a new one-time password.
 	if r := call(t, admin, http.MethodPost, "/api/v1/accounts/"+onceID+":disable", "", nil); r.code != 204 {
 		t.Fatalf("disable: %d %s", r.code, r.raw)

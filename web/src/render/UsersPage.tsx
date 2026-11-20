@@ -213,6 +213,7 @@ export function UsersPage() {
 // reason says why an action failed; without a mail server (503) it names the way out.
 function reason(err: unknown, t: (key: string) => string): string {
   if (err instanceof ApiError && err.status === 503) return t("users.noMail");
+  if (err instanceof ApiError && err.status === 502) return t("users.mailFailed");
   if (err instanceof ApiError && err.fieldErrors.some((f) => f.field === "email")) {
     return t("users.noEmail");
   }
@@ -252,10 +253,15 @@ export function NewUserPage() {
     onMutate: () => setErrors({}),
     onSuccess: (a) => {
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      toast.success(
-        way === "invite" ? t("users.invitedTo", { email: email.trim() }) : t("users.createdOnce"),
-        a.display_name,
-      );
+      if (a.invitation_failed) {
+        // The account is there, but the mail did not go out (PL77): say what to do next.
+        toast.warning(t("users.createdNoMail"), t("users.createdNoMailText"));
+      } else {
+        toast.success(
+          way === "invite" ? t("users.invitedTo", { email: email.trim() }) : t("users.createdOnce"),
+          a.display_name,
+        );
+      }
       void navigate({ to: "/users/$id", params: { id: a.id } });
     },
     onError: (err) => {

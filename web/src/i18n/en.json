@@ -1449,6 +1449,9 @@
     "more": "Show more"
   },
   "users": {
+    "createdNoMail": "Created, but the invitation did not go out",
+    "createdNoMailText": "The mail server did not take the mail. Try “Actions › Invite again” later or set a one-time password.",
+    "mailFailed": "The mail server did not take the invitation; an older link no longer holds. Try again later or set a one-time password.",
     "noEmail": "The person has no e-mail address. Enter it at the person or set a one-time password.",
     "noMail": "This server has no mail server, so no invitation can go out. Choose “One-time password”.",
     "title": "Users",

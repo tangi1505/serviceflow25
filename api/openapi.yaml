@@ -3208,6 +3208,8 @@ paths:
         "403": { $ref: "#/components/responses/Problem" }
         "404": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
   /api/v1/invitations:accept:
     post:
       operationId: acceptInvitation
@@ -3892,6 +3894,7 @@ components:
         invited_until: { type: string, format: date-time, description: while an invitation waits to be used }
         invited_email: { type: string }
         created_at: { type: string, format: date-time }
+        invitation_failed: { type: boolean, description: "only in the answer of creating: the account is made, but the mail of the invitation did not go out; invite again or give a one-time password" }
     AccountCreate:
       type: object
       required: [username, last_name]

@@ -434,6 +434,8 @@ export type FakeState = {
   invitations?: Record<string, string>;
   // noMail answers an invitation with 503, as a server without a mail server does.
   noMail?: boolean;
+  // mailRefused: the mail server does not take invitations (the account is made all the same).
+  mailRefused?: boolean;
   // suggest are the groups of suggestions (SD18), answered for any type when the request has
   // values or a text, with linked from relations; ratings are the sums by record id.
   suggest?: SuggestGroup[];
@@ -948,6 +950,10 @@ export function fakeApi(state: FakeState) {
               : { invited_until: "2026-11-22T10:00:00Z", invited_email: body.email }),
           };
           state.accounts.push(a);
+          if (!body.password && state.mailRefused) {
+            delete a.invited_until;
+            return json(201, { ...a, invitation_failed: true });
+          }
           return json(201, a);
         }
         return json(200, state.accounts);
@@ -966,6 +972,9 @@ export function fakeApi(state: FakeState) {
         delete acc.invited_until;
       } else if (state.noMail) {
         return problem(503, "unavailable");
+      } else if (state.mailRefused) {
+        delete acc.invited_until;
+        return problem(502, "mail_failed");
       } else if (!acc.invited_email) {
         return json(422, {
           type: "/problems/validation",

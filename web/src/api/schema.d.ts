@@ -2924,6 +2924,8 @@ export interface components {
             invited_email?: string;
             /** Format: date-time */
             created_at: string;
+            /** @description only in the answer of creating: the account is made, but the mail of the invitation did not go out; invite again or give a one-time password */
+            invitation_failed?: boolean;
         };
         AccountCreate: {
             /** @description snake_case: a letter, then letters, digits or _ */
@@ -9000,6 +9002,8 @@ export interface operations {
             403: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
             422: components["responses"]["Problem"];
+            502: components["responses"]["Problem"];
+            503: components["responses"]["Problem"];
         };
     };
     acceptInvitation: {

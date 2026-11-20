@@ -1449,6 +1449,9 @@
     "more": "Weitere anzeigen"
   },
   "users": {
+    "createdNoMail": "Angelegt, aber die Einladung ging nicht raus",
+    "createdNoMailText": "Der Mailserver hat die Mail nicht angenommen. Versuchen Sie später „Aktionen › Neu einladen“ oder setzen Sie ein Einmal-Kennwort.",
+    "mailFailed": "Der Mailserver hat die Einladung nicht angenommen; ein älterer Link gilt nicht mehr. Versuchen Sie es später oder setzen Sie ein Einmal-Kennwort.",
     "noEmail": "Die Person hat keine E-Mail-Adresse. Tragen Sie sie bei der Person ein oder setzen Sie ein Einmal-Kennwort.",
     "noMail": "Auf diesem Server ist kein Mailserver eingerichtet, deshalb geht keine Einladung. Wählen Sie „Einmal-Kennwort“.",
     "title": "Benutzer",

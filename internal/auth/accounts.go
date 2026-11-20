@@ -146,6 +146,18 @@ func (s *Service) Invite(ctx context.Context, acc Account, email string, by *uui
 	return key, nil
 }
 
+// WithdrawInvitation drops the open invitation of the account, as when its mail did not go out.
+func (s *Service) WithdrawInvitation(ctx context.Context, acc Account) error {
+	q, err := s.account(ctx, acc.ID)
+	if err != nil {
+		return err
+	}
+	if err := q.DeleteInvitation(ctx, acc.ID); err != nil {
+		return fmt.Errorf("auth: invitation: %w", err)
+	}
+	return nil
+}
+
 // AcceptInvitation sets the password of the invited account (the rules of PL28 apply) and
 // uses the invitation up; it returns the username.
 func (s *Service) AcceptInvitation(ctx context.Context, key, password string) (string, error) {

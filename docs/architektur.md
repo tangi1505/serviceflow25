@@ -253,6 +253,8 @@ E34 und KF9:
   und lokales Konto zusammen an, mit Einmal-Kennwort (sofort abgelaufen, E77) oder Einladung
   per Mail (Schlüssel nur als Hash in `account_invitation`, 72 Stunden, einmal); sperren,
   entsperren, neu einladen; nur mit `manage_rights`, jede Änderung im Sicherheitsprotokoll.
+  Nimmt der Mailserver die Einladung nicht an, bleibt das Konto ohne Einladung
+  (`invitation_failed` in der Antwort, `:invite` dann 502).
 - **Eine Rolle** besteht aus Berechtigungen. Jede Berechtigung hat fünf Teile:
   - **Typ;**
   - **Aktion:** lesen, anlegen, ändern, löschen (in den Papierkorb und zurück), endgültig
