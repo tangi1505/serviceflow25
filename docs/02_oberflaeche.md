@@ -640,6 +640,8 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   `UsersPage.test.tsx` belegt, dass dabei kein Konto entsteht. „Neu einladen“ ohne Adresse sagte
   nur „Eingabe ungültig“; jetzt prüft der Server zuerst den Mailserver, und die Seite sagt „Die
   Person hat keine E-Mail-Adresse …“ mit dem Einmal-Kennwort als Weg (Test für beide Fälle).
+- **Entschieden 2026-11-20 (Pascal):** Benutzer verwaltet, wer Rollen verwalten darf
+  (`manage_rights`); kein eigenes Recht.
 
 ### UI65 — Nacharbeit nach deiner Prüfung, 2026-11-19
 
