@@ -80,6 +80,7 @@ function state(
 ) {
   if (!a.active) return t("users.blocked");
   if (a.invited_until) return t("users.invited", { until: formatMoment(a.invited_until, lang) });
+  if (a.no_password) return t("users.noPassword");
   if (a.password_expired) return t("users.mustChange");
   return t("users.active");
 }

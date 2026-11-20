@@ -2914,6 +2914,8 @@ export interface components {
             active: boolean;
             /** @description the password must be changed at the next sign-in (a one-time password) */
             password_expired: boolean;
+            /** @description an invited account without a password anybody knows: the invitation waits, or its mail did not go out */
+            no_password?: boolean;
             /** Format: date-time */
             last_login_at?: string;
             /**

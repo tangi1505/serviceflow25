@@ -952,6 +952,7 @@ export function fakeApi(state: FakeState) {
           state.accounts.push(a);
           if (!body.password && state.mailRefused) {
             delete a.invited_until;
+            a.no_password = true;
             return json(201, { ...a, invitation_failed: true });
           }
           return json(201, a);

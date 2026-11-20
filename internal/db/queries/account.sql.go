@@ -48,7 +48,7 @@ const createAccount = `-- name: CreateAccount :one
 INSERT INTO account (id, username, display_name, password_hash, password_expires_at, tenant)
 VALUES ($1, $2, $3, $4,
         $5, $6::ltree)
-RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at
+RETURNING id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at, password_unknown
 `
 
 type CreateAccountParams struct {
@@ -85,6 +85,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		&i.PersonID,
 		&i.Tenant,
 		&i.LastLoginAt,
+		&i.PasswordUnknown,
 	)
 	return i, err
 }
@@ -99,7 +100,7 @@ func (q *Queries) DeleteInvitation(ctx context.Context, accountID uuid.UUID) err
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account WHERE id = $1
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at, password_unknown FROM account WHERE id = $1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -118,12 +119,13 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 		&i.PersonID,
 		&i.Tenant,
 		&i.LastLoginAt,
+		&i.PasswordUnknown,
 	)
 	return i, err
 }
 
 const getAccountByUsername = `-- name: GetAccountByUsername :one
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account WHERE username = $1
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at, password_unknown FROM account WHERE username = $1
 `
 
 func (q *Queries) GetAccountByUsername(ctx context.Context, username string) (Account, error) {
@@ -142,6 +144,7 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, username string) (Ac
 		&i.PersonID,
 		&i.Tenant,
 		&i.LastLoginAt,
+		&i.PasswordUnknown,
 	)
 	return i, err
 }
@@ -166,7 +169,7 @@ func (q *Queries) GetInvitationByHash(ctx context.Context, tokenHash []byte) (Ge
 }
 
 const listAccounts = `-- name: ListAccounts :many
-SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at FROM account ORDER BY username
+SELECT id, username, display_name, password_hash, password_changed_at, password_expires_at, disabled_at, created_at, updated_at, person_id, tenant, last_login_at, password_unknown FROM account ORDER BY username
 `
 
 func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
@@ -191,6 +194,7 @@ func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
 			&i.PersonID,
 			&i.Tenant,
 			&i.LastLoginAt,
+			&i.PasswordUnknown,
 		); err != nil {
 			return nil, err
 		}
@@ -258,7 +262,8 @@ func (q *Queries) SetAccountLastLogin(ctx context.Context, id uuid.UUID) error {
 
 const setAccountPassword = `-- name: SetAccountPassword :exec
 UPDATE account
-SET password_hash = $2, password_changed_at = now(), password_expires_at = $3, updated_at = now()
+SET password_hash = $2, password_changed_at = now(), password_expires_at = $3,
+    password_unknown = false, updated_at = now()
 WHERE id = $1
 `
 
@@ -270,6 +275,16 @@ type SetAccountPasswordParams struct {
 
 func (q *Queries) SetAccountPassword(ctx context.Context, arg SetAccountPasswordParams) error {
 	_, err := q.db.Exec(ctx, setAccountPassword, arg.ID, arg.PasswordHash, arg.PasswordExpiresAt)
+	return err
+}
+
+const setAccountPasswordUnknown = `-- name: SetAccountPasswordUnknown :exec
+UPDATE account SET password_unknown = true, updated_at = now() WHERE id = $1
+`
+
+// An invited account (PL77): its random password is known to nobody until one is set.
+func (q *Queries) SetAccountPasswordUnknown(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setAccountPasswordUnknown, id)
 	return err
 }
 

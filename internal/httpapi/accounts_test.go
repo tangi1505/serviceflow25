@@ -125,7 +125,7 @@ func TestAccountsOverHTTP(t *testing.T) {
 	refused := "acc_refused_" + stamp
 	admin.smtp.Refuse(refused + "@example.test")
 	r = call(t, admin, http.MethodPost, "/api/v1/accounts", `{"username": "`+refused+`", "last_name": "Abgewiesen", "email": "`+refused+`@example.test"}`, nil)
-	if r.code != 201 || r.body["invitation_failed"] != true || r.body["invited_until"] != nil {
+	if r.code != 201 || r.body["invitation_failed"] != true || r.body["invited_until"] != nil || r.body["no_password"] != true {
 		t.Fatalf("a refused invitation: %d %s", r.code, r.raw)
 	}
 	refusedID := r.body["id"].(string)
@@ -134,6 +134,13 @@ func TestAccountsOverHTTP(t *testing.T) {
 	}
 	if n := count(t, admin.pool, "SELECT count(*) FROM account_invitation WHERE account_id = $1", uuid.MustParse(refusedID)); n != 0 {
 		t.Fatalf("invitations left after refused mails: %d", n)
+	}
+	// A one-time password makes it an account with a password again.
+	if r := call(t, admin, http.MethodPost, "/api/v1/accounts/"+refusedID+":password", `{"password": "Danach-Pw7!q"}`, nil); r.code != 204 {
+		t.Fatalf("one-time after refused: %d %s", r.code, r.raw)
+	}
+	if n := count(t, admin.pool, "SELECT count(*) FROM account WHERE id = $1 AND password_unknown", uuid.MustParse(refusedID)); n != 0 {
+		t.Fatal("still without a password after the one-time password")
 	}
 
 	// Blocked, then allowed again; a new one-time password.

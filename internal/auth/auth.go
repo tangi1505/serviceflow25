@@ -80,6 +80,8 @@ type Account struct {
 	PersonID *uuid.UUID
 	// LastLoginAt is the last local sign-in (PL77).
 	LastLoginAt *time.Time
+	// PasswordUnknown: an invited account whose random password nobody knows (PL77).
+	PasswordUnknown bool
 }
 
 // PasswordExpired reports whether the password must be changed before anything else (E77).
@@ -410,7 +412,8 @@ func (s *Service) Logout(ctx context.Context, sessionID string) error {
 
 func fromRow(r queries.Account) Account {
 	a := Account{ID: r.ID, Username: r.Username, DisplayName: r.DisplayName,
-		PasswordChangedAt: r.PasswordChangedAt.Time, CreatedAt: r.CreatedAt.Time}
+		PasswordChangedAt: r.PasswordChangedAt.Time, CreatedAt: r.CreatedAt.Time,
+		PasswordUnknown: r.PasswordUnknown}
 	if r.PasswordExpiresAt.Valid {
 		t := r.PasswordExpiresAt.Time
 		a.PasswordExpiresAt = &t

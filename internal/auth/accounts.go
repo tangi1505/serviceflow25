@@ -117,7 +117,19 @@ func (s *Service) AccountByID(ctx context.Context, id uuid.UUID) (Account, error
 // its password is random and expired, nobody knows it.
 func (s *Service) CreateInvitedAccount(ctx context.Context, tenant, username, displayName string) (Account, error) {
 	now := s.now()
-	return s.CreateAccountIn(ctx, tenant, username, displayName, randomPassword(), &now)
+	acc, err := s.CreateAccountIn(ctx, tenant, username, displayName, randomPassword(), &now)
+	if err != nil {
+		return Account{}, err
+	}
+	q, err := s.account(ctx, acc.ID)
+	if err != nil {
+		return Account{}, err
+	}
+	if err := q.SetAccountPasswordUnknown(ctx, acc.ID); err != nil {
+		return Account{}, fmt.Errorf("auth: invited account: %w", err)
+	}
+	acc.PasswordUnknown = true
+	return acc, nil
 }
 
 // Invite gives the account a new invitation for the address and returns its one-time key; the

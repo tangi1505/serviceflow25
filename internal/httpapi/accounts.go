@@ -36,6 +36,7 @@ type accountJSON struct {
 	PersonID        *uuid.UUID `json:"person_id,omitempty"`
 	Active          bool       `json:"active"`
 	PasswordExpired bool       `json:"password_expired"`
+	NoPassword      bool       `json:"no_password,omitempty"`
 	LastLoginAt     *time.Time `json:"last_login_at,omitempty"`
 	InvitedUntil    *time.Time `json:"invited_until,omitempty"`
 	InvitedEmail    string     `json:"invited_email,omitempty"`
@@ -50,6 +51,7 @@ func toAccountJSON(a auth.AccountInfo, now time.Time) accountJSON {
 		ID: a.ID, Username: a.Username, DisplayName: a.DisplayName, Origin: a.Origin, Issuer: a.Issuer,
 		Tenant: a.Tenant, PersonID: a.PersonID, Active: a.DisabledAt == nil,
 		PasswordExpired: a.Origin == "local" && a.PasswordExpired(now),
+		NoPassword:      a.Origin == "local" && a.PasswordUnknown,
 		LastLoginAt:     a.LastLoginAt, InvitedUntil: a.InvitedUntil, InvitedEmail: a.InvitedEmail,
 		CreatedAt: a.CreatedAt,
 	}

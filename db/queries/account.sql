@@ -22,8 +22,13 @@ UPDATE account SET tenant = sqlc.narg(tenant)::ltree, updated_at = now() WHERE i
 
 -- name: SetAccountPassword :exec
 UPDATE account
-SET password_hash = $2, password_changed_at = now(), password_expires_at = $3, updated_at = now()
+SET password_hash = $2, password_changed_at = now(), password_expires_at = $3,
+    password_unknown = false, updated_at = now()
 WHERE id = $1;
+
+-- name: SetAccountPasswordUnknown :exec
+-- An invited account (PL77): its random password is known to nobody until one is set.
+UPDATE account SET password_unknown = true, updated_at = now() WHERE id = $1;
 
 -- name: SetAccountDisabled :exec
 UPDATE account SET disabled_at = $2, updated_at = now() WHERE id = $1;

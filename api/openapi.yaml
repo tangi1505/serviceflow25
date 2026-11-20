@@ -3890,6 +3890,7 @@ components:
         person_id: { type: string, format: uuid }
         active: { type: boolean, description: false while the account is blocked }
         password_expired: { type: boolean, description: the password must be changed at the next sign-in (a one-time password) }
+        no_password: { type: boolean, description: "an invited account without a password anybody knows: the invitation waits, or its mail did not go out" }
         last_login_at: { type: string, format: date-time }
         invited_until: { type: string, format: date-time, description: while an invitation waits to be used }
         invited_email: { type: string }

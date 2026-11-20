@@ -1750,6 +1750,12 @@ Die Fragen an die Fachseite stehen im Hauptplan.
   Einladung → Warnmeldung, der Benutzer steht ohne „eingeladen“ in der Liste; Mailpit wieder
   starten (`docker compose --profile mail up -d mailpit`), „Aktionen › Neu einladen“ → Mail in
   Mailpit (http://localhost:8026).
+- **Nachtrag 2, 2026-11-20** (Prüfung auf 8092): so ein Konto stand als „Einmal-Kennwort, noch
+  nicht geändert“ da, obwohl niemand ein Kennwort kennt. Migration 00053 gibt `account` die
+  Spalte `password_unknown`: ein eingeladenes Konto hat sie, jedes gesetzte Kennwort (Einladung
+  angenommen, Einmal-Kennwort) löscht sie; die API liefert `no_password`, die Seite zeigt „noch
+  ohne Kennwort (einladen oder Einmal-Kennwort setzen)“. `TestAccountsOverHTTP` prüft beides.
+  Belegt: CI auf ki-lab am 2026-11-20: alle Tests grün (34 Browser-Tests), das Lasttor rot mit LZ13 −20 % (ein Ausreißer der Basislinie: deren Läufe 4.958/5.126/4.889/7.031, die neuen 5.072–5.641) und LZ16 +10 % (die bekannte Drift seit UI46); die Änderung betrifft weder den Import noch diese Abfragen.
 
 ### PL76 — Papierkorb leert sich selbst, 2026-11-19
 

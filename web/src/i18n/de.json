@@ -1449,6 +1449,7 @@
     "more": "Weitere anzeigen"
   },
   "users": {
+    "noPassword": "noch ohne Kennwort (einladen oder Einmal-Kennwort setzen)",
     "createdNoMail": "Angelegt, aber die Einladung ging nicht raus",
     "createdNoMailText": "Der Mailserver hat die Mail nicht angenommen. Versuchen Sie später „Aktionen › Neu einladen“ oder setzen Sie ein Einmal-Kennwort.",
     "mailFailed": "Der Mailserver hat die Einladung nicht angenommen; ein älterer Link gilt nicht mehr. Versuchen Sie es später oder setzen Sie ein Einmal-Kennwort.",

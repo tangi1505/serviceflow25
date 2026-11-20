@@ -160,6 +160,7 @@ describe("UsersPage", () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/users\/acc-/));
     expect(state.accounts!.find((a) => a.username === "r_mail")?.invited_until).toBeUndefined();
+    expect((await screen.findAllByText(/noch ohne Kennwort/)).length).toBeGreaterThan(0);
   });
 
   it("says why a new invitation cannot go out", async () => {

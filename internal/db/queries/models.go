@@ -24,6 +24,7 @@ type Account struct {
 	PersonID          uuid.NullUUID
 	Tenant            pgtype.Text
 	LastLoginAt       pgtype.Timestamptz
+	PasswordUnknown   bool
 }
 
 type AccountHome struct {
