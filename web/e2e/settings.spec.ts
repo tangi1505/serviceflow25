@@ -31,8 +31,9 @@ test("English in my settings holds after signing in again", async ({ page }) => 
   });
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Meine Einstellungen" })).toBeVisible();
-  // Every change applies at once (UI38, E49).
-  await pick(page.locator("main").getByLabel("Sprache", { exact: true }), "en");
+  // Every change applies at once (UI38, E49): the field may be "Language" already when pick
+  // looks at it after the choice (CI 2026-11-20), so it is found by both names.
+  await pick(page.locator("main").getByLabel(/^(Sprache|Language)$/), "en");
   await expect(page.getByRole("heading", { name: "My settings" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Types" })).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();

@@ -6,10 +6,11 @@
 # 8 threads and at most 32 GB, like the Prod server (a VM with 8 virtual CPUs and 32 GB for
 # application and database). ki-lab has 8 cores with 2 threads each, thread n and n+8 on one core:
 # the servers get the cores 0 to 3 with both their threads (0-3,8-11), the load tool the cores 4
-# and 5 (4,5,12,13), so it takes no time from them. The cores 6 and 7 belong to other projects
-# (Pascal 2026-11-18); the load guard judges only the cores 0 to 5 (ITSM_LOAD_WATCH_CPUS), so
-# runs there do not stop the measurement. Building and testing in the tool container stay on the
-# cores 0 to 5 too, so that every project runs on its own. ~/itsm-ci-run.sh on ki-lab adds this file:
+# and 5 (4,5,12,13), so it takes no time from them. The load guard judges only the cores 0 to 5
+# (ITSM_LOAD_WATCH_CPUS), so runs on the others do not stop the measurement. Building and testing
+# in the tool container use the cores 0 to 6 (Pascal 2026-11-20: the other projects on the cores
+# 6 and 7 are stopped, llama.cpp runs on the GPU); the core 7 (7,15) stays free for llama.cpp and
+# the system. ~/itsm-ci-run.sh on ki-lab adds this file:
 #   COMPOSE_FILE=compose.yaml:compose/ci-kilab.yaml scripts/ci-run.sh
 services:
   postgres-ci:
@@ -19,7 +20,7 @@ services:
     cpuset: "0-3,8-11"
     mem_limit: 2g
   tools:
-    cpuset: "0-5,8-13"
+    cpuset: "0-6,8-14"
     environment:
       ITSM_LOAD_SERVER_CPUS: "0-3,8-11"
       ITSM_LOAD_CLIENT_CPUS: "4,5,12,13"
